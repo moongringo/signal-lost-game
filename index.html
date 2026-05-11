@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0b0f14">
+  <title>Signal Lost v2</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="styles-v2.css">
+</head>
+<body data-screen="lobby" data-theme="classic">
+  <canvas id="themePatternCanvas" aria-hidden="true"></canvas>
+
+  <!-- ====== LOBBY ====== -->
+  <div id="lobbyScreen" class="screen">
+    <header class="lobby-header">
+      <h1>Signal Lost</h1>
+      <p class="tagline">Coordinate. Decode. Extract.</p>
+    </header>
+    <main class="lobby-grid">
+      <section class="card host-card">
+        <h2>Host a Game</h2>
+        <p>Create a new mission and invite your squad.</p>
+        <div class="input-group">
+          <label for="hostName">Name</label>
+          <input id="hostName" type="text" placeholder="Morgan" maxlength="22">
+        </div>
+        <div class="input-group">
+          <label for="hostCallsign">Callsign</label>
+          <input id="hostCallsign" type="text" placeholder="Raven" maxlength="14">
+        </div>
+        <button id="hostGame" class="primary-button">Host Mission</button>
+      </section>
+      <section class="card join-card">
+        <h2>Join a Game</h2>
+        <p>Enter a mission code to link up.</p>
+        <div class="input-group">
+          <label for="joinCode">Mission Code</label>
+          <input id="joinCode" type="text" placeholder="AQUA-RADAR-42" maxlength="40">
+          <small id="accessCodeHint" class="access-code-hint hidden">Access code required</small>
+        </div>
+        <div class="input-group">
+          <label for="joinName">Your Name</label>
+          <input id="joinName" type="text" placeholder="Agent" maxlength="22">
+        </div>
+        <div class="input-group">
+          <label for="joinCallsign">Callsign</label>
+          <input id="joinCallsign" type="text" placeholder="Ghost" maxlength="14">
+        </div>
+        <button id="joinGame" class="primary-button">Link Up</button>
+      </section>
+    </main>
+    <footer class="lobby-footer">
+      <div id="httpWarning" class="warning-pill hidden">GPS requires HTTPS or localhost</div>
+      <div class="theme-bar">
+        <button data-theme-palette="classic" class="theme-chip selected">Classic</button>
+        <button data-theme-palette="sunset" class="theme-chip">Sunset</button>
+        <button data-theme-palette="signal" class="theme-chip">Signal</button>
+        <button data-theme-palette="night" class="theme-chip">Night</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ====== SETUP ====== -->
+  <div id="setupScreen" class="screen">
+    <header class="setup-header">
+      <button id="backToLobby" class="ghost-button">← Lobby</button>
+      <h2>Mission Setup</h2>
+      <span id="setupCode" class="code-pill">AQUA-RADAR-42</span>
+    </header>
+    <main class="setup-main">
+      <section class="setup-col">
+        <div class="card">
+          <h3>Location</h3>
+          <div class="input-row">
+            <div class="input-group">
+              <label for="setupCountry">Country</label>
+              <select id="setupCountry"></select>
+            </div>
+            <div class="input-group">
+              <label for="setupCity">City</label>
+              <select id="setupCity"></select>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Mission Parameters</h3>
+          <div class="input-group">
+            <label for="setupDuration">Duration: <b id="setupDurationValue">60 min</b></label>
+            <input id="setupDuration" type="range" min="30" max="120" value="60">
+          </div>
+          <div class="input-group">
+            <label for="setupPlayers">Squad Size: <b id="setupPlayersValue">6 players</b></label>
+            <input id="setupPlayers" type="range" min="2" max="8" value="6">
+          </div>
+          <div class="input-row toggles">
+            <label class="toggle">
+              <input id="setupPublic" type="checkbox">
+              <span>Public Lobby</span>
+            </label>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Mission Packs</h3>
+          <div id="moduleList" class="module-grid"></div>
+        </div>
+        <div class="card">
+          <h3>Theme</h3>
+          <div class="theme-bar">
+            <button data-theme-palette="classic" class="theme-chip selected">Classic</button>
+            <button data-theme-palette="sunset" class="theme-chip">Sunset</button>
+            <button data-theme-palette="signal" class="theme-chip">Signal</button>
+            <button data-theme-palette="night" class="theme-chip">Night</button>
+          </div>
+        </div>
+      </section>
+      <section class="setup-col wide">
+        <div class="card map-card">
+          <h3>Marker Placement <small>Click map to add markers</small></h3>
+          <div id="setupMap" class="map-container"></div>
+          <div class="marker-toolbar">
+            <input id="markerLat" type="hidden" value="">
+            <input id="markerLng" type="hidden" value="">
+            <select id="markerType">
+              <option value="Clue">Clue</option>
+              <option value="Cache">Cache</option>
+              <option value="Waypoint">Waypoint</option>
+              <option value="Danger">Danger</option>
+              <option value="Extraction">Extraction</option>
+            </select>
+            <input id="markerTitle" type="text" placeholder="Marker title">
+            <button id="addMarker" class="compact-button">Add</button>
+            <button id="clearMarkers" class="compact-button danger-button">Clear</button>
+          </div>
+          <div id="markerList" class="marker-list"></div>
+        </div>
+      </section>
+    </main>
+    <footer class="setup-footer">
+      <button id="launchMission" class="primary-button large">Launch Mission</button>
+    </footer>
+  </div>
+
+  <!-- ====== ROLES ====== -->
+  <div id="rolesScreen" class="screen">
+    <header class="setup-header">
+      <button id="backToSetup" class="ghost-button">← Setup</button>
+      <h2>Choose Your Role</h2>
+      <span id="rolesCode" class="code-pill">CODE</span>
+    </header>
+    <main class="roles-main">
+      <div class="card">
+        <h3>Agents on Mission <span id="rosterTeamBadge" class="team-badge hidden"></span></h3>
+        <div id="rosterList" class="roster-list"></div>
+      </div>
+      <div class="role-grid" id="roleGrid">
+        <!-- 7 role cards generated by JS -->
+      </div>
+    </main>
+    <footer class="setup-footer">
+      <button id="readyToMission" class="primary-button large">Ready → Launch</button>
+    </footer>
+  </div>
+
+  <!-- ====== MISSION ====== -->
+  <div id="missionScreen" class="screen">
+    <div id="missionMap" class="mission-map"></div>
+
+    <!-- Radar Canvas Overlay -->
+    <canvas id="missionRadar" width="160" height="160"></canvas>
+
+    <!-- Floating GPS Button (mobile) -->
+    <button id="floatingGpsBtn" class="floating-gps-btn" title="Focus GPS">📍</button>
+
+    <!-- Panel Drawer Overlay (mobile) -->
+    <div id="panelDrawerOverlay" class="panel-drawer-overlay hidden"></div>
+
+    <!-- Extraction progress overlay -->
+    <div id="extractionOverlay" class="extraction-overlay hidden">
+      <div class="extraction-bar-container">
+        <div class="extraction-bar-label">EXTRACTING</div>
+        <div class="extraction-bar-track"><div id="extractionProgress" class="extraction-bar-fill" style="width:0%"></div></div>
+        <div id="extractionTimer" class="extraction-timer">15</div>
+      </div>
+    </div>
+
+    <header class="mission-hud">
+      <div class="hud-left">
+        <span id="missionTimer" class="timer">60:00</span>
+        <span id="missionStatus" class="status-pill">Live</span>
+      </div>
+      <div class="hud-center">
+        <div class="hud-bars">
+          <div class="hud-bar-row">
+            <span class="hud-bar-label">SIG</span>
+            <div class="hud-bar-track"><div id="hudSignalBar" class="hud-bar-fill signal-fill" style="width:72%"></div></div>
+          </div>
+          <div class="hud-bar-row">
+            <span class="hud-bar-label">STA</span>
+            <div class="hud-bar-track"><div id="hudStaminaBar" class="hud-bar-fill stamina-fill" style="width:85%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="hud-right">
+        <button id="toggleRadar" class="icon-button" title="Toggle Radar">📡</button>
+        <button id="fullscreenRadar" class="icon-button" title="Full Radar">🔄</button>
+        <button id="togglePanels" class="icon-button" title="Panels">📋</button>
+        <button id="focusGps" class="icon-button" title="GPS Focus">🎯</button>
+        <button id="endMissionBtn" class="icon-button danger-icon" title="End Mission">⏹</button>
+      </div>
+    </header>
+
+    <aside id="missionPanels" class="mission-panels">
+      <div class="panel-tabs">
+        <button data-panel-tab="objectives" class="panel-tab active">Objectives</button>
+        <button data-panel-tab="comms" class="panel-tab">Comms</button>
+        <button data-panel-tab="role" class="panel-tab">Role</button>
+        <button data-panel-tab="gps" class="panel-tab">GPS</button>
+      </div>
+      <div class="panel-content">
+        <div data-panel-view="objectives" class="panel-view active">
+          <div class="panel-view-header">
+            <h4>Objectives <span id="objCount">0/0</span></h4>
+          </div>
+          <div id="objectiveList" class="scroll-list"></div>
+        </div>
+        <div data-panel-view="comms" class="panel-view">
+          <div class="panel-view-header">
+            <h4>Comms</h4>
+          </div>
+          <div id="chatLog" class="chat-log"></div>
+          <form id="chatForm" class="chat-form">
+            <input id="chatInput" type="text" placeholder="Message…" maxlength="140" autocomplete="off">
+            <button type="submit" class="compact-button">Send</button>
+          </form>
+        </div>
+        <div data-panel-view="role" class="panel-view">
+          <div class="panel-view-header">
+            <h4 id="roleTitle">Role</h4>
+          </div>
+          <div id="roleTools" class="tool-grid"></div>
+        </div>
+        <div data-panel-view="gps" class="panel-view">
+          <div class="panel-view-header">
+            <h4>GPS</h4>
+          </div>
+          <button id="startGps" class="compact-button">Start GPS</button>
+          <button id="stopGps" class="compact-button danger-button">Stop GPS</button>
+          <div class="input-row">
+            <input id="manualLat" type="number" step="0.0001" placeholder="Lat">
+            <input id="manualLng" type="number" step="0.0001" placeholder="Lng">
+          </div>
+          <button id="applyManualGps" class="compact-button">Apply Manual</button>
+          <div id="gpsStatus" class="gps-status">GPS standby</div>
+        </div>
+      </div>
+      <!-- Drag handle for mobile drawer -->
+      <div class="drawer-handle"><span></span></div>
+    </aside>
+
+    <div id="confirmEndDialog" class="confirm-dialog hidden">
+      <div class="confirm-dialog-content">
+        <h4>End Mission?</h4>
+        <p>This will conclude the current operation.</p>
+        <div class="confirm-dialog-actions">
+          <button id="confirmEndYes" class="danger-button">End Mission</button>
+          <button id="confirmEndNo" class="ghost-button">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== RESULTS ====== -->
+  <div id="resultsScreen" class="screen">
+    <header class="results-header">
+      <h1>Mission Complete</h1>
+      <div id="scoreGrade" class="grade">B</div>
+      <div id="scoreValue" class="score">0</div>
+      <p id="scoreSummary" class="score-summary">Objectives found: 0/0</p>
+    </header>
+    <main class="results-main">
+      <div class="card">
+        <h3>Squad Stats</h3>
+        <div class="stat-row">
+          <span>Avg Signal</span><b id="resSignal">--</b>
+        </div>
+        <div class="stat-row">
+          <span>Avg Stamina</span><b id="resStamina">--</b>
+        </div>
+        <div class="stat-row">
+          <span>Time Remaining</span><b id="resTime">--</b>
+        </div>
+        <div class="stat-row">
+          <span>Threat Penalty</span><b id="resThreat">--</b>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Team Standings</h3>
+        <div id="teamList" class="scroll-list"></div>
+      </div>
+    </main>
+    <footer class="results-footer">
+      <button id="playAgain" class="primary-button large">Play Again</button>
+      <button id="revealMapRecap" class="ghost-button large">Reveal Map Recap</button>
+    </footer>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="game-v2.js"></script>
+</body>
+</html>
