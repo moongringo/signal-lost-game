@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Lost v2 — About</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#0a0e1a;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
+  line-height:1.6;min-height:100vh
+}
+a{color:#ffd965;text-decoration:none}
+a:hover{text-decoration:underline}
+.container{max-width:900px;margin:0 auto;padding:0 20px}
+
+/* NAV */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(10,14,26,.92);backdrop-filter:blur(10px);border-bottom:1px solid #1e2a3a;
+  padding:0 20px;height:56px;display:flex;align-items:center;gap:20px;overflow-x:auto;
+  -webkit-overflow-scrolling:touch
+}
+nav a{color:#8b949e;font-size:13px;white-space:nowrap;padding:4px 10px;border-radius:4px;transition:.2s}
+nav a:hover{color:#ffd965;background:rgba(255,217,101,.08);text-decoration:none}
+nav .logo{color:#ffd965;font-weight:700;font-size:15px;margin-right:auto;white-space:nowrap}
+
+/* HERO */
+.hero{
+  margin-top:56px;padding:80px 20px 60px;text-align:center;
+  background:linear-gradient(180deg,#0f1528 0%,#0a0e1a 60%);
+  border-bottom:1px solid #1e2a3a
+}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);color:#ffd965;margin-bottom:8px;letter-spacing:-.5px}
+.hero .tagline{color:#8b949e;font-size:clamp(1rem,2.5vw,1.2rem);margin-bottom:16px}
+.hero p{color:#6e7681;font-size:15px;max-width:600px;margin:0 auto}
+.hero .sig-icon{font-size:3rem;display:block;margin-bottom:16px}
+
+/* SECTIONS */
+section{padding:48px 0;border-bottom:1px solid #161b22}
+section:last-child{border-bottom:none;padding-bottom:80px}
+h2{color:#ffd965;font-size:clamp(1.3rem,3vw,1.6rem);margin-bottom:24px;display:flex;align-items:center;gap:10px}
+h3{color:#e6edf3;font-size:15px;margin-bottom:8px}
+
+/* CARDS */
+.card-grid{display:grid;gap:16px}
+.card-grid-2{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.card-grid-3{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.card-grid-4{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+.card{
+  background:#111827;border:1px solid #1e2a3a;border-radius:10px;padding:20px;
+  transition:border-color .2s,transform .15s
+}
+.card:hover{border-color:#ffd96544;transform:translateY(-2px)}
+.card h3{display:flex;align-items:center;gap:8px;font-size:15px;margin-bottom:6px}
+.card h3 .emoji{font-size:1.3em}
+.card p{color:#8b949e;font-size:13px;line-height:1.5}
+
+/* ROLE CARDS */
+.role-card{border-left:3px solid var(--rc,#ffd965)}
+
+/* STEP LIST */
+.steps{list-style:none;counter-reset:step;display:grid;gap:12px}
+.steps li{
+  counter-increment:step;padding:14px 16px 14px 48px;position:relative;
+  background:#111827;border:1px solid #1e2a3a;border-radius:8px;font-size:14px
+}
+.steps li::before{
+  content:counter(step);position:absolute;left:14px;top:14px;
+  width:26px;height:26px;border-radius:50%;background:#ffd965;color:#0a0e1a;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px
+}
+.steps li strong{color:#e6edf3}
+
+/* FEATURE TAGS */
+.feature-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.tag{
+  background:#161b22;border:1px solid #1e2a3a;border-radius:4px;padding:3px 10px;
+  font-size:12px;color:#8b949e
+}
+.tag.active{color:#ffd965;border-color:#ffd96544}
+
+/* TECH STACK */
+.tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.tech-item{
+  background:#111827;border:1px solid #1e2a3a;border-radius:6px;padding:12px;text-align:center;
+  font-size:12px;color:#8b949e
+}
+.tech-item strong{display:block;color:#e6edf3;font-size:13px;margin-bottom:2px}
+
+/* RESPONSIVE */
+@media(max-width:600px){
+  .container{padding:0 14px}
+  .hero{padding:60px 14px 40px}
+  section{padding:32px 0}
+  .card-grid-2,.card-grid-3,.card-grid-4{grid-template-columns:1fr}
+  nav{gap:10px;padding:0 14px}
+  nav a{font-size:12px;padding:4px 8px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">📡 Signal Lost</span>
+  <a href="#modes">Modes</a>
+  <a href="#roles">Roles</a>
+  <a href="#packs">Mission Packs</a>
+  <a href="#features">Features</a>
+  <a href="#howto">How to Play</a>
+  <a href="#tech">Tech</a>
+</nav>
+
+<header class="hero">
+  <span class="sig-icon">📡</span>
+  <h1>Signal Lost v2</h1>
+  <p class="tagline">Coordinate. Decode. Extract.</p>
+  <p>A GPS-powered multiplayer scavenger hunt where you and your squad race against AI threats to decode signals, recover caches, and extract before time runs out.</p>
+</header>
+
+<div class="container">
+
+<!-- MODES -->
+<section id="modes">
+<h2>🎮 Game Modes</h2>
+<div class="card-grid card-grid-3">
+  <div class="card">
+    <h3><span class="emoji">🏠</span>Host a Game</h3>
+    <p>Create a new mission. Set location, duration, squad size, and mission packs. Share the auto-generated code (e.g. <strong>FIELD-RADAR-42</strong>) to invite your squad.</p>
+  </div>
+  <div class="card">
+    <h3><span class="emoji">🔗</span>Join a Game</h3>
+    <p>Enter a mission code to link up. Choose your role and deploy alongside your team. No account needed — just a name and callsign.</p>
+  </div>
+  <div class="card">
+    <h3><span class="emoji">👁</span>Spectate</h3>
+    <p>Watch a live mission without GPS. See agent positions, objectives, threats, and comms in real-time. Perfect for mission control enthusiasts.</p>
+  </div>
+</div>
+</section>
+
+<!-- ROLES -->
+<section id="roles">
+<h2>🦸 7 Agent Roles</h2>
+<div class="card-grid card-grid-2">
+  <div class="card role-card" style="--rc:#58a6ff">
+    <h3><span class="emoji">🛸</span>Drone</h3>
+    <p>Scan routes ahead, mark safe corridors, and ping AI scouts to reveal threat positions. The eyes of the squad.</p>
+    <div class="feature-tags"><span class="tag active">Scan routes</span><span class="tag active">Mark safe corridor</span><span class="tag active">Ping AI scout</span></div>
+  </div>
+  <div class="card role-card" style="--rc:#f0883e">
+    <h3><span class="emoji">🔧</span>Mechanic</h3>
+    <p>Boost GPS mesh strength for all agents, repair damaged relays, and stabilize signals in jammed zones.</p>
+    <div class="feature-tags"><span class="tag active">Boost GPS mesh</span><span class="tag active">Repair relay</span><span class="tag active">Stabilize signal</span></div>
+  </div>
+  <div class="card role-card" style="--rc:#3fb950">
+    <h3><span class="emoji">🩺</span>Medic</h3>
+    <p>Find the nearest agent in distress, call regrouping pulses, and protect low-signal players from threat jamming.</p>
+    <div class="feature-tags"><span class="tag active">Find nearest agent</span><span class="tag active">Call regroup</span><span class="tag active">Protect low-signal</span></div>
+  </div>
+  <div class="card role-card" style="--rc:#d2a8ff">
+    <h3><span class="emoji">🎯</span>Decoder</h3>
+    <p>Break encrypted cipher packets to reveal objective locations. Validate intercepted signals to unlock hidden clues.</p>
+    <div class="feature-tags"><span class="tag active">Decode cipher</span><span class="tag active">Reveal clue</span><span class="tag active">Validate signal</span></div>
+  </div>
+  <div class="card role-card" style="--rc:#79c0ff">
+    <h3><span class="emoji">🧭</span>Navigator</h3>
+    <p>Set waypoints, measure proximity to objectives, and guide the squad through optimal routes.</p>
+    <div class="feature-tags"><span class="tag active">Set waypoint</span><span class="tag active">Measure proximity</span><span class="tag active">Guide squad</span></div>
+  </div>
+  <div class="card role-card" style="--rc:#ffa657">
+    <h3><span class="emoji">📦</span>Courier</h3>
+    <p>Carry key GPS shards, deliver objectives within 30m range, and trigger checkpoints for score bonuses.</p>
+    <div class="feature-tags"><span class="tag active">Carry key shard</span><span class="tag active">Deliver objective</span><span class="tag active">Trigger checkpoint</span></div>
+  </div>
+  <div class="card role-card" style="--rc:#ffd965;grid-column:1/-1;max-width:500px;margin:0 auto">
+    <h3><span class="emoji">🎮</span>Mission Control</h3>
+    <p>Track all agents in real-time, deploy objectives remotely, and monitor squad signal strength from the command center.</p>
+    <div class="feature-tags"><span class="tag active">Track all agents</span><span class="tag active">Deploy objectives</span><span class="tag active">Monitor signal</span></div>
+  </div>
+</div>
+</section>
+
+<!-- MISSION PACKS -->
+<section id="packs">
+<h2>📦 Mission Packs</h2>
+<div class="card-grid card-grid-4">
+  <div class="card">
+    <h3><span class="emoji">🔐</span>Cipher Tasks</h3>
+    <p>Decode encrypted packets to reveal objective locations. Each decoded packet advances the mission.</p>
+  </div>
+  <div class="card">
+    <h3><span class="emoji">💎</span>Treasure Hunt</h3>
+    <p>Recover GPS shards and claim field caches. Carry key phrases forward to unlock extraction.</p>
+  </div>
+  <div class="card">
+    <h3><span class="emoji">🚩</span>Waypoints</h3>
+    <p>Route teams through relay zones to stabilize uplinks. Opens the extraction vector.</p>
+  </div>
+  <div class="card">
+    <h3><span class="emoji">🎙️</span>Voice Relay</h3>
+    <p>New comms are read aloud when the browser allows it. Adds immersive audio feedback.</p>
+  </div>
+</div>
+<h3 style="margin-top:20px;font-size:14px;color:#8b949e">📍 Custom Markers</h3>
+<p style="font-size:13px;color:#6e7681;margin-bottom:12px">Place markers on the setup map to customize objectives: <strong style="color:#ff9800">Clue</strong> · <strong style="color:#4caf50">Cache</strong> · <strong style="color:#00bcd4">Waypoint</strong> · <strong style="color:#e45b4d">Danger</strong> · <strong style="color:#00e676">Extraction</strong></p>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+<h2>⚙️ Game Systems</h2>
+<div class="card-grid card-grid-2">
+  <div class="card"><h3><span class="emoji">📍</span>Real GPS Tracking</h3><p>Live player position with accuracy circle and pulsing dot. Manual coordinate input also available.</p></div>
+  <div class="card"><h3><span class="emoji">🔋</span>Battery-Aware GPS</h3><p>Auto-adjusts GPS polling: 3s normal, 8s low battery, 15s critical. Saver mode override available.</p></div>
+  <div class="card"><h3><span class="emoji">🥷</span>Stealth Mode</h3><p>Crouch to reduce threat detection range by 60% at the cost of 40% slower movement.</p></div>
+  <div class="card"><h3><span class="emoji">📌</span>Ping System</h3><p>Click the mission map to place temporary pings visible to all squad members with distance readout.</p></div>
+  <div class="card"><h3><span class="emoji">📡</span>Radar Module</h3><p>Toggleable radar overlay showing nearby agents and threats. Fullscreen mode available.</p></div>
+  <div class="card"><h3><span class="emoji">🧭</span>Compass Rose</h3><p>Directional overlay showing heading relative to mission north. Updates with device orientation.</p></div>
+  <div class="card"><h3><span class="emoji">☀️🌙</span>Day/Night Cycle</h3><p>Dynamic tile swapping between day and night map styles. Affects visibility and atmosphere.</p></div>
+  <div class="card"><h3><span class="emoji">⚠️</span>Threat Proximity</h3><p>Visual vignette and directional edge indicators when AI threats are near. Intensity scales with danger.</p></div>
+  <div class="card"><h3><span class="emoji">🚁</span>Extraction Sequence</h3><p>Once all objectives are found, reach the extraction zone and hold position for 15 seconds to win.</p></div>
+  <div class="card"><h3><span class="emoji">💬</span>Lobby &amp; Mission Chat</h3><p>Pre-mission comms with unread badges. In-mission chat with full message history (50 messages).</p></div>
+  <div class="card"><h3><span class="emoji">⏱️</span>Role Cooldowns</h3><p>Each role ability has a 10-second cooldown. Strategic use of tools is key to mission success.</p></div>
+  <div class="card"><h3><span class="emoji">🏆</span>Scoring &amp; Grades</h3><p>S/A/B/C/-- grades based on objectives found, progress, time remaining, squad stats, and threat penalties.</p></div>
+  <div class="card"><h3><span class="emoji">⚔️</span>Team System</h3><p>North vs South teams compete for score. Points awarded for objective completions and extractions.</p></div>
+  <div class="card"><h3><span class="emoji">📱</span>PWA Install</h3><p>Install as a standalone app on mobile and desktop for offline-capable access.</p></div>
+  <div class="card"><h3><span class="emoji">🎨</span>4 Themes</h3><p>Classic Signal · Tangerine Static · Signal Candy · Night Static. Each with unique animated background patterns.</p></div>
+  <div class="card"><h3><span class="emoji">🎵</span>Sound Effects</h3><p>Procedural audio via Web Audio API: mission start, beacon collect, score events, threat detection, extraction countdown ticks.</p></div>
+</div>
+</section>
+
+<!-- HOW TO PLAY -->
+<section id="howto">
+<h2>🎯 How to Play</h2>
+<ol class="steps">
+  <li><strong>Enter your name and callsign</strong> — This is your identity for the mission. Your callsign is how other agents see you.</li>
+  <li><strong>Host or Join</strong> — Create a new mission with custom parameters, or enter a mission code to join an existing game.</li>
+  <li><strong>Set mission parameters</strong> — Choose location (country + city), duration (30-120 min), squad size (2-8), and toggle mission packs.</li>
+  <li><strong>Place custom markers</strong> — Click the setup map to add Clue, Cache, Waypoint, Danger, or Extraction markers for custom objectives.</li>
+  <li><strong>Choose your role</strong> — Pick from 7 roles in the role screen. Each has unique abilities with cooldowns.</li>
+  <li><strong>Deploy and navigate</strong> — Use GPS or manual input to move on the map. Follow objectives, avoid threats, and communicate with your squad.</li>
+  <li><strong>Complete objectives</strong> — Decode cipher packets, recover treasure shards, and activate waypoints. Each completion awards score points.</li>
+  <li><strong>Extract to win</strong> — Once all objectives are found, reach the extraction zone and hold steady for 15 seconds. Threats converge on you — move fast.</li>
+</ol>
+</section>
+
+<!-- TECH -->
+<section id="tech">
+<h2>🔧 Tech Stack</h2>
+<div class="tech-grid">
+  <div class="tech-item"><strong>Vanilla JS</strong>Single-file game engine (~3700 lines)</div>
+  <div class="tech-item"><strong>Leaflet.js</strong>Interactive maps + markers</div>
+  <div class="tech-item"><strong>OpenStreetMap</strong>Tile data via CartoDB</div>
+  <div class="tech-item"><strong>Geolocation API</strong>Real GPS positioning</div>
+  <div class="tech-item"><strong>Web Audio API</strong>Procedural sound effects</div>
+  <div class="tech-item"><strong>Canvas 2D</strong>Animated theme backgrounds</div>
+  <div class="tech-item"><strong>Service Worker</strong>Offline asset caching</div>
+  <div class="tech-item"><strong>localStorage</strong>Profile + state persistence</div>
+  <div class="tech-item"><strong>PWA</strong>Standalone install support</div>
+  <div class="tech-item"><strong>AI Bots</strong>Single-player simulation</div>
+</div>
+<p style="margin-top:24px;font-size:13px;color:#6e7681;text-align:center">
+  No server required. Peer-to-peer simulation with AI bot agents. All game state stored locally.
+</p>
+</section>
+
+</div>
+</body>
+</html>

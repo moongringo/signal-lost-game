@@ -1,0 +1,26 @@
+{
+  "completed": [
+    "**1.2 Proximity Warning Refinement** \u2014 The threat vignette exists but needs refinement: add directional indicator (red glow from threat direction), audio pulse that speeds up as threat gets closer.",
+    "**1.3 Join Code UX** \u2014 Better error messages when entering invalid join codes. Show typing validation (auto-uppercase, only allow valid characters), show connecting/joined/failed states.",
+    "**2.1 Splash Screen Polish** \u2014 The splash/loading animation exists. Make it smoother \u2014 add version number, loading progress bar, keyboard/mouse hint to continue."
+  ],
+  "in_progress": null,
+  "logs": [
+    {
+      "feature": "**1.2 Proximity Warning Refinement** \u2014 The threat vignette exists but needs refinement: add directional indicator (red glow from threat direction), audio pulse that speeds up as threat gets closer.",
+      "timestamp": "2026-05-16T14:04:38.814216",
+      "status": "completed"
+    },
+    {
+      "feature": "**1.3 Join Code UX** \u2014 Better error messages when entering invalid join codes. Show typing validation (auto-uppercase, only allow valid characters), show connecting/joined/failed states.",
+      "timestamp": "2026-05-16T14:05:04.927541",
+      "status": "completed"
+    },
+    {
+      "feature": "**2.1 Splash Screen Polish** \u2014 The splash/loading animation exists. Make it smoother \u2014 add version number, loading progress bar, keyboard/mouse hint to continue.",
+      "timestamp": "2026-05-16T14:07:30.124696",
+      "status": "completed"
+    }
+  ],
+  "last_run": "2026-05-16T14:07:30.124692"
+}

@@ -3,13 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0b0f14">
+  <meta name="theme-color" content="#0a0e1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Signal Lost">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="Signal Lost">
   <title>Signal Lost v2</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <link rel="stylesheet" href="styles-v2.css">
+  <link rel="stylesheet" href="styles-v2.css?v=2">
+  <script>
+    // Splash dismiss failsafe — runs before game-v2.js loads
+    // This is the PRIMARY splash handler on mobile. game-v2.js may arrive late or not at all.
+    (function() {
+      var failSafeFired = false;
+
+      function forceDismiss() {
+        if (failSafeFired) return;
+        failSafeFired = true;
+        var splash = document.getElementById('splashScreen');
+        var lobby = document.getElementById('lobbyScreen');
+        var tapBtn = document.getElementById('splashTapToEnter');
+        if (tapBtn) tapBtn.style.display = 'none';
+        if (splash && lobby && window.getComputedStyle(lobby).display === 'none') {
+          splash.classList.add('hidden');
+          lobby.classList.remove('hidden');
+          lobby.style.display = 'flex';
+          lobby.style.opacity = '1';
+          lobby.style.transform = 'none';
+          lobby.style.pointerEvents = 'auto';
+          document.body.dataset.screen = 'lobby';
+        }
+        // If game-v2.js hasn't loaded yet, initLobby() won't exist.
+        // Poll until it does, then wire up the listeners.
+        if (typeof initLobby === 'function') {
+          initLobby();
+        } else {
+          var pollInit = setInterval(function() {
+            if (typeof initLobby === 'function') {
+              clearInterval(pollInit);
+              initLobby();
+            }
+          }, 100);
+          // Stop polling after 15 seconds
+          setTimeout(function() { clearInterval(pollInit); }, 15000);
+        }
+      }
+
+      // Auto-dismiss after 5 seconds
+      var autoTimer = setTimeout(forceDismiss, 5000);
+
+      // Tap ANYWHERE to skip splash immediately
+      document.addEventListener('DOMContentLoaded', function() {
+        document.body.addEventListener('touchstart', function(e) {
+          clearTimeout(autoTimer);
+          forceDismiss();
+        }, { once: true, passive: true });
+        document.body.addEventListener('click', function(e) {
+          clearTimeout(autoTimer);
+          forceDismiss();
+        }, { once: true, passive: true });
+      });
+
+      // Poll for lobby availability every 200ms (handles game-v2.js delayed load)
+      var pollTimer = setInterval(function() {
+        var lobby = document.getElementById('lobbyScreen');
+        if (lobby && window.getComputedStyle(lobby).display !== 'none') {
+          clearInterval(pollTimer);
+          clearTimeout(autoTimer);
+          failSafeFired = true;
+        }
+      }, 200);
+      // Stop polling after 10 seconds
+      setTimeout(function() { clearInterval(pollTimer); }, 10000);
+    })();
+  </script>
 </head>
-<body data-screen="lobby" data-theme="classic">
+<body data-screen="splash" data-theme="classic">
   <canvas id="themePatternCanvas" aria-hidden="true"></canvas>
+
+  <!-- ====== SPLASH ====== -->
+  <div id="splashScreen" class="screen">
+    <div class="splash-content">
+      <div class="splash-signal-ring"></div>
+      <div class="splash-signal-ring"></div>
+      <div class="splash-signal-ring"></div>
+      <div class="splash-logo">
+        <div class="splash-icon">📡</div>
+        <h1 class="splash-title">Signal Lost</h1>
+        <p class="splash-subtitle">v2</p>
+      </div>
+      <div class="splash-version">v2.0.0</div>
+      <div class="splash-loading-bar">
+        <div id="splashLoadingFill" class="splash-loading-fill"></div>
+      </div>
+      <div id="splashProgressText" class="splash-progress-text">Initializing…</div>
+      <div id="splashTapToEnter" class="splash-tap-prompt">⬆ TAP TO ENTER</div>
+      <div id="splashKeyHint" class="splash-key-hint">Press any key or click to continue</div>
+    </div>
+  </div>
 
   <!-- ====== LOBBY ====== -->
   <div id="lobbyScreen" class="screen">
@@ -49,7 +143,27 @@
         </div>
         <button id="joinGame" class="primary-button">Link Up</button>
       </section>
+      <section class="card spectate-card">
+        <h2>👁 Spectate</h2>
+        <p>Watch a live mission without GPS.</p>
+        <div class="input-group">
+          <label for="spectateCode">Mission Code</label>
+          <input id="spectateCode" type="text" placeholder="AQUA-RADAR-42" maxlength="40">
+        </div>
+        <button id="spectateGame" class="primary-button ghost-button">Enter Spectator</button>
+      </section>
     </main>
+    <section class="lobby-chat-card card">
+      <div class="lobby-chat-header">
+        <h3>📡 Squad Comms</h3>
+        <span id="lobbyChatBadge" class="lobby-chat-badge hidden">0</span>
+      </div>
+      <div id="lobbyChatLog" class="lobby-chat-log"></div>
+      <form id="lobbyChatForm" class="lobby-chat-form">
+        <input id="lobbyChatInput" type="text" placeholder="Message squad…" maxlength="140" autocomplete="off">
+        <button type="submit" class="compact-button">Send</button>
+      </form>
+    </section>
     <footer class="lobby-footer">
       <div id="httpWarning" class="warning-pill hidden">GPS requires HTTPS or localhost</div>
       <div class="theme-bar">
@@ -71,7 +185,7 @@
     <main class="setup-main">
       <section class="setup-col">
         <div class="card">
-          <h3>Location</h3>
+          <h3>Location <button id="locMapMode" class="ghost-button" style="font-size:11px;padding:2px 8px;margin-left:auto" title="Click map to set custom location">📍 Pick on map</button></h3>
           <div class="input-row">
             <div class="input-group">
               <label for="setupCountry">Country</label>
@@ -81,6 +195,19 @@
               <label for="setupCity">City</label>
               <select id="setupCity"></select>
             </div>
+          </div>
+          <div id="customLocationInfo" style="margin-top:8px;font-size:12px;color:#ffd965;display:none;align-items:center;gap:6px">
+            <span>📍</span>
+            <span id="customLocationCoords"></span>
+            <button id="clearCustomLocation" class="ghost-button" style="font-size:11px;padding:2px 6px">✕ Clear</button>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            <button id="saveFavoriteLocation" class="compact-button" title="Save current location as favorite">⭐ Save as Favorite</button>
+            <select id="loadFavoriteLocation" style="flex:1;min-width:100px;background:#161b22;color:#c9d1d9;border:1px solid #1e2a3a;border-radius:6px;padding:4px 8px;font-size:12px">
+              <option value="">— Favorites —</option>
+            </select>
+            <button id="setDefaultLocation" class="compact-button" title="Set as default for new games">📌 Set Default</button>
+            <button id="clearDefaultLocation" class="compact-button danger-button" title="Clear default location">✕</button>
           </div>
         </div>
         <div class="card">
@@ -169,11 +296,29 @@
     <!-- Radar Canvas Overlay -->
     <canvas id="missionRadar" width="160" height="160"></canvas>
 
+    <!-- Compass Rose Overlay -->
+    <canvas id="compassRose" width="160" height="160"></canvas>
+
     <!-- Floating GPS Button (mobile) -->
     <button id="floatingGpsBtn" class="floating-gps-btn" title="Focus GPS">📍</button>
 
     <!-- Panel Drawer Overlay (mobile) -->
     <div id="panelDrawerOverlay" class="panel-drawer-overlay hidden"></div>
+
+    <!-- Mobile Comms Mini-Bar (shows when drawer is closed) -->
+    <div id="commsMiniBar" class="comms-mini-bar">
+      <div class="cmb-msg" id="cmbMsg"><span class="cmb-sender">System</span>Ready to deploy</div>
+      <button class="cmb-btn" id="cmbPanelsBtn" title="Open Panels">📋</button>
+      <button class="cmb-btn cmb-primary" id="cmbVoiceBtn" title="Voice Comms">🎙️</button>
+    </div>
+
+    <!-- Threat Proximity Vignette -->
+    <div id="threatVignette" class="threat-vignette"></div>
+    <div id="threatGlow" class="threat-glow"></div>
+    <div id="threatIndicatorTop" class="threat-indicator" style="top:60px;left:50%;transform:translateX(-50%);"></div>
+    <div id="threatIndicatorBottom" class="threat-indicator" style="bottom:60px;left:50%;transform:translateX(-50%);"></div>
+    <div id="threatIndicatorLeft" class="threat-indicator" style="top:50%;left:8px;transform:translateY(-50%);"></div>
+    <div id="threatIndicatorRight" class="threat-indicator" style="top:50%;right:8px;transform:translateY(-50%);"></div>
 
     <!-- Extraction progress overlay -->
     <div id="extractionOverlay" class="extraction-overlay hidden">
@@ -188,6 +333,9 @@
       <div class="hud-left">
         <span id="missionTimer" class="timer">60:00</span>
         <span id="missionStatus" class="status-pill">Live</span>
+        <span id="dayNightIndicator" class="day-night-indicator" data-phase="night">
+          <span class="dn-icon">🌙</span><span class="dn-label">NIGHT</span>
+        </span>
       </div>
       <div class="hud-center">
         <div class="hud-bars">
@@ -200,13 +348,23 @@
             <div class="hud-bar-track"><div id="hudStaminaBar" class="hud-bar-fill stamina-fill" style="width:85%"></div></div>
           </div>
         </div>
+        <!-- Team Voice Indicators (4.3) -->
+        <div id="voiceIndicatorBar" class="voice-indicator-bar"></div>
       </div>
       <div class="hud-right">
-        <button id="toggleRadar" class="icon-button" title="Toggle Radar">📡</button>
-        <button id="fullscreenRadar" class="icon-button" title="Full Radar">🔄</button>
-        <button id="togglePanels" class="icon-button" title="Panels">📋</button>
         <button id="focusGps" class="icon-button" title="GPS Focus">🎯</button>
-        <button id="endMissionBtn" class="icon-button danger-icon" title="End Mission">⏹</button>
+        <button id="togglePanels" class="icon-button" title="Panels">📋</button>
+        <div id="hudOverflow" class="hud-overflow">
+          <button id="hudOverflowToggle" class="icon-button overflow-toggle" title="More">•••</button>
+          <div id="hudOverflowMenu" class="hud-overflow-menu">
+            <button id="toggleVoice" class="icon-button voice-button" title="Push to Talk">🎙️</button>
+            <button id="toggleStealth" class="icon-button stealth-button" title="Enter Stealth">🥷</button>
+            <button id="toggleRadar" class="icon-button" title="Toggle Radar">📡</button>
+            <button id="fullscreenRadar" class="icon-button" title="Full Radar">🔄</button>
+            <div class="hud-overflow-separator"></div>
+            <button id="endMissionBtn" class="icon-button danger-icon" title="End Mission">⏹</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -228,11 +386,39 @@
           <div class="panel-view-header">
             <h4>Comms</h4>
           </div>
+          <!-- Voice Squad List (4.3) -->
+          <div id="voiceSquadList" class="voice-squad-list"></div>
           <div id="chatLog" class="chat-log"></div>
           <form id="chatForm" class="chat-form">
             <input id="chatInput" type="text" placeholder="Message…" maxlength="140" autocomplete="off">
             <button type="submit" class="compact-button">Send</button>
           </form>
+        </div>
+        <div data-panel-view="radar" class="panel-view">
+          <div class="panel-view-header">
+            <h4>Radar <small style="font-weight:400;color:var(--text-dim)">filter what shows on radar</small></h4>
+          </div>
+          <div id="radarFilterContent" class="radar-filter-content">
+            <div class="input-group">
+              <label>Radar Range</label>
+              <input id="radarRangeSlider" type="range" min="50" max="500" value="200">
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:2px">
+                <span>50m</span><span id="radarRangeLabel">200m</span><span>500m</span>
+              </div>
+            </div>
+            <div class="radar-filter-toggles">
+              <label class="radar-filter-chip active" data-filter="objectives">📍 Objectives</label>
+              <label class="radar-filter-chip active" data-filter="agents">👤 Agents</label>
+              <label class="radar-filter-chip active" data-filter="threats">⚠ Threats</label>
+              <label class="radar-filter-chip active" data-filter="pings">📡 Pings</label>
+              <label class="radar-filter-chip active" data-filter="waypoints">🔷 Waypoints</label>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+              <button id="radarToggleBtn" class="compact-button">Toggle Radar</button>
+              <button id="radarFullscreenBtn" class="compact-button">Fullscreen</button>
+              <button id="radarResetBtn" class="compact-button ghost-button">Reset All</button>
+            </div>
+          </div>
         </div>
         <div data-panel-view="role" class="panel-view">
           <div class="panel-view-header">
@@ -252,6 +438,11 @@
           </div>
           <button id="applyManualGps" class="compact-button">Apply Manual</button>
           <div id="gpsStatus" class="gps-status">GPS standby</div>
+          <div class="battery-gps-divider"></div>
+          <div class="battery-gps-row">
+            <div id="batteryGpsStatus" class="battery-gps-status">🔋 -- · Normal</div>
+            <button id="toggleBatterySaver" class="compact-button battery-saver-btn">Saver: OFF</button>
+          </div>
         </div>
       </div>
       <!-- Drag handle for mobile drawer -->
@@ -270,10 +461,90 @@
     </div>
   </div>
 
+  <!-- ====== SPECTATOR ====== -->
+  <div id="spectatorScreen" class="screen">
+    <div id="spectatorMap" class="spectator-map"></div>
+    <header class="spectator-hud">
+      <div class="spectator-hud-left">
+        <span class="spectator-badge">👁 Spectator</span>
+        <span id="spectatorCode" class="code-pill">AQUA-RADAR-42</span>
+      </div>
+      <div class="spectator-hud-center">
+        <span id="spectatorTimer" class="timer">60:00</span>
+        <span id="spectatorStatus" class="status-pill">Live</span>
+      </div>
+      <div class="spectator-hud-right">
+        <button id="spectatorTogglePanels" class="icon-button" title="Toggle Panels">📋</button>
+        <button id="spectatorLeave" class="icon-button danger-icon" title="Leave">⏹</button>
+      </div>
+    </header>
+    <aside id="spectatorPanels" class="spectator-panels">
+      <div class="panel-tabs">
+        <button data-spectator-tab="agents" class="panel-tab active">Agents</button>
+        <button data-spectator-tab="objectives" class="panel-tab">Objectives</button>
+        <button data-spectator-tab="comms" class="panel-tab">Comms</button>
+        <button data-spectator-tab="threats" class="panel-tab">Threats</button>
+      </div>
+      <div class="panel-content">
+        <div data-spectator-view="agents" class="panel-view active">
+          <div class="panel-view-header"><h4>Live Agents</h4></div>
+          <div id="spectatorAgentList" class="scroll-list"></div>
+        </div>
+        <div data-spectator-view="objectives" class="panel-view">
+          <div class="panel-view-header"><h4>Objectives <span id="spectatorObjCount">0/0</span></h4></div>
+          <div id="spectatorObjectiveList" class="scroll-list"></div>
+        </div>
+        <div data-spectator-view="comms" class="panel-view">
+          <div class="panel-view-header"><h4>Comms</h4></div>
+          <div id="spectatorChatLog" class="chat-log"></div>
+        </div>
+        <div data-spectator-view="threats" class="panel-view">
+          <div class="panel-view-header"><h4>Threat Status</h4></div>
+          <div id="spectatorThreatList" class="scroll-list"></div>
+        </div>
+      </div>
+      <div class="drawer-handle"><span></span></div>
+    </aside>
+  </div>
+
+  <!-- ====== REPLAY ====== -->
+  <div id="replayScreen" class="screen">
+    <header class="replay-header">
+      <button id="backToResults" class="ghost-button">← Results</button>
+      <h2>Mission Replay</h2>
+      <span id="replayCode" class="code-pill">AQUA-RADAR-42</span>
+    </header>
+    <div id="replayMap" class="replay-map"></div>
+    <aside class="replay-sidebar">
+      <div class="card">
+        <h3>Path Stats</h3>
+        <div class="stat-row"><span>Distance</span><b id="replayDistance">--</b></div>
+        <div class="stat-row"><span>Waypoints</span><b id="replayWaypoints">--</b></div>
+        <div class="stat-row"><span>Avg Speed</span><b id="replayAvgSpeed">--</b></div>
+        <div class="stat-row"><span>Time Active</span><b id="replayTimeActive">--</b></div>
+      </div>
+      <div class="card">
+        <h3>Threats Encountered</h3>
+        <div id="replayThreatList" class="scroll-list"></div>
+      </div>
+      <div class="card">
+        <h3>Score Breakdown</h3>
+        <div class="stat-row"><span>Objectives</span><b id="replayObjScore">--</b></div>
+        <div class="stat-row"><span>Progress</span><b id="replayProgScore">--</b></div>
+        <div class="stat-row"><span>Time Bonus</span><b id="replayTimeScore">--</b></div>
+        <div class="stat-row"><span>Squad</span><b id="replaySquadScore">--</b></div>
+        <div class="stat-row"><span>Threat Penalty</span><b id="replayThreatPenalty">--</b></div>
+        <div class="stat-row replay-total"><span>Total</span><b id="replayTotalScore">--</b></div>
+      </div>
+    </aside>
+  </div>
+
   <!-- ====== RESULTS ====== -->
   <div id="resultsScreen" class="screen">
+    <canvas id="resultsConfetti" aria-hidden="true"></canvas>
     <header class="results-header">
       <h1>Mission Complete</h1>
+      <div id="resultsTrophy" class="results-trophy">🏆</div>
       <div id="scoreGrade" class="grade">B</div>
       <div id="scoreValue" class="score">0</div>
       <p id="scoreSummary" class="score-summary">Objectives found: 0/0</p>
@@ -305,7 +576,10 @@
     </footer>
   </div>
 
+  <div id="offlineIndicator" class="offline-indicator hidden" aria-live="polite">Offline — cached mode</div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="game-v2.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="game-v2.js?v=2"></script>
 </body>
 </html>
