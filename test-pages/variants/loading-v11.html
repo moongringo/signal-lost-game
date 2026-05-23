@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CIPHER DECRYPT — SIGNAL LOST</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    color: #0f0;
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #hud {
+    position: absolute;
+    top: 12px;
+    left: 18px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    opacity: 0.7;
+    text-transform: uppercase;
+  }
+
+  #decrypt-container {
+    width: 90%;
+    max-width: 800px;
+    height: 70vh;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding-bottom: 20px;
+  }
+
+  .line {
+    font-size: 16px;
+    line-height: 1.6;
+    white-space: pre;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s, transform 0.3s;
+    text-shadow: 0 0 2px #0f0;
+  }
+
+  .line.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .line.flash {
+    animation: flashDecrypt 0.4s ease-out;
+  }
+
+  @keyframes flashDecrypt {
+    0%   { color: #fff; text-shadow: 0 0 10px #0f0, 0 0 20px #0f0; }
+    50%  { color: #8f8; text-shadow: 0 0 5px #0f0; }
+    100% { color: #0f0; text-shadow: 0 0 2px #0f0; }
+  }
+
+  .encrypted {
+    color: #080;
+    text-shadow: none;
+  }
+
+  .decrypted {
+    color: #0f0;
+  }
+
+  .label {
+    color: #0a0;
+    font-weight: bold;
+  }
+
+  .value {
+    color: #0f0;
+  }
+
+  .logo-line {
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    margin: 8px 0;
+  }
+
+  #progress-area {
+    width: 90%;
+    max-width: 800px;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #progress-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    margin-bottom: 6px;
+    opacity: 0.7;
+    text-transform: uppercase;
+  }
+
+  #key-bar-container {
+    width: 100%;
+    height: 24px;
+    border: 2px solid #0a0;
+    position: relative;
+    background: #001100;
+    display: flex;
+    align-items: center;
+  }
+
+  #key-fill {
+    height: 100%;
+    width: 0%;
+    background: #0f0;
+    box-shadow: 0 0 10px #0f0, inset 0 0 5px #0f0;
+    transition: width 0.3s ease;
+    position: relative;
+  }
+
+  #key-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #fff;
+    box-shadow: 0 0 8px #0f0;
+  }
+
+  #key-pattern {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    pointer-events: none;
+  }
+
+  .key-notch {
+    width: 2px;
+    height: 60%;
+    background: #0a0;
+    opacity: 0.5;
+  }
+
+  #percent {
+    position: absolute;
+    right: 10px;
+    font-size: 11px;
+    color: #0f0;
+    text-shadow: 0 0 4px #0f0;
+  }
+
+  #scanline {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,255,0,0.03) 2px,
+      rgba(0,255,0,0.03) 4px
+    );
+  }
+
+  #cursor-blink {
+    display: inline-block;
+    width: 10px;
+    height: 18px;
+    background: #0f0;
+    animation: blink 1s step-end infinite;
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+  <div id="scanline"></div>
+  <div id="hud">LOADING V11</div>
+
+  <div id="decrypt-container"></div>
+
+  <div id="progress-area">
+    <div id="progress-label">Decryption Key Assembly</div>
+    <div id="key-bar-container">
+      <div id="key-fill"></div>
+      <div id="key-pattern"></div>
+      <div id="percent">0%</div>
+    </div>
+  </div>
+
+<script>
+  const container = document.getElementById('decrypt-container');
+  const keyFill = document.getElementById('key-fill');
+  const percentLabel = document.getElementById('percent');
+  const keyPattern = document.getElementById('key-pattern');
+
+  // Generate key notches
+  for (let i = 0; i < 20; i++) {
+    const notch = document.createElement('div');
+    notch.className = 'key-notch';
+    keyPattern.appendChild(notch);
+  }
+
+  const hexChars = '0123456789ABCDEF';
+  const gibberishChars = '0123456789ABCDEF!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
+
+  function randomHex(len) {
+    let s = '';
+    for (let i = 0; i < len; i++) s += hexChars[Math.floor(Math.random() * hexChars.length)];
+    return s;
+  }
+
+  function randomGibberish(len) {
+    let s = '';
+    for (let i = 0; i < len; i++) s += gibberishChars[Math.floor(Math.random() * gibberishChars.length)];
+    return s;
+  }
+
+  const decryptedLines = [
+    { type: 'spacer', text: '' },
+    { type: 'spacer', text: '' },
+    { type: 'logo', text: '  SIGNAL LOST' },
+    { type: 'logo', text: '  ============' },
+    { type: 'spacer', text: '' },
+    { type: 'data', label: 'OP NAME:    ', value: 'OPERATION BLACKOUT' },
+    { type: 'data', label: 'TARGET:     ', value: 'GRID SECTOR 7G-ALPHA' },
+    { type: 'data', label: 'THREAT LVL: ', value: 'CRITICAL — CODE RED' },
+    { type: 'spacer', text: '' },
+    { type: 'info', text: '  >> Decryption complete. Awaiting further orders.' },
+    { type: 'spacer', text: '' },
+    { type: 'cursor', text: '' }
+  ];
+
+  let currentLineIndex = 0;
+  let progress = 0;
+  const totalLines = decryptedLines.length;
+
+  function createLineElement(content, type) {
+    const div = document.createElement('div');
+    div.className = 'line';
+    if (type === 'encrypted') div.classList.add('encrypted');
+    div.textContent = content;
+    return div;
+  }
+
+  function updateProgress() {
+    progress = Math.min(100, Math.round((currentLineIndex / totalLines) * 100));
+    keyFill.style.width = progress + '%';
+    percentLabel.textContent = progress + '%';
+  }
+
+  function decryptLine() {
+    if (currentLineIndex >= totalLines) {
+      // Done — keep cursor blinking
+      return;
+    }
+
+    const item = decryptedLines[currentLineIndex];
+    let displayText = '';
+    let finalText = '';
+    let lineType = 'normal';
+
+    if (item.type === 'spacer') {
+      finalText = '';
+      displayText = '';
+    } else if (item.type === 'logo') {
+      finalText = item.text;
+      displayText = randomGibberish(item.text.length);
+      lineType = 'logo-line';
+    } else if (item.type === 'data') {
+      finalText = item.label + item.value;
+      displayText = randomGibberish(finalText.length);
+    } else if (item.type === 'info') {
+      finalText = item.text;
+      displayText = randomGibberish(item.text.length);
+    } else if (item.type === 'cursor') {
+      finalText = '';
+      displayText = '';
+    }
+
+    const lineEl = document.createElement('div');
+    lineEl.className = 'line encrypted';
+    if (lineType === 'logo-line') lineEl.classList.add('logo-line');
+    if (item.type === 'cursor') {
+      const cursor = document.createElement('span');
+      cursor.id = 'cursor-blink';
+      lineEl.appendChild(cursor);
+    } else {
+      lineEl.textContent = displayText;
+    }
+    container.appendChild(lineEl);
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+
+    // Animate in
+    requestAnimationFrame(() => {
+      lineEl.classList.add('visible');
+    });
+
+    if (item.type === 'spacer' || item.type === 'cursor') {
+      currentLineIndex++;
+      updateProgress();
+      setTimeout(decryptLine, 200);
+      return;
+    }
+
+    // Scramble animation
+    let scrambleSteps = 0;
+    const maxScrambles = 12 + Math.floor(Math.random() * 10);
+    const scrambleInterval = setInterval(() => {
+      scrambleSteps++;
+      if (scrambleSteps < maxScrambles) {
+        lineEl.textContent = randomGibberish(finalText.length);
+      } else {
+        clearInterval(scrambleInterval);
+        // Reveal
+        if (item.type === 'data') {
+          lineEl.innerHTML = `<span class="label">${item.label}</span><span class="value">${item.value}</span>`;
+        } else {
+          lineEl.textContent = finalText;
+        }
+        lineEl.classList.remove('encrypted');
+        lineEl.classList.add('decrypted', 'flash');
+        setTimeout(() => lineEl.classList.remove('flash'), 400);
+
+        currentLineIndex++;
+        updateProgress();
+        setTimeout(decryptLine, 400 + Math.random() * 300);
+      }
+    }, 60);
+  }
+
+  // Start with some pure encrypted lines scrolling by
+  let introLines = 0;
+  const maxIntroLines = 6;
+
+  function addIntroLine() {
+    if (introLines >= maxIntroLines) {
+      decryptLine();
+      return;
+    }
+    const len = 40 + Math.floor(Math.random() * 30);
+    const lineEl = createLineElement(randomHex(len), 'encrypted');
+    container.appendChild(lineEl);
+    requestAnimationFrame(() => lineEl.classList.add('visible'));
+    container.scrollTop = container.scrollHeight;
+    introLines++;
+    setTimeout(addIntroLine, 150);
+  }
+
+  addIntroLine();
+</script>
+</body>
+</html>

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mission Control | Signal Lost</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #f5f2ee;
+      --bg-card: rgba(255, 255, 255, 0.75);
+      --bg-hover: rgba(255, 255, 255, 0.9);
+      --text: #1a1a1a;
+      --text-dim: #8a8580;
+      --text-muted: #b5b0a8;
+      --accent: #c25e00;
+      --accent-soft: rgba(194, 94, 0, 0.06);
+      --danger: #c23b22;
+      --success: #4a7c59;
+      --warning: #b8860b;
+      --border: rgba(0, 0, 0, 0.06);
+      --border-hover: rgba(0, 0, 0, 0.12);
+      --phosphor: rgba(194, 94, 0, 0.15);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ─── SUBTLE CRT OVERLAY ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0) 0px,
+        rgba(0, 0, 0, 0) 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 3px
+      );
+      background-size: 100% 4px;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.08) 100%);
+    }
+
+    /* ─── NAV ─── */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 20px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(245, 242, 238, 0.92);
+      backdrop-filter: blur(20px) saturate(1.2);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .nav-logo span { color: var(--accent); text-shadow: 0 0 8px var(--phosphor); }
+    .nav-right { display: flex; gap: 20px; align-items: center; font-size: 12px; }
+    .nav-pill {
+      padding: 5px 14px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .nav-pill.live { background: var(--accent); color: #fff; box-shadow: 0 0 12px var(--phosphor); }
+    .nav-pill.time { background: var(--bg-card); color: var(--text-dim); border: 1px solid var(--border); }
+
+    /* ─── LAYOUT ─── */
+    .main { padding: 80px 28px 28px; max-width: 1500px; margin: 0 auto; }
+    .grid {
+      display: grid;
+      grid-template-columns: 260px 1fr 280px;
+      gap: 24px;
+    }
+    @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+
+    /* ─── CARD ─── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+    }
+    .card:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-hover);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04), 0 0 30px var(--phosphor);
+    }
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-header h3 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .card-header .tag {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+    .card-body { padding: 16px 20px; }
+
+    /* ─── TEAM ─── */
+    .team-list { display: flex; flex-direction: column; gap: 6px; }
+    .team-member {
+      display: grid;
+      grid-template-columns: 40px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+    .team-member:hover { background: rgba(0,0,0,0.02); }
+    .team-member.critical { background: rgba(194, 59, 34, 0.04); }
+    .team-member.critical:hover { background: rgba(194, 59, 34, 0.06); }
+    .avatar {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.04);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-dim);
+    }
+    .avatar.lead { background: var(--accent-soft); color: var(--accent); }
+    .member-name { font-size: 13px; font-weight: 600; }
+    .member-role { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+    .member-role.critical { color: var(--danger); font-weight: 600; }
+    .hp-track {
+      height: 3px;
+      background: rgba(0,0,0,0.06);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .hp-fill { height: 100%; border-radius: 2px; }
+    .hp-fill.ok { background: var(--success); }
+    .hp-fill.warn { background: var(--warning); }
+    .hp-fill.crit { background: var(--danger); }
+    .member-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 6px rgba(74, 124, 89, 0.4);
+    }
+    .member-dot.warn { background: var(--warning); box-shadow: 0 0 6px rgba(184, 134, 11, 0.4); }
+    .member-dot.crit {
+      background: var(--danger);
+      box-shadow: 0 0 8px rgba(194, 59, 34, 0.5);
+      animation: pulse 1.2s ease infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* ─── RADAR ─── */
+    .radar-box {
+      aspect-ratio: 1;
+      max-height: 420px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: rgba(0,0,0,0.03);
+      border-radius: 16px;
+      margin: 0 18px 18px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .radar {
+      width: 85%; height: 85%;
+      border-radius: 50%;
+      border: 1px solid var(--border-hover);
+      position: relative;
+      background:
+        radial-gradient(circle at center, rgba(194,94,0,0.04) 0%, transparent 50%),
+        repeating-radial-gradient(circle at center, transparent 0px, transparent 39px, rgba(0,0,0,0.03) 40px);
+      overflow: hidden;
+    }
+    .radar::after {
+      content: '';
+      position: absolute; inset: 0; border-radius: 50%;
+      background: conic-gradient(from 0deg, transparent 0deg, rgba(194,94,0,0.15) 50deg, transparent 100deg);
+      animation: sweep 4s linear infinite;
+    }
+    @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .radar-cross { position: absolute; inset: 0; pointer-events: none; }
+    .radar-cross .h { position: absolute; top: 50%; left: 5%; right: 5%; height: 1px; background: var(--border-hover); }
+    .radar-cross .v { position: absolute; left: 50%; top: 5%; bottom: 5%; width: 1px; background: var(--border-hover); }
+    .radar-center {
+      position: absolute; top: 50%; left: 50%;
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 12px var(--phosphor);
+    }
+    .blip {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+    }
+    .blip.enemy { background: var(--danger); box-shadow: 0 0 8px rgba(194, 59, 34, 0.4); animation: blipPulse 2s ease-in-out infinite; }
+    .blip.friendly { background: var(--success); box-shadow: 0 0 6px rgba(74, 124, 89, 0.4); }
+    .blip.unknown { background: var(--warning); box-shadow: 0 0 6px rgba(184, 134, 11, 0.4); animation: blipPulse 3s ease-in-out infinite; }
+    @keyframes blipPulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 50% { transform: translate(-50%, -50%) scale(1.4); opacity: 0.5; } }
+    .blip-label {
+      position: absolute;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      white-space: nowrap;
+      margin-left: 12px;
+      margin-top: -3px;
+    }
+
+    /* ─── OBJECTIVES ─── */
+    .obj-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .obj-row:last-child { border-bottom: none; }
+    .obj-check {
+      width: 20px; height: 20px;
+      border: 1.5px solid var(--text-muted);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+      font-size: 11px;
+      color: transparent;
+      transition: all 0.3s;
+    }
+    .obj-check.done { background: var(--success); border-color: var(--success); color: #fff; }
+    .obj-check.active { border-color: var(--accent); background: var(--accent-soft); }
+    .obj-title { font-size: 14px; font-weight: 600; }
+    .obj-desc { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+    .obj-progress {
+      height: 3px;
+      background: rgba(0,0,0,0.06);
+      border-radius: 2px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .obj-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+
+    /* ─── COMMS ─── */
+    .comm-line { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; line-height: 1.5; }
+    .comm-line:last-child { border-bottom: none; }
+    .comm-time { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; }
+    .comm-name { color: var(--accent); font-weight: 700; }
+    .comm-alert { color: var(--danger); font-weight: 700; }
+    .comm-msg { color: var(--text-dim); }
+
+    /* ─── EQUIP ─── */
+    .equip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .equip-cell {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    .equip-cell:hover { border-color: var(--border-hover); background: rgba(0,0,0,0.02); box-shadow: 0 0 20px var(--phosphor); }
+    .equip-name { font-size: 13px; font-weight: 600; }
+    .equip-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+    .equip-meta.warn { color: var(--danger); }
+    .equip-bar { height: 3px; background: rgba(0,0,0,0.06); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+    .equip-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+    .equip-fill.low { background: var(--danger); }
+
+    /* ─── ACTIONS ─── */
+    .act-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .act-btn {
+      padding: 12px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .act-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 20px var(--phosphor); }
+    .act-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: rgba(194,59,34,0.04); box-shadow: 0 0 20px rgba(194,59,34,0.1); }
+
+    /* ─── THREAT ─── */
+    .threat-labels { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .threat-labels .lbl { font-size: 12px; font-weight: 600; }
+    .threat-labels .val { font-size: 12px; color: var(--warning); font-weight: 700; letter-spacing: 1px; }
+    .threat-bars { display: flex; gap: 4px; }
+    .threat-bar { flex: 1; height: 4px; border-radius: 2px; background: rgba(0,0,0,0.06); transition: all 0.4s; }
+    .threat-bar.on { background: var(--warning); }
+    .threat-bar.on.high { background: var(--danger); }
+
+    /* ─── STATS ─── */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-box { text-align: center; padding: 14px; border: 1px solid var(--border); border-radius: 10px; transition: all 0.3s; }
+    .stat-box:hover { background: rgba(0,0,0,0.02); box-shadow: 0 0 20px var(--phosphor); }
+    .stat-box .val { font-size: 24px; font-weight: 800; color: var(--accent); }
+    .stat-box .lbl { font-size: 10px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+    .stat-box.danger .val { color: var(--danger); }
+
+    /* ─── SCOREBOARD ─── */
+    .score-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .score-tbl th { text-align: left; padding: 10px; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+    .score-tbl td { padding: 10px; border-bottom: 1px solid var(--border); }
+    .score-tbl .f { color: var(--success); font-weight: 600; }
+    .score-tbl .e { color: var(--danger); font-weight: 600; }
+    .score-tbl .pts { font-weight: 700; color: var(--text); }
+
+    /* ─── ENV ─── */
+    .env-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .env-row:last-child { border-bottom: none; }
+    .env-row .k { color: var(--text-dim); }
+    .env-row .v { font-weight: 600; }
+
+    /* ─── EVENTS ─── */
+    .event-item { padding: 6px 0; font-size: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+    .event-item:last-child { border-bottom: none; }
+    .event-ts { color: var(--accent); font-weight: 700; margin-right: 6px; }
+    .event-danger { color: var(--danger); font-weight: 700; }
+    .event-ok { color: var(--success); font-weight: 700; }
+    .event-warn { color: var(--warning); font-weight: 700; }
+
+    .center-col { display: flex; flex-direction: column; gap: 24px; }
+    .center-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 800px) { .center-row { grid-template-columns: 1fr; } }
+  </style>
+  <link rel="stylesheet" href="design-system-subdir.css" />
+
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="index4.html" class="nav-logo">Signal<span>Lost</span></a>
+    <div class="nav-right">
+      <span class="nav-pill live">● Live</span>
+      <span class="nav-pill time" id="clock">00:00:00 UTC</span>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="grid">
+
+      <!-- LEFT -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Fireteam Alpha</h3>
+            <span class="tag">4/4 Active</span>
+          </div>
+          <div class="card-body">
+            <div class="team-list">
+              <div class="team-member">
+                <div class="avatar lead">M</div>
+                <div>
+                  <div class="member-name">Sgt. Morgan</div>
+                  <div class="member-role">Squad Leader</div>
+                  <div class="hp-track"><div class="hp-fill ok" style="width: 85%"></div></div>
+                </div>
+                <div class="member-dot"></div>
+              </div>
+              <div class="team-member">
+                <div class="avatar">C</div>
+                <div>
+                  <div class="member-name">Cpl. Chen</div>
+                  <div class="member-role">Designated Marksman</div>
+                  <div class="hp-track"><div class="hp-fill warn" style="width: 62%"></div></div>
+                </div>
+                <div class="member-dot warn"></div>
+              </div>
+              <div class="team-member">
+                <div class="avatar">O</div>
+                <div>
+                  <div class="member-name">Pfc. O'Brien</div>
+                  <div class="member-role">Machine Gunner</div>
+                  <div class="hp-track"><div class="hp-fill ok" style="width: 91%"></div></div>
+                </div>
+                <div class="member-dot"></div>
+              </div>
+              <div class="team-member critical">
+                <div class="avatar" style="color: var(--danger);">K</div>
+                <div>
+                  <div class="member-name">Pfc. Kowalski</div>
+                  <div class="member-role critical">Rifleman — Critical</div>
+                  <div class="hp-track"><div class="hp-fill crit" style="width: 12%"></div></div>
+                </div>
+                <div class="member-dot crit"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Objectives</h3>
+            <span class="tag" style="color: var(--accent);">2/3 Complete</span>
+          </div>
+          <div class="card-body">
+            <div class="obj-row">
+              <div class="obj-check done">✓</div>
+              <div style="flex: 1;">
+                <div class="obj-title">Secure LZ</div>
+                <div class="obj-desc">Landing zone cleared</div>
+              </div>
+            </div>
+            <div class="obj-row">
+              <div class="obj-check done">✓</div>
+              <div style="flex: 1;">
+                <div class="obj-title">Disable Comms</div>
+                <div class="obj-desc">Enemy tower neutralized</div>
+              </div>
+            </div>
+            <div class="obj-row">
+              <div class="obj-check active"></div>
+              <div style="flex: 1;">
+                <div class="obj-title">Extract Intel</div>
+                <div class="obj-desc">Recover documents — 60%</div>
+                <div class="obj-progress"><div class="obj-progress-fill" style="width: 60%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Loadout</h3>
+            <span class="tag">6 Items</span>
+          </div>
+          <div class="card-body">
+            <div class="equip-grid">
+              <div class="equip-cell">
+                <div class="equip-name">M16A1</div>
+                <div class="equip-meta">24/30 rounds</div>
+                <div class="equip-bar"><div class="equip-fill" style="width: 80%"></div></div>
+              </div>
+              <div class="equip-cell">
+                <div class="equip-name">M1911</div>
+                <div class="equip-meta">5/7 rounds</div>
+                <div class="equip-bar"><div class="equip-fill" style="width: 71%"></div></div>
+              </div>
+              <div class="equip-cell">
+                <div class="equip-name" style="color: var(--danger);">M67 Frag</div>
+                <div class="equip-meta warn">2 remaining</div>
+                <div class="equip-bar"><div class="equip-fill low" style="width: 40%"></div></div>
+              </div>
+              <div class="equip-cell">
+                <div class="equip-name">Claymore</div>
+                <div class="equip-meta">1 placed</div>
+                <div class="equip-bar"><div class="equip-fill" style="width: 100%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CENTER -->
+      <div class="center-col">
+
+        <div class="card" style="flex: 1;">
+          <div class="card-header">
+            <h3>Tactical Radar</h3>
+            <span class="tag">Range: 10 NM | Grid: 47N 012E</span>
+          </div>
+          <div class="card-body" style="padding: 18px;">
+            <div class="radar-box">
+              <div class="radar" id="radar">
+                <div class="radar-cross">
+                  <div class="h"></div>
+                  <div class="v"></div>
+                </div>
+                <div class="radar-center"></div>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: center; gap: 28px; margin-top: 14px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--danger);"></div>
+                <span style="color: var(--text-dim);">3 Hostile</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--success);"></div>
+                <span style="color: var(--text-dim);">2 Friendly</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--warning);"></div>
+                <span style="color: var(--text-dim);">1 Unknown</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="center-row">
+          <div class="card">
+            <div class="card-header">
+              <h3>Comms Traffic</h3>
+              <span class="tag" style="color: var(--accent);">6 New</span>
+            </div>
+            <div class="card-body" style="max-height: 240px; overflow-y: auto;">
+              <div class="comm-line">
+                <div class="comm-time">03:21Z</div>
+                <div><span class="comm-name">SGT. MORGAN</span> <span class="comm-msg">Contact north, 200m. Two hostiles moving west.</span></div>
+              </div>
+              <div class="comm-line">
+                <div class="comm-time">03:22Z</div>
+                <div><span class="comm-alert">KOWALSKI DOWN</span> <span class="comm-msg">Requesting MEDEVAC, pos 47.012N</span></div>
+              </div>
+              <div class="comm-line">
+                <div class="comm-time">03:24Z</div>
+                <div><span class="comm-name">CPL. CHEN</span> <span class="comm-msg">Sniper neutralized. Moving to overwatch.</span></div>
+              </div>
+              <div class="comm-line">
+                <div class="comm-time">03:25Z</div>
+                <div><span class="comm-name">O'BRIEN</span> <span class="comm-msg">MG position set. Covering fire available.</span></div>
+              </div>
+              <div class="comm-line">
+                <div class="comm-time">03:26Z</div>
+                <div><span class="comm-msg">COMMAND — Air support inbound, ETA 4 min. Mark targets with smoke.</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h3>Quick Actions</h3></div>
+            <div class="card-body">
+              <div class="act-grid">
+                <button class="act-btn">Request Air</button>
+                <button class="act-btn">MEDEVAC</button>
+                <button class="act-btn">Mark Target</button>
+                <button class="act-btn danger">Abort Mission</button>
+                <button class="act-btn">Call Arty</button>
+                <button class="act-btn">Smoke Screen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Scoreboard</h3>
+            <span class="tag">Round 3/5</span>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <table class="score-tbl">
+              <thead><tr><th>Unit</th><th>K</th><th>D</th><th>Score</th></tr></thead>
+              <tbody>
+                <tr><td class="f">SGT. MORGAN</td><td>7</td><td>1</td><td class="pts">1,240</td></tr>
+                <tr><td class="f">CPL. CHEN</td><td>5</td><td>2</td><td class="pts">890</td></tr>
+                <tr><td class="f">PFC. O'BRIEN</td><td>2</td><td>3</td><td class="pts">420</td></tr>
+                <tr><td class="e">ENEMY GUNNER</td><td>4</td><td>1</td><td class="pts">760</td></tr>
+                <tr><td class="e">ENEMY SCOUT</td><td>3</td><td>2</td><td class="pts">580</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+
+        <div class="card">
+          <div class="card-header"><h3>Threat Level</h3></div>
+          <div class="card-body">
+            <div class="threat-labels">
+              <span class="lbl">Current Status</span>
+              <span class="val">ELEVATED</span>
+            </div>
+            <div class="threat-bars">
+              <div class="threat-bar on"></div>
+              <div class="threat-bar on"></div>
+              <div class="threat-bar on"></div>
+              <div class="threat-bar"></div>
+              <div class="threat-bar"></div>
+            </div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 10px; line-height: 1.5;">
+              3 hostile contacts within 2 NM. Caution advised.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Session Stats</h3></div>
+          <div class="card-body">
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="val">47m</div>
+                <div class="lbl">Time Active</div>
+              </div>
+              <div class="stat-box">
+                <div class="val">14</div>
+                <div class="lbl">Total Kills</div>
+              </div>
+              <div class="stat-box">
+                <div class="val">3</div>
+                <div class="lbl">Objectives</div>
+              </div>
+              <div class="stat-box danger">
+                <div class="val">1</div>
+                <div class="lbl">Casualties</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Environment</h3></div>
+          <div class="card-body">
+            <div class="env-row"><span class="k">Visibility</span><span class="v">800m</span></div>
+            <div class="env-row"><span class="k">Wind</span><span class="v">12 km/h NW</span></div>
+            <div class="env-row"><span class="k">Temperature</span><span class="v">18°C</span></div>
+            <div class="env-row"><span class="k">Time of Day</span><span class="v">Dawn</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Event Log</h3></div>
+          <div class="card-body">
+            <div class="event-item"><span class="event-ts">03:15Z</span> Mission started</div>
+            <div class="event-item"><span class="event-ts">03:18Z</span> <span class="event-warn">First contact</span></div>
+            <div class="event-item"><span class="event-ts">03:22Z</span> <span class="event-danger">Friendly wounded</span></div>
+            <div class="event-item"><span class="event-ts">03:24Z</span> <span class="event-ok">Sniper eliminated</span></div>
+            <div class="event-item"><span class="event-ts">03:28Z</span> <span class="event-warn">Air support called</span></div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getUTCHours()).padStart(2, '0');
+      const m = String(now.getUTCMinutes()).padStart(2, '0');
+      const s = String(now.getUTCSeconds()).padStart(2, '0');
+      document.getElementById('clock').textContent = `${h}:${m}:${s} UTC`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    const radar = document.getElementById('radar');
+    const blips = [
+      { angle: 45, dist: 0.3, type: 'enemy', label: 'T-1' },
+      { angle: 120, dist: 0.5, type: 'enemy', label: 'T-2' },
+      { angle: 215, dist: 0.25, type: 'enemy', label: 'T-3' },
+      { angle: 312, dist: 0.4, type: 'friendly', label: 'F-1' },
+      { angle: 350, dist: 0.35, type: 'friendly', label: 'F-2' },
+      { angle: 89, dist: 0.6, type: 'unknown', label: 'UNK' }
+    ];
+    blips.forEach(b => {
+      const el = document.createElement('div');
+      const rad = (b.angle * Math.PI) / 180;
+      const x = 50 + Math.cos(rad) * b.dist * 50;
+      const y = 50 + Math.sin(rad) * b.dist * 50;
+      el.className = `blip ${b.type}`;
+      el.style.left = x + '%';
+      el.style.top = y + '%';
+      radar.appendChild(el);
+      const label = document.createElement('div');
+      label.className = 'blip-label';
+      label.textContent = b.label;
+      label.style.left = (x + 2) + '%';
+      label.style.top = (y - 4) + '%';
+      if (b.type === 'enemy') label.style.color = 'var(--danger)';
+      else if (b.type === 'friendly') label.style.color = 'var(--success)';
+      else label.style.color = 'var(--warning)';
+      radar.appendChild(label);
+    });
+  </script>
+
+</body>
+</html>

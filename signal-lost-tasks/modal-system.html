@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Modal System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --body-font: 'Inter', system-ui, sans-serif;
+      --display-font: 'Space Grotesk', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--cream); font-family: var(--body-font); }
+    body { padding: 2rem; max-width: 600px; margin: 0 auto; }
+
+    h1 { font-family: var(--display-font); font-size: 1.8rem; margin-bottom: 2rem; color: var(--ink); }
+
+    .demo-btn {
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(135deg, var(--teal), var(--blue));
+      color: var(--cream);
+      border: none;
+      border-radius: 8px;
+      font-family: var(--body-font);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .demo-btn:hover { transform: translateY(-2px); }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(32, 17, 22, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Modal */
+    .modal {
+      background: rgba(255, 248, 220, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+      transform: scale(0.9) translateY(20px);
+      transition: all 0.3s var(--ease-spring);
+    }
+
+    .modal-overlay.active .modal {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .modal-title {
+      font-family: var(--display-font);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+    .modal-close:hover { color: var(--ink); }
+
+    .modal-body {
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 0.5rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--body-font);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .modal-btn.primary {
+      background: var(--teal);
+      color: var(--cream);
+    }
+    .modal-btn.primary:hover { background: var(--blue); }
+
+    .modal-btn.secondary {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--muted);
+    }
+    .modal-btn.secondary:hover { background: var(--muted); color: var(--cream); }
+
+    /* Alert modal variant */
+    .modal.alert {
+      border-left: 4px solid var(--pink);
+    }
+    .modal.alert .modal-title { color: var(--pink); }
+
+    /* Success modal variant */
+    .modal.success {
+      border-left: 4px solid var(--teal);
+    }
+    .modal.success .modal-title { color: var(--teal); }
+  </style>
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="modal-system" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Modal System</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <h1>🗂️ Modal System</h1>
+
+  <button class="demo-btn" onclick="Modal.open('Confirm Action', 'Are you sure you want to proceed? This action cannot be undone.', {type: 'default', onConfirm: () => console.log('Confirmed!')})">Open Modal</button>
+  <button class="demo-btn" style="margin-left: 0.5rem; background: var(--pink);" onclick="Modal.open('Warning', 'This is a destructive action. All progress will be lost.', {type: 'alert'})">Alert Modal</button>
+
+  <script>
+    class ModalSystem {
+      constructor() {
+        this.overlay = null;
+        this.onConfirm = null;
+      }
+
+      open(title, message, options = {}) {
+        // Close existing
+        this.close();
+
+        const { type = 'default', onConfirm, onCancel } = options;
+
+        this.overlay = document.createElement('div');
+        this.overlay.className = 'modal-overlay';
+        this.overlay.innerHTML = `
+          <div class="modal ${type}">
+            <div class="modal-header">
+              <h3 class="modal-title">${title}</h3>
+              <button class="modal-close" onclick="Modal.close()">×</button>
+            </div>
+            <div class="modal-body">${message}</div>
+            <div class="modal-footer">
+              <button class="modal-btn secondary" onclick="Modal.close()">Cancel</button>
+              <button class="modal-btn primary" onclick="Modal.confirm()">Confirm</button>
+            </div>
+          </div>
+        `;
+
+        // Close on overlay click
+        this.overlay.addEventListener('click', (e) => {
+          if (e.target === this.overlay) this.close();
+        });
+
+        // Escape key
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') this.close();
+        });
+
+        document.body.appendChild(this.overlay);
+        this.onConfirm = onConfirm;
+        this.onCancel = onCancel;
+
+        // Trigger animation
+        requestAnimationFrame(() => {
+          this.overlay.classList.add('active');
+        });
+      }
+
+      confirm() {
+        if (this.onConfirm) this.onConfirm();
+        this.close();
+      }
+
+      close() {
+        if (!this.overlay) return;
+        this.overlay.classList.remove('active');
+        setTimeout(() => {
+          if (this.overlay && this.overlay.parentElement) {
+            this.overlay.remove();
+          }
+          this.overlay = null;
+        }, 300);
+      }
+    }
+
+    const Modal = new ModalSystem();
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

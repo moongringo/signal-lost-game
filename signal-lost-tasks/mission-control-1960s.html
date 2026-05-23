@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mission Control // OP: NIGHTFALL // 1966</title>
+  <link rel="stylesheet" href="1960s-theme.css">
+  <style>
+    body {
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .crt-frame {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border: 2px solid var(--border);
+      margin: 8px;
+      position: relative;
+      background: var(--crt-black);
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: var(--text-xs);
+      color: var(--p1-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .mission-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 260px 1fr 260px;
+      grid-template-rows: auto 1fr auto;
+      gap: 8px;
+      padding: 8px;
+      overflow: hidden;
+    }
+
+    .panel-60s {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-60s-body {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .map-container {
+      position: relative;
+      flex: 1;
+      border: 1px solid var(--border);
+      background:
+        radial-gradient(circle at center, rgba(51,255,51,0.03) 0%, transparent 70%),
+        linear-gradient(rgba(51,255,51,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(51,255,51,0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 30px 30px, 30px 30px;
+      overflow: hidden;
+    }
+
+    .map-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .map-grid-line {
+      stroke: rgba(51, 255, 51, 0.08);
+      stroke-width: 0.5;
+    }
+
+    .target-blip {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--alert);
+      box-shadow: 0 0 6px var(--alert);
+      animation: blink 1s step-end infinite;
+    }
+
+    .friendly-blip {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: var(--p1);
+      box-shadow: 0 0 4px var(--p1);
+    }
+
+    .friendly-blip::after {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border: 1px solid var(--p1);
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+
+    @keyframes ping {
+      75%, 100% {
+        transform: scale(2);
+        opacity: 0;
+      }
+    }
+
+    .range-ring {
+      position: absolute;
+      border: 1px solid rgba(51, 255, 51, 0.1);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .console-log {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      line-height: 1.6;
+      color: var(--p1);
+    }
+
+    .console-log .timestamp {
+      color: var(--p3);
+    }
+
+    .console-log .system {
+      color: var(--p1-dim);
+    }
+
+    .console-log .alert {
+      color: var(--alert);
+    }
+
+    .console-log .success {
+      color: var(--p1);
+    }
+
+    /* Coordinate crosshair */
+    .crosshair {
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .crosshair-h {
+      width: 20px;
+      height: 1px;
+      background: var(--p1-dim);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .crosshair-v {
+      width: 1px;
+      height: 20px;
+      background: var(--p1-dim);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* Compass rose */
+    .compass-rose {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      width: 60px;
+      height: 60px;
+      border: 1px solid rgba(51, 255, 51, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      color: var(--p1-dim);
+    }
+
+    .compass-rose::before {
+      content: "N";
+      position: absolute;
+      top: 2px;
+    }
+
+    /* Tape printer effect */
+    .tape-print {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      background: var(--paper);
+      color: var(--ink-paper);
+      padding: 8px;
+      border: 1px solid var(--paper-line);
+      position: relative;
+    }
+
+    .tape-print::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: repeating-linear-gradient(90deg, #c00 0px, #c00 15px, transparent 15px, transparent 30px);
+      opacity: 0.3;
+    }
+
+    /* Equipment list */
+    .equip-list {
+      list-style: none;
+      font-size: var(--text-xs);
+    }
+
+    .equip-list li {
+      padding: 3px 0;
+      border-bottom: 1px dotted var(--border);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .equip-list li:last-child {
+      border-bottom: none;
+    }
+
+    .equip-list .qty {
+      color: var(--p3);
+    }
+
+    @media (max-width: 900px) {
+      .mission-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="design-system-subdir.css" />
+  <style>
+    /* Emergency override for 1960s CRT frame */
+    .crt-frame {
+      background: rgba(255, 240, 199, 0.6) !important;
+      backdrop-filter: blur(8px) !important;
+      -webkit-backdrop-filter: blur(8px) !important;
+    }
+    .panel-60s {
+      background: rgba(255, 240, 199, 0.5) !important;
+      backdrop-filter: blur(6px) !important;
+      -webkit-backdrop-filter: blur(6px) !important;
+      border-color: rgba(255, 217, 101, 0.3) !important;
+    }
+    .panel-60s-header {
+      background: rgba(255, 217, 101, 0.2) !important;
+      border-bottom-color: rgba(255, 217, 101, 0.3) !important;
+      color: #201116 !important;
+    }
+    .panel-60s-body {
+      color: #704a41 !important;
+    }
+    .btn-60s {
+      background: rgba(255, 248, 220, 0.6) !important;
+      border-color: rgba(255, 217, 101, 0.4) !important;
+      color: #201116 !important;
+    }
+    .btn-60s-primary {
+      background: linear-gradient(135deg, rgba(255, 217, 101, 0.8), rgba(255, 139, 31, 0.7)) !important;
+      color: #201116 !important;
+    }
+    /* Preserve CRT text colors */
+    .text-p1, .text-p3, .success, .alert, .system, .timestamp {
+      color: inherit !important;
+    }
+  </style>
+
+</head>
+<body class="grid-bg">
+
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+
+  <div class="class-banner" style="font-size: 10px; padding: 1px;">TOP SECRET // OPERATION: NIGHTFALL // NATO-EYES ONLY</div>
+
+  <div class="crt-frame">
+    <div class="status-bar">
+      <div class="flex gap-2 items-center">
+        <span class="status-dot"></span>
+        <span>CMD: ALPHA-7</span>
+        <span>|</span>
+        <span id="milClock">1966-05-05  00:00:00 ZULU</span>
+      </div>
+      <div style="color: var(--p3);">OP: NIGHTFALL // PHASE 2</div>
+      <div class="flex gap-2 items-center">
+        <span class="status-dot red"></span>
+        <span class="text-alert">ENEMY CONTACT</span>
+      </div>
+    </div>
+
+    <div class="mission-layout">
+      <!-- Left: Team Status -->
+      <div class="panel-60s" style="grid-row: 1 / span 3;">
+        <div class="panel-60s-header">
+          <span class="status-dot"></span>
+          FIRETEAM ALPHA
+        </div>
+        <div class="panel-60s-body" style="font-size: var(--text-xs);">
+          <div style="margin-bottom: 8px;">
+            <div class="flex justify-between" style="margin-bottom: 2px;">
+              <span class="phosphor-glow">SGT. MORGAN</span>
+              <span class="text-p3">LEAD</span>
+            </div>
+            <div class="progress-60s">
+              <div class="progress-60s-fill" style="width: 92%"></div>
+            </div>
+            <div class="text-dim" style="font-size: 9px; margin-top: 1px;">HP 92/100 | AMMO 24/30</div>
+          </div>
+
+          <div style="margin-bottom: 8px;">
+            <div class="flex justify-between" style="margin-bottom: 2px;">
+              <span>CPL. CHEN</span>
+              <span class="text-dim">RIFLE</span>
+            </div>
+            <div class="progress-60s">
+              <div class="progress-60s-fill" style="width: 78%"></div>
+            </div>
+            <div class="text-dim" style="font-size: 9px; margin-top: 1px;">HP 78/100 | AMMO 18/30</div>
+          </div>
+
+          <div style="margin-bottom: 8px;">
+            <div class="flex justify-between" style="margin-bottom: 2px;">
+              <span>PFC. O'BRIEN</span>
+              <span class="text-dim">MEDIC</span>
+            </div>
+            <div class="progress-60s">
+              <div class="progress-60s-fill amber" style="width: 45%"></div>
+            </div>
+            <div class="text-dim" style="font-size: 9px; margin-top: 1px;">HP 45/100 | MEDKITS 2</div>
+          </div>
+
+          <div style="margin-bottom: 8px;">
+            <div class="flex justify-between" style="margin-bottom: 2px;">
+              <span class="text-alert">PFC. KOWALSKI</span>
+              <span class="text-alert">DOWN</span>
+            </div>
+            <div class="progress-60s">
+              <div class="progress-60s-fill" style="width: 8%; background: var(--alert);"></div>
+            </div>
+            <div class="text-alert" style="font-size: 9px; margin-top: 1px;">CRITICAL | MEDEVAC REQUIRED</div>
+          </div>
+
+          <hr>
+
+          <div class="tape-print" style="margin-top: 8px; font-size: 9px;">
+            <strong>CASUALTY REPORT</strong><br>
+            KIA: 0<br>
+            WIA: 1 (CRITICAL)<br>
+            MIA: 0<br>
+            READY: 3/4
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: Map -->
+      <div class="panel-60s" style="grid-row: 1 / span 2;">
+        <div class="panel-60s-header">
+          <span class="status-dot"></span>
+          TACTICAL MAP // GRID REF: 47N 012E
+        </div>
+        <div class="panel-60s-body" style="padding: 0; position: relative;">
+          <div class="map-container" id="mapContainer" style="height: 100%;">
+            <!-- Range rings -->
+            <div class="range-ring" style="width: 100px; height: 100px; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+            <div class="range-ring" style="width: 200px; height: 200px; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+            <div class="range-ring" style="width: 300px; height: 300px; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+
+            <!-- Friendly positions -->
+            <div class="friendly-blip" style="top: 48%; left: 48%;"></div>
+            <div class="friendly-blip" style="top: 52%; left: 46%;"></div>
+            <div class="friendly-blip" style="top: 50%; left: 52%;"></div>
+
+            <!-- Enemy positions -->
+            <div class="target-blip" style="top: 35%; left: 60%;"></div>
+            <div class="target-blip" style="top: 40%; left: 65%;"></div>
+            <div class="target-blip" style="top: 30%; left: 55%;"></div>
+
+            <!-- Crosshair center -->
+            <div class="crosshair" style="top: 50%; left: 50%;">
+              <div class="crosshair-h"></div>
+              <div class="crosshair-v"></div>
+            </div>
+
+            <!-- Compass -->
+            <div class="compass-rose">N</div>
+
+            <!-- Grid labels -->
+            <div style="position: absolute; top: 4px; left: 4px; font-size: 9px; color: var(--p1-dim);">
+              GRID: 47°N 012°E<br>
+              SCALE: 1:50,000
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Equipment & Comms -->
+      <div class="panel-60s" style="grid-row: 1;">
+        <div class="panel-60s-header">
+          <span class="status-dot amber"></span>
+          EQUIPMENT STATUS
+        </div>
+        <div class="panel-60s-body">
+          <ul class="equip-list">
+            <li><span>M16A1 RIFLE</span> <span class="qty">x12</span></li>
+            <li><span>M1911 PISTOL</span> <span class="qty">x8</span></li>
+            <li><span>M67 GRENADE</span> <span class="qty">x24</span></li>
+            <li><span>M18 SMOKE</span> <span class="qty">x6</span></li>
+            <li><span>CLAYMORE</span> <span class="qty">x4</span></li>
+            <li><span>PRC-77 RADIO</span> <span class="qty">x4</span></li>
+            <li><span>MEDKIT</span> <span class="qty">x6</span></li>
+            <li><span>NIGHT VISION</span> <span class="qty" style="color: var(--alert);">x1</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel-60s" style="grid-row: 2;">
+        <div class="panel-60s-header">
+          <span class="status-dot red"></span>
+          COMMS TRAFFIC
+        </div>
+        <div class="panel-60s-body console-log" style="padding: 8px;">
+          <div><span class="timestamp">0321Z</span> <span class="system">[RADIO]</span> <span class="success">ALPHA-7 THIS IS OUTPOST 3, DO YOU COPY?</span></div>
+          <div><span class="timestamp">0322Z</span> <span class="system">[RADIO]</span> <span class="success">ROGER OUTPOST 3, SEND SITREP</span></div>
+          <div><span class="timestamp">0324Z</span> <span class="system">[RADIO]</span> <span class="alert">ENEMY CONTACT EAST, REQUESTING FIRE SUPPORT</span></div>
+          <div><span class="timestamp">0325Z</span> <span class="system">[RADAR]</span> <span class="alert">CONTACT LOST WITH OUTPOST 3</span></div>
+          <div><span class="timestamp">0327Z</span> <span class="system">[SIGNAL]</span> <span class="alert">JAMMING DETECTED - 7.847 MHz</span></div>
+          <div><span class="timestamp">0328Z</span> <span class="system">[COMMAND]</span> <span>ALL UNITS: SWITCH TO BACKUP FREQ 3.227 MHz</span></div>
+          <div><span class="timestamp">0330Z</span> <span class="system">[AIR]</span> <span class="success">SPOTTER PLANE ETA 5 MINS</span></div>
+          <div><span class="timestamp">0331Z</span> <span class="system">[MEDEVAC]</span> <span class="alert">CHOPPER DISPATCHED TO GRID 47N 013E</span></div>
+        </div>
+      </div>
+
+      <!-- Bottom Row -->
+      <div class="panel-60s" style="grid-column: 1; grid-row: 3;">
+        <div class="panel-60s-header">
+          <span class="status-dot amber"></span>
+          OBJECTIVES
+        </div>
+        <div class="panel-60s-body" style="font-size: var(--text-xs); padding: 8px;">
+          <div style="margin-bottom: 6px;">
+            <span class="text-p3">[PRIMARY]</span> SECURE OUTPOST 3
+            <div class="progress-60s" style="margin-top: 2px;">
+              <div class="progress-60s-fill" style="width: 34%"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 6px;">
+            <span class="text-p3">[SECONDARY]</span> RECOVER INTEL
+            <div class="progress-60s" style="margin-top: 2px;">
+              <div class="progress-60s-fill amber" style="width: 0%"></div>
+            </div>
+          </div>
+          <div>
+            <span class="text-dim">[TERTIARY]</span> MINIMIZE CASUALTIES
+            <div class="progress-60s" style="margin-top: 2px;">
+              <div class="progress-60s-fill" style="width: 75%; background: var(--alert);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-60s" style="grid-column: 2; grid-row: 3;">
+        <div class="panel-60s-header">
+          <span class="status-dot"></span>
+          COMMAND INPUT
+        </div>
+        <div class="panel-60s-body" style="padding: 8px; display: flex; gap: 8px; align-items: center;">
+          <span style="color: var(--p3); font-size: var(--text-sm);">&gt;&gt;&gt;</span>
+          <input type="text" placeholder="ENTER COMMAND..." style="flex: 1; font-size: var(--text-sm);">
+          <button class="btn-60s btn-60s-primary">EXECUTE</button>
+        </div>
+      </div>
+
+      <div class="panel-60s" style="grid-column: 3; grid-row: 3;">
+        <div class="panel-60s-header">
+          <span class="status-dot"></span>
+          QUICK ACTIONS
+        </div>
+        <div class="panel-60s-body" style="padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+          <button class="btn-60s" style="font-size: 9px; padding: 4px;">REQUEST AIR</button>
+          <button class="btn-60s" style="font-size: 9px; padding: 4px;">CALL MEDEVAC</button>
+          <button class="btn-60s" style="font-size: 9px; padding: 4px;">MARK TARGET</button>
+          <button class="btn-60s btn-60s-danger" style="font-size: 9px; padding: 4px;">ABORT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="class-banner" style="font-size: 10px; padding: 1px;">TOP SECRET // OPERATION: NIGHTFALL // NATO-EYES ONLY</div>
+  </div>
+
+  <script src="1960s-effects.js"></script>
+  <script>
+    Terminal60s.updateMilitaryClock(document.getElementById('milClock'));
+
+    // Animate blips
+    setInterval(() => {
+      document.querySelectorAll('.target-blip').forEach(blip => {
+        blip.style.opacity = Math.random() > 0.3 ? '1' : '0.3';
+      });
+    }, 2000);
+
+    // Random console updates
+    const consoleMessages = [
+      { time: '0333Z', sys: '[RADAR]', msg: 'NEW CONTACT BEARING 047', type: 'alert' },
+      { time: '0334Z', sys: '[SIGNAL]', msg: 'FREQ HOP SEQUENCE INITIATED', type: 'success' },
+      { time: '0335Z', sys: '[COMMAND]', msg: 'ARTILLERY STAND BY', type: 'success' },
+      { time: '0336Z', sys: '[AIR]', msg: 'SPOTTER ON STATION', type: 'success' },
+    ];
+
+    let msgIndex = 0;
+    const consoleEl = document.querySelector('.console-log');
+
+    setInterval(() => {
+      if (msgIndex < consoleMessages.length) {
+        const m = consoleMessages[msgIndex];
+        const div = document.createElement('div');
+        div.innerHTML = `<span class="timestamp">${m.time}</span> <span class="system">${m.sys}</span> <span class="${m.type}">${m.msg}</span>`;
+        consoleEl.appendChild(div);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+        msgIndex++;
+      }
+    }, 5000);
+  </script>
+</body>
+</html>

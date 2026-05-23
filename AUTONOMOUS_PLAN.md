@@ -27,27 +27,38 @@ Single-file game (index.html, styles-v2.css, game-v2.js) with:
 
 ### Phase 2 — Visual & UX Polish
 - [x] **2.1 Splash Screen Polish** — The splash/loading animation exists. Make it smoother — add version number, loading progress bar, keyboard/mouse hint to continue.
-- [ ] **2.2 HUD Refinement** — Add role ability hotbar with cooldown visuals (circular progress on each ability icon). Show active effects/buffs next to HUD.
-- [ ] **2.3 Map Legend** — Add a small overlay legend showing what markers mean (squad members, threats, objectives, extraction point).
-- [ ] **2.4 Animated Extraction Countdown** — The extraction sequence works. Add dramatic clock animation, countdown numbers that pulse faster below 30s.
+- [x] **2.2 HUD Refinement** — Add role ability hotbar with cooldown visuals (circular progress on each ability icon). Show active effects/buffs next to HUD.
+- [x] **2.3 Map Legend** — Add a small overlay legend showing what markers mean (squad members, threats, objectives, extraction point).
+- [x] **2.4 Animated Extraction Countdown** — The extraction sequence works. Add dramatic clock animation, countdown numbers that pulse faster below 30s.
 
 ### Phase 3 — Multiplayer & Social
-- [ ] **3.1 Game Server Script** — Create `server.js` with proper Socket.IO multiplayer. Handle player join/leave, position sync, objective state sync, extraction sync. Use port 4434 for HTTPS, 8081 for HTTP fallback.
-- [ ] **3.2 Lobby Chat System** — WebSocket-based text chat in lobby. Show system messages (player joined, player left), team chat during mission.
-- [ ] **3.3 Spectator Mode** — Allow non-GPS users to watch a match from overhead map view. Spectators see all player positions, threat positions, objective progress.
+- [x] **3.1 Game Server Script** — Create `server.js` with proper Socket.IO multiplayer. Handle player join/leave, position sync, objective state sync, extraction sync. Use port 4434 for HTTPS, 8081 for HTTP fallback.
+- [x] **3.2 Lobby Chat System** — WebSocket-based text chat in lobby. Show system messages (player joined, player left), team chat during mission.
+- [x] **3.3 Spectator Mode** — Allow non-GPS users to watch a match from overhead map view. Spectators see all player positions, threat positions, objective progress.
 
 ### Phase 4 — AI & Game Balance
-- [ ] **4.1 Smarter AI Threats** — Threats currently patrol/hunt. Add: threat respawn after being evaded, threat patrol routes that adapt to player positions, threat difficulty scaling based on squad size.
-- [ ] **4.2 Objective Variety** — Add more objective types beyond "reach location": data upload (stand in area for X seconds), signal triangulation (visit 3 points in order), asset recovery (carry item to extraction).
-- [ ] **4.3 Role Ability Balancing** — Review cooldowns and effects for all 7 roles. Add ability descriptions to role selection screen. Show available/cooldown state in mission HUD.
+- [x] **4.1 Smarter AI Threats** — Threats currently patrol/hunt. Add: threat respawn after being evaded, threat patrol routes that adapt to player positions, threat difficulty scaling based on squad size.
+- [x] **4.2 Objective Variety** — Add more objective types beyond "reach location": data upload (stand in area for X seconds), signal triangulation (visit 3 points in order), asset recovery (carry item to extraction).
+- [x] **4.3 Role Ability Balancing** — Review cooldowns and effects for all 7 roles. Add ability descriptions to role selection screen. Show available/cooldown state in mission HUD.
 
 ### Phase 5 — Infrastructure & Quality
-- [ ] **5.1 Git-Based Version Control** — Initialize git repo in game directory, set up automated commits after each successful change. Track what changed and why.
-- [ ] **5.2 Automated Browser Testing** — Open the game in headless browser after each change, check for console errors, verify all screens render.
-- [ ] **5.3 Performance Monitoring** — Add FPS counter to debug overlay, detect frame drops below 30fps, log slow operations.
-- [ ] **5.4 Deployment Script** — Create `deploy.sh` that builds, validates, and restarts game servers. Can be triggered by cron.
+- [x] **5.1 Git-Based Version Control** — Initialize git repo in game directory, set up automated commits after each successful change. Track what changed and why.
+- [x] **5.2 Automated Browser Testing** — Open the game in headless browser after each change, check for console errors, verify all screens render.
+- [x] **5.3 Performance Monitoring** — Add FPS counter to debug overlay, detect frame drops below 30fps, log slow operations.
+- [x] **5.4 Deployment Script** — Create `deploy.sh` that builds, validates, and restarts game servers. Can be triggered by cron.
 
-## Self-Directed Mode (When Backlog is Empty)
+### Phase 6 — Self-Directed Features
+- [x] **6.1 Mission Briefing Screen** — New screen between role selection and mission start. Shows map overview with objective markers, squad roster with roles/teams, objective list with type icons and descriptions, threat assessment summary, and mission meta (location, duration, squad size). Gives players a strategic moment to understand the mission before deploying.
+- [x] **6.2 Event Log / Kill Feed Overlay** — Persistent tactical event feed overlay on the mission screen (top-left, HUD layer). Tracks key events with color-coded categories: objective completions (green), score events (yellow), threat encounters (red), ability uses (purple), system messages (cyan), and pings (cyan). Entries animate in with a slide+scale effect, auto-fade after 5s, and max 6 entries visible. Provides immediate visual feedback during gameplay without cluttering the chat log.
+- [x] **6.3 Ability Feedback Effects** — Visual feedback when abilities are used: floating text above player marker (fades over 2s, repositions on map move), screen flash glow matching role color, concentric ring expanding on radar canvas from player position. Cooldown display now shows precise seconds (e.g. "7.3s").
+- [x] **6.4 Enhanced Ping / Mark System** — Two ping types: left-click waypoint (cyan) and right-click danger (red) with different visual styles, sounds, and radar dots. Max 3 active pings enforced (oldest auto-removed). Ripple animation on placement. P key shortcut for GPS position ping. Floating "Ping placed" text above player. All pings visible on map and radar.
+
+## Future Ideas (not yet implemented)
+- Terrain analysis overlay (heat map of signal strength zones)
+- Role-specific ability animations (Drone scan pulse, Medic heal beam, Mechanic repair effect)
+- Ambient audio (wind, radio static, threat proximity hum)
+
+## Implementation Rules for Kimi
 
 When ALL features in the plan are completed, Kimi enters **self-directed mode** for the remaining cycles. In this mode:
 

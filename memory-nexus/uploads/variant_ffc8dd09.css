@@ -1,0 +1,210 @@
+body[data-variant="sixties-aqua"] {
+  color-scheme: light;
+  --bg: #e9fbff;
+  --surface: rgba(255, 255, 255, 0.86);
+  --surface-soft: rgba(216, 247, 252, 0.78);
+  --surface-strong: rgba(188, 235, 244, 0.9);
+  --line: rgba(0, 129, 159, 0.16);
+  --text: #12313d;
+  --muted: #5c7d86;
+  --soft-text: #0088a3;
+  --accent: #00a9c7;
+  --accent-2: #41d7ca;
+  --warning: #ff8b45;
+  --danger: #e45b4d;
+  --success: #00a982;
+  --shadow: 0 26px 70px rgba(0, 113, 145, 0.16);
+  --radius: 18px;
+  font-family: "Trebuchet MS", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(65, 215, 202, 0.3), transparent 26vw),
+    radial-gradient(circle at 84% 8%, rgba(0, 169, 199, 0.24), transparent 28vw),
+    linear-gradient(135deg, #f9ffff, #dff7ff 54%, #f7fdff);
+}
+
+body[data-variant="sixties-aqua"]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  background:
+    radial-gradient(circle, rgba(0, 169, 199, 0.22) 2px, transparent 3px),
+    linear-gradient(90deg, rgba(0, 169, 199, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px, 54px 54px;
+  mask-image: linear-gradient(to bottom, black, transparent 82%);
+}
+
+body[data-variant="sixties-aqua"] .side-rail,
+body[data-variant="sixties-aqua"] .top-bar,
+body[data-variant="sixties-aqua"] .metric,
+body[data-variant="sixties-aqua"] .panel,
+body[data-variant="sixties-aqua"] .map-panel,
+body[data-variant="sixties-aqua"] .search-box {
+  border-color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(1.25);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+body[data-variant="sixties-aqua"] .top-bar,
+body[data-variant="sixties-aqua"] .premium-layout {
+  max-width: 1460px;
+}
+
+body[data-variant="sixties-aqua"] h1 {
+  color: #12313d;
+  font-size: clamp(2.2rem, 4vw, 4rem);
+  letter-spacing: 0.02em;
+}
+
+body[data-variant="sixties-aqua"] h2,
+body[data-variant="sixties-aqua"] .eyebrow,
+body[data-variant="sixties-aqua"] .metric span {
+  color: #0088a3;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+body[data-variant="sixties-aqua"] .metrics-strip {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  max-width: 1460px;
+}
+
+body[data-variant="sixties-aqua"] .hud-metric {
+  border-radius: 22px;
+  min-height: 120px;
+  overflow: hidden;
+}
+
+body[data-variant="sixties-aqua"] .hud-metric strong {
+  color: #12313d;
+  font-size: 1.45rem;
+}
+
+body[data-variant="sixties-aqua"] .sparkline {
+  height: 38px;
+  color: #00a9c7;
+}
+
+body[data-variant="sixties-aqua"] .spark-grid,
+body[data-variant="sixties-aqua"] .warning-grid {
+  fill: none;
+  stroke: rgba(0, 129, 159, 0.14);
+}
+
+body[data-variant="sixties-aqua"] .spark-bars rect {
+  fill: rgba(0, 169, 199, 0.1);
+}
+
+body[data-variant="sixties-aqua"] .spark-area {
+  fill: rgba(0, 169, 199, 0.12);
+}
+
+body[data-variant="sixties-aqua"] .spark-line,
+body[data-variant="sixties-aqua"] .warning-line.signal {
+  fill: none;
+  stroke: #00a9c7;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 5px rgba(0, 169, 199, 0.22));
+}
+
+body[data-variant="sixties-aqua"] .spark-line.danger,
+body[data-variant="sixties-aqua"] .spark-line.time,
+body[data-variant="sixties-aqua"] .warning-line.threat {
+  stroke: #ff8b45;
+}
+
+body[data-variant="sixties-aqua"] .premium-layout {
+  grid-template-columns: 288px minmax(0, 1fr) 330px;
+  gap: 16px;
+}
+
+body[data-variant="sixties-aqua"] .map-panel,
+body[data-variant="sixties-aqua"] .left-stack .panel,
+body[data-variant="sixties-aqua"] .right-stack .panel {
+  border-radius: 24px;
+}
+
+body[data-variant="sixties-aqua"] .map-wrap {
+  min-height: 590px;
+  border-radius: 0 0 24px 24px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(65, 215, 202, 0.18), transparent 30%),
+    linear-gradient(90deg, rgba(0, 169, 199, 0.1) 1px, transparent 1px),
+    linear-gradient(rgba(0, 169, 199, 0.1) 1px, transparent 1px),
+    #dff8fc;
+  background-size: auto, 40px 40px, 40px 40px;
+  box-shadow: inset 0 0 80px rgba(0, 169, 199, 0.14);
+}
+
+body[data-variant="sixties-aqua"] .leaflet-tile {
+  filter: grayscale(0.35) brightness(1.08) contrast(0.88) hue-rotate(145deg) saturate(1.25);
+}
+
+body[data-variant="sixties-aqua"] .radar-overlay {
+  width: min(72%, 520px);
+  opacity: 0.45;
+  background: repeating-radial-gradient(circle, transparent 0 13%, rgba(0, 169, 199, 0.18) 13.4%, transparent 14%);
+}
+
+body[data-variant="sixties-aqua"] .audio-console,
+body[data-variant="sixties-aqua"] .session-code,
+body[data-variant="sixties-aqua"] .ghost-button,
+body[data-variant="sixties-aqua"] .primary-button,
+body[data-variant="sixties-aqua"] .segmented,
+body[data-variant="sixties-aqua"] .chat-form input {
+  border: 1px solid rgba(0, 129, 159, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  color: #12313d;
+}
+
+body[data-variant="sixties-aqua"] .primary-button,
+body[data-variant="sixties-aqua"] .audio-button,
+body[data-variant="sixties-aqua"] .override-button {
+  border: 0;
+  background: linear-gradient(135deg, #00a9c7, #41d7ca);
+  color: #ffffff;
+  box-shadow: 0 16px 34px rgba(0, 169, 199, 0.24);
+}
+
+body[data-variant="sixties-aqua"] .agent-card {
+  border: 0;
+  border-bottom: 1px solid rgba(0, 129, 159, 0.12);
+  background: transparent;
+  box-shadow: none;
+}
+
+body[data-variant="sixties-aqua"] .warning-graph {
+  width: 100%;
+  height: 106px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+body[data-variant="sixties-aqua"] .cipher-grid span {
+  border-radius: 999px;
+  background: rgba(0, 169, 199, 0.08);
+  color: #0088a3;
+}
+
+@media (max-width: 1240px) {
+  body[data-variant="sixties-aqua"] .premium-layout {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+  body[data-variant="sixties-aqua"] .right-stack {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  body[data-variant="sixties-aqua"] .premium-layout,
+  body[data-variant="sixties-aqua"] .right-stack {
+    grid-template-columns: 1fr;
+  }
+  body[data-variant="sixties-aqua"] .metrics-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signal Lost - Neural Network Loading</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #020510;
+            font-family: 'Courier New', monospace;
+            color: #00d4ff;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #canvas-container canvas {
+            display: block;
+        }
+
+        .hud {
+            position: fixed;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-top-left {
+            top: 20px;
+            left: 20px;
+        }
+
+        .hud-top-right {
+            top: 20px;
+            right: 20px;
+            text-align: right;
+        }
+
+        .hud-bottom {
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 600px;
+        }
+
+        .hud-label {
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: #0088aa;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .hud-value {
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: #00d4ff;
+        }
+
+        .hud-title {
+            font-size: 18px;
+            letter-spacing: 4px;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        .progress-container {
+            margin-bottom: 12px;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 3px;
+            background: rgba(0, 136, 170, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0088aa, #00d4ff, #88eeff);
+            width: 0%;
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        .progress-percent {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00d4ff;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .progress-status {
+            font-size: 11px;
+            color: #0088aa;
+            letter-spacing: 2px;
+            align-self: flex-end;
+        }
+
+        .tips-container {
+            text-align: center;
+            min-height: 20px;
+        }
+
+        .tip-text {
+            font-size: 12px;
+            color: #0088aa;
+            letter-spacing: 1px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .tip-text.visible {
+            opacity: 1;
+        }
+
+        .corner-bracket {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border: 1px solid rgba(0, 136, 170, 0.4);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .corner-tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
+        .corner-tr { top: 10px; right: 10px; border-left: none; border-bottom: none; }
+        .corner-bl { bottom: 10px; left: 10px; border-right: none; border-top: none; }
+        .corner-br { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+
+        .scan-line {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 212, 255, 0.08);
+            z-index: 5;
+            pointer-events: none;
+            animation: scan 4s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        .logo-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            pointer-events: none;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 1.5s ease;
+        }
+
+        .logo-overlay.visible {
+            opacity: 1;
+        }
+
+        .logo-text {
+            font-size: 42px;
+            font-weight: bold;
+            letter-spacing: 10px;
+            color: #00d4ff;
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.9), 0 0 60px rgba(0, 212, 255, 0.5), 0 0 90px rgba(0, 136, 170, 0.3);
+            animation: logoPulse 2s ease-in-out infinite;
+        }
+
+        .logo-sub {
+            font-size: 12px;
+            letter-spacing: 6px;
+            color: #0088aa;
+            margin-top: 12px;
+            text-shadow: 0 0 10px rgba(0, 136, 170, 0.5);
+        }
+
+        @keyframes logoPulse {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="networkCanvas"></canvas>
+    </div>
+
+    <div class="scan-line"></div>
+
+    <div class="corner-bracket corner-tl"></div>
+    <div class="corner-bracket corner-tr"></div>
+    <div class="corner-bracket corner-bl"></div>
+    <div class="corner-bracket corner-br"></div>
+
+    <div class="hud hud-top-left">
+        <div class="hud-label">System</div>
+        <div class="hud-value">ONLINE</div>
+    </div>
+
+    <div class="hud hud-top-right">
+        <div class="hud-title">LOADING V9</div>
+        <div class="hud-label" style="margin-top:4px">Neural Net v9.0</div>
+    </div>
+
+    <div class="logo-overlay" id="logoOverlay">
+        <div class="logo-text">SIGNAL LOST</div>
+        <div class="logo-sub">CONNECTION ESTABLISHED</div>
+    </div>
+
+    <div class="hud hud-bottom">
+        <div class="progress-container">
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBar"></div>
+            </div>
+            <div class="progress-text">
+                <span class="progress-percent" id="progressPercent">0%</span>
+                <span class="progress-status" id="progressStatus">Initializing neural network...</span>
+            </div>
+        </div>
+        <div class="tips-container">
+            <div class="tip-text" id="tipText"></div>
+        </div>
+    </div>
+
+    <script>
+        // ===== TIPS =====
+        const tips = [
+            "Establishing synaptic connections...",
+            "Propagating signals through hidden layers...",
+            "Optimizing network weights...",
+            "Synchronizing neural pathways...",
+            "Calibrating activation functions...",
+            "Mapping cognitive topology...",
+            "Reinforcing strong connections...",
+            "Pruning redundant pathways...",
+            "Converging toward global minimum...",
+            "Pattern recognition matrices loaded...",
+            "Deep learning models initialized...",
+            "Neural mesh stabilizing...",
+            "Backpropagation cycles complete...",
+            "Feature extraction in progress...",
+            "Data clustering algorithms active..."
+        ];
+
+        let currentTip = 0;
+        const tipEl = document.getElementById('tipText');
+
+        function cycleTips() {
+            tipEl.classList.remove('visible');
+            setTimeout(() => {
+                tipEl.textContent = tips[currentTip];
+                tipEl.classList.add('visible');
+                currentTip = (currentTip + 1) % tips.length;
+            }, 500);
+        }
+
+        cycleTips();
+        setInterval(cycleTips, 4000);
+
+        // ===== PROGRESS =====
+        let progress = 0;
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        const progressStatus = document.getElementById('progressStatus');
+        const logoOverlay = document.getElementById('logoOverlay');
+
+        const statuses = [
+            { threshold: 0, text: "Initializing neural network..." },
+            { threshold: 15, text: "Spawning neural nodes..." },
+            { threshold: 30, text: "Forming synaptic connections..." },
+            { threshold: 50, text: "Activating hidden layers..." },
+            { threshold: 70, text: "Converging network topology..." },
+            { threshold: 85, text: "Aligning to target pattern..." },
+            { threshold: 95, text: "Signal locked. Finalizing..." }
+        ];
+
+        function updateProgress() {
+            progress += 0.3 + Math.random() * 0.4;
+            if (progress > 100) progress = 100;
+
+            progressBar.style.width = progress + '%';
+            progressPercent.textContent = Math.floor(progress) + '%';
+
+            for (let i = statuses.length - 1; i >= 0; i--) {
+                if (progress >= statuses[i].threshold) {
+                    progressStatus.textContent = statuses[i].text;
+                    break;
+                }
+            }
+
+            if (progress >= 100) {
+                logoOverlay.classList.add('visible');
+            }
+        }
+
+        setInterval(updateProgress, 80);
+
+        // ===== CANVAS 2D NEURAL NETWORK =====
+        const canvas = document.getElementById('networkCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height, cx, cy;
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            cx = width / 2;
+            cy = height / 2;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        // ===== SIGNAL LOST LOGO POINTS =====
+        function getLogoPoints() {
+            const points = [];
+            const scale = Math.min(width, height) * 0.018;
+            const yOffset = cy - scale * 1.5;
+            const xOffset = cx - scale * 9;
+
+            const letterPaths = [
+                // S
+                [[0,4],[0,5],[1,5],[2,5],[2,4],[2,3],[1,3],[0,3],[0,2],[0,1],[1,1],[2,1]],
+                // I
+                [[3.5,1],[3.5,2],[3.5,3],[3.5,4],[3.5,5]],
+                // G
+                [[6,5],[5,5],[5,4],[5,3],[5,2],[6,2],[6,3],[5.5,3]],
+                // N
+                [[7.5,1],[7.5,2],[7.5,3],[7.5,4],[7.5,5],[8.5,1],[8.5,2],[8.5,3],[8.5,4],[8.5,5]],
+                // A
+                [[10,1],[10.5,2],[11,3],[11.5,4],[12,5],[11,5],[10,5],[11,3],[12,3]],
+                // L
+                [[13,5],[13,4],[13,3],[13,2],[13,1],[14,1]],
+                // O
+                [],
+                // S (second)
+                [[17,4],[17,5],[18,5],[19,5],[19,4],[19,3],[18,3],[17,3],[17,2],[17,1],[18,1],[19,1]],
+                // T
+                [[20.5,5],[21.5,5],[22.5,5],[21.5,4],[21.5,3],[21.5,2],[21.5,1]]
+            ];
+
+            // O as circle
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                letterPaths[6].push([15.5 + Math.cos(angle) * 0.7, 3 + Math.sin(angle) * 0.7]);
+            }
+
+            letterPaths.forEach(path => {
+                path.forEach(p => {
+                    points.push({
+                        x: xOffset + p[0] * scale,
+                        y: yOffset + (5 - p[1]) * scale,
+                        z: 0
+                    });
+                });
+            });
+
+            return points;
+        }
+
+        let logoPoints = [];
+
+        // ===== NODES =====
+        const totalNodes = 220;
+        const nodes = [];
+
+        class Node {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 30 + Math.random() * Math.min(width, height) * 0.4;
+                this.x = cx + Math.cos(angle) * radius;
+                this.y = cy + Math.sin(angle) * radius * 0.6;
+                this.z = (Math.random() - 0.5) * 200;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.vz = (Math.random() - 0.5) * 0.3;
+                this.radius = 2.5 + Math.random() * 4;
+                this.active = false;
+                this.logoNode = false;
+                this.targetX = 0;
+                this.targetY = 0;
+                this.targetZ = 0;
+                this.pulsePhase = Math.random() * Math.PI * 2;
+                this.activationDelay = Math.random() * 80;
+                this.connections = [];
+                this.brightness = 0.15 + Math.random() * 0.2;
+            }
+
+            update(time, activeRatio) {
+                if (!this.active && Math.random() < activeRatio * 0.1 && time * 15 > this.activationDelay) {
+                    this.active = true;
+                }
+
+                if (this.active) {
+                    if (this.logoNode && progress > 55) {
+                        // Converge to logo position
+                        const speed = 0.02 + (progress - 55) / 2000;
+                        this.x += (this.targetX - this.x) * speed;
+                        this.y += (this.targetY - this.y) * speed;
+                        this.z += (this.targetZ - this.z) * speed;
+                        this.brightness = 0.85 + Math.sin(time * 3 + this.pulsePhase) * 0.15;
+                    } else {
+                        // Float gently
+                        this.x += this.vx * 0.3;
+                        this.y += this.vy * 0.3;
+                        this.z += this.vz * 0.2;
+                        this.brightness = 0.6 + Math.sin(time * 2 + this.pulsePhase) * 0.25;
+
+                        // Boundary check
+                        const dx = this.x - cx;
+                        const dy = this.y - cy;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist > Math.min(width, height) * 0.45) {
+                            this.vx -= dx * 0.0001;
+                            this.vy -= dy * 0.0001;
+                        }
+                    }
+                } else {
+                    this.brightness = 0.12 + Math.sin(time + this.pulsePhase) * 0.06;
+                }
+            }
+
+            getScreenPos() {
+                const fov = 800;
+                const scale = fov / (fov + this.z);
+                return {
+                    x: (this.x - cx) * scale + cx,
+                    y: (this.y - cy) * scale + cy,
+                    scale: scale
+                };
+            }
+        }
+
+        for (let i = 0; i < totalNodes; i++) {
+            nodes.push(new Node());
+        }
+
+        // Assign logo nodes
+        function assignLogoNodes() {
+            logoPoints = getLogoPoints();
+            const shuffled = nodes.map((n, i) => i).sort(() => Math.random() - 0.5);
+            const count = Math.min(logoPoints.length, 70);
+            for (let i = 0; i < count; i++) {
+                const node = nodes[shuffled[i]];
+                node.logoNode = true;
+                node.targetX = logoPoints[i].x;
+                node.targetY = logoPoints[i].y;
+                node.targetZ = logoPoints[i].z;
+            }
+        }
+        assignLogoNodes();
+        window.addEventListener('resize', assignLogoNodes);
+
+        // ===== CONNECTIONS =====
+        const connections = [];
+        function createConnections() {
+            connections.length = 0;
+            for (let i = 0; i < totalNodes; i++) {
+                for (let j = i + 1; j < totalNodes; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 120 && Math.random() < 0.04) {
+                        connections.push({ i, j, active: false });
+                    }
+                }
+            }
+        }
+        createConnections();
+
+        // ===== DATA PARTICLES =====
+        const dataParticles = [];
+        for (let i = 0; i < 150; i++) {
+            dataParticles.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: (Math.random() - 0.5) * 0.8,
+                vy: (Math.random() - 0.5) * 0.8 - 0.3,
+                size: 0.5 + Math.random() * 1.5,
+                opacity: 0.1 + Math.random() * 0.4
+            });
+        }
+
+        // ===== MOUSE =====
+        let mouseX = cx, mouseY = cy;
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        // ===== DRAWING =====
+        function drawNode(node, time) {
+            const pos = node.getScreenPos();
+            const r = node.radius * pos.scale;
+
+            if (r < 0.5) return;
+
+            const alpha = node.active ? node.brightness : node.brightness * 0.5;
+
+            // Glow - larger and brighter
+            if (node.active) {
+                const glowR = r * 5;
+                const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, glowR);
+                if (node.logoNode && progress > 55) {
+                    gradient.addColorStop(0, 'rgba(136, 238, 255, ' + (alpha * 0.5) + ')');
+                    gradient.addColorStop(0.4, 'rgba(0, 212, 255, ' + (alpha * 0.2) + ')');
+                } else {
+                    gradient.addColorStop(0, 'rgba(0, 212, 255, ' + (alpha * 0.4) + ')');
+                    gradient.addColorStop(0.4, 'rgba(0, 136, 170, ' + (alpha * 0.1) + ')');
+                }
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, glowR, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Core
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+            if (node.logoNode && progress > 55) {
+                ctx.fillStyle = 'rgba(136, 238, 255, ' + alpha + ')';
+            } else if (node.active) {
+                ctx.fillStyle = 'rgba(0, 212, 255, ' + alpha + ')';
+            } else {
+                ctx.fillStyle = 'rgba(0, 80, 120, ' + alpha + ')';
+            }
+            ctx.fill();
+
+            // Highlight
+            if (node.active) {
+                ctx.beginPath();
+                ctx.arc(pos.x - r * 0.3, pos.y - r * 0.3, r * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, ' + (alpha * 0.6) + ')';
+                ctx.fill();
+            }
+        }
+
+        function drawConnection(conn, time, activeRatio) {
+            const n1 = nodes[conn.i];
+            const n2 = nodes[conn.j];
+
+            if (!n1.active || !n2.active) return;
+
+            const p1 = n1.getScreenPos();
+            const p2 = n2.getScreenPos();
+
+            const shouldBeActive = Math.random() < activeRatio * activeRatio * 2.5;
+            if (shouldBeActive && !conn.active) conn.active = true;
+
+            const alpha = conn.active ? 0.2 + Math.sin(time * 3 + conn.i) * 0.12 : 0.04;
+
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+
+            if (conn.active) {
+                ctx.strokeStyle = 'rgba(0, 212, 255, ' + alpha + ')';
+                ctx.lineWidth = 1.2 * Math.min(p1.scale, p2.scale);
+            } else {
+                ctx.strokeStyle = 'rgba(0, 80, 120, ' + alpha + ')';
+                ctx.lineWidth = 0.5 * Math.min(p1.scale, p2.scale);
+            }
+            ctx.stroke();
+        }
+
+        function drawDataParticles() {
+            dataParticles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.x < 0) p.x = width;
+                if (p.x > width) p.x = 0;
+                if (p.y < 0) p.y = height;
+                if (p.y > height) p.y = 0;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 212, 255, ' + p.opacity + ')';
+                ctx.fill();
+            });
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(0, 136, 170, 0.03)';
+            ctx.lineWidth = 0.5;
+            const gridSize = 50;
+
+            for (let x = 0; x < width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+        }
+
+        // ===== ANIMATION LOOP =====
+        let time = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.016;
+
+            const activeRatio = Math.min(progress / 100, 1);
+
+            // Clear with trail effect
+            ctx.fillStyle = 'rgba(2, 5, 16, 0.25)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Subtle vignette
+            const vignette = ctx.createRadialGradient(cx, cy, Math.min(width, height) * 0.3, cx, cy, Math.max(width, height) * 0.7);
+            vignette.addColorStop(0, 'rgba(2, 5, 16, 0)');
+            vignette.addColorStop(1, 'rgba(2, 5, 16, 0.4)');
+            ctx.fillStyle = vignette;
+            ctx.fillRect(0, 0, width, height);
+
+            drawGrid();
+            drawDataParticles();
+
+            // Update and draw connections first (behind nodes)
+            connections.forEach(conn => drawConnection(conn, time, activeRatio));
+
+            // Update and draw nodes
+            nodes.forEach(node => {
+                node.update(time, activeRatio);
+                drawNode(node, time);
+            });
+
+            // Form new connections dynamically
+            if (progress > 20 && Math.random() < 0.03) {
+                const i = Math.floor(Math.random() * totalNodes);
+                const j = Math.floor(Math.random() * totalNodes);
+                if (i !== j && nodes[i].active && nodes[j].active) {
+                    const exists = connections.some(c =>
+                        (c.i === i && c.j === j) || (c.i === j && c.j === i)
+                    );
+                    if (!exists) {
+                        connections.push({ i, j, active: true });
+                    }
+                }
+            }
+
+            // Mouse interaction - nodes near mouse get brighter
+            nodes.forEach(node => {
+                if (!node.active) return;
+                const pos = node.getScreenPos();
+                const dx = pos.x - mouseX;
+                const dy = pos.y - mouseY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 120) {
+                    const boost = (1 - dist / 120) * 0.3;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, node.radius * pos.scale * 2.5, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(0, 212, 255, ' + boost * 0.25 + ')';
+                    ctx.fill();
+                }
+            });
+        }
+
+        animate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Chat System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --body-font: 'Inter', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--cream); font-family: var(--body-font); }
+    body { padding: 2rem; max-width: 500px; margin: 0 auto; }
+
+    h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: var(--ink); }
+
+    .chat-container {
+      background: rgba(255, 248, 220, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-title {
+      font-weight: 600;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .chat-status {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--teal);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .chat-messages {
+      padding: 1rem;
+      max-height: 300px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .message {
+      display: flex;
+      gap: 0.75rem;
+      animation: msgIn 0.3s var(--ease-out);
+    }
+
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .message-content { flex: 1; }
+    .message-sender {
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--ink);
+    }
+    .message-text {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.4;
+      margin-top: 0.15rem;
+    }
+    .message-time {
+      font-family: var(--mono-font);
+      font-size: 0.65rem;
+      color: var(--muted);
+      opacity: 0.6;
+      margin-top: 0.25rem;
+    }
+
+    .message.system .message-avatar { background: var(--gold); color: var(--ink); }
+    .message.player .message-avatar { background: var(--teal); color: var(--cream); }
+    .message.team .message-avatar { background: var(--blue); color: var(--cream); }
+
+    .chat-input {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem;
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .chat-input input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      border-radius: 8px;
+      background: white;
+      font-family: var(--body-font);
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .chat-input input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(0, 140, 148, 0.1);
+    }
+
+    .chat-input button {
+      padding: 0.75rem 1.25rem;
+      background: var(--teal);
+      color: var(--cream);
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chat-input button:hover { background: var(--blue); }
+  </style>
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="chat-system" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Chat System</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <h1>💬 Chat System</h1>
+
+  <div class="chat-container">
+    <div class="chat-header">
+      <div class="chat-title">
+        <div class="chat-status"></div>
+        Mission Comms
+      </div>
+      <span style="font-family: var(--mono-font); font-size: 0.7rem; color: var(--muted);">3 online</span>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <div class="message system">
+        <div class="message-avatar">S</div>
+        <div class="message-content">
+          <div class="message-sender">System</div>
+          <div class="message-text">Mission started. Signal Lost protocol active.</div>
+          <div class="message-time">14:32:07</div>
+        </div>
+      </div>
+      <div class="message player">
+        <div class="message-avatar">M</div>
+        <div class="message-content">
+          <div class="message-sender">Morgan</div>
+          <div class="message-text">Moving to checkpoint Alpha. All clear so far.</div>
+          <div class="message-time">14:33:15</div>
+        </div>
+      </div>
+      <div class="message team">
+        <div class="message-avatar">A</div>
+        <div class="message-content">
+          <div class="message-sender">Alpha Squad</div>
+          <div class="message-text">Roger that. We're covering the east flank.</div>
+          <div class="message-time">14:33:42</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input">
+      <input type="text" id="chatInput" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendMessage()">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const messages = document.getElementById('chatMessages');
+      const msg = document.createElement('div');
+      msg.className = 'message player';
+      msg.innerHTML = `
+        <div class="message-avatar">M</div>
+        <div class="message-content">
+          <div class="message-sender">Morgan</div>
+          <div class="message-text">${text}</div>
+          <div class="message-time">${new Date().toLocaleTimeString()}</div>
+        </div>
+      `;
+      messages.appendChild(msg);
+      messages.scrollTop = messages.scrollHeight;
+      input.value = '';
+    }
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

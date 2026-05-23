@@ -1,0 +1,669 @@
+/* =====================================================
+   SIGNAL LOST — 1960s COLD WAR TERMINAL DESIGN SYSTEM
+   =====================================================
+   Era: Early Cold War (1960–1969)
+   Aesthetic: Military CRT terminal, NATO command interface,
+              early electronic warfare, phosphor display
+   ===================================================== */
+
+/* ─── 1960s Color Palette ─── */
+:root {
+  /* Primary Phosphor Colors (P1 CRT phosphor - green) */
+  --p1: #33ff33;
+  --p1-dim: #1a991a;
+  --p1-bright: #66ff66;
+  --p1-dark: #0d4d0d;
+  --p1-glow: rgba(51, 255, 51, 0.4);
+
+  /* Amber Phosphor (P3 phosphor - amber/orange terminals) */
+  --p3: #ffb000;
+  --p3-dim: #cc8800;
+  --p3-bright: #ffcc33;
+
+  /* Early Radar / Oscilloscope */
+  --radar: #39ff14;
+  --radar-dim: #1f8a0a;
+  --radar-bright: #6fff3a;
+
+  /* Alert / Soviet red */
+  --alert: #ff1a1a;
+  --alert-dim: #cc0000;
+  --warning: #ff6600;
+
+  /* CRT Display blacks */
+  --crt-black: #080a08;
+  --crt-dark: #0f120f;
+  --crt-gray: #1a1f1a;
+  --crt-grid: #111811;
+
+  /* Paper / document colors (for briefing screens) */
+  --paper: #e8e2d0;
+  --paper-aged: #d4cdb5;
+  --paper-line: #c4bc9e;
+  --ink-paper: #1a1a1a;
+
+  /* Structural */
+  --border: #1f3a1f;
+  --grid-line: rgba(51, 255, 51, 0.06);
+
+  /* NATO Military Typography Scale */
+  --font-mono: "Courier New", "Courier", "Lucida Console", monospace;
+  --font-swiss: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+  --font-teletype: "Courier Prime", "Courier New", monospace;
+
+  /* 1960s proportions - tighter, smaller text like terminals */
+  --text-xs: 9px;
+  --text-sm: 10px;
+  --text-md: 11px;
+  --text-base: 12px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 20px;
+  --text-3xl: 24px;
+  --text-4xl: 32px;
+}
+
+/* ─── Reset ─── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  background: var(--crt-black);
+  color: var(--p1);
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  text-rendering: geometricPrecision;
+}
+
+/* ─── CRT Scanline Overlay ─── */
+.crt-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.12) 0px,
+      rgba(0, 0, 0, 0.12) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+  mix-blend-mode: multiply;
+}
+
+/* ─── Film Grain ─── */
+.film-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+/* ─── Phosphor Glow Text ─── */
+.phosphor-glow {
+  text-shadow:
+    0 0 2px var(--p1-glow),
+    0 0 8px var(--p1-glow),
+    0 0 16px rgba(51, 255, 51, 0.2);
+}
+
+.phosphor-glow-strong {
+  text-shadow:
+    0 0 4px var(--p1),
+    0 0 12px var(--p1-glow),
+    0 0 24px rgba(51, 255, 51, 0.3);
+}
+
+.amber-glow {
+  text-shadow:
+    0 0 2px rgba(255, 176, 0, 0.5),
+    0 0 8px rgba(255, 176, 0, 0.3);
+}
+
+/* ─── Grid Background ─── */
+.grid-bg {
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ─── NATO Military Grid ─── */
+.nato-grid {
+  background-image:
+    linear-gradient(rgba(51, 255, 51, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(51, 255, 51, 0.04) 1px, transparent 1px);
+  background-size: 80px 80px;
+  position: relative;
+}
+
+/* ─── Screen Flicker Animation ─── */
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.95; }
+  94% { opacity: 1; }
+  96% { opacity: 0.9; }
+  97% { opacity: 1; }
+}
+
+.screen-flicker {
+  animation: flicker 8s infinite;
+}
+
+/* ─── Cursor Blink ─── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: "█";
+  animation: blink 1s step-end infinite;
+  margin-left: 2px;
+}
+
+/* ─── Terminal Underline Input ─── */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--p1-dim);
+  color: var(--p1);
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  padding: 4px 0;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-bottom-color: var(--p1-bright);
+  box-shadow: 0 1px 0 var(--p1-bright);
+}
+
+/* ─── 1960s Buttons ─── */
+.btn-60s {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--p1);
+  background: transparent;
+  border: 1px solid var(--p1-dim);
+  border-radius: 0;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.15s ease;
+}
+
+.btn-60s:hover {
+  background: var(--p1-dark);
+  border-color: var(--p1);
+  color: var(--p1-bright);
+  box-shadow: 0 0 8px var(--p1-glow);
+}
+
+.btn-60s:active {
+  background: var(--p1-dim);
+  color: var(--crt-black);
+}
+
+.btn-60s-primary {
+  background: var(--p1);
+  color: var(--crt-black);
+  border-color: var(--p1);
+  font-weight: bold;
+}
+
+.btn-60s-primary:hover {
+  background: var(--p1-bright);
+  box-shadow: 0 0 12px var(--p1);
+}
+
+.btn-60s-danger {
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+.btn-60s-danger:hover {
+  background: rgba(255, 26, 26, 0.15);
+  box-shadow: 0 0 8px rgba(255, 26, 26, 0.4);
+}
+
+/* ─── 1960s Panels ─── */
+.panel-60s {
+  background: var(--crt-dark);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-60s::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--p1-dim), transparent);
+  opacity: 0.5;
+}
+
+.panel-60s-header {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--p3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-60s-body {
+  padding: 10px;
+}
+
+/* Corner ticks for military aesthetic */
+.panel-60s::after {
+  content: "+";
+  position: absolute;
+  bottom: 2px;
+  right: 6px;
+  font-size: var(--text-xs);
+  color: var(--p1-dim);
+  opacity: 0.3;
+}
+
+/* ─── Radar Sweep ─── */
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.radar-60s {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  border: 1px solid var(--p1-dim);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, var(--p1-dark) 0%, transparent 70%),
+    repeating-conic-gradient(from 0deg, transparent 0deg, transparent 15deg, rgba(51,255,51,0.03) 15deg, rgba(51,255,51,0.03) 30deg);
+}
+
+.radar-60s::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, var(--p1-glow) 60deg, transparent 60deg);
+  animation: radar-sweep 4s linear infinite;
+}
+
+.radar-60s::after {
+  content: "";
+  position: absolute;
+  inset: 15%;
+  border: 1px solid rgba(51, 255, 51, 0.15);
+  border-radius: 50%;
+}
+
+/* ─── Teletype / Typewriter Block ─── */
+.teletype {
+  font-family: var(--font-teletype);
+  background: var(--crt-black);
+  border: 1px solid var(--border);
+  padding: 12px;
+  color: var(--p1);
+  line-height: 1.6;
+  position: relative;
+}
+
+.teletype::before {
+  content: ">>>";
+  color: var(--p3);
+  margin-right: 8px;
+}
+
+/* ─── Paper Document (briefing mode) ─── */
+.paper-60s {
+  background: var(--paper);
+  color: var(--ink-paper);
+  font-family: var(--font-teletype);
+  border: 1px solid var(--paper-line);
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  position: relative;
+}
+
+.paper-60s::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    #cc0000 0px,
+    #cc0000 20px,
+    transparent 20px,
+    transparent 40px
+  );
+  opacity: 0.4;
+}
+
+.paper-60s::after {
+  content: "TOP SECRET // EYES ONLY";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-size: 48px;
+  color: rgba(200, 0, 0, 0.08);
+  text-transform: uppercase;
+  letter-spacing: 8px;
+  pointer-events: none;
+}
+
+/* ─── Polaroid Frame (for player photos) ─── */
+.polaroid {
+  background: var(--paper);
+  padding: 8px 8px 24px 8px;
+  border: 1px solid var(--paper-line);
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+  transform: rotate(-1deg);
+  transition: transform 0.2s;
+}
+
+.polaroid:hover {
+  transform: rotate(0deg) scale(1.02);
+}
+
+.polaroid img {
+  width: 100%;
+  display: block;
+  filter: grayscale(40%) sepia(20%) contrast(1.1);
+}
+
+.polaroid-caption {
+  margin-top: 8px;
+  font-family: var(--font-teletype);
+  font-size: var(--text-sm);
+  color: var(--ink-paper);
+  text-align: center;
+}
+
+/* ─── Status Indicators ─── */
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--p1);
+  box-shadow: 0 0 4px var(--p1);
+  animation: blink 2s step-end infinite;
+}
+
+.status-dot.amber {
+  background: var(--p3);
+  box-shadow: 0 0 4px var(--p3);
+}
+
+.status-dot.red {
+  background: var(--alert);
+  box-shadow: 0 0 4px var(--alert);
+  animation: blink 0.5s step-end infinite;
+}
+
+/* ─── Progress / Bars ─── */
+.progress-60s {
+  height: 4px;
+  background: var(--crt-gray);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-60s-fill {
+  height: 100%;
+  background: var(--p1);
+  box-shadow: 0 0 6px var(--p1-glow);
+  transition: width 0.3s ease;
+}
+
+.progress-60s-fill.amber {
+  background: var(--p3);
+  box-shadow: 0 0 6px rgba(255, 176, 0, 0.4);
+}
+
+/* ─── Table (military style) ─── */
+.table-60s {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table-60s th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--p1-dim);
+  color: var(--p3);
+  text-transform: uppercase;
+  font-size: var(--text-xs);
+  letter-spacing: 1px;
+}
+
+.table-60s td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--p1);
+}
+
+.table-60s tr:hover td {
+  background: rgba(51, 255, 51, 0.04);
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--crt-black);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--p1-dim);
+  border: 1px solid var(--border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--p1);
+}
+
+/* ─── Range Slider ─── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  background: var(--p1);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 4px var(--p1-glow);
+}
+
+/* ─── Checkbox / Radio ─── */
+input[type="checkbox"],
+input[type="radio"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--p1-dim);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background: var(--p1);
+  box-shadow: 0 0 4px var(--p1-glow);
+}
+
+input[type="radio"] {
+  border-radius: 50%;
+}
+
+/* ─── Horizontal Rule ─── */
+hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--p1-dim), transparent);
+  margin: 12px 0;
+}
+
+/* ─── Navigation ─── */
+.nav-60s {
+  display: flex;
+  gap: 2px;
+  background: var(--crt-dark);
+  border-bottom: 1px solid var(--border);
+  padding: 0 8px;
+}
+
+.nav-60s a {
+  padding: 8px 12px;
+  color: var(--p1-dim);
+  text-decoration: none;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.nav-60s a:hover,
+.nav-60s a.active {
+  color: var(--p1);
+  border-bottom-color: var(--p1);
+  text-shadow: 0 0 4px var(--p1-glow);
+}
+
+/* ─── Page Header ─── */
+.page-header-60s {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--crt-dark);
+}
+
+.page-header-60s h1 {
+  font-family: var(--font-swiss);
+  font-size: var(--text-xl);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--p1);
+  text-shadow: 0 0 8px var(--p1-glow);
+}
+
+.page-header-60s .meta {
+  font-size: var(--text-xs);
+  color: var(--p1-dim);
+}
+
+/* ─── Utility Classes ─── */
+.text-p1 { color: var(--p1); }
+.text-p3 { color: var(--p3); }
+.text-alert { color: var(--alert); }
+.text-dim { color: var(--p1-dim); }
+.text-paper { color: var(--ink-paper); }
+
+.bg-crt { background: var(--crt-black); }
+.bg-crt-dark { background: var(--crt-dark); }
+.bg-paper { background: var(--paper); }
+
+.font-mono { font-family: var(--font-mono); }
+.font-swiss { font-family: var(--font-swiss); }
+
+.uppercase { text-transform: uppercase; }
+.tracking-wide { letter-spacing: 1.5px; }
+.text-xs { font-size: var(--text-xs); }
+.text-sm { font-size: var(--text-sm); }
+.text-lg { font-size: var(--text-lg); }
+
+.gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+
+.p-1 { padding: 4px; }
+.p-2 { padding: 8px; }
+.p-3 { padding: 12px; }
+.p-4 { padding: 16px; }
+
+.m-1 { margin: 4px; }
+.m-2 { margin: 8px; }
+.m-3 { margin: 12px; }
+
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.flex-1 { flex: 1; }
+
+.grid { display: grid; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+.hidden { display: none; }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+.border-b { border-bottom: 1px solid var(--border); }
+.border-r { border-right: 1px solid var(--border); }
+
+.opacity-50 { opacity: 0.5; }
+.opacity-30 { opacity: 0.3; }

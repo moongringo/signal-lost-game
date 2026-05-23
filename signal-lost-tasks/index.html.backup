@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#2b2018" />
+    <title>Signal Lost 70s Analog UI</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="preconnect" href="https://tile.openstreetmap.org" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./variant.css" />
+  </head>
+  <body data-variant="sixties-aqua">
+    <div class="app-shell">
+      <aside class="side-rail" aria-label="Game navigation">
+        <div class="brand-mark" aria-label="Signal Lost">
+          <span class="brand-pulse"></span>
+          <span>SL</span>
+        </div>
+        <nav class="rail-nav">
+          <button class="icon-button active" type="button" aria-label="Mission overview" title="Mission overview">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 12 5l8 8.5v5A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5v-5Z"/><path d="M9 20v-6h6v6"/></svg>
+          </button>
+          <button class="icon-button" type="button" aria-label="Squads" title="Squads">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0-8 0"/><path d="M3 21a7 7 0 0 1 18 0"/><path d="M19 8v5"/><path d="M21.5 10.5h-5"/></svg>
+          </button>
+          <button class="icon-button" type="button" aria-label="Objectives" title="Objectives">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.4 7-12A7 7 0 1 0 5 9c0 6.6 7 12 7 12Z"/><circle cx="12" cy="9" r="2.2"/></svg>
+          </button>
+          <button class="icon-button" type="button" aria-label="Signals" title="Signals">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h3l2-7 4 14 3-9 2 2h6"/><path d="M18 19h4"/><path d="M20 17v4"/></svg>
+          </button>
+        </nav>
+        <button class="icon-button rail-bottom" id="collapseButton" type="button" aria-label="Toggle panels" title="Toggle panels">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+        </button>
+      </aside>
+
+      <main class="control-deck">
+        <header class="top-bar">
+          <section class="mission-title" aria-labelledby="missionName">
+            <p class="eyebrow">Mission Control / Action Command</p>
+            <h1 id="missionName">Signal Lost</h1>
+            <div class="session-row">
+              <button class="session-code" id="sessionCode" type="button" title="Generate session code">BLUE-MONKEY-42-TREE-99</button>
+              <span class="live-dot"></span>
+              <span>Live tactical simulation</span>
+            </div>
+          </section>
+          <section class="top-actions" aria-label="Mission actions">
+            <label class="search-box">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+              <input id="citySearch" type="search" placeholder="Search city or country" />
+            </label>
+            <button class="primary-button" id="createObjective" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              Objective
+            </button>
+            <button class="primary-button" id="startGame" type="button" style="background:var(--success);">Start Mission</button>
+            <button class="ghost-button" id="resetGame" type="button">Reset</button>
+            <section class="audio-console" aria-label="Game theme song">
+              <audio id="themeAudio" src="./assets/retro-heist-run.mp3" preload="metadata" loop></audio>
+              <button class="audio-button" id="audioToggle" type="button" aria-label="Play theme song" title="Play theme song">
+                <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7-11-7Z"/></svg>
+                <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14"/><path d="M16 5v14"/></svg>
+              </button>
+              <div class="audio-readout">
+                <span id="audioStatus">Theme idle</span>
+                <b id="audioTime">00:00</b>
+              </div>
+              <label class="volume-control" aria-label="Theme volume">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 9.5a4 4 0 0 1 0 5"/><path d="M18.5 7a7 7 0 0 1 0 10"/></svg>
+                <input id="volumeSlider" type="range" min="0" max="100" value="42" />
+              </label>
+            </section>
+          </section>
+        </header>
+
+        <section class="metrics-strip" aria-label="Mission stats">
+          <article class="metric hud-metric">
+            <span>System Status</span>
+            <strong id="systemStatus">Online</strong>
+            <small>Core uplink</small>
+            <svg class="sparkline" id="gpsSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+          <article class="metric hud-metric">
+            <span>Sat Link</span>
+            <strong id="satLink">Active</strong>
+            <small>3 relays locked</small>
+            <svg class="sparkline" id="satSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+          <article class="metric hud-metric">
+            <span>Crew Status</span>
+            <strong id="playerCount">8</strong>
+            <small>2 AI teams</small>
+            <svg class="sparkline" id="crewSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+          <article class="metric hud-metric danger-watch">
+            <span>Mission Time</span>
+            <strong id="missionClock">44:32</strong>
+            <small>90 min game</small>
+            <svg class="sparkline" id="timeSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+          <article class="metric hud-metric">
+            <span>Signal</span>
+            <strong id="signalStrength">72%</strong>
+            <small>GPS mesh</small>
+            <svg class="sparkline" id="signalSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+          <article class="metric hud-metric alert-metric">
+            <span>AI Threat</span>
+            <strong id="threatLevel">31%</strong>
+            <small id="objectiveCount">5 objectives</small>
+            <svg class="sparkline" id="threatSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+        </section>
+
+        <section class="dashboard-grid premium-layout">
+          <aside class="left-stack">
+            <section class="panel agents-panel">
+              <div class="panel-heading compact">
+                <div>
+                  <p class="eyebrow">Squads</p>
+                  <h2>Field Agents</h2>
+                </div>
+                <button class="icon-button small" id="shuffleRoles" type="button" aria-label="Shuffle roles" title="Shuffle roles">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+                </button>
+              </div>
+              <div class="agent-list" id="agentList"></div>
+            </section>
+          </aside>
+
+          <section class="map-panel" aria-label="OpenStreetMap radar">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">OpenStreetMap / Dark Tactical Overlay</p>
+                <h2>Radar Scan</h2>
+              </div>
+              <div class="segmented" role="group" aria-label="Map mode">
+                <button type="button" data-map-mode="street">Map</button>
+                <button type="button" data-map-mode="radar">Radar</button>
+                <button type="button" class="selected" data-map-mode="hybrid">Hybrid</button>
+              </div>
+            </div>
+            <div class="map-wrap hybrid">
+              <div id="map" class="map-canvas" aria-label="Map showing active players and objectives"></div>
+              <svg class="route-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M18 72 C28 48, 42 56, 52 34 S75 28, 84 18" />
+                <path d="M20 30 C32 44, 46 38, 62 60 S79 70, 88 52" />
+              </svg>
+              <div class="radar-overlay" aria-hidden="true">
+                <b class="radar-core"></b>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <em class="radar-axis north">0</em>
+                <em class="radar-axis east">90</em>
+                <em class="radar-axis south">180</em>
+                <em class="radar-axis west">270</em>
+                <i></i>
+                <div class="radar-targets" id="radarTargets"></div>
+              </div>
+              <div class="alert-zone alert-one" aria-hidden="true"></div>
+              <div class="alert-zone alert-two" aria-hidden="true"></div>
+              <div class="map-fallback" id="mapFallback">
+                <strong>Simulated GPS Grid</strong>
+                <span>OpenStreetMap tiles load when the browser has network access.</span>
+              </div>
+            </div>
+          </section>
+
+          <aside class="right-stack">
+            <section class="panel action-panel">
+              <div class="panel-heading compact">
+                <div>
+                  <p class="eyebrow">Signal Strength</p>
+                  <h2 id="signalWarningTitle">Attempting Reconnection</h2>
+                </div>
+                <span class="status-pill warning" id="threatBadge">Threat 31%</span>
+              </div>
+              <svg class="warning-graph" id="warningGraph" viewBox="0 0 320 82" aria-hidden="true"></svg>
+              <div class="cipher-grid" aria-label="Cipher keys">
+                <span>7A3F</span>
+                <span>9C2B</span>
+                <span>1D8E</span>
+                <span>4F6A</span>
+              </div>
+              <button class="override-button" type="button">Initiate Override Protocol</button>
+              <div class="mini-topography" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <b></b>
+              </div>
+              <div class="system-log" id="systemLog"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading compact">
+                <div>
+                  <p class="eyebrow">Comms</p>
+                  <h2>Team Chat</h2>
+                </div>
+                <button class="ghost-button" type="button">Text</button>
+              </div>
+              <div class="chat-log" id="chatLog"></div>
+              <form class="chat-form" id="chatForm">
+                <input id="chatInput" type="text" maxlength="90" placeholder="Send update" />
+                <button class="icon-button send" type="submit" aria-label="Send message" title="Send message">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg>
+                </button>
+              </form>
+            </section>
+          </aside>
+        </section>
+
+        <section class="lower-grid">
+          <section class="panel objectives-panel">
+            <div class="panel-heading compact">
+              <div>
+                <p class="eyebrow">Tasks</p>
+                <h2>Signal Chain</h2>
+              </div>
+              <button class="ghost-button" id="decodeNext" type="button">Decode</button>
+            </div>
+            <div class="objective-list" id="objectiveList"></div>
+          </section>
+
+          <section class="panel role-panel">
+            <div class="panel-heading compact">
+              <div>
+                <p class="eyebrow">Roles</p>
+                <h2>Dashboards</h2>
+              </div>
+              <span class="pill">Modular</span>
+            </div>
+            <div class="role-tabs" id="roleTabs" role="tablist"></div>
+            <div class="role-detail" id="roleDetail"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading compact">
+              <div>
+                <p class="eyebrow">Setup</p>
+                <h2>Mission Parameters</h2>
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.5rem;">
+              <label class="field"><span>City</span><select id="setupCitySelect"></select></label>
+              <label class="field"><span>Country</span><select id="setupCountrySelect"></select></label>
+              <label class="field"><span>Duration</span><input id="setupDurationInput" type="range" min="15" max="180" value="60" /></label>
+              <label class="field"><span>Players</span><input id="setupPlayerSlider" type="range" min="2" max="12" value="6" /></label>
+            </div>
+            <div id="setupSummary" style="font-size:.85rem; color:var(--muted); margin-top:.5rem;"></div>
+          </section>
+
+          <section class="panel theme-panel">
+            <div class="panel-heading compact">
+              <div>
+                <p class="eyebrow">Design</p>
+                <h2>Visual Direction</h2>
+              </div>
+              <span class="pill">White first</span>
+            </div>
+            <div class="theme-options" id="themeOptions">
+              <button type="button" class="theme-card selected" data-theme-choice="white">
+                <span class="swatches"><i></i><i></i><i></i></span>
+                <strong>Arctic Command</strong>
+                <small>Clean white, blue signal accents, premium control room.</small>
+              </button>
+              <button type="button" class="theme-card" data-theme-choice="night">
+                <span class="swatches night"><i></i><i></i><i></i></span>
+                <strong>Night Ops</strong>
+                <small>Dark radar, amber alerts, more tactical and intense.</small>
+              </button>
+              <button type="button" class="theme-card" data-theme-choice="field">
+                <span class="swatches field"><i></i><i></i><i></i></span>
+                <strong>Field Kit</strong>
+                <small>Outdoor green, satellite overlays, expedition mood.</small>
+              </button>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <!-- Hidden elements for JS compatibility -->
+    <div style="display:none;" aria-hidden="true">
+      <div id="roleTitle"></div>
+      <div id="roleState"></div>
+      <div id="roleTools"></div>
+      <div id="roleCardList"></div>
+      <div id="roleReadinessList"></div>
+      <div id="roleReadinessPill"></div>
+      <select id="roleSelect"><option value="Drone">Drone</option></select>
+      <input id="roleAgentName" type="text" />
+      <input id="roleAccessCodeInput" type="text" />
+      <select id="roleTeamSelect"><option value="Alpha">Alpha</option></select>
+      <input id="agentName" type="text" />
+      <select id="teamSelect"><option value="Alpha">Alpha</option></select>
+      <input id="agentAccessCodeInput" type="text" />
+      <button id="joinGame" type="button"></button>
+      <div id="fieldAgentTitle"></div>
+      <div id="fieldAgentRole"></div>
+      <div id="fieldSignal"></div>
+      <div id="fieldStamina"></div>
+      <div id="fieldSquadList"></div>
+      <div id="fieldObjectiveTitle"></div>
+      <div id="fieldObjectiveDistance"></div>
+      <div id="fieldThreatDistance"></div>
+      <div id="fieldObjectiveVital"></div>
+      <div id="fieldThreatVital"></div>
+      <div id="fieldCueStatus"></div>
+      <div id="fieldRoleCue"></div>
+      <div id="mapLayerControl"></div>
+      <div id="mapTitle"></div>
+      <div id="mapSourceLabel"></div>
+      <div id="mapZoomValue"></div>
+      <div id="mapLayerBadge"></div>
+      <div id="mapNotice"></div>
+      <div id="gpsStatus"></div>
+      <div id="gpsPermissionPill"></div>
+      <div id="gpsHelpText"></div>
+      <div id="gpsAccuracyReadout"></div>
+      <input id="manualLat" type="text" />
+      <input id="manualLng" type="text" />
+      <div id="syncStatus"></div>
+      <div id="coordinateSyncStatus"></div>
+      <div id="coordinateSyncDetail"></div>
+      <div id="sessionToolStatus"></div>
+      <div id="gmStatusPill"></div>
+      <div id="gmStatusText"></div>
+      <input id="gmBroadcastInput" type="text" />
+      <form id="gmBroadcastForm"></form>
+      <div id="moderationCount"></div>
+      <div id="moderationStatus"></div>
+      <div id="moderationRoster"></div>
+      <div id="auditFilterBar"></div>
+      <div id="auditCountPill"></div>
+      <div id="auditLog"></div>
+      <div id="chatFilterBar"></div>
+      <div id="chatFilterPill"></div>
+      <div id="threatList"></div>
+      <div id="sessionPayload"></div>
+      <div id="recapSummary"></div>
+      <div id="recapTitle"></div>
+      <div id="scoreGrade"></div>
+      <div id="scoreValue"></div>
+      <div id="teamScoreList"></div>
+      <div id="nearestDistance"></div>
+      <div id="teamLeadValue"></div>
+      <div id="foundCount"></div>
+      <div id="markerTaskState"></div>
+      <div id="markerTitle"></div>
+      <div id="markerType"></div>
+      <div id="activeGames"></div>
+      <div id="missionReviewTitle"></div>
+      <div id="missionReviewPill"></div>
+      <div id="missionReviewList"></div>
+      <div id="missionTimer"></div>
+      <div id="gameStatus"></div>
+      <div id="identitySummary"></div>
+      <div id="privacyPill"></div>
+      <div id="signalValue"></div>
+      <div id="mapZoomIn"></div>
+      <div id="mapZoomOut"></div>
+      <div id="useDeviceGps"></div>
+      <div id="applyManualGps"></div>
+      <div id="hostView"></div>
+      <div id="fieldView"></div>
+      <div id="radarView"></div>
+      <div id="exportSession"></div>
+      <div id="importSession"></div>
+      <div id="refreshSessions"></div>
+      <div id="removeSession"></div>
+      <div id="syncNow"></div>
+      <div id="toggleLobbyLock"></div>
+      <div id="clearInactiveAgents"></div>
+      <div id="gmRevealClue"></div>
+      <div id="gmJamZone"></div>
+      <div id="gmDropCache"></div>
+      <div id="gmRerouteExtraction"></div>
+      <div id="organizerAccessCodeInput"></div>
+      <div id="organizerClientPill"></div>
+      <div id="organizerNameInput"></div>
+      <div id="organizerCallsignInput"></div>
+      <div id="setupSessionCode"></div>
+      <div id="setupSessionMode"></div>
+      <div id="setupPublicToggle"></div>
+      <div id="setupAudioToggle"></div>
+      <div id="setupAudioStatus"></div>
+      <div id="setupAudioTime"></div>
+      <div id="setupVolumeSlider"></div>
+      <div id="setupMapPreview"></div>
+      <div id="setupLeafletMap"></div>
+      <div id="setupMapCaption"></div>
+      <div id="themePaletteSelect"></div>
+      <div id="setupModuleList"></div>
+      <div id="moduleList"></div>
+      <div id="templateNameInput"></div>
+      <div id="saveTemplate"></div>
+      <div id="loadTemplate"></div>
+      <div id="removeTemplate"></div>
+      <div id="templateList"></div>
+      <div id="templateStatus"></div>
+      <div id="templateCountPill"></div>
+      <div id="copyJoinLink"></div>
+      <div id="continueToRoles"></div>
+      <div id="openControlFromSetup"></div>
+      <div id="backToSetup"></div>
+      <div id="enterMissionControl"></div>
+      <div id="returnToSetup"></div>
+      <div id="returnToRoles"></div>
+      <div id="setupStep"></div>
+      <div id="rolesStep"></div>
+      <div id="controlStep"></div>
+      <div id="onboardingTitle"></div>
+      <div id="roleStackToggle"></div>
+      <div id="roleStackHint"></div>
+      <div id="roleDetail"></div>
+      <div id="requireAccessCodeToggle"></div>
+      <div id="useCityCenterMarker"></div>
+      <div id="addCustomMarker"></div>
+      <div id="cancelMarkerEdit"></div>
+      <div id="markerLat"></div>
+      <div id="markerLng"></div>
+      <div id="markerRadius"></div>
+      <div id="markerArtifact"></div>
+      <div id="markerDraftStatus"></div>
+      <div id="customMarkerList"></div>
+      <div id="themePatternCanvas"></div>
+      <div id="setupDurationValue"></div>
+      <div id="setupPlayerValue"></div>
+      <div id="decodeObjective"></div>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      crossorigin=""
+    ></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

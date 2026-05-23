@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loading V2 — Satellite Scan</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      color: #00ff44;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    #canvas-container {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    /* HUD Overlay */
+    #hud {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 10;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-size: 14px;
+      text-shadow: 0 0 8px #00ff44;
+    }
+
+    #hud .title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    #hud .status {
+      opacity: 0.7;
+      font-size: 12px;
+    }
+
+    /* Progress Bar */
+    #progress-container {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      width: 60%;
+      max-width: 600px;
+      pointer-events: none;
+    }
+
+    #progress-label {
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      text-shadow: 0 0 6px #00ff44;
+      opacity: 0.9;
+    }
+
+    #progress-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(0, 255, 68, 0.15);
+      border-radius: 2px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0, 255, 68, 0.1);
+    }
+
+    #progress-fill {
+      width: 0%;
+      height: 100%;
+      background: #00ff44;
+      box-shadow: 0 0 12px #00ff44, 0 0 24px rgba(0, 255, 68, 0.4);
+      transition: width 0.1s linear;
+    }
+
+    /* Corner brackets for HUD feel */
+    .bracket {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: rgba(0, 255, 68, 0.4);
+      z-index: 10;
+      pointer-events: none;
+    }
+    .bracket-tl { top: 16px; left: 16px; border-top: 2px solid; border-left: 2px solid; }
+    .bracket-tr { top: 16px; right: 16px; border-top: 2px solid; border-right: 2px solid; }
+    .bracket-bl { bottom: 16px; left: 16px; border-bottom: 2px solid; border-left: 2px solid; }
+    .bracket-br { bottom: 16px; right: 16px; border-bottom: 2px solid; border-right: 2px solid; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <div class="bracket bracket-tl"></div>
+  <div class="bracket bracket-tr"></div>
+  <div class="bracket bracket-bl"></div>
+  <div class="bracket bracket-br"></div>
+
+  <div id="hud">
+    <div class="title">Loading V2</div>
+    <div class="status" id="status-text">Initializing satellite uplink...</div>
+  </div>
+
+  <div id="progress-container">
+    <div id="progress-label">0%</div>
+    <div id="progress-track">
+      <div id="progress-fill"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ── Scene Setup ──
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000);
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.enableZoom = false;
+    controls.enablePan = false;
+    controls.autoRotate = false;
+
+    // ── Starfield ──
+    const starCount = 2000;
+    const starGeo = new THREE.BufferGeometry();
+    const starPos = new Float32Array(starCount * 3);
+    const starSizes = new Float32Array(starCount);
+    for (let i = 0; i < starCount; i++) {
+      const r = 40 + Math.random() * 60;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      starPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      starPos[i * 3 + 2] = r * Math.cos(phi);
+      starSizes[i] = Math.random() * 1.5 + 0.5;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    starGeo.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+
+    const starMat = new THREE.PointsMaterial({
+      color: 0xccffcc,
+      size: 0.08,
+      transparent: true,
+      opacity: 0.8,
+      sizeAttenuation: true,
+    });
+    const stars = new THREE.Points(starGeo, starMat);
+    scene.add(stars);
+
+    // ── Globe (wireframe, detail increases with progress) ──
+    let globeGroup = new THREE.Group();
+    scene.add(globeGroup);
+
+    function createGlobe(progress) {
+      // Detail level: 3 segments at 0%, up to 48 at 100%
+      const segments = Math.max(3, Math.floor(3 + progress * 45));
+      const geometry = new THREE.IcosahedronGeometry(1.2, Math.floor(segments / 3));
+      const wireframe = new THREE.WireframeGeometry(geometry);
+      const material = new THREE.LineBasicMaterial({
+        color: 0x00ff44,
+        transparent: true,
+        opacity: 0.35 + progress * 0.4,
+      });
+      const globe = new THREE.LineSegments(wireframe, material);
+      return { globe, geometry };
+    }
+
+    let currentGlobe = createGlobe(0);
+    globeGroup.add(currentGlobe.globe);
+
+    // ── Scan Lines (sweeping across globe) ──
+    const scanLineCount = 5;
+    const scanLines = [];
+    const scanLineGeo = new THREE.PlaneGeometry(4, 0.02);
+    const scanLineMat = new THREE.MeshBasicMaterial({
+      color: 0x00ff44,
+      transparent: true,
+      opacity: 0.25,
+      side: THREE.DoubleSide,
+    });
+
+    for (let i = 0; i < scanLineCount; i++) {
+      const line = new THREE.Mesh(scanLineGeo, scanLineMat.clone());
+      line.position.y = (Math.random() - 0.5) * 3;
+      line.userData.speed = 0.3 + Math.random() * 0.5;
+      line.userData.offset = Math.random() * Math.PI * 2;
+      scanLines.push(line);
+      scene.add(line);
+    }
+
+    // ── Glowing Ring (pulses with progress) ──
+    const ringGeo = new THREE.RingGeometry(1.5, 1.55, 64);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x00ff44,
+      transparent: true,
+      opacity: 0.3,
+      side: THREE.DoubleSide,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.lookAt(camera.position);
+    scene.add(ring);
+
+    const ringGlowGeo = new THREE.RingGeometry(1.45, 1.6, 64);
+    const ringGlowMat = new THREE.MeshBasicMaterial({
+      color: 0x00ff44,
+      transparent: true,
+      opacity: 0.08,
+      side: THREE.DoubleSide,
+    });
+    const ringGlow = new THREE.Mesh(ringGlowGeo, ringGlowMat);
+    ringGlow.lookAt(camera.position);
+    scene.add(ringGlow);
+
+    // ── Ambient glow light ──
+    const glowLight = new THREE.PointLight(0x00ff44, 1, 10);
+    glowLight.position.set(0, 0, 2);
+    scene.add(glowLight);
+
+    // ── Progress State ──
+    let progress = 0;
+    let lastGlobeProgress = -1;
+    const statusMessages = [
+      { threshold: 0.0, text: 'Initializing satellite uplink...' },
+      { threshold: 0.15, text: 'Acquiring orbital trajectory...' },
+      { threshold: 0.30, text: 'Scanning surface topology...' },
+      { threshold: 0.50, text: 'Resolving terrain detail...' },
+      { threshold: 0.70, text: 'Calibrating sensor arrays...' },
+      { threshold: 0.85, text: 'Finalizing data stream...' },
+      { threshold: 0.98, text: 'Uplink established.' },
+    ];
+
+    const progressLabel = document.getElementById('progress-label');
+    const progressFill = document.getElementById('progress-fill');
+    const statusText = document.getElementById('status-text');
+
+    function updateHUD(p) {
+      const pct = Math.min(100, Math.floor(p * 100));
+      progressLabel.textContent = pct + '%';
+      progressFill.style.width = pct + '%';
+
+      for (let i = statusMessages.length - 1; i >= 0; i--) {
+        if (p >= statusMessages[i].threshold) {
+          statusText.textContent = statusMessages[i].text;
+          break;
+        }
+      }
+    }
+
+    // ── Animation Loop ──
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+
+      // Simulate progress
+      progress = Math.min(1, progress + dt * 0.08);
+      updateHUD(progress);
+
+      // Globe rotation
+      globeGroup.rotation.y += dt * 0.15;
+      globeGroup.rotation.x = Math.sin(elapsed * 0.2) * 0.1;
+
+      // Update globe detail as progress increases
+      const globeProgressStep = Math.floor(progress * 20);
+      if (globeProgressStep !== lastGlobeProgress) {
+        lastGlobeProgress = globeProgressStep;
+        globeGroup.remove(currentGlobe.globe);
+        currentGlobe.globe.geometry.dispose();
+        currentGlobe.globe.material.dispose();
+        currentGlobe = createGlobe(progress);
+        globeGroup.add(currentGlobe.globe);
+      }
+
+      // Scan lines sweep
+      scanLines.forEach((line, i) => {
+        const t = elapsed * line.userData.speed + line.userData.offset;
+        line.position.y = Math.sin(t) * 1.8;
+        line.material.opacity = 0.1 + Math.abs(Math.sin(t)) * 0.3;
+        line.rotation.z = elapsed * 0.05;
+      });
+
+      // Ring pulse
+      const pulse = 0.5 + 0.5 * Math.sin(elapsed * 2 + progress * Math.PI * 4);
+      ring.scale.setScalar(1 + pulse * 0.05 + progress * 0.1);
+      ring.material.opacity = 0.2 + pulse * 0.25 + progress * 0.3;
+      ringGlow.scale.copy(ring.scale);
+      ringGlow.material.opacity = (0.05 + pulse * 0.1) * (0.5 + progress * 0.5);
+
+      // Glow light intensity
+      glowLight.intensity = 0.5 + pulse * 0.5 + progress * 1.5;
+
+      // Stars subtle twinkle
+      starMat.opacity = 0.6 + Math.sin(elapsed * 0.5) * 0.2;
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // ── Resize Handler ──
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

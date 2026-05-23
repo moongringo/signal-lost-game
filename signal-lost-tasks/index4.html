@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signal Lost</title>
+  <style>
+    /* ─── RESET ─── */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #fafafa;
+      --bg-elevated: #ffffff;
+      --bg-muted: #f0f0f0;
+      --text: #111111;
+      --text-dim: #888888;
+      --text-muted: #bbbbbb;
+      --accent: #ff5722;
+      --accent-light: rgba(255, 87, 34, 0.08);
+      --accent-glow: rgba(255, 87, 34, 0.15);
+      --border: rgba(0, 0, 0, 0.08);
+      --border-hover: rgba(0, 0, 0, 0.15);
+      --grey: #e5e5e5;
+      --grey-dark: #999999;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', 'Helvetica Neue', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* ─── CUSTOM CURSOR ─── */
+    .cursor {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      mix-blend-mode: multiply;
+      transition: transform 0.15s ease, width 0.3s, height 0.3s;
+    }
+
+    .cursor.hover {
+      transform: scale(2.5);
+      background: transparent;
+      border: 2px solid var(--accent);
+    }
+
+    @media (pointer: coarse) {
+      .cursor { display: none; }
+      body { cursor: auto; }
+    }
+
+    /* ─── NAVIGATION ─── */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 30px 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.4s ease;
+    }
+
+    .nav.scrolled {
+      background: rgba(250, 250, 250, 0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 60px;
+    }
+
+    .nav-logo {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-logo span {
+      color: var(--accent);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 40px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.3s;
+      position: relative;
+    }
+
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .nav-links a:hover::after {
+      width: 100%;
+    }
+
+    @media (max-width: 768px) {
+      .nav { padding: 20px 30px; }
+      .nav-links { display: none; }
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 60px;
+      max-width: 1400px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .hero-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 40px;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .hero-label.visible {
+      animation: fadeUp 0.8s ease forwards;
+    }
+
+    .hero-title {
+      font-size: clamp(4rem, 12vw, 10rem);
+      font-weight: 900;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      margin-bottom: 50px;
+      max-width: 900px;
+    }
+
+    .hero-title .line {
+      display: block;
+      overflow: hidden;
+    }
+
+    .hero-title .line span {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(100%);
+    }
+
+    .hero-title.visible .line:nth-child(1) span {
+      animation: slideUp 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .hero-title.visible .line:nth-child(2) span {
+      animation: slideUp 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
+      color: var(--text-muted);
+    }
+
+    @keyframes slideUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-desc {
+      font-size: 18px;
+      color: var(--text-dim);
+      max-width: 450px;
+      line-height: 1.7;
+      margin-bottom: 50px;
+      opacity: 0;
+    }
+
+    .hero-desc.visible {
+      animation: fadeUp 0.8s ease 0.6s forwards;
+    }
+
+    /* Pill button */
+    .pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 36px;
+      background: var(--text);
+      color: var(--bg);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-decoration: none;
+      border-radius: 100px;
+      transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      opacity: 0;
+      transform: translateY(20px);
+      width: fit-content;
+    }
+
+    .pill-btn.visible {
+      animation: fadeUp 0.8s ease 0.9s forwards;
+    }
+
+    .pill-btn:hover {
+      background: var(--accent);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 20px 40px var(--accent-glow);
+    }
+
+    .pill-btn .arrow {
+      width: 16px;
+      height: 1px;
+      background: currentColor;
+      position: relative;
+      transition: width 0.3s;
+    }
+
+    .pill-btn .arrow::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: -3px;
+      width: 7px;
+      height: 7px;
+      border-right: 1px solid currentColor;
+      border-top: 1px solid currentColor;
+      transform: rotate(45deg);
+    }
+
+    .pill-btn:hover .arrow {
+      width: 24px;
+    }
+
+    /* Hero image / visual */
+    .hero-visual {
+      position: absolute;
+      right: 60px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 45%;
+      max-width: 600px;
+      aspect-ratio: 4/3;
+      background: var(--bg-muted);
+      border-radius: 20px;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 1s ease 1s;
+    }
+
+    .hero-visual.visible {
+      opacity: 1;
+    }
+
+    .hero-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: grayscale(100%) contrast(1.1);
+      transition: filter 0.6s;
+    }
+
+    .hero-visual:hover img {
+      filter: grayscale(0%) contrast(1);
+    }
+
+    .hero-visual .overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent 50%, rgba(255, 87, 34, 0.1) 100%);
+    }
+
+    @media (max-width: 1024px) {
+      .hero-visual {
+        position: relative;
+        right: auto;
+        top: auto;
+        transform: none;
+        width: 100%;
+        margin-top: 60px;
+      }
+    }
+
+    /* ─── MARQUEE STRIP ─── */
+    .marquee-strip {
+      background: var(--text);
+      color: var(--bg);
+      padding: 15px 0;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .marquee-content {
+      display: inline-flex;
+      gap: 60px;
+      animation: marquee 20s linear infinite;
+    }
+
+    .marquee-content span {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .marquee-content .dot {
+      color: var(--accent);
+    }
+
+    @keyframes marquee {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+
+    /* ─── STATS ─── */
+    .stats-section {
+      padding: 120px 60px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 60px;
+    }
+
+    .stat-block {
+      padding: 40px 0;
+      border-top: 2px solid var(--border);
+      transition: border-color 0.4s;
+    }
+
+    .stat-block:hover {
+      border-top-color: var(--accent);
+    }
+
+    .stat-block .num {
+      font-size: clamp(3rem, 6vw, 5rem);
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      margin-bottom: 15px;
+      transition: color 0.3s;
+    }
+
+    .stat-block:hover .num {
+      color: var(--accent);
+    }
+
+    .stat-block .label {
+      font-size: 14px;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    .stat-block .detail {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ─── FEATURES ─── */
+    .features-section {
+      padding: 0 60px 120px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .section-eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      max-width: 600px;
+      margin-bottom: 80px;
+    }
+
+    .features-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .feature-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 1fr 80px;
+      align-items: center;
+      gap: 40px;
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      transition: all 0.4s;
+      cursor: none;
+    }
+
+    .feature-row:last-child {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .feature-row:hover {
+      background: var(--bg-elevated);
+      padding: 40px;
+      margin: 0 -40px;
+      border-color: transparent;
+      border-radius: 16px;
+    }
+
+    .feature-row .num {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .feature-row:hover .num {
+      color: var(--accent);
+    }
+
+    .feature-row h3 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .feature-row p {
+      font-size: 15px;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    .feature-row .arrow-link {
+      width: 50px;
+      height: 50px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 18px;
+      transition: all 0.3s;
+      text-decoration: none;
+    }
+
+    .feature-row:hover .arrow-link {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    @media (max-width: 768px) {
+      .feature-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+      .feature-row:hover {
+        padding: 30px 0;
+        margin: 0;
+      }
+    }
+
+    /* ─── MISSIONS CARDS ─── */
+    .missions-section {
+      padding: 120px 60px;
+      background: var(--bg-muted);
+    }
+
+    .missions-header {
+      max-width: 1400px;
+      margin: 0 auto 80px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .missions-grid {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+    }
+
+    .mission-card {
+      background: var(--bg-elevated);
+      border-radius: 20px;
+      padding: 40px;
+      transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+      cursor: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mission-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--grey);
+      transition: background 0.3s;
+    }
+
+    .mission-card:hover::before {
+      background: var(--accent);
+    }
+
+    .mission-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.08);
+    }
+
+    .mission-card .tag {
+      display: inline-block;
+      padding: 6px 14px;
+      background: var(--bg-muted);
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 25px;
+    }
+
+    .mission-card h3 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+
+    .mission-card p {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      margin-bottom: 25px;
+    }
+
+    .mission-card .meta {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .mission-card .meta .hl {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    @media (max-width: 1024px) {
+      .missions-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .missions-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ─── CTA SECTION ─── */
+    .cta-section {
+      padding: 150px 60px;
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .cta-section h2 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      margin-bottom: 30px;
+    }
+
+    .cta-section p {
+      font-size: 17px;
+      color: var(--text-dim);
+      margin-bottom: 40px;
+      line-height: 1.7;
+    }
+
+    /* ─── FOOTER ─── */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 80px 60px 40px;
+      background: var(--bg-elevated);
+    }
+
+    .footer-grid {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 60px;
+    }
+
+    .footer-brand {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 15px;
+    }
+
+    .footer-brand span {
+      color: var(--accent);
+    }
+
+    .footer-desc {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      max-width: 300px;
+    }
+
+    .footer-col h4 {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text);
+      margin-bottom: 25px;
+    }
+
+    .footer-col ul {
+      list-style: none;
+    }
+
+    .footer-col li {
+      margin-bottom: 12px;
+    }
+
+    .footer-col a {
+      font-size: 14px;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .footer-col a:hover {
+      color: var(--accent);
+    }
+
+    .footer-bottom {
+      max-width: 1400px;
+      margin: 60px auto 0;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 768px) {
+      .footer-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+      }
+    }
+
+    /* ─── REVEAL ANIMATIONS ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+  <link rel="stylesheet" href="design-system-subdir.css" />
+
+</head>
+<body>
+
+  <!-- Custom Cursor -->
+  <div class="cursor" id="cursor"></div>
+
+  <!-- Navigation -->
+  <nav class="nav" id="nav">
+    <a href="#" class="nav-logo">Signal<span>Lost</span></a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#missions">Missions</a></li>
+      <li><a href="#cta">Play</a></li>
+    </ul>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="hero-label" id="heroLabel">Tactical Combat Simulation</div>
+    
+    <h1 class="hero-title" id="heroTitle">
+      <div class="line"><span>Signal</span></div>
+      <div class="line"><span>Lost</span></div>
+    </h1>
+    
+    <p class="hero-desc" id="heroDesc">
+      A high-fidelity tactical shooter built for operators who demand precision, strategy, and raw intensity.
+    </p>
+    
+    <a href="action-center-radar.html" class="pill-btn" id="heroBtn">
+      <span>Enter Combat</span>
+      <div class="arrow"></div>
+    </a>
+  </section>
+
+  <!-- Marquee Strip -->
+  <div class="marquee-strip">
+    <div class="marquee-content">
+      <span>Urban Infiltration <span class="dot">●</span></span>
+      <span>Radio Silence <span class="dot">●</span></span>
+      <span>Firebase Defense <span class="dot">●</span></span>
+      <span>Search & Destroy <span class="dot">●</span></span>
+      <span>Extraction <span class="dot">●</span></span>
+      <span>Tunnel Rat <span class="dot">●</span></span>
+      <span>Urban Infiltration <span class="dot">●</span></span>
+      <span>Radio Silence <span class="dot">●</span></span>
+      <span>Firebase Defense <span class="dot">●</span></span>
+      <span>Search & Destroy <span class="dot">●</span></span>
+      <span>Extraction <span class="dot">●</span></span>
+      <span>Tunnel Rat <span class="dot">●</span></span>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <section class="stats-section" id="stats">
+    <div class="stats-grid">
+      <div class="stat-block reveal">
+        <div class="num">2,847</div>
+        <div class="label">Active Operators</div>
+        <div class="detail">Currently deployed across all combat zones with 94.3% engagement rate</div>
+      </div>
+      <div class="stat-block reveal">
+        <div class="num">12</div>
+        <div class="label">Combat Zones</div>
+        <div class="detail">Urban, woodland, and desert environments across 47 monitored sectors</div>
+      </div>
+      <div class="stat-block reveal">
+        <div class="num">66</div>
+        <div class="label">System Nodes</div>
+        <div class="detail">Fully operational infrastructure from matchmaking to replay systems</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features-section" id="features">
+    <div class="section-eyebrow reveal">Capabilities</div>
+    <h2 class="section-title reveal">Built for operators.<br>Designed for dominance.</h2>
+    
+    <div class="features-list">
+      <div class="feature-row reveal">
+        <div class="num">01</div>
+        <h3>Realistic Ballistics</h3>
+        <p>Every weapon behaves like its real-world counterpart. Bullet drop, penetration, ricochet — all simulated with precision physics.</p>
+        <a href="#" class="arrow-link">→</a>
+      </div>
+      
+      <div class="feature-row reveal">
+        <div class="num">02</div>
+        <h3>Dynamic Radar</h3>
+        <p>Live tactical map with real-time blip tracking, threat assessment, and range calculations across all combat zones.</p>
+        <a href="action-center-radar.html" class="arrow-link">→</a>
+      </div>
+      
+      <div class="feature-row reveal">
+        <div class="num">03</div>
+        <h3>Squad-Based Tactics</h3>
+        <p>Form fireteams, assign roles, coordinate via encrypted comms. Every operator has a purpose. Every death matters.</p>
+        <a href="squad.html" class="arrow-link">→</a>
+      </div>
+      
+      <div class="feature-row reveal">
+        <div class="num">04</div>
+        <h3>Immersive HUD</h3>
+        <p>Minimal, information-dense interface inspired by real military systems. No clutter. Only what you need, when you need it.</p>
+        <a href="index-1960s.html" class="arrow-link">→</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Missions -->
+  <section class="missions-section" id="missions">
+    <div class="missions-header">
+      <div>
+        <div class="section-eyebrow reveal">Operations</div>
+        <h2 class="section-title reveal" style="margin-bottom: 0;">Mission Select</h2>
+      </div>
+    </div>
+    
+    <div class="missions-grid">
+      <div class="mission-card reveal">
+        <div class="tag">Urban</div>
+        <h3>Urban Infiltration</h3>
+        <p>Night assault on enemy-occupied industrial complex. Stealth approach recommended.</p>
+        <div class="meta">
+          <span class="hl">Extreme</span>
+          <span>4-6 Players</span>
+          <span>45 Min</span>
+        </div>
+      </div>
+      
+      <div class="mission-card reveal">
+        <div class="tag">Hardcore</div>
+        <h3>Radio Silence</h3>
+        <p>No HUD. No map markers. No respawn. Authentic Vietnam-era equipment only.</p>
+        <div class="meta">
+          <span class="hl">Hardcore</span>
+          <span>2-4 Players</span>
+          <span>60 Min</span>
+        </div>
+      </div>
+      
+      <div class="mission-card reveal">
+        <div class="tag">Defense</div>
+        <h3>Firebase Defense</h3>
+        <p>Hold the line. Wave-based defense of forward operating base. Artillery support available.</p>
+        <div class="meta">
+          <span class="hl">Moderate</span>
+          <span>8 Players</span>
+          <span>30 Min</span>
+        </div>
+      </div>
+      
+      <div class="mission-card reveal">
+        <div class="tag">Search</div>
+        <h3>Search & Destroy</h3>
+        <p>Locate and neutralize enemy weapons cache. Underground bunker network suspected.</p>
+        <div class="meta">
+          <span class="hl">Moderate</span>
+          <span>4 Players</span>
+          <span>35 Min</span>
+        </div>
+      </div>
+      
+      <div class="mission-card reveal">
+        <div class="tag">Extraction</div>
+        <h3>Downed Pilot</h3>
+        <p>Rescue pilot behind enemy lines. Time-sensitive. Helicopter insertion at dawn.</p>
+        <div class="meta">
+          <span class="hl">Extreme</span>
+          <span>6 Players</span>
+          <span>40 Min</span>
+        </div>
+      </div>
+      
+      <div class="mission-card reveal">
+        <div class="tag">CQB</div>
+        <h3>Tunnel Rat</h3>
+        <p>Underground tunnel clearance. NVG required. Close-quarters combat. Traps likely.</p>
+        <div class="meta">
+          <span class="hl">Hardcore</span>
+          <span>2 Players</span>
+          <span>50 Min</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section" id="cta">
+    <h2 class="reveal">Ready to <span style="color: var(--accent);">deploy?</span></h2>
+    <p class="reveal">Join 2,847 active operators across 12 combat zones. Your squad is waiting.</p>
+    <a href="action-center-radar.html" class="pill-btn reveal" style="margin: 0 auto;">
+      <span>Launch Operation</span>
+      <div class="arrow"></div>
+    </a>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">Signal<span>Lost</span></div>
+        <p class="footer-desc">Tactical combat simulation built with precision. Inspired by real military systems, designed for competitive play.</p>
+      </div>
+      
+      <div class="footer-col">
+        <h4>Game</h4>
+        <ul>
+          <li><a href="matchmaking.html">Matchmaking</a></li>
+          <li><a href="player-profile.html">Profile</a></li>
+          <li><a href="leaderboard.html">Leaderboard</a></li>
+          <li><a href="career-stats.html">Stats</a></li>
+        </ul>
+      </div>
+      
+      <div class="footer-col">
+        <h4>Systems</h4>
+        <ul>
+          <li><a href="system-map.html">System Map</a></li>
+          <li><a href="index-1960s.html">1960s Theme</a></li>
+          <li><a href="index3.html">Dark Theme</a></li>
+          <li><a href="action-center-radar.html">Radar</a></li>
+        </ul>
+      </div>
+      
+      <div class="footer-col">
+        <h4>Connect</h4>
+        <ul>
+          <li><a href="squad.html">Squad</a></li>
+          <li><a href="friends.html">Friends</a></li>
+          <li><a href="clan-wars.html">Clan Wars</a></li>
+          <li><a href="chat-system.html">Comms</a></li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="footer-bottom">
+      <span>Signal Lost v2.1.4</span>
+      <span>NATO-7 Command // 2026</span>
+    </div>
+  </footer>
+
+  <script>
+    // ─── CUSTOM CURSOR ───
+    const cursor = document.getElementById('cursor');
+    let mouseX = 0, mouseY = 0;
+
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      cursor.style.left = mouseX - 5 + 'px';
+      cursor.style.top = mouseY - 5 + 'px';
+    });
+
+    document.querySelectorAll('a, button, .feature-row, .mission-card, .stat-block').forEach(el => {
+      el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+      el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+    });
+
+    // ─── NAV SCROLL ───
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 50);
+    });
+
+    // ─── HERO ANIMATIONS ───
+    setTimeout(() => {
+      document.getElementById('heroLabel').classList.add('visible');
+      document.getElementById('heroTitle').classList.add('visible');
+      document.getElementById('heroDesc').classList.add('visible');
+      document.getElementById('heroBtn').classList.add('visible');
+    }, 300);
+
+    // ─── SCROLL REVEAL ───
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('visible');
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+  </script>
+</body>
+</html>

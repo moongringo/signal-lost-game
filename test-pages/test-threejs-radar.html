@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Signal Lost v2 — 3D Radar Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh;
+    touch-action: none;
+  }
+  #radar-container {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+  }
+  #hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    background: rgba(0,0,0,0.8);
+    border: 1px solid #00ff88;
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #00ff88;
+  }
+  #hud span { color: #888; }
+  #controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 10px;
+  }
+  #controls button {
+    background: rgba(0,255,136,0.15);
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  #controls button:active { background: rgba(0,255,136,0.4); }
+  #legend {
+    position: absolute;
+    bottom: 80px;
+    right: 10px;
+    z-index: 10;
+    background: rgba(0,0,0,0.8);
+    border: 1px solid #333;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #aaa;
+    line-height: 1.8;
+  }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .dot.green { background: #00ff88; }
+  .dot.red { background: #ff3344; }
+  .dot.blue { background: #4488ff; }
+  .dot.yellow { background: #ffaa00; }
+</style>
+</head>
+<body>
+<div id="hud"><span>3D RADAR</span> — Signal Lost v2 Demo</div>
+<div id="controls">
+  <button id="btn-iso">Isometric</button>
+  <button id="btn-top">Top Down</button>
+  <button id="btn-orbit">Orbit</button>
+  <button id="btn-toggle">Toggle Buildings</button>
+</div>
+<div id="legend">
+  <div><span class="dot green"></span> Players (Allies)</div>
+  <div><span class="dot red"></span> Enemies</div>
+  <div><span class="dot blue"></span> Objectives</div>
+  <div><span class="dot yellow"></span> Extraction</div>
+</div>
+<div id="radar-container"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// --- Setup ---
+const container = document.getElementById('radar-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a0f);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.maxPolarAngle = Math.PI / 2.2;
+controls.minDistance = 20;
+controls.maxDistance = 200;
+
+// --- Scene Setup ---
+// Grid
+const gridHelper = new THREE.GridHelper(100, 20, 0x00ff88, 0x224433);
+gridHelper.position.y = -0.5;
+scene.add(gridHelper);
+
+// Ground plane (subtle)
+const groundGeo = new THREE.PlaneGeometry(100, 100);
+const groundMat = new THREE.MeshBasicMaterial({ color: 0x0d1a10, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.5;
+scene.add(ground);
+
+// Ambient light + hemisphere
+const ambLight = new THREE.AmbientLight(0x223322, 0.5);
+scene.add(ambLight);
+const hemiLight = new THREE.HemisphereLight(0x00ff88, 0x001100, 0.6);
+scene.add(hemiLight);
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(20, 40, 30);
+scene.add(dirLight);
+
+// --- Map Boundaries (100x100) ---
+const mapSize = 50;
+
+// Border walls
+const borderMat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.3 });
+const borderPoints = [
+  [-mapSize, 0, -mapSize], [mapSize, 0, -mapSize],
+  [mapSize, 0, mapSize], [-mapSize, 0, mapSize], [-mapSize, 0, -mapSize]
+];
+const borderGeo = new THREE.BufferGeometry().setFromPoints(borderPoints.map(p => new THREE.Vector3(p[0], p[1], p[2])));
+const borderLine = new THREE.Line(borderGeo, borderMat);
+scene.add(borderLine);
+
+// --- Buildings (procedural boxes with glow) ---
+const buildings = [];
+const buildingColors = [0x334455, 0x445566, 0x3a4a5a, 0x2c3e50, 0x4a5568];
+const buildingPositions = [
+  { x: -15, z: -12 }, { x: -8, z: -20 }, { x: 5, z: -15 }, { x: 18, z: -8 },
+  { x: -20, z: 5 }, { x: -5, z: 10 }, { x: 10, z: 15 }, { x: 20, z: 20 },
+  { x: -12, z: 22 }, { x: 0, z: -5 }, { x: -25, z: -15 }, { x: 25, z: -10 },
+  { x: 15, z: -25 }, { x: -18, z: 18 }, { x: 8, z: -28 }
+];
+
+const buildingGroup = new THREE.Group();
+
+buildingPositions.forEach((pos, i) => {
+  const w = 2 + Math.random() * 3;
+  const d = 2 + Math.random() * 3;
+  const h = 1 + Math.random() * 3;
+  const color = buildingColors[i % buildingColors.length];
+
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mat = new THREE.MeshStandardMaterial({
+    color: color,
+    roughness: 0.7,
+    metalness: 0.3,
+    emissive: color,
+    emissiveIntensity: 0.05
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(pos.x, h/2, pos.z);
+  buildingGroup.add(mesh);
+
+  // Edge glow
+  const edges = new THREE.EdgesGeometry(geo);
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.15 });
+  const edgeLine = new THREE.LineSegments(edges, edgeMat);
+  edgeLine.position.copy(mesh.position);
+  buildingGroup.add(edgeLine);
+
+  buildings.push(mesh);
+});
+
+scene.add(buildingGroup);
+
+// --- Players ---
+const playerColors = { ally: 0x00ff88, enemy: 0xff3344, objective: 0x4488ff, extraction: 0xffaa00 };
+const playerData = [];
+
+function createPlayerMarker(type, pos, label) {
+  const color = playerColors[type];
+  const group = new THREE.Group();
+
+  // Body
+  const bodyGeo = new THREE.SphereGeometry(type === 'objective' ? 1.2 : 0.8, 12, 12);
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: color,
+    emissive: color,
+    emissiveIntensity: type === 'extraction' ? 0.5 : 0.3,
+    roughness: 0.3,
+    metalness: 0.6
+  });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  group.add(body);
+
+  // Glow ring
+  const ringGeo = new THREE.RingGeometry(1.2, 1.8, 24);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: 0.3,
+    side: THREE.DoubleSide
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.1;
+  group.add(ring);
+
+  // Label (tiny name tag via sprite)
+  if (label) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.roundRect(0, 0, 128, 32, 4);
+    ctx.fill();
+    ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, 64, 22);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.position.y = 2.5;
+    sprite.scale.set(4, 1, 1);
+    group.add(sprite);
+  }
+
+  group.position.set(pos.x, 0.5, pos.z);
+  return group;
+}
+
+// Allies
+const allies = [];
+const allyPositions = [
+  { x: -5, z: -3 }, { x: 2, z: -8 }, { x: -10, z: 5 }, { x: 8, z: 2 },
+  { x: -3, z: 12 }, { x: 15, z: -5 }
+];
+allyPositions.forEach((p, i) => {
+  const m = createPlayerMarker('ally', p, `P${i+1}`);
+  scene.add(m);
+  allies.push({ mesh: m, pos: { ...p }, vel: { x: (Math.random()-0.5)*0.05, z: (Math.random()-0.5)*0.05 } });
+});
+
+// Enemies
+const enemies = [];
+const enemyPositions = [
+  { x: 20, z: 15 }, { x: -18, z: -22 }, { x: 25, z: -18 }, { x: -22, z: 20 }
+];
+enemyPositions.forEach((p, i) => {
+  const m = createPlayerMarker('enemy', p, `E${i+1}`);
+  scene.add(m);
+  enemies.push({ mesh: m, pos: { ...p }, vel: { x: (Math.random()-0.5)*0.04, z: (Math.random()-0.5)*0.04 } });
+});
+
+// Objectives
+const objectives = [
+  createPlayerMarker('objective', { x: -15, z: 8 }, 'Objective A'),
+  createPlayerMarker('objective', { x: 12, z: -12 }, 'Objective B')
+];
+objectives.forEach(o => scene.add(o));
+
+// Extraction
+const extraction = createPlayerMarker('extraction', { x: 0, z: -30 }, 'EXTRACTION');
+scene.add(extraction);
+
+// Data cable lines (connecting allies to nearest objective)
+const lineMat = new THREE.LineBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.1 });
+allies.forEach(ally => {
+  const nearObj = objectives.reduce((best, obj) => {
+    const dx = ally.mesh.position.x - obj.position.x;
+    const dz = ally.mesh.position.z - obj.position.z;
+    const dist = Math.sqrt(dx*dx + dz*dz);
+    return dist < best.dist ? { obj, dist } : best;
+  }, { obj: null, dist: Infinity });
+  if (nearObj.obj) {
+    const pts = [ally.mesh.position.clone(), nearObj.obj.position.clone()];
+    pts[0].y = 0.2;
+    pts[1].y = 0.2;
+    const g = new THREE.BufferGeometry().setFromPoints(pts);
+    const line = new THREE.Line(g, lineMat);
+    scene.add(line);
+  }
+});
+
+// --- Camera presets ---
+function setCamera(mode) {
+  switch(mode) {
+    case 'iso':
+      camera.position.set(50, 50, 50);
+      controls.target.set(0, 0, 0);
+      break;
+    case 'top':
+      camera.position.set(0, 80, 0.1);
+      controls.target.set(0, 0, 0);
+      break;
+    case 'orbit':
+      camera.position.set(40, 30, 40);
+      controls.target.set(0, 0, 0);
+      break;
+  }
+  controls.update();
+}
+
+// --- Controls ---
+document.getElementById('btn-iso').addEventListener('click', () => setCamera('iso'));
+document.getElementById('btn-top').addEventListener('click', () => setCamera('top'));
+document.getElementById('btn-orbit').addEventListener('click', () => setCamera('orbit'));
+
+let showBuildings = true;
+document.getElementById('btn-toggle').addEventListener('click', () => {
+  showBuildings = !showBuildings;
+  buildingGroup.visible = showBuildings;
+  document.getElementById('btn-toggle').textContent = showBuildings ? 'Hide Buildings' : 'Show Buildings';
+});
+
+// --- Animation loop ---
+function animate() {
+  requestAnimationFrame(animate);
+
+  // Move allies randomly (wander within bounds)
+  allies.forEach(ally => {
+    ally.pos.x += ally.vel.x;
+    ally.pos.z += ally.vel.z;
+    if (Math.abs(ally.pos.x) > 35 || Math.random() < 0.01) ally.vel.x = (Math.random() - 0.5) * 0.05;
+    if (Math.abs(ally.pos.z) > 35 || Math.random() < 0.01) ally.vel.z = (Math.random() - 0.5) * 0.05;
+    ally.mesh.position.x = ally.pos.x;
+    ally.mesh.position.z = ally.pos.z;
+    ally.mesh.rotation.y += 0.02;
+  });
+
+  // Move enemies
+  enemies.forEach(enemy => {
+    // Patrol toward nearest ally
+    const nearest = allies.reduce((best, a) => {
+      const dx = a.mesh.position.x - enemy.mesh.position.x;
+      const dz = a.mesh.position.z - enemy.mesh.position.z;
+      const d = Math.sqrt(dx*dx + dz*dz);
+      return d < best.d ? { a, d } : best;
+    }, { a: null, d: Infinity });
+
+    if (nearest.a && nearest.d > 5) {
+      const dx = nearest.a.mesh.position.x - enemy.mesh.position.x;
+      const dz = nearest.a.mesh.position.z - enemy.mesh.position.z;
+      const dist = Math.sqrt(dx*dx + dz*dz);
+      if (dist > 0) {
+        enemy.mesh.position.x += (dx/dist) * 0.03;
+        enemy.mesh.position.z += (dz/dist) * 0.03;
+      }
+    }
+    enemy.mesh.rotation.y += 0.03;
+  });
+
+  // Pulse objectives
+  objectives.forEach((obj, i) => {
+    const pulse = 0.6 + Math.sin(Date.now() * 0.002 + i) * 0.4;
+    obj.scale.setScalar(0.8 + pulse * 0.2);
+  });
+
+  // Pulse extraction
+  extraction.rotation.y += 0.01;
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// --- Start ---
+setCamera('iso');
+animate();
+
+// --- Resize ---
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

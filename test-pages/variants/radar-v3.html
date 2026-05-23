@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radar V3 — Sonar Arc</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: #020c04;
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+  }
+
+  #container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  canvas {
+    display: block;
+    border-radius: 50%;
+    box-shadow:
+      0 0 20px rgba(0,255,100,0.15),
+      0 0 60px rgba(0,255,100,0.08),
+      inset 0 0 40px rgba(0,255,100,0.06);
+  }
+
+  /* CRT scanline overlay */
+  #scanlines {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,0.25) 2px,
+      rgba(0,0,0,0.25) 4px
+    );
+    z-index: 10;
+  }
+
+  /* CRT vignette glow */
+  #crt-glow {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(0,255,100,0.04) 0%, rgba(0,0,0,0.6) 80%);
+    z-index: 11;
+  }
+
+  #hud {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #00ff66;
+    font-size: 14px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    text-shadow: 0 0 6px rgba(0,255,100,0.6), 0 0 12px rgba(0,255,100,0.3);
+    z-index: 12;
+    opacity: 0.9;
+  }
+
+  #hud::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: rgba(0,255,100,0.4);
+    margin-top: 4px;
+    box-shadow: 0 0 4px rgba(0,255,100,0.3);
+  }
+</style>
+</head>
+<body>
+
+<div id="container">
+  <canvas id="radar"></canvas>
+  <div id="scanlines"></div>
+  <div id="crt-glow"></div>
+  <div id="hud">Radar V3</div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('radar');
+  const ctx = canvas.getContext('2d');
+
+  const size = Math.min(window.innerWidth, window.innerHeight) * 0.85;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+  ctx.scale(dpr, dpr);
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const radius = size * 0.45;
+
+  // Blips: player + random enemies
+  const blips = [];
+  const blipCount = 8;
+  for (let i = 0; i < blipCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.random() * (radius * 0.85);
+    blips.push({
+      x: cx + Math.cos(angle) * dist,
+      y: cy + Math.sin(angle) * dist,
+      type: i === 0 ? 'player' : 'enemy',
+      intensity: 0,
+      lastHitAngle: -999,
+    });
+  }
+
+  let sweepAngle = 0;
+  const sweepSpeed = 0.018; // radians per frame
+  const fadeSpeed = 0.015;
+  const hitThreshold = 0.12; // radians within sweep to trigger
+
+  function drawGrid() {
+    ctx.strokeStyle = 'rgba(0, 255, 100, 0.12)';
+    ctx.lineWidth = 1;
+
+    // Concentric circles
+    for (let r = radius / 4; r <= radius; r += radius / 4) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Crosshairs
+    ctx.beginPath();
+    ctx.moveTo(cx - radius, cy);
+    ctx.lineTo(cx + radius, cy);
+    ctx.moveTo(cx, cy - radius);
+    ctx.lineTo(cx, cy + radius);
+    ctx.stroke();
+
+    // Diagonal crosshairs (submarine sonar style)
+    ctx.beginPath();
+    ctx.moveTo(cx - radius * 0.707, cy - radius * 0.707);
+    ctx.lineTo(cx + radius * 0.707, cy + radius * 0.707);
+    ctx.moveTo(cx + radius * 0.707, cy - radius * 0.707);
+    ctx.lineTo(cx - radius * 0.707, cy + radius * 0.707);
+    ctx.stroke();
+
+    // Outer ring glow
+    ctx.strokeStyle = 'rgba(0, 255, 100, 0.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  function drawSweep() {
+    // Sweep arc wedge
+    const gradient = ctx.createConicGradient(sweepAngle, cx, cy);
+    gradient.addColorStop(0, 'rgba(0, 255, 100, 0)');
+    gradient.addColorStop(0.92, 'rgba(0, 255, 100, 0)');
+    gradient.addColorStop(0.97, 'rgba(0, 255, 100, 0.15)');
+    gradient.addColorStop(1.0, 'rgba(0, 255, 100, 0.45)');
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Leading edge line
+    const lx = cx + Math.cos(sweepAngle) * radius;
+    const ly = cy + Math.sin(sweepAngle) * radius;
+    ctx.strokeStyle = 'rgba(0, 255, 100, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(0, 255, 100, 0.8)';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(lx, ly);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  function updateBlips() {
+    blips.forEach(b => {
+      const dx = b.x - cx;
+      const dy = b.y - cy;
+      let angle = Math.atan2(dy, dx);
+      if (angle < 0) angle += Math.PI * 2;
+
+      // Normalize sweepAngle to 0..2PI
+      let s = sweepAngle % (Math.PI * 2);
+      if (s < 0) s += Math.PI * 2;
+
+      let diff = Math.abs(angle - s);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+
+      if (diff < hitThreshold) {
+        b.intensity = 1.0;
+        b.lastHitAngle = s;
+      } else {
+        b.intensity = Math.max(0, b.intensity - fadeSpeed);
+      }
+    });
+  }
+
+  function drawBlips() {
+    blips.forEach(b => {
+      if (b.intensity <= 0.01) return;
+
+      const size = b.type === 'player' ? 5 : 3.5;
+      const color = b.type === 'player' ? '0, 255, 150' : '0, 255, 100';
+
+      ctx.fillStyle = `rgba(${color}, ${b.intensity})`;
+      ctx.shadowColor = `rgba(${color}, ${b.intensity})`;
+      ctx.shadowBlur = 12 * b.intensity;
+
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, size, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Subtle ring echo for player
+      if (b.type === 'player' && b.intensity > 0.3) {
+        ctx.strokeStyle = `rgba(${color}, ${b.intensity * 0.4})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, size + 4 + (1 - b.intensity) * 6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.shadowBlur = 0;
+    });
+  }
+
+  function drawNoise() {
+    // Subtle CRT noise flicker
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      if (Math.random() < 0.03) {
+        const noise = (Math.random() - 0.5) * 12;
+        data[i] = Math.min(255, Math.max(0, data[i] + noise));
+        data[i+1] = Math.min(255, Math.max(0, data[i+1] + noise));
+        data[i+2] = Math.min(255, Math.max(0, data[i+2] + noise));
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  function loop() {
+    ctx.clearRect(0, 0, size, size);
+
+    // Dark background circle
+    ctx.fillStyle = 'rgba(2, 12, 4, 0.95)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    drawGrid();
+    drawSweep();
+    updateBlips();
+    drawBlips();
+    drawNoise();
+
+    sweepAngle += sweepSpeed;
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading V7 — Hologram Projection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #050508;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* HUD Overlay */
+        .hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-top-left {
+            position: absolute;
+            top: 24px;
+            left: 28px;
+        }
+
+        .hud-top-right {
+            position: absolute;
+            top: 24px;
+            right: 28px;
+            text-align: right;
+        }
+
+        .hud-bottom {
+            position: absolute;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+
+        .hud-label {
+            color: #00d4ff;
+            font-size: 11px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+
+        .hud-value {
+            color: #00d4ff;
+            font-size: 22px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-shadow: 0 0 12px rgba(0, 212, 255, 0.5), 0 0 24px rgba(0, 212, 255, 0.2);
+        }
+
+        .hud-percent {
+            color: #00d4ff;
+            font-size: 14px;
+            opacity: 0.6;
+            margin-top: 6px;
+            letter-spacing: 1px;
+        }
+
+        .hud-corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .hud-corner.tl { top: 16px; left: 16px; border-right: none; border-bottom: none; }
+        .hud-corner.tr { top: 16px; right: 16px; border-left: none; border-bottom: none; }
+        .hud-corner.bl { bottom: 16px; left: 16px; border-right: none; border-top: none; }
+        .hud-corner.br { bottom: 16px; right: 16px; border-left: none; border-top: none; }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.15), transparent);
+            animation: scan 4s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        .hud-status {
+            color: #00d4ff;
+            font-size: 10px;
+            letter-spacing: 2px;
+            opacity: 0.5;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <div class="hud">
+            <div class="hud-corner tl"></div>
+            <div class="hud-corner tr"></div>
+            <div class="hud-corner bl"></div>
+            <div class="hud-corner br"></div>
+            <div class="scan-line"></div>
+
+            <div class="hud-top-left">
+                <div class="hud-label">System</div>
+                <div class="hud-value">LOADING V7</div>
+            </div>
+
+            <div class="hud-top-right">
+                <div class="hud-label">Projection</div>
+                <div class="hud-value" id="hud-percent">0%</div>
+                <div class="hud-status" id="hud-status">INITIALIZING</div>
+            </div>
+
+            <div class="hud-bottom">
+                <div class="hud-label">Hologram Assembly</div>
+                <div class="hud-percent" id="assembly-text">--</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050508, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 8, 14);
+        camera.lookAt(0, 1, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setClearColor(0x050508, 1);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x001122, 0.3);
+        scene.add(ambientLight);
+
+        const hologramLight = new THREE.PointLight(0x00d4ff, 1.5, 30);
+        hologramLight.position.set(0, 5, 0);
+        scene.add(hologramLight);
+
+        const tableLight = new THREE.PointLight(0x0088ff, 0.8, 15);
+        tableLight.position.set(0, 0.2, 0);
+        scene.add(tableLight);
+
+        // Table surface
+        const tableGeometry = new THREE.PlaneGeometry(10, 10);
+        const tableMaterial = new THREE.MeshBasicMaterial({
+            color: 0x0a0a15,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+        const table = new THREE.Mesh(tableGeometry, tableMaterial);
+        table.rotation.x = -Math.PI / 2;
+        table.position.y = 0;
+        scene.add(table);
+
+        // Table grid
+        const gridHelper = new THREE.GridHelper(10, 20, 0x004466, 0x002233);
+        gridHelper.position.y = 0.01;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.4;
+        scene.add(gridHelper);
+
+        // Glowing table edges
+        const edgeGeometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(10, 0.05, 10));
+        const edgeMaterial = new THREE.LineBasicMaterial({
+            color: 0x00d4ff,
+            transparent: true,
+            opacity: 0.6
+        });
+        const tableEdges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+        tableEdges.position.y = 0.025;
+        scene.add(tableEdges);
+
+        // Corner glow points
+        const cornerPositions = [
+            [-5, 0, -5], [5, 0, -5], [5, 0, 5], [-5, 0, 5]
+        ];
+        cornerPositions.forEach(pos => {
+            const glowGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00d4ff,
+                transparent: true,
+                opacity: 0.8
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            glow.position.set(pos[0], 0.04, pos[2]);
+            scene.add(glow);
+        });
+
+        // Hologram terrain/buildings data
+        const gridSize = 12;
+        const cellSize = 0.6;
+        const buildings = [];
+        const buildingLines = [];
+
+        // Generate building positions and heights
+        for (let x = -gridSize / 2; x < gridSize / 2; x++) {
+            for (let z = -gridSize / 2; z < gridSize / 2; z++) {
+                const px = x * cellSize;
+                const pz = z * cellSize;
+                const dist = Math.sqrt(px * px + pz * pz);
+                
+                // Create buildings in a circular pattern with some randomness
+                if (dist < 3.5 && Math.random() > 0.2) {
+                    const height = 0.5 + Math.random() * 3.5;
+                    const width = cellSize * 0.7;
+                    const depth = cellSize * 0.7;
+                    
+                    buildings.push({
+                        x: px,
+                        z: pz,
+                        height: height,
+                        width: width,
+                        depth: depth,
+                        delay: Math.random() * 0.5,
+                        assembled: false
+                    });
+                }
+            }
+        }
+
+        // Create wireframe building geometries
+        buildings.forEach((b, i) => {
+            // Building wireframe
+            const boxGeo = new THREE.BoxGeometry(b.width, b.height, b.depth);
+            const edgesGeo = new THREE.EdgesGeometry(boxGeo);
+            const lineMat = new THREE.LineBasicMaterial({
+                color: 0x00d4ff,
+                transparent: true,
+                opacity: 0
+            });
+            const wireframe = new THREE.LineSegments(edgesGeo, lineMat);
+            wireframe.position.set(b.x, b.height / 2 + 0.05, b.z);
+            wireframe.userData = { buildingIndex: i, originalOpacity: 0.7 };
+            scene.add(wireframe);
+            buildingLines.push(wireframe);
+
+            // Vertical beam (glow line from table to building top)
+            const beamGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(b.x, 0.05, b.z),
+                new THREE.Vector3(b.x, b.height + 0.05, b.z)
+            ]);
+            const beamMat = new THREE.LineBasicMaterial({
+                color: 0x00aaff,
+                transparent: true,
+                opacity: 0
+            });
+            const beam = new THREE.Line(beamGeo, beamMat);
+            beam.userData = { buildingIndex: i, isBeam: true };
+            scene.add(beam);
+            buildingLines.push(beam);
+        });
+
+        // Connecting lines between nearby buildings
+        const connectionLines = [];
+        for (let i = 0; i < buildings.length; i++) {
+            for (let j = i + 1; j < buildings.length; j++) {
+                const b1 = buildings[i];
+                const b2 = buildings[j];
+                const dist = Math.sqrt((b1.x - b2.x) ** 2 + (b1.z - b2.z) ** 2);
+                
+                if (dist < 1.5 && Math.random() > 0.5) {
+                    const connGeo = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(b1.x, b1.height * 0.7 + 0.05, b1.z),
+                        new THREE.Vector3(b2.x, b2.height * 0.7 + 0.05, b2.z)
+                    ]);
+                    const connMat = new THREE.LineBasicMaterial({
+                        color: 0x0088cc,
+                        transparent: true,
+                        opacity: 0
+                    });
+                    const conn = new THREE.Line(connGeo, connMat);
+                    conn.userData = { 
+                        building1: i, 
+                        building2: j,
+                        delay: Math.random() * 0.3
+                    };
+                    scene.add(conn);
+                    connectionLines.push(conn);
+                }
+            }
+        }
+
+        // Floating particles
+        const particleCount = 150;
+        const particleGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        const particleSpeeds = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            particlePositions[i * 3] = (Math.random() - 0.5) * 8;
+            particlePositions[i * 3 + 1] = Math.random() * 5;
+            particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 8;
+            particleSpeeds.push({
+                y: 0.005 + Math.random() * 0.015,
+                x: (Math.random() - 0.5) * 0.002,
+                z: (Math.random() - 0.5) * 0.002
+            });
+        }
+
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0x00d4ff,
+            size: 0.04,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particles);
+
+        // Hologram base ring (glow on table)
+        const ringGeometry = new THREE.RingGeometry(2, 2.1, 64);
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00d4ff,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.02;
+        scene.add(ring);
+
+        // Second ring
+        const ring2Geometry = new THREE.RingGeometry(3, 3.05, 64);
+        const ring2Material = new THREE.MeshBasicMaterial({
+            color: 0x0088ff,
+            transparent: true,
+            opacity: 0.15,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        const ring2 = new THREE.Mesh(ring2Geometry, ring2Material);
+        ring2.rotation.x = -Math.PI / 2;
+        ring2.position.y = 0.02;
+        scene.add(ring2);
+
+        // Progress tracking
+        let progress = 0;
+        const totalElements = buildings.length + connectionLines.length;
+        let assembledCount = 0;
+
+        // HUD elements
+        const hudPercent = document.getElementById('hud-percent');
+        const hudStatus = document.getElementById('hud-status');
+        const assemblyText = document.getElementById('assembly-text');
+
+        const statusMessages = [
+            'INITIALIZING',
+            'CALIBRATING PROJECTION',
+            'GENERATING TERRAIN',
+            'ASSEMBLING STRUCTURES',
+            'CONNECTING NODES',
+            'OPTIMIZING HOLOGRAM',
+            'FINALIZING'
+        ];
+
+        function updateHUD() {
+            const pct = Math.floor(progress * 100);
+            hudPercent.textContent = pct + '%';
+            
+            const statusIndex = Math.min(
+                Math.floor(progress * statusMessages.length),
+                statusMessages.length - 1
+            );
+            hudStatus.textContent = statusMessages[statusIndex];
+            
+            const assembled = Math.floor(progress * totalElements);
+            assemblyText.textContent = `NODES: ${assembled} / ${totalElements}`;
+        }
+
+        // Animation
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsed = clock.getElapsedTime();
+            const delta = clock.getDelta();
+
+            // Slowly increase progress
+            if (progress < 1) {
+                progress += 0.003;
+                if (progress > 1) progress = 1;
+                updateHUD();
+            }
+
+            // Animate buildings appearing
+            buildings.forEach((b, i) => {
+                const triggerTime = b.delay + (i / buildings.length) * 0.6;
+                if (progress > triggerTime && !b.assembled) {
+                    b.assembled = true;
+                    assembledCount++;
+                }
+            });
+
+            // Update building wireframe opacity
+            buildingLines.forEach(line => {
+                const bi = line.userData.buildingIndex;
+                if (bi !== undefined && buildings[bi]) {
+                    const b = buildings[bi];
+                    const triggerTime = b.delay + (bi / buildings.length) * 0.6;
+                    
+                    if (progress > triggerTime) {
+                        const fadeProgress = Math.min((progress - triggerTime) / 0.15, 1);
+                        const targetOpacity = line.userData.isBeam ? 0.3 : line.userData.originalOpacity || 0.7;
+                        line.material.opacity = fadeProgress * targetOpacity;
+                    }
+                }
+            });
+
+            // Update connection lines
+            connectionLines.forEach(conn => {
+                const b1 = buildings[conn.userData.building1];
+                const b2 = buildings[conn.userData.building2];
+                if (b1 && b2 && b1.assembled && b2.assembled) {
+                    const triggerTime = Math.max(b1.delay, b2.delay) + conn.userData.delay;
+                    if (progress > triggerTime) {
+                        const fadeProgress = Math.min((progress - triggerTime) / 0.1, 1);
+                        conn.material.opacity = fadeProgress * 0.4;
+                    }
+                }
+            });
+
+            // Animate particles
+            const positions = particles.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3 + 1] += particleSpeeds[i].y;
+                positions[i * 3] += particleSpeeds[i].x;
+                positions[i * 3 + 2] += particleSpeeds[i].z;
+                
+                if (positions[i * 3 + 1] > 5) {
+                    positions[i * 3 + 1] = 0;
+                    positions[i * 3] = (Math.random() - 0.5) * 8;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 8;
+                }
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+            particleMaterial.opacity = 0.3 + progress * 0.3;
+
+            // Animate rings
+            ring.rotation.z = elapsed * 0.3;
+            ring2.rotation.z = -elapsed * 0.2;
+            ringMaterial.opacity = 0.2 + Math.sin(elapsed * 2) * 0.1 + progress * 0.15;
+            ring2Material.opacity = 0.1 + Math.sin(elapsed * 1.5 + 1) * 0.05 + progress * 0.1;
+
+            // Pulse table edges
+            edgeMaterial.opacity = 0.4 + Math.sin(elapsed * 3) * 0.2 + progress * 0.2;
+
+            // Subtle camera movement
+            camera.position.x = Math.sin(elapsed * 0.15) * 1;
+            camera.position.z = 14 + Math.cos(elapsed * 0.1) * 0.5;
+            camera.lookAt(0, 1.5, 0);
+
+            // Hologram light pulse
+            hologramLight.intensity = 1.2 + Math.sin(elapsed * 4) * 0.3 + progress * 0.5;
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

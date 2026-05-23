@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Loading Screen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #201116;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --display-font: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--ink); font-family: var(--display-font); }
+    
+    .loading-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--ink);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.8s ease, visibility 0.8s;
+    }
+
+    .loading-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loader-ring {
+      width: 80px;
+      height: 80px;
+      border: 3px solid rgba(255, 240, 199, 0.1);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loader-text {
+      margin-top: 2rem;
+      color: var(--cream);
+      font-size: 1rem;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .loader-sub {
+      margin-top: 0.5rem;
+      color: rgba(255, 240, 199, 0.5);
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+    }
+
+    .loader-bar {
+      width: 200px;
+      height: 2px;
+      background: rgba(255, 240, 199, 0.1);
+      border-radius: 2px;
+      margin-top: 1.5rem;
+      overflow: hidden;
+    }
+
+    .loader-bar .fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--teal), var(--gold));
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .glitch-text {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--cream);
+      position: relative;
+      margin-bottom: 2rem;
+    }
+
+    .glitch-text::before,
+    .glitch-text::after {
+      content: 'SIGNAL LOST';
+      position: absolute;
+      left: 0;
+      right: 0;
+      opacity: 0.8;
+    }
+
+    .glitch-text::before {
+      color: var(--teal);
+      animation: glitch1 2s infinite;
+      clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+    }
+
+    .glitch-text::after {
+      color: var(--gold);
+      animation: glitch2 2s infinite;
+      clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+    }
+
+    @keyframes glitch1 {
+      0%, 100% { transform: translate(0); }
+      20% { transform: translate(-3px, 2px); }
+      40% { transform: translate(3px, -2px); }
+    }
+
+    @keyframes glitch2 {
+      0%, 100% { transform: translate(0); }
+      20% { transform: translate(3px, -2px); }
+      40% { transform: translate(-3px, 2px); }
+    }
+
+    /* Main content (demo) */
+    .main-content {
+      padding: 4rem 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+      color: var(--cream);
+    }
+
+    .main-content h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .main-content p {
+      line-height: 1.6;
+      opacity: 0.8;
+    }
+  </style>
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="loading-screen" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Loading Screen</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <div class="loading-screen" id="loader">
+    <div class="glitch-text">SIGNAL LOST</div>
+    <div class="loader-ring"></div>
+    <div class="loader-text">Establishing Connection</div>
+    <div class="loader-sub" id="loaderDetail">Initializing...</div>
+    <div class="loader-bar">
+      <div class="fill" id="loaderBar"></div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <h1>Game Loaded</h1>
+    <p>This is the main game content. The loading screen above shows for 3 seconds with a progress bar, then fades out.</p>
+    <p>To use: Copy the .loading-screen HTML and CSS into your game pages. Customize the text and timing.</p>
+  </div>
+
+  <script>
+    // Simulate loading progress
+    const bar = document.getElementById('loaderBar');
+    const detail = document.getElementById('loaderDetail');
+    const loader = document.getElementById('loader');
+    
+    const steps = [
+      { pct: 15, text: 'Loading assets...' },
+      { pct: 35, text: 'Connecting to server...' },
+      { pct: 55, text: 'Synchronizing data...' },
+      { pct: 75, text: 'Preparing world...' },
+      { pct: 90, text: 'Finalizing...' },
+      { pct: 100, text: 'Ready' }
+    ];
+    
+    let current = 0;
+    
+    function updateLoader() {
+      if (current >= steps.length) {
+        setTimeout(() => {
+          loader.classList.add('hidden');
+        }, 500);
+        return;
+      }
+      
+      bar.style.width = steps[current].pct + '%';
+      detail.textContent = steps[current].text;
+      current++;
+      
+      setTimeout(updateLoader, 500 + Math.random() * 300);
+    }
+    
+    updateLoader();
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

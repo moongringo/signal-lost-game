@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#2b2018" />
+    <title>Signal Lost 70s Analog UI</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="preconnect" href="https://tile.openstreetmap.org" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./variant.css" />
+  <link rel="stylesheet" href="../../design-flow.css" />
+</head><body data-flow-page="index_45a90554" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>70s Analog UI</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../../design-flow-setup.html">Setup</a>
+        <a href="../../design-flow-roles.html">Roles</a>
+        <a href="../../design-flow-control.html">Control</a>
+
+        <a href="../../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../../login.html">Login</a>
+              <a href="../../server-browser.html">Server Browser</a>
+              <a href="../../map-selection.html">Map Selection</a>
+              <a href="../../role-selection.html">Role Selection</a>
+              <a href="../../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../../player-profile.html">Player Profile</a>
+              <a href="../../career-stats.html">Career Stats</a>
+              <a href="../../match-result.html">Match Result</a>
+              <a href="../../post-match-report.html">Post-Match Report</a>
+              <a href="../../kill-cam.html">Kill Cam</a>
+              <a href="../../death-recap.html">Death Recap</a>
+              <a href="../../spectator-mode.html">Spectator Mode</a>
+              <a href="../../replay-viewer.html">Replay Viewer</a>
+              <a href="../../tournament-bracket.html">Tournament</a>
+              <a href="../../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../../store.html">Store</a>
+              <a href="../../friends.html">Friends</a>
+              <a href="../../squad.html">Squad</a>
+              <a href="../../clan-wars.html">Clan Wars</a>
+              <a href="../../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../../token-dashboard.html">Token Dashboard</a>
+              <a href="../../daily-challenges.html">Daily Challenges</a>
+              <a href="../../inventory.html">Inventory</a>
+              <a href="../../loadout-builder.html">Loadout Builder</a>
+              <a href="../../battle-pass.html">Battle Pass</a>
+              <a href="../../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../../R&D-INDEX.html">R&D Index</a>
+              <a href="../../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../../leaderboard.html">Leaderboard</a>
+              <a href="../../settings.html">Settings</a>
+              <a href="../../design-system.html">Design System</a>
+              <a href="../../design-flow-setup.html">Setup Page</a>
+              <a href="../../design-flow-roles.html">Roles Page</a>
+              <a href="../../design-flow-control.html">Control Page</a>
+              <a href="../../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../../mobile-radar.html">Mobile Radar</a>
+              <a href="../../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+    <div class="app-shell">
+      <aside class="side-rail" aria-label="Game navigation">
+        <div class="brand-mark" aria-label="Signal Lost">
+          <span class="brand-pulse"></span>
+          <span>SL</span>
+        </div>
+        <nav class="rail-nav">
+          <button class="icon-button active" type="button" aria-label="Mission overview" title="Mission overview">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 12 5l8 8.5v5A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5v-5Z"/><path d="M9 20v-6h6v6"/></svg>
+          </button>
+          <button class="icon-button" type="button" aria-label="Squads" title="Squads">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0-8 0"/><path d="M3 21a7 7 0 0 1 18 0"/><path d="M19 8v5"/><path d="M21.5 10.5h-5"/></svg>
+          </button>
+          <button class="icon-button" type="button" aria-label="Objectives" title="Objectives">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.4 7-12A7 7 0 1 0 5 9c0 6.6 7 12 7 12Z"/><circle cx="12" cy="9" r="2.2"/></svg>
+          </button>
+          <button class="icon-button" type="button" aria-label="Signals" title="Signals">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h3l2-7 4 14 3-9 2 2h6"/><path d="M18 19h4"/><path d="M20 17v4"/></svg>
+          </button>
+        </nav>
+        <button class="icon-button rail-bottom" id="collapseButton" type="button" aria-label="Toggle panels" title="Toggle panels">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+        </button>
+      </aside>
+
+      <main class="control-deck">
+        <header class="top-bar">
+          <section class="mission-title" aria-labelledby="missionName">
+            <p class="eyebrow">Mission Control / Action Command</p>
+            <h1 id="missionName">Signal Lost</h1>
+            <div class="session-row">
+              <button class="session-code" id="sessionCode" type="button" title="Generate session code">BLUE-MONKEY-42-TREE-99</button>
+              <span class="live-dot"></span>
+              <span>Live tactical simulation</span>
+            </div>
+          </section>
+          <section class="top-actions" aria-label="Mission actions">
+            <label class="search-box">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+              <input id="citySearch" type="search" placeholder="Search city or country" />
+            </label>
+            <button class="primary-button" id="createObjective" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              Objective
+            </button>
+            <section class="audio-console" aria-label="Game theme song">
+              <audio id="themeAudio" src="./assets/retro-heist-run.mp3" preload="metadata" loop></audio>
+              <button class="audio-button" id="audioToggle" type="button" aria-label="Play theme song" title="Play theme song">
+                <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7-11-7Z"/></svg>
+                <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14"/><path d="M16 5v14"/></svg>
+              </button>
+              <div class="audio-readout">
+                <span id="audioStatus">Theme idle</span>
+                <b id="audioTime">00:00</b>
+              </div>
+              <label class="volume-control" aria-label="Theme volume">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 9.5a4 4 0 0 1 0 5"/><path d="M18.5 7a7 7 0 0 1 0 10"/></svg>
+                <input id="volumeSlider" type="range" min="0" max="100" value="42" />
+              </label>
+            </section>
+          </section>
+        </header>
+
+        <section class="metrics-strip" aria-label="Mission stats">
+          <article class="metric hud-metric">
+            <span>System Status</span>
+            <strong id="systemStatus">Online</strong>
+            <small>Core uplink</small>
+            <svg class="sparkline" id="gpsSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+          <article class="metric hud-metric">
+            <span>Sat Link</span>
+            <strong id="satLink">Active</strong>
+            <small>3 relays locked</small>
+            <svg class="sparkline" id="satSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+          <article class="metric hud-metric">
+            <span>Crew Status</span>
+            <strong id="playerCount">8</strong>
+            <small>2 AI teams</small>
+            <svg class="sparkline" id="crewSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+          <article class="metric hud-metric danger-watch">
+            <span>Mission Time</span>
+            <strong id="missionClock">44:32</strong>
+            <small>90 min game</small>
+            <svg class="sparkline" id="timeSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+          <article class="metric hud-metric">
+            <span>Signal</span>
+            <strong id="signalStrength">72%</strong>
+            <small>GPS mesh</small>
+            <svg class="sparkline" id="signalSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+          <article class="metric hud-metric alert-metric">
+            <span>AI Threat</span>
+            <strong id="threatLevel">31%</strong>
+            <small id="objectiveCount">5 objectives</small>
+            <svg class="sparkline" id="threatSpark" viewBox="0 0 120 34" aria-hidden="true"></svg>
+          </article>
+        </section>
+
+        <section class="dashboard-grid premium-layout">
+          <aside class="left-stack">
+            <section class="panel agents-panel">
+              <div class="panel-heading compact">
+                <div>
+                  <p class="eyebrow">Squads</p>
+                  <h2>Field Agents</h2>
+                </div>
+                <button class="icon-button small" id="shuffleRoles" type="button" aria-label="Shuffle roles" title="Shuffle roles">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+                </button>
+              </div>
+              <div class="agent-list" id="agentList"></div>
+            </section>
+          </aside>
+
+          <section class="map-panel" aria-label="OpenStreetMap radar">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">OpenStreetMap / Dark Tactical Overlay</p>
+                <h2>Radar Scan</h2>
+              </div>
+              <div class="segmented" role="group" aria-label="Map mode">
+                <button type="button" data-map-mode="street">Map</button>
+                <button type="button" data-map-mode="radar">Radar</button>
+                <button type="button" class="selected" data-map-mode="hybrid">Hybrid</button>
+              </div>
+            </div>
+            <div class="map-wrap hybrid">
+              <div id="map" class="map-canvas" aria-label="Map showing active players and objectives"></div>
+              <svg class="route-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M18 72 C28 48, 42 56, 52 34 S75 28, 84 18" />
+                <path d="M20 30 C32 44, 46 38, 62 60 S79 70, 88 52" />
+              </svg>
+              <div class="radar-overlay" aria-hidden="true">
+                <b class="radar-core"></b>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <em class="radar-axis north">0</em>
+                <em class="radar-axis east">90</em>
+                <em class="radar-axis south">180</em>
+                <em class="radar-axis west">270</em>
+                <i></i>
+                <div class="radar-targets" id="radarTargets"></div>
+              </div>
+              <div class="alert-zone alert-one" aria-hidden="true"></div>
+              <div class="alert-zone alert-two" aria-hidden="true"></div>
+              <div class="map-fallback" id="mapFallback">
+                <strong>Simulated GPS Grid</strong>
+                <span>OpenStreetMap tiles load when the browser has network access.</span>
+              </div>
+            </div>
+          </section>
+
+          <aside class="right-stack">
+            <section class="panel action-panel">
+              <div class="panel-heading compact">
+                <div>
+                  <p class="eyebrow">Signal Strength</p>
+                  <h2 id="signalWarningTitle">Attempting Reconnection</h2>
+                </div>
+                <span class="status-pill warning" id="threatBadge">Threat 31%</span>
+              </div>
+              <svg class="warning-graph" id="warningGraph" viewBox="0 0 320 82" aria-hidden="true"></svg>
+              <div class="cipher-grid" aria-label="Cipher keys">
+                <span>7A3F</span>
+                <span>9C2B</span>
+                <span>1D8E</span>
+                <span>4F6A</span>
+              </div>
+              <button class="override-button" type="button">Initiate Override Protocol</button>
+              <div class="mini-topography" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <b></b>
+              </div>
+              <div class="system-log" id="systemLog"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading compact">
+                <div>
+                  <p class="eyebrow">Comms</p>
+                  <h2>Team Chat</h2>
+                </div>
+                <button class="ghost-button" type="button">Text</button>
+              </div>
+              <div class="chat-log" id="chatLog"></div>
+              <form class="chat-form" id="chatForm">
+                <input id="chatInput" type="text" maxlength="90" placeholder="Send update" />
+                <button class="icon-button send" type="submit" aria-label="Send message" title="Send message">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg>
+                </button>
+              </form>
+            </section>
+          </aside>
+        </section>
+
+        <section class="lower-grid">
+          <section class="panel objectives-panel">
+            <div class="panel-heading compact">
+              <div>
+                <p class="eyebrow">Tasks</p>
+                <h2>Signal Chain</h2>
+              </div>
+              <button class="ghost-button" id="decodeNext" type="button">Decode</button>
+            </div>
+            <div class="objective-list" id="objectiveList"></div>
+          </section>
+
+          <section class="panel role-panel">
+            <div class="panel-heading compact">
+              <div>
+                <p class="eyebrow">Roles</p>
+                <h2>Dashboards</h2>
+              </div>
+              <span class="pill">Modular</span>
+            </div>
+            <div class="role-tabs" id="roleTabs" role="tablist"></div>
+            <div class="role-detail" id="roleDetail"></div>
+          </section>
+
+          <section class="panel theme-panel">
+            <div class="panel-heading compact">
+              <div>
+                <p class="eyebrow">Design</p>
+                <h2>Visual Direction</h2>
+              </div>
+              <span class="pill">White first</span>
+            </div>
+            <div class="theme-options" id="themeOptions">
+              <button type="button" class="theme-card selected" data-theme-choice="white">
+                <span class="swatches"><i></i><i></i><i></i></span>
+                <strong>Arctic Command</strong>
+                <small>Clean white, blue signal accents, premium control room.</small>
+              </button>
+              <button type="button" class="theme-card" data-theme-choice="night">
+                <span class="swatches night"><i></i><i></i><i></i></span>
+                <strong>Night Ops</strong>
+                <small>Dark radar, amber alerts, more tactical and intense.</small>
+              </button>
+              <button type="button" class="theme-card" data-theme-choice="field">
+                <span class="swatches field"><i></i><i></i><i></i></span>
+                <strong>Field Kit</strong>
+                <small>Outdoor green, satellite overlays, expedition mood.</small>
+              </button>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      crossorigin=""
+    ></script>
+    <script src="./app.js"></script>
+  
+    </div>
+  </main>
+  <script src="../../design-system.js"></script>
+  <script src="../../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quemello — Mission Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="quemello-theme.css">
+  <style>
+    /* Page-specific extensions */
+    .q-radar-legend { display: flex; justify-content: center; gap: 24px; margin-top: 12px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+    .q-radar-legend > div { display: flex; align-items: center; gap: 6px; }
+    .q-obj-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .q-obj-row:last-child { border-bottom: none; }
+    .q-obj-check { width: 18px; height: 18px; border: 1.5px solid var(--text-muted); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; font-size: 10px; color: transparent; transition: all 0.3s; }
+    .q-obj-check.done { background: var(--teal); border-color: var(--teal); color: var(--bg); }
+    .q-obj-check.active { border-color: var(--gold); background: var(--gold-dim); }
+    .q-obj-title { font-size: 13px; font-weight: 600; }
+    .q-obj-desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+    .q-obj-bar { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .q-obj-bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-light)); border-radius: 2px; }
+    .q-comm-line { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; line-height: 1.6; }
+    .q-comm-line:last-child { border-bottom: none; }
+    .q-comm-time { font-size: 10px; color: var(--text-muted); letter-spacing: 1px; font-family: 'JetBrains Mono', monospace; }
+    .q-comm-name { color: var(--gold); font-weight: 700; }
+    .q-comm-alert { color: var(--coral); font-weight: 700; }
+    .q-comm-msg { color: var(--text-dim); }
+    .q-equip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .q-equip-cell { padding: 10px; border: 1px solid var(--border); border-radius: 10px; transition: all 0.3s; cursor: pointer; }
+    .q-equip-cell:hover { border-color: var(--gold); background: var(--gold-dim); box-shadow: 0 0 15px var(--gold-dim); }
+    .q-equip-name { font-size: 12px; font-weight: 600; letter-spacing: 0.5px; }
+    .q-equip-meta { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+    .q-equip-bar { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .q-equip-fill { height: 100%; background: linear-gradient(90deg, var(--teal), var(--teal-light)); border-radius: 2px; }
+    .q-equip-fill.low { background: linear-gradient(90deg, var(--coral), var(--coral-light)); }
+    .q-act-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .q-threat-labels { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .q-threat-labels .lbl { font-size: 11px; font-weight: 600; }
+    .q-threat-labels .val { font-size: 11px; color: var(--gold); font-weight: 700; letter-spacing: 2px; }
+    .q-threat-bars { display: flex; gap: 3px; }
+    .q-threat-bar { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06); transition: all 0.4s; }
+    .q-threat-bar.on { background: linear-gradient(90deg, var(--gold), var(--coral)); }
+    .q-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .q-stat-box { text-align: center; padding: 12px; border: 1px solid var(--border); border-radius: 10px; transition: all 0.3s; }
+    .q-stat-box:hover { background: var(--gold-dim); box-shadow: 0 0 15px var(--gold-dim); }
+    .q-stat-box .val { font-size: 22px; font-weight: 800; color: var(--gold); text-shadow: 0 0 10px var(--gold-dim); }
+    .q-stat-box .lbl { font-size: 9px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+    .q-stat-box.danger .val { color: var(--coral); text-shadow: 0 0 10px var(--coral-dim); }
+    .q-score-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .q-score-tbl th { text-align: left; padding: 8px; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); font-weight: 700; }
+    .q-score-tbl td { padding: 8px; border-bottom: 1px solid var(--border); }
+    .q-score-tbl .f { color: var(--teal); font-weight: 600; }
+    .q-score-tbl .e { color: var(--coral); font-weight: 600; }
+    .q-score-tbl .pts { font-weight: 700; }
+    .q-env-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 12px; border-bottom: 1px solid var(--border); }
+    .q-env-row:last-child { border-bottom: none; }
+    .q-env-row .k { color: var(--text-dim); }
+    .q-env-row .v { font-weight: 600; }
+    .q-event-item { padding: 5px 0; font-size: 11px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+    .q-event-item:last-child { border-bottom: none; }
+    .q-event-ts { color: var(--gold); font-weight: 700; margin-right: 6px; font-family: 'JetBrains Mono', monospace; }
+    .q-event-danger { color: var(--coral); font-weight: 700; }
+    .q-event-ok { color: var(--teal); font-weight: 700; }
+    .q-event-warn { color: var(--gold); font-weight: 700; }
+  </style>
+  <link rel="stylesheet" href="../../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="mission-control" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Quemello — Mission Control</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../../design-flow-setup.html">Setup</a>
+        <a href="../../design-flow-roles.html">Roles</a>
+        <a href="../../design-flow-control.html">Control</a>
+
+        <a href="../../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../../login.html">Login</a>
+              <a href="../../server-browser.html">Server Browser</a>
+              <a href="../../map-selection.html">Map Selection</a>
+              <a href="../../role-selection.html">Role Selection</a>
+              <a href="../../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../../player-profile.html">Player Profile</a>
+              <a href="../../career-stats.html">Career Stats</a>
+              <a href="../../match-result.html">Match Result</a>
+              <a href="../../post-match-report.html">Post-Match Report</a>
+              <a href="../../kill-cam.html">Kill Cam</a>
+              <a href="../../death-recap.html">Death Recap</a>
+              <a href="../../spectator-mode.html">Spectator Mode</a>
+              <a href="../../replay-viewer.html">Replay Viewer</a>
+              <a href="../../tournament-bracket.html">Tournament</a>
+              <a href="../../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../../store.html">Store</a>
+              <a href="../../friends.html">Friends</a>
+              <a href="../../squad.html">Squad</a>
+              <a href="../../clan-wars.html">Clan Wars</a>
+              <a href="../../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../../token-dashboard.html">Token Dashboard</a>
+              <a href="../../daily-challenges.html">Daily Challenges</a>
+              <a href="../../inventory.html">Inventory</a>
+              <a href="../../loadout-builder.html">Loadout Builder</a>
+              <a href="../../battle-pass.html">Battle Pass</a>
+              <a href="../../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../../R&D-INDEX.html">R&D Index</a>
+              <a href="../../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../../leaderboard.html">Leaderboard</a>
+              <a href="../../settings.html">Settings</a>
+              <a href="../../design-system.html">Design System</a>
+              <a href="../../design-flow-setup.html">Setup Page</a>
+              <a href="../../design-flow-roles.html">Roles Page</a>
+              <a href="../../design-flow-control.html">Control Page</a>
+              <a href="../../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../../mobile-radar.html">Mobile Radar</a>
+              <a href="../../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+
+  <!-- Background layers -->
+  <div class="particle"></div><div class="particle"></div>
+    <div class="particle"></div><div class="particle"></div>
+  </div>
+  <!-- Nav -->
+  <nav class="q-nav">
+    <a href="index.html" class="q-nav-logo">Quemello<span>.</span></a>
+    <div class="q-nav-right">
+      <span class="q-pill live">● Live Combat</span>
+      <span class="q-pill info" id="q-clock">00:00:00 UTC</span>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main-content">
+    <div class="q-grid">
+
+      <!-- LEFT -->
+      <div class="q-col">
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Fireteam Alpha</h3><span class="tag">4/4 Active</span></div>
+          <div class="q-card-body">
+            <div class="q-team-list">
+              <div class="q-team-member">
+                <div class="q-avatar lead">M</div>
+                <div><div class="q-member-name">Sgt. Morgan</div><div class="q-member-role">Squad Leader</div><div class="q-hp-track"><div class="q-hp-fill ok" style="width:85%"></div></div></div>
+                <div class="q-member-dot"></div>
+              </div>
+              <div class="q-team-member">
+                <div class="q-avatar">C</div>
+                <div><div class="q-member-name">Cpl. Chen</div><div class="q-member-role">Designated Marksman</div><div class="q-hp-track"><div class="q-hp-fill warn" style="width:62%"></div></div></div>
+                <div class="q-member-dot warn"></div>
+              </div>
+              <div class="q-team-member">
+                <div class="q-avatar">O</div>
+                <div><div class="q-member-name">Pfc. O'Brien</div><div class="q-member-role">Machine Gunner</div><div class="q-hp-track"><div class="q-hp-fill ok" style="width:91%"></div></div></div>
+                <div class="q-member-dot"></div>
+              </div>
+              <div class="q-team-member critical">
+                <div class="q-avatar" style="color:var(--coral);border-color:var(--coral)">K</div>
+                <div><div class="q-member-name">Pfc. Kowalski</div><div class="q-member-role" style="color:var(--coral)">Rifleman — Critical</div><div class="q-hp-track"><div class="q-hp-fill crit" style="width:12%"></div></div></div>
+                <div class="q-member-dot crit"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Objectives</h3><span class="tag" style="color:var(--gold)">2/3 Complete</span></div>
+          <div class="q-card-body">
+            <div class="q-obj-row"><div class="q-obj-check done">✓</div><div style="flex:1"><div class="q-obj-title">Secure LZ</div><div class="q-obj-desc">Landing zone cleared</div></div></div>
+            <div class="q-obj-row"><div class="q-obj-check done">✓</div><div style="flex:1"><div class="q-obj-title">Disable Comms</div><div class="q-obj-desc">Enemy tower neutralized</div></div></div>
+            <div class="q-obj-row"><div class="q-obj-check active"></div><div style="flex:1"><div class="q-obj-title">Extract Intel</div><div class="q-obj-desc">Recover documents — 60%</div><div class="q-obj-bar"><div class="q-obj-bar-fill" style="width:60%"></div></div></div></div>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Loadout</h3><span class="tag">6 Items</span></div>
+          <div class="q-card-body">
+            <div class="q-equip-grid">
+              <div class="q-equip-cell"><div class="q-equip-name">M16A1</div><div class="q-equip-meta">24/30 rounds</div><div class="q-equip-bar"><div class="q-equip-fill" style="width:80%"></div></div></div>
+              <div class="q-equip-cell"><div class="q-equip-name">M1911</div><div class="q-equip-meta">5/7 rounds</div><div class="q-equip-bar"><div class="q-equip-fill" style="width:71%"></div></div></div>
+              <div class="q-equip-cell"><div class="q-equip-name" style="color:var(--coral)">M67 Frag</div><div class="q-equip-meta" style="color:var(--coral)">2 remaining</div><div class="q-equip-bar"><div class="q-equip-fill low" style="width:40%"></div></div></div>
+              <div class="q-equip-cell"><div class="q-equip-name">Claymore</div><div class="q-equip-meta">1 placed</div><div class="q-equip-bar"><div class="q-equip-fill" style="width:100%"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER -->
+      <div class="q-col">
+        <div class="q-card enter-stagger" style="flex:1">
+          <div class="q-card-header"><h3>Tactical Radar</h3><span class="tag">Range: 10 NM | Grid: 47N 012E</span></div>
+          <div class="q-card-body" style="padding:16px">
+            <div class="q-radar-box" data-sparkles="4">
+              <div class="q-radar" id="radar">
+                <div class="q-radar-cross"><div class="h"></div><div class="v"></div></div>
+                <div class="q-radar-center"></div>
+              </div>
+            </div>
+            <div class="q-radar-legend">
+              <div><div style="width:8px;height:8px;border-radius:50%;background:var(--coral);box-shadow:0 0 6px var(--coral)"></div><span style="color:var(--text-dim)">3 Hostile</span></div>
+              <div><div style="width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal)"></div><span style="color:var(--text-dim)">2 Friendly</span></div>
+              <div><div style="width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 6px var(--gold)"></div><span style="color:var(--text-dim)">1 Unknown</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="q-row">
+          <div class="q-card enter-stagger">
+            <div class="q-card-header"><h3>Comms Traffic</h3><span class="tag" style="color:var(--gold)">6 New</span></div>
+            <div class="q-card-body" style="max-height:220px;overflow-y:auto">
+              <div class="q-comm-line"><div class="q-comm-time">03:21Z</div><div><span class="q-comm-name">SGT. MORGAN</span> <span class="q-comm-msg">Contact north, 200m. Two hostiles moving west.</span></div></div>
+              <div class="q-comm-line"><div class="q-comm-time">03:22Z</div><div><span class="q-comm-alert">KOWALSKI DOWN</span> <span class="q-comm-msg">Requesting MEDEVAC, pos 47.012N</span></div></div>
+              <div class="q-comm-line"><div class="q-comm-time">03:24Z</div><div><span class="q-comm-name">CPL. CHEN</span> <span class="q-comm-msg">Sniper neutralized. Moving to overwatch.</span></div></div>
+              <div class="q-comm-line"><div class="q-comm-time">03:25Z</div><div><span class="q-comm-name">O'BRIEN</span> <span class="q-comm-msg">MG position set. Covering fire available.</span></div></div>
+              <div class="q-comm-line"><div class="q-comm-time">03:26Z</div><div><span class="q-comm-msg">COMMAND — Air support inbound, ETA 4 min.</span></div></div>
+            </div>
+          </div>
+          <div class="q-card enter-stagger">
+            <div class="q-card-header"><h3>Quick Actions</h3></div>
+            <div class="q-card-body">
+              <div class="q-act-grid">
+                <button class="q-btn">Request Air</button>
+                <button class="q-btn">MEDEVAC</button>
+                <button class="q-btn">Mark Target</button>
+                <button class="q-btn danger">Abort Mission</button>
+                <button class="q-btn">Call Arty</button>
+                <button class="q-btn">Smoke Screen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Scoreboard</h3><span class="tag">Round 3/5</span></div>
+          <div class="q-card-body" style="padding:0">
+            <table class="q-score-tbl">
+              <thead><tr><th>Unit</th><th>K</th><th>D</th><th>Score</th></tr></thead>
+              <tbody>
+                <tr><td class="f">SGT. MORGAN</td><td>7</td><td>1</td><td class="pts">1,240</td></tr>
+                <tr><td class="f">CPL. CHEN</td><td>5</td><td>2</td><td class="pts">890</td></tr>
+                <tr><td class="f">PFC. O'BRIEN</td><td>2</td><td>3</td><td class="pts">420</td></tr>
+                <tr><td class="e">ENEMY GUNNER</td><td>4</td><td>1</td><td class="pts">760</td></tr>
+                <tr><td class="e">ENEMY SCOUT</td><td>3</td><td>2</td><td class="pts">580</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="q-col">
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Threat Level</h3></div>
+          <div class="q-card-body">
+            <div class="q-threat-labels"><span class="lbl">Current Status</span><span class="val">ELEVATED</span></div>
+            <div class="q-threat-bars"><div class="q-threat-bar on"></div><div class="q-threat-bar on"></div><div class="q-threat-bar on"></div><div class="q-threat-bar"></div><div class="q-threat-bar"></div></div>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:8px">3 hostile contacts within 2 NM. Caution advised.</div>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Session Stats</h3></div>
+          <div class="q-card-body">
+            <div class="q-stat-grid">
+              <div class="q-stat-box"><div class="val">47m</div><div class="lbl">Time Active</div></div>
+              <div class="q-stat-box"><div class="val">14</div><div class="lbl">Total Kills</div></div>
+              <div class="q-stat-box"><div class="val">3</div><div class="lbl">Objectives</div></div>
+              <div class="q-stat-box danger"><div class="val">1</div><div class="lbl">Casualties</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Environment</h3></div>
+          <div class="q-card-body">
+            <div class="q-env-row"><span class="k">Visibility</span><span class="v">800m</span></div>
+            <div class="q-env-row"><span class="k">Wind</span><span class="v">12 km/h NW</span></div>
+            <div class="q-env-row"><span class="k">Temperature</span><span class="v">18°C</span></div>
+            <div class="q-env-row"><span class="k">Time of Day</span><span class="v">Dawn</span></div>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Event Log</h3></div>
+          <div class="q-card-body">
+            <div class="q-event-item"><span class="q-event-ts">03:15Z</span> Mission started</div>
+            <div class="q-event-item"><span class="q-event-ts">03:18Z</span> <span class="q-event-warn">First contact</span></div>
+            <div class="q-event-item"><span class="q-event-ts">03:22Z</span> <span class="q-event-danger">Friendly wounded</span></div>
+            <div class="q-event-item"><span class="q-event-ts">03:24Z</span> <span class="q-event-ok">Sniper eliminated</span></div>
+            <div class="q-event-item"><span class="q-event-ts">03:28Z</span> <span class="q-event-warn">Air support called</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="quemello-effects.js"></script>
+  <script>
+    QuemelloFX.initRadar('radar', [
+      { angle: 45, dist: 0.3, type: 'enemy', label: 'T-1' },
+      { angle: 120, dist: 0.5, type: 'enemy', label: 'T-2' },
+      { angle: 215, dist: 0.25, type: 'enemy', label: 'T-3' },
+      { angle: 312, dist: 0.4, type: 'friendly', label: 'F-1' },
+      { angle: 350, dist: 0.35, type: 'friendly', label: 'F-2' },
+      { angle: 89, dist: 0.6, type: 'unknown', label: 'UNK' }
+    ]);
+  </script>
+
+
+    </div>
+  </main>
+  <script src="../../design-system.js"></script>
+  <script src="../../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

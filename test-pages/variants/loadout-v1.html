@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WEAPON LOADOUT</title>
+  <style>
+    :root {
+      --bg: #0b0f12;
+      --panel: #11161b;
+      --border: #1e2a33;
+      --accent: #2ecc71;
+      --accent2: #27ae60;
+      --text: #c8d6e0;
+      --muted: #5a6b78;
+      --grid: #141b21;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        linear-gradient(to right, var(--grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.6;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* HUD */
+    .hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      z-index: 10;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 40px;
+    }
+
+    /* Soldier silhouette */
+    .soldier-wrap {
+      position: relative;
+      width: 260px;
+      height: 420px;
+    }
+
+    .soldier {
+      width: 100%;
+      height: 100%;
+    }
+
+    .soldier path {
+      fill: #1a232b;
+      stroke: var(--border);
+      stroke-width: 2;
+    }
+
+    /* Slots */
+    .slot {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      user-select: none;
+    }
+
+    .slot:hover {
+      border-color: var(--accent2);
+      box-shadow: 0 0 12px rgba(46, 204, 113, 0.15);
+    }
+
+    .slot.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 16px rgba(46, 204, 113, 0.25);
+    }
+
+    .slot-label {
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* Slot positions */
+    .slot-primary   { top: 20px; left: 50%; transform: translateX(-50%); }
+    .slot-secondary { top: 120px; right: -100px; }
+    .slot-melee     { top: 220px; right: -100px; }
+    .slot-throwable { top: 120px; left: -100px; }
+    .slot-gear      { top: 220px; left: -100px; }
+
+    /* Icons inside slots */
+    .icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Rifle: long rectangle + small rect (mag) */
+    .icon-rifle {
+      width: 56px;
+      height: 14px;
+      background: var(--accent);
+      border-radius: 2px;
+      position: relative;
+    }
+    .icon-rifle::after {
+      content: '';
+      position: absolute;
+      left: 10px;
+      bottom: -8px;
+      width: 14px;
+      height: 8px;
+      background: var(--accent2);
+      border-radius: 1px;
+    }
+
+    /* Pistol: small rect */
+    .icon-pistol {
+      width: 32px;
+      height: 20px;
+      background: var(--accent);
+      border-radius: 2px;
+      position: relative;
+    }
+    .icon-pistol::after {
+      content: '';
+      position: absolute;
+      right: -10px;
+      top: 2px;
+      width: 10px;
+      height: 6px;
+      background: var(--accent2);
+      border-radius: 1px;
+    }
+
+    /* Knife: triangle */
+    .icon-knife {
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 40px solid var(--accent);
+      position: relative;
+    }
+    .icon-knife::after {
+      content: '';
+      position: absolute;
+      top: 40px;
+      left: -4px;
+      width: 8px;
+      height: 14px;
+      background: var(--accent2);
+      border-radius: 1px;
+    }
+
+    /* Grenade: circle + rectangle */
+    .icon-grenade {
+      width: 22px;
+      height: 22px;
+      background: var(--accent);
+      border-radius: 50%;
+      position: relative;
+    }
+    .icon-grenade::after {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 8px;
+      height: 10px;
+      background: var(--accent2);
+      border-radius: 1px;
+    }
+
+    /* Gear: cross / medical */
+    .icon-gear {
+      width: 30px;
+      height: 30px;
+      position: relative;
+    }
+    .icon-gear::before, .icon-gear::after {
+      content: '';
+      position: absolute;
+      background: var(--accent);
+      border-radius: 1px;
+    }
+    .icon-gear::before {
+      top: 10px;
+      left: 0;
+      width: 30px;
+      height: 10px;
+    }
+    .icon-gear::after {
+      top: 0;
+      left: 10px;
+      width: 10px;
+      height: 30px;
+    }
+
+    /* Stats panel */
+    .stats {
+      width: 220px;
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .stats h2 {
+      font-size: 14px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      margin-bottom: 16px;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .stat {
+      margin-bottom: 14px;
+    }
+
+    .stat-name {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .stat-bar-wrap {
+      height: 8px;
+      background: #0b0f12;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .stat-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .stat-value {
+      font-size: 11px;
+      color: var(--text);
+      margin-top: 4px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="hud">LOADOUT V1</div>
+
+  <div class="container">
+    <div class="soldier-wrap">
+      <!-- Soldier silhouette SVG -->
+      <svg class="soldier" viewBox="0 0 200 340" xmlns="http://www.w3.org/2000/svg">
+        <!-- Head -->
+        <path d="M85,20 C85,5 115,5 115,20 L115,45 C115,55 105,60 100,60 C95,60 85,55 85,45 Z" />
+        <!-- Neck -->
+        <path d="M92,60 L108,60 L108,75 L92,75 Z" />
+        <!-- Torso -->
+        <path d="M70,75 L130,75 L125,180 L75,180 Z" />
+        <!-- Left arm -->
+        <path d="M70,80 L45,110 L40,160 L55,160 L60,115 L70,100 Z" />
+        <!-- Right arm -->
+        <path d="M130,80 L155,110 L160,160 L145,160 L140,115 L130,100 Z" />
+        <!-- Left leg -->
+        <path d="M75,180 L65,260 L55,330 L75,330 L85,260 L90,180 Z" />
+        <!-- Right leg -->
+        <path d="M125,180 L135,260 L145,330 L125,330 L115,260 L110,180 Z" />
+      </svg>
+
+      <!-- PRIMARY -->
+      <div class="slot slot-primary" data-slot="primary" data-index="0">
+        <span class="slot-label">PRIMARY</span>
+        <div class="icon icon-rifle"></div>
+      </div>
+
+      <!-- SECONDARY -->
+      <div class="slot slot-secondary" data-slot="secondary" data-index="0">
+        <span class="slot-label">SECONDARY</span>
+        <div class="icon icon-pistol"></div>
+      </div>
+
+      <!-- MELEE -->
+      <div class="slot slot-melee" data-slot="melee" data-index="0">
+        <span class="slot-label">MELEE</span>
+        <div class="icon icon-knife"></div>
+      </div>
+
+      <!-- THROWABLE -->
+      <div class="slot slot-throwable" data-slot="throwable" data-index="0">
+        <span class="slot-label">THROWABLE</span>
+        <div class="icon icon-grenade"></div>
+      </div>
+
+      <!-- GEAR -->
+      <div class="slot slot-gear" data-slot="gear" data-index="0">
+        <span class="slot-label">GEAR</span>
+        <div class="icon icon-gear"></div>
+      </div>
+    </div>
+
+    <!-- Stats Panel -->
+    <div class="stats">
+      <h2>Weapon Stats</h2>
+      <div class="stat">
+        <div class="stat-name">Damage</div>
+        <div class="stat-bar-wrap"><div class="stat-bar" id="bar-dmg"></div></div>
+        <div class="stat-value" id="val-dmg">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-name">Range</div>
+        <div class="stat-bar-wrap"><div class="stat-bar" id="bar-range"></div></div>
+        <div class="stat-value" id="val-range">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-name">Fire Rate</div>
+        <div class="stat-bar-wrap"><div class="stat-bar" id="bar-rate"></div></div>
+        <div class="stat-value" id="val-rate">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-name">Reload</div>
+        <div class="stat-bar-wrap"><div class="stat-bar" id="bar-reload"></div></div>
+        <div class="stat-value" id="val-reload">0</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const loadouts = {
+      primary: [
+        { name: 'Assault Rifle',  icon: 'icon-rifle',  dmg: 65, range: 70, rate: 75, reload: 60 },
+        { name: 'Sniper Rifle',   icon: 'icon-rifle',  dmg: 95, range: 95, rate: 25, reload: 40 },
+        { name: 'Shotgun',        icon: 'icon-rifle',  dmg: 90, range: 30, rate: 35, reload: 50 },
+        { name: 'SMG',            icon: 'icon-rifle',  dmg: 45, range: 45, rate: 90, reload: 80 },
+      ],
+      secondary: [
+        { name: 'Pistol',         icon: 'icon-pistol', dmg: 35, range: 35, rate: 55, reload: 85 },
+        { name: 'Revolver',       icon: 'icon-pistol', dmg: 60, range: 40, rate: 30, reload: 55 },
+        { name: 'Machine Pistol', icon: 'icon-pistol', dmg: 30, range: 25, rate: 80, reload: 70 },
+      ],
+      melee: [
+        { name: 'Combat Knife',   icon: 'icon-knife',  dmg: 50, range: 10, rate: 90, reload: 100 },
+        { name: 'Machete',        icon: 'icon-knife',  dmg: 75, range: 15, rate: 60, reload: 100 },
+        { name: 'Tactical Axe',   icon: 'icon-knife',  dmg: 85, range: 12, rate: 45, reload: 100 },
+      ],
+      throwable: [
+        { name: 'Frag Grenade',   icon: 'icon-grenade',dmg: 90, range: 50, rate: 20, reload: 30 },
+        { name: 'Smoke Grenade',  icon: 'icon-grenade',dmg:  5, range: 45, rate: 20, reload: 35 },
+        { name: 'Flashbang',      icon: 'icon-grenade',dmg: 10, range: 40, rate: 25, reload: 40 },
+      ],
+      gear: [
+        { name: 'Medkit',         icon: 'icon-gear',   dmg:  0, range:  0, rate:  0, reload: 0 },
+        { name: 'Ammo Pack',      icon: 'icon-gear',   dmg:  0, range:  0, rate:  0, reload: 0 },
+        { name: 'Armor Plate',    icon: 'icon-gear',   dmg:  0, range:  0, rate:  0, reload: 0 },
+      ],
+    };
+
+    const slots = document.querySelectorAll('.slot');
+    let activeSlot = null;
+
+    function updateStats(slotType) {
+      const idx = parseInt(document.querySelector(`.slot-${slotType}`).dataset.index, 10);
+      const item = loadouts[slotType][idx];
+      document.getElementById('bar-dmg').style.width   = item.dmg   + '%';
+      document.getElementById('bar-range').style.width = item.range + '%';
+      document.getElementById('bar-rate').style.width  = item.rate  + '%';
+      document.getElementById('bar-reload').style.width= item.reload+ '%';
+      document.getElementById('val-dmg').textContent   = item.dmg;
+      document.getElementById('val-range').textContent = item.range;
+      document.getElementById('val-rate').textContent  = item.rate;
+      document.getElementById('val-reload').textContent= item.reload;
+    }
+
+    slots.forEach(slot => {
+      slot.addEventListener('click', () => {
+        const type = slot.dataset.slot;
+        let idx = parseInt(slot.dataset.index, 10);
+        idx = (idx + 1) % loadouts[type].length;
+        slot.dataset.index = idx;
+
+        // update icon class
+        const iconDiv = slot.querySelector('.icon');
+        iconDiv.className = 'icon ' + loadouts[type][idx].icon;
+
+        // highlight active
+        slots.forEach(s => s.classList.remove('active'));
+        slot.classList.add('active');
+        activeSlot = type;
+
+        updateStats(type);
+      });
+    });
+
+    // default stats
+    updateStats('primary');
+    document.querySelector('.slot-primary').classList.add('active');
+    activeSlot = 'primary';
+  </script>
+</body>
+</html>

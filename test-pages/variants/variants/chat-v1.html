@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radio Comms Chat</title>
+  <style>
+    :root {
+      --bg: #0c0e12;
+      --panel: #12151b;
+      --panel-2: #181c24;
+      --text: #c8cdd5;
+      --muted: #6e7786;
+      --accent: #2ec4b6;
+      --accent-2: #ff9f1c;
+      --danger: #e63946;
+      --success: #2ecc71;
+      --info: #3498db;
+      --warn: #f1c40f;
+      --purple: #9b59b6;
+      --pink: #ff6b9d;
+      --cyan: #00d4ff;
+      --orange: #ff6b35;
+      --green: #27ae60;
+      --border: #1f2430;
+      --border-light: #2a3040;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+    }
+
+    /* ===== BACKGROUND WAVEFORM ===== */
+    .waveform-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.12;
+      pointer-events: none;
+    }
+    .waveform-bg canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ===== MAIN LAYOUT ===== */
+    .app {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 900px;
+      margin: 0 auto;
+      background: rgba(12, 14, 18, 0.92);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: var(--panel);
+      border-bottom: 2px solid var(--border-light);
+      position: relative;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.6;
+    }
+    .hud-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--muted);
+      background: var(--panel-2);
+      padding: 4px 10px;
+      border: 1px solid var(--border-light);
+      border-radius: 3px;
+    }
+    .freq-display {
+      font-family: 'Courier New', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 1px;
+      text-shadow: 0 0 10px rgba(46, 196, 182, 0.3);
+    }
+    .freq-display .hz { color: var(--muted); font-size: 13px; }
+    .signal-strength {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 18px;
+    }
+    .bar {
+      width: 4px;
+      background: var(--accent);
+      border-radius: 1px;
+      animation: signalPulse 1.5s ease-in-out infinite;
+    }
+    .bar:nth-child(1) { height: 30%; animation-delay: 0s; }
+    .bar:nth-child(2) { height: 50%; animation-delay: 0.2s; }
+    .bar:nth-child(3) { height: 70%; animation-delay: 0.4s; }
+    .bar:nth-child(4) { height: 90%; animation-delay: 0.6s; }
+    .bar:nth-child(5) { height: 100%; animation-delay: 0.8s; }
+    @keyframes signalPulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* ===== CHAT AREA ===== */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+    .chat-area::-webkit-scrollbar { width: 6px; }
+    .chat-area::-webkit-scrollbar-track { background: var(--panel); }
+    .chat-area::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+
+    /* ===== MESSAGE ===== */
+    .msg {
+      display: flex;
+      flex-direction: column;
+      max-width: 80%;
+      animation: msgIn 0.3s ease-out;
+      position: relative;
+    }
+    .msg.own { align-self: flex-end; }
+    .msg.other { align-self: flex-start; }
+
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 3px;
+      padding: 0 4px;
+    }
+    .msg-name {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .msg-time {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'Courier New', monospace;
+    }
+    .msg-body {
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+      position: relative;
+      border: 1px solid transparent;
+    }
+    .msg.own .msg-body {
+      background: rgba(46, 196, 182, 0.08);
+      border-color: rgba(46, 196, 182, 0.25);
+      color: #d4f0ed;
+    }
+    .msg.other .msg-body {
+      background: var(--panel-2);
+      border-color: var(--border-light);
+    }
+
+    /* ===== RADIO STATIC / CRACKLE ===== */
+    .crackle-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .crackle-overlay::before {
+      content: '';
+      position: absolute;
+      inset: -50%;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(255,255,255,0.03) 2px,
+          rgba(255,255,255,0.03) 4px
+        );
+      animation: crackle 0.15s steps(3) infinite;
+      opacity: 0;
+    }
+    .msg.crackling .crackle-overlay::before {
+      opacity: 1;
+      animation: crackle 0.12s steps(4) infinite;
+    }
+    .msg.crackling .msg-body {
+      animation: staticFlicker 0.3s ease-in-out;
+    }
+    @keyframes crackle {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(-2px, 1px); }
+      50% { transform: translate(1px, -1px); }
+      75% { transform: translate(-1px, 2px); }
+      100% { transform: translate(2px, 0); }
+    }
+    @keyframes staticFlicker {
+      0%, 100% { opacity: 1; filter: none; }
+      20% { opacity: 0.85; filter: brightness(1.2) contrast(1.1); }
+      40% { opacity: 0.95; filter: brightness(0.9); }
+      60% { opacity: 0.8; filter: brightness(1.15) contrast(1.05); }
+      80% { opacity: 0.9; filter: brightness(1.05); }
+    }
+
+    /* ===== TYPING INDICATOR ===== */
+    .typing {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--panel-2);
+      border-radius: 6px;
+      align-self: flex-start;
+      border: 1px solid var(--border-light);
+    }
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: typingBounce 1.2s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes typingBounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-5px); }
+    }
+
+    /* ===== COMMAND WHEEL ===== */
+    .command-wheel {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      padding: 10px 16px;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+    }
+    .cmd-btn {
+      background: var(--panel-2);
+      border: 1px solid var(--border-light);
+      color: var(--text);
+      padding: 8px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cmd-btn:hover {
+      background: rgba(46, 196, 182, 0.1);
+      border-color: rgba(46, 196, 182, 0.4);
+      color: var(--accent);
+    }
+    .cmd-btn:active { transform: scale(0.97); }
+
+    /* ===== INPUT AREA ===== */
+    .input-area {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+    }
+    .input-field {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-field:focus {
+      border-color: var(--accent);
+    }
+    .input-field::placeholder { color: var(--muted); }
+    .send-btn {
+      background: var(--accent);
+      border: none;
+      color: #0c0e12;
+      padding: 10px 22px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-transform: uppercase;
+    }
+    .send-btn:hover {
+      background: #3dd4c5;
+      box-shadow: 0 0 12px rgba(46, 196, 182, 0.3);
+    }
+    .send-btn:active { transform: scale(0.97); }
+
+    /* ===== SYSTEM MESSAGE ===== */
+    .system-msg {
+      align-self: center;
+      font-size: 11px;
+      color: var(--muted);
+      padding: 4px 12px;
+      background: var(--panel-2);
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      letter-spacing: 0.5px;
+    }
+
+    /* ===== SCROLL TO BOTTOM ===== */
+    .scroll-bottom {
+      position: absolute;
+      bottom: 140px;
+      right: 24px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      color: #0c0e12;
+      font-size: 16px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(46, 196, 182, 0.3);
+      z-index: 10;
+    }
+    .scroll-bottom.visible { display: flex; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 600px) {
+      .command-wheel { grid-template-columns: repeat(2, 1fr); }
+      .freq-display { font-size: 15px; }
+      .msg { max-width: 90%; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Background waveform -->
+  <div class="waveform-bg"><canvas id="waveCanvas"></canvas></div>
+
+  <div class="app">
+    <!-- Header -->
+    <div class="header">
+      <div class="hud-label">CHAT V1</div>
+      <div class="freq-display">FREQ 142.750 <span class="hz">MHz</span></div>
+      <div class="signal-strength">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+      </div>
+    </div>
+
+    <!-- Chat messages -->
+    <div class="chat-area" id="chatArea">
+      <div class="system-msg">--- RADIO LINK ESTABLISHED ---</div>
+    </div>
+
+    <button class="scroll-bottom" id="scrollBottom" onclick="scrollToBottom()">&#9660;</button>
+
+    <!-- Quick command wheel -->
+    <div class="command-wheel">
+      <button class="cmd-btn" onclick="sendCommand('Copy that')">Copy that</button>
+      <button class="cmd-btn" onclick="sendCommand('On my way')">On my way</button>
+      <button class="cmd-btn" onclick="sendCommand('Hold position')">Hold position</button>
+      <button class="cmd-btn" onclick="sendCommand('Enemy spotted')">Enemy spotted</button>
+      <button class="cmd-btn" onclick="sendCommand('Request backup')">Request backup</button>
+      <button class="cmd-btn" onclick="sendCommand('All clear')">All clear</button>
+      <button class="cmd-btn" onclick="sendCommand('Need ammo')">Need ammo</button>
+      <button class="cmd-btn" onclick="sendCommand('Moving to extraction')">Moving to extraction</button>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <input
+        type="text"
+        class="input-field"
+        id="msgInput"
+        placeholder="Enter message..."
+        maxlength="280"
+        autocomplete="off"
+      />
+      <button class="send-btn" onclick="sendMessage()">SEND</button>
+    </div>
+  </div>
+
+  <script>
+    // ===== PLAYER COLORS =====
+    const PLAYERS = {
+      'Command':    { color: '#ff9f1c', self: false },
+      'Raven-1':    { color: '#2ec4b6', self: true  },
+      'Viper-2':    { color: '#e63946', self: false },
+      'Ghost-3':    { color: '#9b59b6', self: false },
+      'Hawk-4':     { color: '#3498db', self: false },
+      'Wolf-5':     { color: '#27ae60', self: false },
+      'Shadow-6':   { color: '#ff6b9d', self: false },
+      'Reaper-7':   { color: '#ff6b35', self: false },
+    };
+
+    const chatArea = document.getElementById('chatArea');
+    const msgInput = document.getElementById('msgInput');
+    const scrollBottomBtn = document.getElementById('scrollBottom');
+
+    let isNearBottom = true;
+
+    // ===== ADD MESSAGE =====
+    function addMessage(sender, text, isSystem = false) {
+      if (isSystem) {
+        const div = document.createElement('div');
+        div.className = 'system-msg';
+        div.textContent = text;
+        chatArea.appendChild(div);
+        scrollIfNeeded();
+        return;
+      }
+
+      const player = PLAYERS[sender] || { color: '#6e7786', self: false };
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `msg ${player.self ? 'own' : 'other'} crackling`;
+
+      msgDiv.innerHTML = `
+        <div class="msg-header">
+          <span class="msg-name" style="color:${player.color}">${sender}</span>
+          <span class="msg-time">${timeStr}</span>
+        </div>
+        <div class="msg-body">
+          <div class="crackle-overlay"></div>
+          ${escapeHtml(text)}
+        </div>
+      `;
+
+      chatArea.appendChild(msgDiv);
+
+      // Remove crackle after animation
+      setTimeout(() => msgDiv.classList.remove('crackling'), 600);
+
+      scrollIfNeeded();
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ===== SEND =====
+    function sendMessage() {
+      const text = msgInput.value.trim();
+      if (!text) return;
+      addMessage('Raven-1', text);
+      msgInput.value = '';
+      msgInput.focus();
+    }
+
+    function sendCommand(text) {
+      addMessage('Raven-1', text);
+      msgInput.focus();
+    }
+
+    msgInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // ===== SCROLL =====
+    function scrollToBottom() {
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function scrollIfNeeded() {
+      if (isNearBottom) scrollToBottom();
+    }
+
+    chatArea.addEventListener('scroll', () => {
+      const threshold = 60;
+      isNearBottom = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight < threshold;
+      scrollBottomBtn.classList.toggle('visible', !isNearBottom);
+    });
+
+    // ===== INITIAL MESSAGES =====
+    const initialMessages = [
+      { sender: 'Command',  text: 'All units, check in. Report status.' },
+      { sender: 'Raven-1',  text: 'Raven-1 here. Comms green, standing by.' },
+      { sender: 'Viper-2',  text: 'Viper-2, moving to checkpoint Alpha.' },
+      { sender: 'Ghost-3',  text: 'Ghost-3 in position. Eyes on target.' },
+      { sender: 'Hawk-4',   text: 'Hawk-4, drone feed is live. No movement detected.' },
+      { sender: 'Wolf-5',   text: 'Wolf-5, supply cache secured. Awaiting orders.' },
+      { sender: 'Shadow-6', text: 'Shadow-6, perimeter sweep complete. All clear.' },
+      { sender: 'Reaper-7', text: 'Reaper-7, heavy ordnance ready. Standing by.' },
+      { sender: 'Command',  text: 'Solid copy all. Maintain radio silence unless urgent.' },
+    ];
+
+    let msgIndex = 0;
+    function playInitialMessages() {
+      if (msgIndex >= initialMessages.length) return;
+      const m = initialMessages[msgIndex++];
+      addMessage(m.sender, m.text);
+      setTimeout(playInitialMessages, 600 + Math.random() * 600);
+    }
+
+    // Start after brief delay
+    setTimeout(playInitialMessages, 400);
+
+    // ===== BACKGROUND WAVEFORM =====
+    const canvas = document.getElementById('waveCanvas');
+    const ctx = canvas.getContext('2d');
+    let waveOffset = 0;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawWaveform() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = 'rgba(46, 196, 182, 0.25)';
+      ctx.lineWidth = 1.5;
+
+      const lines = 6;
+      for (let l = 0; l < lines; l++) {
+        ctx.beginPath();
+        const yBase = canvas.height * (0.3 + l * 0.08);
+        const freq = 0.008 + l * 0.003;
+        const amp = 20 + l * 8;
+
+        for (let x = 0; x < canvas.width; x += 2) {
+          const y = yBase + Math.sin(x * freq + waveOffset + l * 1.5) * amp
+                        + Math.sin(x * freq * 2.3 + waveOffset * 1.3) * (amp * 0.4);
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      waveOffset += 0.04;
+      requestAnimationFrame(drawWaveform);
+    }
+    drawWaveform();
+
+    // ===== RANDOM STATIC BURSTS =====
+    setInterval(() => {
+      if (Math.random() > 0.85) {
+        const msgs = chatArea.querySelectorAll('.msg');
+        if (msgs.length > 0) {
+          const randomMsg = msgs[Math.floor(Math.random() * msgs.length)];
+          randomMsg.classList.add('crackling');
+          setTimeout(() => randomMsg.classList.remove('crackling'), 400);
+        }
+      }
+    }, 3000);
+  </script>
+</body>
+</html>

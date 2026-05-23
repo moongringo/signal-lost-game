@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHAT V9 — Encrypted Secure Feed</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #050505;
+    color: #00ff41;
+    font-family: 'Share Tech Mono', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* Matrix falling code canvas */
+  #matrix-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  /* Main container */
+  .container {
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #1a1a1a;
+  }
+
+  /* HUD Header */
+  .hud-header {
+    background: rgba(5, 5, 5, 0.95);
+    border-bottom: 1px solid #00ff41;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+  }
+
+  .hud-title {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #00ff41;
+    text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+  }
+
+  .hud-title::before {
+    content: '▸ ';
+    animation: blink 1s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* Status indicator */
+  .status-bar {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    font-size: 0.75rem;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid;
+    transition: all 0.3s ease;
+  }
+
+  .status-encrypted {
+    color: #ffaa00;
+    border-color: #ffaa00;
+    background: rgba(255, 170, 0, 0.1);
+  }
+
+  .status-secure {
+    color: #00ff41;
+    border-color: #00ff41;
+    background: rgba(0, 255, 65, 0.1);
+  }
+
+  .status-compromised {
+    color: #ff0033;
+    border-color: #ff0033;
+    background: rgba(255, 0, 51, 0.15);
+    animation: pulse-red 0.8s infinite;
+  }
+
+  @keyframes pulse-red {
+    0%, 100% { opacity: 1; box-shadow: 0 0 5px rgba(255, 0, 51, 0.3); }
+    50% { opacity: 0.7; box-shadow: 0 0 15px rgba(255, 0, 51, 0.6); }
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .status-encrypted .status-dot { background: #ffaa00; }
+  .status-secure .status-dot { background: #00ff41; box-shadow: 0 0 5px #00ff41; }
+  .status-compromised .status-dot { background: #ff0033; box-shadow: 0 0 8px #ff0033; }
+
+  /* Red warning strip */
+  .warning-strip {
+    background: repeating-linear-gradient(
+      45deg,
+      #ff0033,
+      #ff0033 10px,
+      #990011 10px,
+      #990011 20px
+    );
+    color: #fff;
+    text-align: center;
+    padding: 6px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    animation: warning-flash 0.5s infinite;
+    display: none;
+  }
+
+  .warning-strip.active {
+    display: block;
+  }
+
+  @keyframes warning-flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+  }
+
+  /* Chat area */
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .chat-area::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .chat-area::-webkit-scrollbar-track {
+    background: #0a0a0a;
+  }
+
+  .chat-area::-webkit-scrollbar-thumb {
+    background: #00ff41;
+    border-radius: 3px;
+  }
+
+  /* Message styles */
+  .message {
+    background: rgba(0, 20, 0, 0.7);
+    border: 1px solid #1a3a1a;
+    padding: 14px 16px;
+    position: relative;
+    animation: message-in 0.4s ease forwards;
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  @keyframes message-in {
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.75rem;
+    color: #008822;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .message-sender {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .lock-icon {
+    width: 14px;
+    height: 14px;
+    position: relative;
+  }
+
+  .lock-icon::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 2px;
+    width: 10px;
+    height: 8px;
+    border: 1.5px solid currentColor;
+    border-radius: 1px;
+  }
+
+  .lock-icon::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 4px;
+    width: 6px;
+    height: 6px;
+    border: 1.5px solid currentColor;
+    border-bottom: none;
+    border-radius: 50% 50% 0 0;
+  }
+
+  .lock-icon.locked { color: #00ff41; }
+  .lock-icon.unlocked { color: #ff0033; }
+  .lock-icon.decrypting { color: #ffaa00; }
+
+  .message-time {
+    font-size: 0.7rem;
+    color: #005511;
+  }
+
+  .message-body {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #00ff41;
+    min-height: 1.5em;
+  }
+
+  .decrypting-text {
+    color: #ffaa00;
+    font-style: italic;
+    letter-spacing: 2px;
+  }
+
+  .decrypting-text::after {
+    content: '';
+    animation: decrypt-dots 1s infinite;
+  }
+
+  @keyframes decrypt-dots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+    100% { content: ''; }
+  }
+
+  /* Command wheel */
+  .command-wheel {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 10;
+  }
+
+  .command-center {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(0, 255, 65, 0.1);
+    border: 2px solid #00ff41;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: #00ff41;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+  }
+
+  .command-center:hover {
+    background: rgba(0, 255, 65, 0.2);
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+  }
+
+  .command-center.active {
+    transform: rotate(45deg);
+    background: rgba(255, 0, 51, 0.2);
+    border-color: #ff0033;
+    color: #ff0033;
+  }
+
+  .command-options {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+  }
+
+  .command-options.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .command-btn {
+    background: rgba(5, 5, 5, 0.95);
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    padding: 10px 18px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .command-btn:hover {
+    background: rgba(0, 255, 65, 0.15);
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+  }
+
+  .command-btn.danger {
+    border-color: #ff0033;
+    color: #ff0033;
+  }
+
+  .command-btn.danger:hover {
+    background: rgba(255, 0, 51, 0.15);
+    box-shadow: 0 0 10px rgba(255, 0, 51, 0.2);
+  }
+
+  /* Scanline overlay */
+  .scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.08) 2px,
+      rgba(0, 0, 0, 0.08) 4px
+    );
+  }
+
+  /* Corner brackets */
+  .corner {
+    position: fixed;
+    width: 20px;
+    height: 20px;
+    border-color: #00ff41;
+    border-style: solid;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .corner-tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+  .corner-tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+  .corner-bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
+  .corner-br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+
+  /* Compromised message style */
+  .message.compromised {
+    border-color: #ff0033;
+    background: rgba(50, 0, 10, 0.5);
+  }
+
+  .message.compromised .message-body {
+    color: #ff6688;
+  }
+
+  .message.compromised .message-header {
+    color: #ff0033;
+  }
+
+  /* Input area */
+  .input-area {
+    background: rgba(5, 5, 5, 0.95);
+    border-top: 1px solid #1a3a1a;
+    padding: 12px 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .input-field {
+    flex: 1;
+    background: rgba(0, 20, 0, 0.5);
+    border: 1px solid #1a3a1a;
+    color: #00ff41;
+    padding: 10px 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.3s ease;
+  }
+
+  .input-field:focus {
+    border-color: #00ff41;
+  }
+
+  .input-field::placeholder {
+    color: #004411;
+  }
+
+  .send-btn {
+    background: rgba(0, 255, 65, 0.1);
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    padding: 10px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all 0.2s ease;
+  }
+
+  .send-btn:hover {
+    background: rgba(0, 255, 65, 0.2);
+  }
+
+  /* Encryption key display */
+  .key-display {
+    position: fixed;
+    top: 60px;
+    left: 20px;
+    z-index: 5;
+    font-size: 0.65rem;
+    color: #004411;
+    letter-spacing: 1px;
+    pointer-events: none;
+  }
+
+  .key-display span {
+    color: #008822;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="matrix-canvas"></canvas>
+<div class="scanlines"></div>
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<div class="key-display">
+  ENC_KEY: <span id="enc-key">AES-256-GCM // ROTATING...</span>
+</div>
+
+<div class="container">
+  <div class="hud-header">
+    <div class="hud-title">CHAT V9</div>
+    <div class="status-bar">
+      <div class="status-item status-encrypted" id="status-enc">
+        <span class="status-dot"></span> ENCRYPTED
+      </div>
+      <div class="status-item status-secure" id="status-sec">
+        <span class="status-dot"></span> SECURE
+      </div>
+      <div class="status-item status-compromised" id="status-comp" style="display:none;">
+        <span class="status-dot"></span> COMPROMISED
+      </div>
+    </div>
+  </div>
+
+  <div class="warning-strip" id="warning-strip">
+    ⚠ WARNING: CHANNEL COMPROMISED — TRACE DETECTED ⚠
+  </div>
+
+  <div class="chat-area" id="chat-area">
+    <!-- Messages will be injected here -->
+  </div>
+
+  <div class="input-area">
+    <input type="text" class="input-field" id="msg-input" placeholder="[ENTER SECURE MESSAGE]" maxlength="200">
+    <button class="send-btn" onclick="sendMessage()">TRANSMIT</button>
+  </div>
+</div>
+
+<!-- Command Wheel -->
+<div class="command-wheel">
+  <div class="command-options" id="cmd-options">
+    <button class="command-btn" onclick="purgeChat()">🗑 Purge Logs</button>
+    <button class="command-btn" onclick="rotateKey()">🔑 Rotate Key</button>
+    <button class="command-btn" onclick="toggleCompromised()">⚠ Toggle Alert</button>
+    <button class="command-btn danger" onclick="selfDestruct()">💀 Self Destruct</button>
+  </div>
+  <div class="command-center" id="cmd-center" onclick="toggleWheel()">+</div>
+</div>
+
+<script>
+  /* ===================== MATRIX RAIN ===================== */
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@#$%&*';
+  const fontSize = 14;
+  let columns = Math.floor(canvas.width / fontSize);
+  let drops = Array(columns).fill(1);
+
+  function drawMatrix() {
+    ctx.fillStyle = 'rgba(5, 5, 5, 0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#00ff41';
+    ctx.font = fontSize + 'px monospace';
+
+    for (let i = 0; i < drops.length; i++) {
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i]++;
+    }
+  }
+  setInterval(drawMatrix, 50);
+
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    columns = Math.floor(canvas.width / fontSize);
+    drops = Array(columns).fill(1);
+  });
+
+  /* ===================== CHAT SYSTEM ===================== */
+  const chatArea = document.getElementById('chat-area');
+  let compromised = false;
+
+  const messages = [
+    { sender: 'OPERATIVE_7', time: '00:04:12', text: 'Package secured. Moving to extraction point alpha.', secure: true },
+    { sender: 'HANDLER', time: '00:04:33', text: 'Acknowledged. Avoid sector 4 — drone sweep in progress.', secure: true },
+    { sender: 'OPERATIVE_7', time: '00:05:01', text: 'Copy that. Switching to route bravo. ETA 14 minutes.', secure: true },
+    { sender: 'SIGNAL_INTEL', time: '00:05:45', text: 'Intercepted burst transmission on freq 447.92MHz. Possible tail.', secure: true },
+    { sender: 'HANDLER', time: '00:06:02', text: 'All units — assume compromised. Switch to fallback protocol OMEGA.', secure: true },
+    { sender: 'OPERATIVE_7', time: '00:06:18', text: 'Understood. Activating dead drop sequence. Out.', secure: true },
+    { sender: 'SIGNAL_INTEL', time: '00:06:55', text: 'Triangulation complete. Hostile signal origin: 34.0522° N, 118.2437° W', secure: true },
+    { sender: 'HANDLER', time: '00:07:30', text: 'Deploying counter-surveillance grid. Maintain radio silence.', secure: true },
+    { sender: 'OPERATIVE_3', time: '00:08:12', text: 'Contact lost with operative in sector 9. Last beacon 3 min ago.', secure: false },
+    { sender: 'HANDLER', time: '00:08:45', text: 'This channel is burned. All assets — disperse and go dark.', secure: false }
+  ];
+
+  function createMessageElement(msg, index) {
+    const div = document.createElement('div');
+    div.className = 'message' + (msg.secure ? '' : ' compromised');
+    div.style.animationDelay = (index * 0.15) + 's';
+
+    const lockClass = msg.secure ? 'locked' : 'unlocked';
+
+    div.innerHTML = `
+      <div class="message-header">
+        <div class="message-sender">
+          <span class="lock-icon ${lockClass}"></span>
+          <span>${msg.sender}</span>
+        </div>
+        <div class="message-time">${msg.time}</div>
+      </div>
+      <div class="message-body">
+        <span class="decrypting-text">DECRYPTING</span>
+      </div>
+    `;
+    return div;
+  }
+
+  function revealMessage(element, text) {
+    const body = element.querySelector('.message-body');
+    body.innerHTML = '';
+    let i = 0;
+    const speed = 25;
+
+    function typeChar() {
+      if (i < text.length) {
+        body.textContent += text.charAt(i);
+        i++;
+        setTimeout(typeChar, speed);
+      }
+    }
+    typeChar();
+  }
+
+  function loadMessages() {
+    messages.forEach((msg, index) => {
+      const el = createMessageElement(msg, index);
+      chatArea.appendChild(el);
+
+      setTimeout(() => {
+        revealMessage(el, msg.text);
+      }, 500 + (index * 300));
+    });
+  }
+
+  /* ===================== COMMAND WHEEL ===================== */
+  function toggleWheel() {
+    const center = document.getElementById('cmd-center');
+    const options = document.getElementById('cmd-options');
+    center.classList.toggle('active');
+    options.classList.toggle('active');
+  }
+
+  function purgeChat() {
+    chatArea.innerHTML = '';
+    setTimeout(() => {
+      const notice = document.createElement('div');
+      notice.className = 'message';
+      notice.style.borderColor = '#ffaa00';
+      notice.innerHTML = `
+        <div class="message-header">
+          <div class="message-sender"><span class="lock-icon decrypting"></span>SYSTEM</div>
+          <div class="message-time">${new Date().toLocaleTimeString('en-US', {hour12:false})}</div>
+        </div>
+        <div class="message-body" style="color:#ffaa00;">All logs purged. Memory sectors zeroed.</div>
+      `;
+      chatArea.appendChild(notice);
+    }, 300);
+    toggleWheel();
+  }
+
+  function rotateKey() {
+    const keyEl = document.getElementById('enc-key');
+    keyEl.textContent = 'ROTATING...';
+    setTimeout(() => {
+      const newKey = 'AES-256-GCM // ' + Math.random().toString(36).substring(2, 10).toUpperCase();
+      keyEl.textContent = newKey;
+    }, 800);
+    toggleWheel();
+  }
+
+  function toggleCompromised() {
+    compromised = !compromised;
+    const warning = document.getElementById('warning-strip');
+    const statusEnc = document.getElementById('status-enc');
+    const statusSec = document.getElementById('status-sec');
+    const statusComp = document.getElementById('status-comp');
+
+    if (compromised) {
+      warning.classList.add('active');
+      statusEnc.style.display = 'none';
+      statusSec.style.display = 'none';
+      statusComp.style.display = 'flex';
+    } else {
+      warning.classList.remove('active');
+      statusEnc.style.display = 'flex';
+      statusSec.style.display = 'flex';
+      statusComp.style.display = 'none';
+    }
+    toggleWheel();
+  }
+
+  function selfDestruct() {
+    document.body.innerHTML = `
+      <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#000;color:#ff0033;font-family:'Share Tech Mono',monospace;text-align:center;">
+        <div>
+          <div style="font-size:3rem;margin-bottom:20px;">☠</div>
+          <div style="font-size:1.5rem;letter-spacing:4px;">SESSION TERMINATED</div>
+          <div style="font-size:0.8rem;margin-top:15px;color:#550011;">ALL TRACES PURGED. GOODBYE.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function sendMessage() {
+    const input = document.getElementById('msg-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const msg = {
+      sender: 'YOU',
+      time: new Date().toLocaleTimeString('en-US', {hour12:false}),
+      text: text,
+      secure: !compromised
+    };
+
+    const el = createMessageElement(msg, 0);
+    chatArea.appendChild(el);
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    setTimeout(() => {
+      revealMessage(el, msg.text);
+    }, 500);
+
+    input.value = '';
+  }
+
+  document.getElementById('msg-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  /* ===================== INIT ===================== */
+  loadMessages();
+</script>
+
+</body>
+</html>

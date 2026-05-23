@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MARKER V8 — LOOT</title>
+  <style>
+    :root {
+      --bg: #0a0f14;
+      --grid: #141e26;
+      --grid-line: #1a2630;
+      --hud: #00f0ff;
+      --hud-dim: rgba(0, 240, 255, 0.15);
+      --text: #c8d4e0;
+      --text-dim: #5a6a7a;
+      --rarity-common: #ffffff;
+      --rarity-uncommon: #4ade80;
+      --rarity-rare: #60a5fa;
+      --rarity-epic: #c084fc;
+      --rarity-legendary: #fbbf24;
+      --health: #ef4444;
+      --armor: #3b82f6;
+      --ammo: #f59e0b;
+      --grenade: #84cc16;
+      --special: #ec4899;
+      --key: #a78bfa;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    .map-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+        var(--grid);
+      background-size: 60px 60px;
+    }
+
+    /* Map terrain features */
+    .terrain {
+      position: absolute;
+      border-radius: 4px;
+      opacity: 0.3;
+    }
+    .terrain-building {
+      background: #1e2a35;
+      border: 1px solid #2a3a48;
+    }
+    .terrain-road {
+      background: #1a2530;
+    }
+    .terrain-water {
+      background: #0d1f2d;
+      border: 1px solid #1a3a4a;
+    }
+
+    /* HUD Header */
+    .hud-header {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 28px;
+      background: rgba(10, 15, 20, 0.85);
+      border: 1px solid var(--hud);
+      border-radius: 4px;
+      backdrop-filter: blur(8px);
+    }
+    .hud-header::before,
+    .hud-header::after {
+      content: '';
+      width: 24px;
+      height: 2px;
+      background: var(--hud);
+    }
+    .hud-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--hud);
+      text-shadow: 0 0 10px var(--hud-dim);
+    }
+
+    /* Compass */
+    .compass {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      z-index: 100;
+      width: 80px;
+      height: 80px;
+      border: 1px solid var(--hud-dim);
+      border-radius: 50%;
+      background: rgba(10, 15, 20, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .compass-inner {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 1px solid var(--hud);
+      position: relative;
+    }
+    .compass-needle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 2px;
+      height: 24px;
+      background: var(--hud);
+      transform-origin: bottom center;
+      transform: translate(-50%, -100%) rotate(45deg);
+      box-shadow: 0 0 6px var(--hud);
+    }
+    .compass-needle::after {
+      content: 'N';
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--hud);
+    }
+    .compass-mark {
+      position: absolute;
+      font-size: 8px;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+    .compass-mark.e { top: 50%; right: 4px; transform: translateY(-50%); }
+    .compass-mark.s { bottom: 4px; left: 50%; transform: translateX(-50%); }
+    .compass-mark.w { top: 50%; left: 4px; transform: translateY(-50%); }
+
+    /* Player position indicator */
+    .player-pos {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 90;
+      width: 16px;
+      height: 16px;
+      background: var(--hud);
+      border-radius: 50%;
+      box-shadow: 0 0 20px var(--hud), 0 0 40px var(--hud-dim);
+    }
+    .player-pos::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--hud-dim);
+      border-radius: 50%;
+      animation: pulse 2s ease-out infinite;
+    }
+    @keyframes pulse {
+      0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+    }
+
+    /* Loot Markers */
+    .loot-marker {
+      position: absolute;
+      z-index: 80;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .loot-marker:hover {
+      transform: scale(1.15);
+      z-index: 85;
+    }
+
+    .marker-icon-wrap {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: rgba(10, 15, 20, 0.9);
+      border: 2px solid;
+    }
+
+    /* Rarity glows */
+    .marker-icon-wrap.rarity-common {
+      border-color: var(--rarity-common);
+      box-shadow: 0 0 4px rgba(255,255,255,0.2);
+    }
+    .marker-icon-wrap.rarity-uncommon {
+      border-color: var(--rarity-uncommon);
+      box-shadow: 0 0 8px rgba(74,222,128,0.3);
+    }
+    .marker-icon-wrap.rarity-rare {
+      border-color: var(--rarity-rare);
+      box-shadow: 0 0 12px rgba(96,165,250,0.4);
+    }
+    .marker-icon-wrap.rarity-epic {
+      border-color: var(--rarity-epic);
+      box-shadow: 0 0 16px rgba(192,132,252,0.5), 0 0 32px rgba(192,132,252,0.15);
+    }
+    .marker-icon-wrap.rarity-legendary {
+      border-color: var(--rarity-legendary);
+      box-shadow: 0 0 20px rgba(251,191,36,0.6), 0 0 40px rgba(251,191,36,0.2);
+      animation: legendaryPulse 2s ease-in-out infinite;
+    }
+    @keyframes legendaryPulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(251,191,36,0.6), 0 0 40px rgba(251,191,36,0.2); }
+      50% { box-shadow: 0 0 28px rgba(251,191,36,0.8), 0 0 56px rgba(251,191,36,0.3); }
+    }
+
+    /* Type-specific non-weapon borders */
+    .marker-icon-wrap.type-ammo { border-color: var(--ammo); }
+    .marker-icon-wrap.type-health { border-color: var(--health); }
+    .marker-icon-wrap.type-armor { border-color: var(--armor); }
+    .marker-icon-wrap.type-grenade { border-color: var(--grenade); }
+    .marker-icon-wrap.type-special { border-color: var(--special); box-shadow: 0 0 16px rgba(236,72,153,0.4); }
+    .marker-icon-wrap.type-key { border-color: var(--key); }
+
+    .marker-svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    /* Floating label */
+    .marker-label {
+      margin-top: 6px;
+      padding: 3px 10px;
+      background: rgba(10, 15, 20, 0.9);
+      border: 1px solid var(--text-dim);
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--text);
+      white-space: nowrap;
+      text-transform: uppercase;
+    }
+
+    /* Distance badge */
+    .marker-distance {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      min-width: 28px;
+      padding: 2px 6px;
+      background: rgba(10, 15, 20, 0.95);
+      border: 1px solid var(--text-dim);
+      border-radius: 10px;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--hud);
+      text-align: center;
+    }
+
+    /* Amount/value badge for ammo/health/armor */
+    .marker-amount {
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 1px 7px;
+      background: rgba(10, 15, 20, 0.95);
+      border-radius: 8px;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    /* Legend */
+    .legend {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      z-index: 100;
+      padding: 14px 18px;
+      background: rgba(10, 15, 20, 0.9);
+      border: 1px solid var(--text-dim);
+      border-radius: 4px;
+      backdrop-filter: blur(8px);
+    }
+    .legend-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--hud);
+      margin-bottom: 10px;
+    }
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 11px;
+      color: var(--text);
+    }
+    .legend-row:last-child { margin-bottom: 0; }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      border: 1px solid;
+    }
+    .legend-rarity-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--grid-line);
+    }
+    .legend-rarity-dot {
+      width: 14px;
+      height: 6px;
+      border-radius: 2px;
+    }
+    .legend-rarity-label {
+      font-size: 9px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Scan line effect */
+    .scan-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--hud), transparent);
+      opacity: 0.3;
+      animation: scan 6s linear infinite;
+      pointer-events: none;
+      z-index: 95;
+    }
+    @keyframes scan {
+      0% { top: 0; }
+      100% { top: 100%; }
+    }
+
+    /* Coordinates */
+    .coords {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 100;
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: 'Courier New', monospace;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="map-container" id="map">
+    <!-- Terrain features -->
+    <div class="terrain terrain-building" style="left:15%; top:20%; width:120px; height:90px;"></div>
+    <div class="terrain terrain-building" style="left:70%; top:60%; width:100px; height:80px;"></div>
+    <div class="terrain terrain-building" style="left:25%; top:65%; width:80px; height:110px;"></div>
+    <div class="terrain terrain-road" style="left:0; top:45%; width:100%; height:20px;"></div>
+    <div class="terrain terrain-road" style="left:40%; top:0; width:18px; height:100%;"></div>
+    <div class="terrain terrain-water" style="left:75%; top:15%; width:140px; height:100px; border-radius:50%;"></div>
+
+    <!-- HUD Header -->
+    <div class="hud-header">
+      <span class="hud-title">MARKER V8 — LOOT</span>
+    </div>
+
+    <!-- Compass -->
+    <div class="compass">
+      <div class="compass-inner">
+        <div class="compass-needle"></div>
+        <span class="compass-mark e">E</span>
+        <span class="compass-mark s">S</span>
+        <span class="compass-mark w">W</span>
+      </div>
+    </div>
+
+    <!-- Player position -->
+    <div class="player-pos"></div>
+
+    <!-- Scan line -->
+    <div class="scan-line"></div>
+
+    <!-- Loot markers generated by JS -->
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-title">LOOT TYPES</div>
+      <div class="legend-row">
+        <div class="legend-dot" style="border-color:var(--rarity-common); background:var(--rarity-common);"></div>
+        <span>Weapon</span>
+      </div>
+      <div class="legend-row">
+        <div class="legend-dot" style="border-color:var(--ammo); background:var(--ammo);"></div>
+        <span>Ammo</span>
+      </div>
+      <div class="legend-row">
+        <div class="legend-dot" style="border-color:var(--health); background:var(--health);"></div>
+        <span>Health</span>
+      </div>
+      <div class="legend-row">
+        <div class="legend-dot" style="border-color:var(--armor); background:var(--armor);"></div>
+        <span>Armor</span>
+      </div>
+      <div class="legend-row">
+        <div class="legend-dot" style="border-color:var(--grenade); background:var(--grenade);"></div>
+        <span>Grenade</span>
+      </div>
+      <div class="legend-row">
+        <div class="legend-dot" style="border-color:var(--special); background:var(--special);"></div>
+        <span>Special</span>
+      </div>
+      <div class="legend-row">
+        <div class="legend-dot" style="border-color:var(--key); background:var(--key);"></div>
+        <span>Key Item</span>
+      </div>
+      <div class="legend-rarity-row">
+        <div class="legend-rarity-dot" style="background:var(--rarity-common);"></div>
+        <div class="legend-rarity-dot" style="background:var(--rarity-uncommon);"></div>
+        <div class="legend-rarity-dot" style="background:var(--rarity-rare);"></div>
+        <div class="legend-rarity-dot" style="background:var(--rarity-epic);"></div>
+        <div class="legend-rarity-dot" style="background:var(--rarity-legendary);"></div>
+        <span class="legend-rarity-label">C / U / R / E / L</span>
+      </div>
+    </div>
+
+    <!-- Coordinates -->
+    <div class="coords" id="coords">X: 5120  Y: 5120</div>
+  </div>
+
+  <script>
+    const lootItems = [
+      // WEAPONS with rarity
+      { type: 'weapon', rarity: 'common',    label: 'M4 Carbine',     x: 28, y: 22, dist: 45 },
+      { type: 'weapon', rarity: 'uncommon',  label: 'AK-47',          x: 62, y: 35, dist: 78 },
+      { type: 'weapon', rarity: 'rare',      label: 'SCAR-H',         x: 18, y: 58, dist: 120 },
+      { type: 'weapon', rarity: 'epic',      label: 'AWP Sniper',     x: 82, y: 28, dist: 210 },
+      { type: 'weapon', rarity: 'legendary', label: 'Railgun MK-IV',  x: 45, y: 72, dist: 156 },
+      // AMMO
+      { type: 'ammo',   rarity: 'common',    label: '5.56mm Ammo',    x: 32, y: 26, dist: 52, amount: '60' },
+      { type: 'ammo',   rarity: 'common',    label: '7.62mm Ammo',    x: 58, y: 38, dist: 85, amount: '30' },
+      { type: 'ammo',   rarity: 'common',    label: '.50 Cal Ammo',   x: 78, y: 72, dist: 195, amount: '10' },
+      // HEALTH
+      { type: 'health', rarity: 'common',    label: 'Medkit',         x: 22, y: 48, dist: 95, amount: '+100' },
+      { type: 'health', rarity: 'uncommon',  label: 'Bandage',        x: 68, y: 52, dist: 110, amount: '+25' },
+      { type: 'health', rarity: 'rare',      label: 'Adrenaline',     x: 38, y: 18, dist: 65, amount: '+50' },
+      // ARMOR
+      { type: 'armor',  rarity: 'uncommon',  label: 'Light Vest',     x: 52, y: 62, dist: 130, amount: '+50' },
+      { type: 'armor',  rarity: 'rare',      label: 'Heavy Plate',    x: 12, y: 32, dist: 140, amount: '+100' },
+      { type: 'armor',  rarity: 'epic',      label: 'Titan Shield',   x: 85, y: 55, dist: 230, amount: '+150' },
+      // GRENADE
+      { type: 'grenade',rarity: 'common',    label: 'Frag Grenade',   x: 42, y: 42, dist: 75 },
+      { type: 'grenade',rarity: 'uncommon',  label: 'Smoke Grenade',  x: 55, y: 25, dist: 88 },
+      { type: 'grenade',rarity: 'rare',      label: 'Flashbang',      x: 72, y: 68, dist: 175 },
+      // SPECIAL
+      { type: 'special',rarity: 'legendary', label: 'Airdrop Crate',  x: 48, y: 48, dist: 42 },
+      { type: 'special',rarity: 'epic',      label: 'Intel Drive',    x: 35, y: 75, dist: 145 },
+      // KEY ITEM
+      { type: 'key',    rarity: 'rare',      label: 'Bunker Keycard', x: 65, y: 15, dist: 105 },
+      { type: 'key',    rarity: 'epic',      label: 'Vault Code',     x: 15, y: 78, dist: 185 },
+    ];
+
+    const svgIcons = {
+      weapon: `<svg class="marker-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9h8l2-3h3v3h-2l-2 3H9v7H6V9z"/><path d="M3 9h3"/></svg>`,
+      ammo: `<svg class="marker-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="18" rx="4"/><line x1="12" y1="7" x2="12" y2="7.01"/><line x1="12" y1="11" x2="12" y2="11.01"/></svg>`,
+      health: `<svg class="marker-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>`,
+      armor: `<svg class="marker-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4z"/></svg>`,
+      grenade: `<svg class="marker-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="7"/><path d="M12 7V4m0-2v2m-2 0h4"/><path d="M9 10l-1-1"/></svg>`,
+      special: `<svg class="marker-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+      key: `<svg class="marker-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.85 12.15L19 4l2 2-8.15 8.15"/><path d="M17 6l2 2"/></svg>`,
+    };
+
+    const rarityColors = {
+      common: 'var(--rarity-common)',
+      uncommon: 'var(--rarity-uncommon)',
+      rare: 'var(--rarity-rare)',
+      epic: 'var(--rarity-epic)',
+      legendary: 'var(--rarity-legendary)',
+    };
+
+    const typeColors = {
+      weapon: 'var(--rarity-common)',
+      ammo: 'var(--ammo)',
+      health: 'var(--health)',
+      armor: 'var(--armor)',
+      grenade: 'var(--grenade)',
+      special: 'var(--special)',
+      key: 'var(--key)',
+    };
+
+    function createMarker(item) {
+      const el = document.createElement('div');
+      el.className = 'loot-marker';
+      el.style.left = item.x + '%';
+      el.style.top = item.y + '%';
+
+      const isWeapon = item.type === 'weapon';
+      const borderClass = isWeapon ? `rarity-${item.rarity}` : `type-${item.type}`;
+
+      const iconColor = isWeapon ? rarityColors[item.rarity] : typeColors[item.type];
+
+      let amountHtml = '';
+      if (item.amount) {
+        amountHtml = `<div class="marker-amount">${item.amount}</div>`;
+      }
+
+      el.innerHTML = `
+        <div class="marker-icon-wrap ${borderClass}">
+          <div style="color:${iconColor}">${svgIcons[item.type]}</div>
+          <div class="marker-distance">${item.dist}m</div>
+          ${amountHtml}
+        </div>
+        <div class="marker-label">${item.label}</div>
+      `;
+
+      return el;
+    }
+
+    const map = document.getElementById('map');
+    lootItems.forEach(item => {
+      map.appendChild(createMarker(item));
+    });
+
+    // Update coordinates on mouse move
+    document.addEventListener('mousemove', (e) => {
+      const x = Math.round((e.clientX / window.innerWidth) * 10240);
+      const y = Math.round((e.clientY / window.innerHeight) * 10240);
+      document.getElementById('coords').textContent = `X: ${x.toString().padStart(5, '0')}  Y: ${y.toString().padStart(5, '0')}`;
+    });
+  </script>
+</body>
+</html>

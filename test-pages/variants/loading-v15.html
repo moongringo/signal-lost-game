@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loading V15 — Breach Prep</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Black+Ops+One&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #020502;
+    color: #4aff4a;
+    font-family: 'Share Tech Mono', monospace;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* Night vision green tint overlay */
+  .nv-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 80, 20, 0.25);
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  /* Vignette */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 10, 0, 0.85) 100%);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Scanlines */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 30, 0, 0.15) 2px,
+      rgba(0, 30, 0, 0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 15;
+  }
+
+  /* HUD */
+  .hud {
+    position: fixed;
+    top: 18px;
+    left: 24px;
+    z-index: 20;
+    font-family: 'Black Ops One', cursive;
+    font-size: 0.9rem;
+    letter-spacing: 4px;
+    color: #3a8f3a;
+    opacity: 0.8;
+  }
+
+  /* Main canvas */
+  canvas {
+    position: relative;
+    z-index: 10;
+    image-rendering: pixelated;
+  }
+
+  /* Countdown overlay */
+  .countdown {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    font-family: 'Black Ops One', cursive;
+    font-size: 2.4rem;
+    letter-spacing: 8px;
+    color: #4aff4a;
+    text-shadow: 0 0 12px rgba(74, 255, 74, 0.5);
+    opacity: 0.9;
+  }
+
+  .countdown.warning {
+    color: #ff4a4a;
+    text-shadow: 0 0 16px rgba(255, 74, 74, 0.6);
+    animation: pulse 0.5s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse {
+    from { opacity: 0.7; transform: translateX(-50%) scale(1); }
+    to { opacity: 1; transform: translateX(-50%) scale(1.05); }
+  }
+
+  /* BREACH text */
+  .breach-text {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 30;
+    font-family: 'Black Ops One', cursive;
+    font-size: 5rem;
+    letter-spacing: 12px;
+    color: #fff;
+    text-shadow:
+      0 0 20px #ff4a4a,
+      0 0 40px #ff4a4a,
+      0 0 80px #ff8800;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s;
+  }
+  .breach-text.show {
+    opacity: 1;
+    animation: breachShake 0.15s ease-in-out 3;
+  }
+
+  @keyframes breachShake {
+    0%, 100% { transform: translate(-50%, -50%) translate(0, 0); }
+    25% { transform: translate(-50%, -50%) translate(-8px, 6px); }
+    50% { transform: translate(-50%, -50%) translate(6px, -4px); }
+    75% { transform: translate(-50%, -50%) translate(-4px, -6px); }
+  }
+
+  /* Camera shake on breach */
+  .shake {
+    animation: camShake 0.2s ease-in-out 4;
+  }
+  @keyframes camShake {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-12px, 8px); }
+    40% { transform: translate(10px, -6px); }
+    60% { transform: translate(-8px, -10px); }
+    80% { transform: translate(6px, 4px); }
+  }
+
+  /* Corner brackets */
+  .corner {
+    position: fixed;
+    width: 28px;
+    height: 28px;
+    border-color: rgba(74, 255, 74, 0.35);
+    border-style: solid;
+    z-index: 20;
+    pointer-events: none;
+  }
+  .corner.tl { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
+  .corner.tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
+  .corner.bl { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; }
+  .corner.br { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
+
+  /* Status text */
+  .status {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    font-size: 0.75rem;
+    letter-spacing: 3px;
+    color: rgba(74, 255, 74, 0.6);
+  }
+
+  /* Flash overlay */
+  .flash {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 25;
+    transition: opacity 0.05s;
+  }
+  .flash.active {
+    opacity: 0.9;
+    transition: opacity 0.8s ease-out;
+  }
+</style>
+</head>
+<body>
+
+<div class="nv-overlay"></div>
+<div class="scanlines"></div>
+<div class="flash" id="flash"></div>
+
+<div class="hud">LOADING V15</div>
+
+<div class="corner tl"></div>
+<div class="corner tr"></div>
+<div class="corner bl"></div>
+<div class="corner br"></div>
+
+<div class="countdown" id="countdown">10:00</div>
+
+<canvas id="canvas" width="800" height="500"></canvas>
+
+<div class="breach-text" id="breachText">BREACH!</div>
+
+<div class="status" id="status">SETTING CHARGE — STAND BY</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const countdownEl = document.getElementById('countdown');
+  const breachText = document.getElementById('breachText');
+  const flash = document.getElementById('flash');
+  const statusEl = document.getElementById('status');
+
+  const DURATION = 10000; // 10 seconds
+  const startTime = performance.now();
+
+  // Door geometry
+  const doorX = 340;
+  const doorY = 120;
+  const doorW = 120;
+  const doorH = 260;
+
+  // Charge position (center of door)
+  const chargeX = doorX + doorW / 2;
+  const chargeY = doorY + doorH * 0.45;
+
+  // Particle system
+  let particles = [];
+  let sparks = [];
+  let debris = [];
+  let breached = false;
+  let breachTime = 0;
+
+  function createParticle(x, y, type) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = type === 'spark' ? 2 + Math.random() * 6 : 0.5 + Math.random() * 2;
+    return {
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - (type === 'debris' ? 3 : 0),
+      life: 1,
+      decay: 0.01 + Math.random() * 0.02,
+      size: type === 'spark' ? 1 + Math.random() * 2 : 2 + Math.random() * 4,
+      type,
+      color: type === 'spark' ? '#ffaa00' : (type === 'debris' ? '#555' : '#4aff4a')
+    };
+  }
+
+  function updateParticles() {
+    [...particles, ...sparks, ...debris].forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.05; // gravity
+      p.life -= p.decay;
+    });
+    particles = particles.filter(p => p.life > 0);
+    sparks = sparks.filter(p => p.life > 0);
+    debris = debris.filter(p => p.life > 0);
+  }
+
+  function drawParticles() {
+    [...particles, ...sparks, ...debris].forEach(p => {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  // Soldier silhouettes
+  function drawSoldier(x, y, facingRight, crouch) {
+    ctx.fillStyle = 'rgba(10, 25, 10, 0.85)';
+    ctx.strokeStyle = 'rgba(74, 255, 74, 0.2)';
+    ctx.lineWidth = 1;
+
+    const h = crouch ? 55 : 75;
+    const w = 22;
+
+    // Head
+    ctx.beginPath();
+    ctx.arc(x, y - h + 10, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Body
+    ctx.beginPath();
+    ctx.moveTo(x, y - h + 18);
+    ctx.lineTo(x - w/2, y - h + 45);
+    ctx.lineTo(x + w/2, y - h + 45);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Arms (holding weapon)
+    ctx.beginPath();
+    ctx.moveTo(x - w/2 + 3, y - h + 30);
+    ctx.lineTo(facingRight ? x + 25 : x - 25, y - h + 35);
+    ctx.lineTo(facingRight ? x + 30 : x - 30, y - h + 38);
+    ctx.stroke();
+
+    // Weapon
+    ctx.strokeStyle = 'rgba(74, 255, 74, 0.15)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(facingRight ? x + 15 : x - 15, y - h + 36);
+    ctx.lineTo(facingRight ? x + 45 : x - 45, y - h + 36);
+    ctx.stroke();
+
+    // Legs
+    ctx.strokeStyle = 'rgba(74, 255, 74, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x - 6, y - h + 45);
+    ctx.lineTo(x - 10, y);
+    ctx.moveTo(x + 6, y - h + 45);
+    ctx.lineTo(x + 10, y);
+    ctx.stroke();
+
+    // NVG glow on helmet
+    ctx.fillStyle = 'rgba(74, 255, 74, 0.3)';
+    ctx.beginPath();
+    ctx.arc(facingRight ? x + 4 : x - 4, y - h + 8, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Door
+  function drawDoor(glowIntensity) {
+    // Door frame
+    ctx.strokeStyle = 'rgba(74, 255, 74, 0.3)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(doorX - 4, doorY - 4, doorW + 8, doorH + 8);
+
+    // Door surface
+    ctx.fillStyle = 'rgba(15, 30, 15, 0.9)';
+    ctx.fillRect(doorX, doorY, doorW, doorH);
+
+    // Door panels
+    ctx.strokeStyle = 'rgba(74, 255, 74, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(doorX + 10, doorY + 10, doorW - 20, doorH * 0.4);
+    ctx.strokeRect(doorX + 10, doorY + doorH * 0.5, doorW - 20, doorH * 0.4);
+
+    // Handle
+    ctx.fillStyle = 'rgba(74, 255, 74, 0.25)';
+    ctx.fillRect(doorX + doorW - 15, doorY + doorH * 0.45, 4, 20);
+
+    // Breaching charge
+    drawCharge(glowIntensity);
+  }
+
+  function drawCharge(glowIntensity) {
+    const w = 50;
+    const h = 30;
+    const x = chargeX - w/2;
+    const y = chargeY - h/2;
+
+    // Charge body
+    ctx.fillStyle = 'rgba(40, 20, 10, 0.9)';
+    ctx.fillRect(x, y, w, h);
+
+    // Charge border glow
+    ctx.strokeStyle = `rgba(255, ${100 + glowIntensity * 155}, 0, ${0.3 + glowIntensity * 0.7})`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+
+    // Wires (glow brighter as time decreases)
+    const wireGlow = 0.2 + glowIntensity * 0.8;
+    ctx.strokeStyle = `rgba(255, ${80 + glowIntensity * 175}, 0, ${wireGlow})`;
+    ctx.lineWidth = 1.5 + glowIntensity * 1.5;
+    ctx.shadowColor = `rgba(255, ${100 + glowIntensity * 155}, 0, ${wireGlow})`;
+    ctx.shadowBlur = 4 + glowIntensity * 12;
+
+    // Wire loops
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(x + 8 + i * 12, y);
+      ctx.lineTo(x + 8 + i * 12, y + h);
+      ctx.stroke();
+    }
+
+    // Detonator blinking light
+    const blink = Math.sin(performance.now() * 0.01) > 0 ? 1 : 0.3;
+    ctx.fillStyle = `rgba(255, ${50 + glowIntensity * 205}, 0, ${(0.5 + glowIntensity * 0.5) * blink})`;
+    ctx.beginPath();
+    ctx.arc(x + w/2, y + h/2, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+  }
+
+  function drawBreachedDoor() {
+    const elapsed = performance.now() - breachTime;
+    const blowProgress = Math.min(elapsed / 300, 1);
+
+    // Door pieces flying outward
+    const pieces = [
+      { x: doorX, y: doorY, w: doorW * 0.5, h: doorH * 0.5, vx: -3, vy: -4, rot: -0.5 },
+      { x: doorX + doorW * 0.5, y: doorY, w: doorW * 0.5, h: doorH * 0.5, vx: 3, vy: -3, rot: 0.5 },
+      { x: doorX, y: doorY + doorH * 0.5, w: doorW * 0.5, h: doorH * 0.5, vx: -2, vy: 2, rot: -0.3 },
+      { x: doorX + doorW * 0.5, y: doorY + doorH * 0.5, w: doorW * 0.5, h: doorH * 0.5, vx: 4, vy: 3, rot: 0.7 },
+    ];
+
+    ctx.save();
+    pieces.forEach(p => {
+      ctx.translate(p.x + p.w/2 + p.vx * blowProgress * 20, p.y + p.h/2 + p.vy * blowProgress * 20);
+      ctx.rotate(p.rot * blowProgress);
+      ctx.fillStyle = 'rgba(30, 40, 30, 0.8)';
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.strokeStyle = 'rgba(74, 255, 74, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    });
+    ctx.restore();
+
+    // Smoke from breach
+    if (elapsed < 2000) {
+      for (let i = 0; i < 3; i++) {
+        particles.push(createParticle(
+          chargeX + (Math.random() - 0.5) * 60,
+          chargeY + (Math.random() - 0.5) * 40,
+          'smoke'
+        ));
+      }
+    }
+  }
+
+  function drawRoom() {
+    // Floor
+    ctx.fillStyle = 'rgba(8, 18, 8, 0.95)';
+    ctx.fillRect(0, 380, 800, 120);
+
+    // Floor perspective lines
+    ctx.strokeStyle = 'rgba(74, 255, 74, 0.08)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 800; i += 60) {
+      ctx.beginPath();
+      ctx.moveTo(i, 380);
+      ctx.lineTo(i + (i - 400) * 0.3, 500);
+      ctx.stroke();
+    }
+
+    // Walls
+    ctx.fillStyle = 'rgba(10, 22, 10, 0.9)';
+    ctx.fillRect(0, 0, doorX - 20, 380);
+    ctx.fillRect(doorX + doorW + 20, 0, 800 - doorX - doorW - 20, 380);
+
+    // Wall panels
+    ctx.strokeStyle = 'rgba(74, 255, 74, 0.06)';
+    ctx.lineWidth = 1;
+    for (let y = 40; y < 380; y += 80) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(doorX - 20, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(doorX + doorW + 20, y);
+      ctx.lineTo(800, y);
+      ctx.stroke();
+    }
+
+    // Ceiling
+    ctx.fillStyle = 'rgba(6, 14, 6, 0.95)';
+    ctx.fillRect(0, 0, 800, 40);
+
+    // Ceiling light (dim green)
+    ctx.fillStyle = 'rgba(74, 255, 74, 0.05)';
+    ctx.beginPath();
+    ctx.ellipse(400, 30, 100, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawCrosshair() {
+    const cx = 400;
+    const cy = 250;
+    ctx.strokeStyle = 'rgba(74, 255, 74, 0.15)';
+    ctx.lineWidth = 1;
+
+    // Center dot
+    ctx.fillStyle = 'rgba(74, 255, 74, 0.3)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crosshair lines
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, cy);
+    ctx.lineTo(cx - 6, cy);
+    ctx.moveTo(cx + 6, cy);
+    ctx.lineTo(cx + 20, cy);
+    ctx.moveTo(cx, cy - 20);
+    ctx.lineTo(cx, cy - 6);
+    ctx.moveTo(cx, cy + 6);
+    ctx.lineTo(cx, cy + 20);
+    ctx.stroke();
+
+    // Brackets
+    const s = 30;
+    ctx.beginPath();
+    ctx.moveTo(cx - s, cy - s + 8);
+    ctx.lineTo(cx - s, cy - s);
+    ctx.lineTo(cx - s + 8, cy - s);
+    ctx.moveTo(cx + s - 8, cy - s);
+    ctx.lineTo(cx + s, cy - s);
+    ctx.lineTo(cx + s, cy - s + 8);
+    ctx.moveTo(cx + s, cy + s - 8);
+    ctx.lineTo(cx + s, cy + s);
+    ctx.lineTo(cx + s - 8, cy + s);
+    ctx.moveTo(cx - s + 8, cy + s);
+    ctx.lineTo(cx - s, cy + s);
+    ctx.lineTo(cx - s, cy + s - 8);
+    ctx.stroke();
+  }
+
+  function formatTime(remaining) {
+    const totalSeconds = Math.ceil(remaining / 1000);
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  function frame(now) {
+    const elapsed = now - startTime;
+    let progress = Math.min(elapsed / DURATION, 1);
+    const remaining = Math.max(DURATION - elapsed, 0);
+
+    // Clear
+    ctx.fillStyle = '#020502';
+    ctx.fillRect(0, 0, 800, 500);
+
+    // Glow intensity increases as time decreases
+    const glowIntensity = 1 - (remaining / DURATION);
+
+    // Draw room
+    drawRoom();
+
+    // Draw soldiers (silhouettes)
+    drawSoldier(200, 380, true, true);   // Left, crouching
+    drawSoldier(140, 380, true, false);  // Left, standing
+    drawSoldier(600, 380, false, true);  // Right, crouching
+    drawSoldier(660, 380, false, false); // Right, standing
+
+    // Draw door or breached door
+    if (!breached) {
+      drawDoor(glowIntensity);
+    } else {
+      drawBreachedDoor();
+    }
+
+    // Crosshair overlay
+    drawCrosshair();
+
+    // Update countdown
+    if (!breached) {
+      countdownEl.textContent = formatTime(remaining);
+      if (remaining <= 3000) {
+        countdownEl.classList.add('warning');
+        statusEl.textContent = 'CHARGE ARMED — STAND CLEAR';
+      }
+    } else {
+      countdownEl.textContent = '0:00';
+      countdownEl.classList.remove('warning');
+      countdownEl.style.color = '#ff4a4a';
+    }
+
+    // Particles
+    if (!breached && Math.random() < glowIntensity * 0.3) {
+      particles.push(createParticle(
+        chargeX + (Math.random() - 0.5) * 40,
+        chargeY + (Math.random() - 0.5) * 20,
+        'dust'
+      ));
+    }
+
+    updateParticles();
+    drawParticles();
+
+    // Breach!
+    if (remaining <= 0 && !breached) {
+      breached = true;
+      breachTime = now;
+      breachText.classList.add('show');
+      document.body.classList.add('shake');
+      flash.classList.add('active');
+      statusEl.textContent = 'BREACH CONFIRMED — ENTRY IN PROGRESS';
+      statusEl.style.color = '#ff4a4a';
+
+      // Explosion sparks
+      for (let i = 0; i < 80; i++) {
+        sparks.push(createParticle(chargeX, chargeY, 'spark'));
+      }
+      // Debris
+      for (let i = 0; i < 30; i++) {
+        debris.push(createParticle(chargeX, chargeY, 'debris'));
+      }
+
+      setTimeout(() => {
+        flash.classList.remove('active');
+        document.body.classList.remove('shake');
+      }, 800);
+    }
+
+    if (breached) {
+      // Continue sparks briefly
+      if (now - breachTime < 500 && Math.random() < 0.5) {
+        sparks.push(createParticle(chargeX, chargeY, 'spark'));
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

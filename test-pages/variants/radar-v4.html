@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Holographic Radar V4</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #hud {
+      position: absolute;
+      top: 24px;
+      left: 32px;
+      color: #00f0ff;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px #00f0ff, 0 0 20px #00aaff;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #hud::after {
+      content: '';
+      display: block;
+      width: 120px;
+      height: 2px;
+      background: linear-gradient(90deg, #00f0ff, transparent);
+      margin-top: 6px;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">RADAR V4</div>
+  <div id="canvas-container"></div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000510);
+    scene.fog = new THREE.FogExp2(0x000510, 0.015);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(40, 30, 40);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ReinhardToneMapping;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    // Post-processing bloom
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      1.5, 0.4, 0.85
+    );
+    bloomPass.threshold = 0.1;
+    bloomPass.strength = 1.2;
+    bloomPass.radius = 0.5;
+    composer.addPass(bloomPass);
+
+    // Controls - auto orbit
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.8;
+    controls.enableZoom = true;
+    controls.enablePan = false;
+    controls.minDistance = 20;
+    controls.maxDistance = 80;
+    controls.maxPolarAngle = Math.PI / 2.2;
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0x001133, 0.5);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0x00aaff, 0.8);
+    dirLight.position.set(20, 50, 20);
+    scene.add(dirLight);
+
+    const pointLight = new THREE.PointLight(0x00f0ff, 1, 100);
+    pointLight.position.set(0, 20, 0);
+    scene.add(pointLight);
+
+    // Wireframe ground grid
+    const gridHelper = new THREE.GridHelper(100, 50, 0x00f0ff, 0x004488);
+    gridHelper.material.opacity = 0.3;
+    gridHelper.material.transparent = true;
+    scene.add(gridHelper);
+
+    // Ground plane (subtle reflective base)
+    const groundGeo = new THREE.PlaneGeometry(100, 100);
+    const groundMat = new THREE.MeshBasicMaterial({
+      color: 0x000820,
+      transparent: true,
+      opacity: 0.4,
+      side: THREE.DoubleSide
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.1;
+    scene.add(ground);
+
+    // Concentric radar rings on ground
+    const ringsGroup = new THREE.Group();
+    for (let i = 1; i <= 5; i++) {
+      const ringGeo = new THREE.RingGeometry(i * 8 - 0.1, i * 8 + 0.1, 64);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x00aaff,
+        transparent: true,
+        opacity: 0.15,
+        side: THREE.DoubleSide
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.05;
+      ringsGroup.add(ring);
+    }
+    scene.add(ringsGroup);
+
+    // Buildings as wireframe boxes
+    const buildingsGroup = new THREE.Group();
+    const buildingColors = [0x00f0ff, 0x00aaff, 0x0088ff, 0x00ccff];
+    const buildingPositions = [
+      { x: -15, z: -10, w: 4, h: 12, d: 4 },
+      { x: 12, z: -15, w: 5, h: 18, d: 5 },
+      { x: -8, z: 12, w: 3, h: 8, d: 6 },
+      { x: 18, z: 8, w: 6, h: 15, d: 4 },
+      { x: 5, z: -5, w: 4, h: 10, d: 4 },
+      { x: -20, z: 5, w: 5, h: 14, d: 5 },
+      { x: 10, z: 18, w: 3, h: 9, d: 3 },
+      { x: -5, z: -18, w: 6, h: 11, d: 4 },
+    ];
+
+    buildingPositions.forEach((b, i) => {
+      const geo = new THREE.BoxGeometry(b.w, b.h, b.d);
+      const edges = new THREE.EdgesGeometry(geo);
+      const mat = new THREE.LineBasicMaterial({
+        color: buildingColors[i % buildingColors.length],
+        transparent: true,
+        opacity: 0.6
+      });
+      const wireframe = new THREE.LineSegments(edges, mat);
+      wireframe.position.set(b.x, b.h / 2, b.z);
+      buildingsGroup.add(wireframe);
+
+      // Subtle filled box inside wireframe
+      const fillMat = new THREE.MeshBasicMaterial({
+        color: buildingColors[i % buildingColors.length],
+        transparent: true,
+        opacity: 0.05,
+        wireframe: false
+      });
+      const fillMesh = new THREE.Mesh(geo, fillMat);
+      fillMesh.position.set(b.x, b.h / 2, b.z);
+      buildingsGroup.add(fillMesh);
+    });
+    scene.add(buildingsGroup);
+
+    // Player dots as pulsing spheres
+    const players = [];
+    const playerData = [
+      { x: -10, z: 5, color: 0x00ff88 },
+      { x: 15, z: -8, color: 0xff3366 },
+      { x: 8, z: 12, color: 0xffaa00 },
+      { x: -18, z: -12, color: 0x00f0ff },
+      { x: 3, z: -15, color: 0xff66cc },
+    ];
+
+    playerData.forEach(p => {
+      const group = new THREE.Group();
+      group.position.set(p.x, 2, p.z);
+
+      // Pulsing sphere
+      const sphereGeo = new THREE.SphereGeometry(0.6, 16, 16);
+      const sphereMat = new THREE.MeshBasicMaterial({
+        color: p.color,
+        transparent: true,
+        opacity: 0.9
+      });
+      const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+      group.add(sphere);
+
+      // Glow sphere
+      const glowGeo = new THREE.SphereGeometry(1.2, 16, 16);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: p.color,
+        transparent: true,
+        opacity: 0.15
+      });
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      group.add(glow);
+
+      // Vertical line connecting to ground
+      const lineGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, -2, 0),
+        new THREE.Vector3(0, 0, 0)
+      ]);
+      const lineMat = new THREE.LineBasicMaterial({
+        color: p.color,
+        transparent: true,
+        opacity: 0.4
+      });
+      const line = new THREE.Line(lineGeo, lineMat);
+      group.add(line);
+
+      scene.add(group);
+      players.push({ group, sphere, glow, line, color: p.color, phase: Math.random() * Math.PI * 2 });
+    });
+
+    // Holographic scan rings emanating upward from players
+    const scanRings = [];
+    playerData.forEach((p, i) => {
+      for (let j = 0; j < 3; j++) {
+        const ringGeo = new THREE.RingGeometry(0.5, 0.7, 32);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: p.color,
+          transparent: true,
+          opacity: 0,
+          side: THREE.DoubleSide
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.position.set(p.x, 2, p.z);
+        ring.rotation.x = -Math.PI / 2;
+        scene.add(ring);
+        scanRings.push({
+          mesh: ring,
+          playerIndex: i,
+          delay: j * 0.8,
+          speed: 3,
+          maxHeight: 12,
+          baseOpacity: 0.5
+        });
+      }
+    });
+
+    // Floating particles
+    const particlesGeo = new THREE.BufferGeometry();
+    const particleCount = 200;
+    const positions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 80;
+      positions[i * 3 + 1] = Math.random() * 30;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+    }
+    particlesGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const particlesMat = new THREE.PointsMaterial({
+      color: 0x00aaff,
+      size: 0.15,
+      transparent: true,
+      opacity: 0.6
+    });
+    const particles = new THREE.Points(particlesGeo, particlesMat);
+    scene.add(particles);
+
+    // Sweeping radar line
+    const sweepGeo = new THREE.RingGeometry(0.1, 35, 64, 1, 0, Math.PI / 6);
+    const sweepMat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      transparent: true,
+      opacity: 0.12,
+      side: THREE.DoubleSide
+    });
+    const sweep = new THREE.Mesh(sweepGeo, sweepMat);
+    sweep.rotation.x = -Math.PI / 2;
+    sweep.position.y = 0.1;
+    scene.add(sweep);
+
+    // Animation
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const time = clock.getElapsedTime();
+      const delta = clock.getDelta();
+
+      controls.update();
+
+      // Animate player spheres (pulse)
+      players.forEach(p => {
+        const pulse = Math.sin(time * 3 + p.phase) * 0.3 + 0.7;
+        p.sphere.scale.setScalar(pulse);
+        p.glow.scale.setScalar(1 + Math.sin(time * 2 + p.phase) * 0.2);
+        p.glow.material.opacity = 0.1 + Math.sin(time * 3 + p.phase) * 0.05;
+      });
+
+      // Animate scan rings
+      scanRings.forEach(sr => {
+        const t = (time + sr.delay) % (sr.maxHeight / sr.speed);
+        const progress = t / (sr.maxHeight / sr.speed);
+        sr.mesh.position.y = 2 + t * sr.speed;
+        sr.mesh.scale.setScalar(1 + progress * 4);
+        sr.mesh.material.opacity = sr.baseOpacity * (1 - progress);
+      });
+
+      // Animate sweep
+      sweep.rotation.z = -time * 0.8;
+      sweep.material.opacity = 0.08 + Math.sin(time * 4) * 0.04;
+
+      // Animate particles
+      const posArray = particles.geometry.attributes.position.array;
+      for (let i = 0; i < particleCount; i++) {
+        posArray[i * 3 + 1] += Math.sin(time + i) * 0.01;
+        if (posArray[i * 3 + 1] > 30) posArray[i * 3 + 1] = 0;
+      }
+      particles.geometry.attributes.position.needsUpdate = true;
+
+      // Animate rings opacity
+      ringsGroup.children.forEach((ring, i) => {
+        ring.material.opacity = 0.1 + Math.sin(time * 0.5 + i) * 0.05;
+      });
+
+      composer.render();
+    }
+
+    animate();
+
+    // Resize handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+      bloomPass.resolution.set(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

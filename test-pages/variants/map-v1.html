@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MAP V1 — Tactical Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a0a;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #e0e0e0;
+  }
+  #mapCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    background: #1a1a1a;
+    cursor: crosshair;
+  }
+  /* HUD Overlay */
+  #hud {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+  /* Top bar */
+  .hud-top {
+    position: absolute;
+    top: 12px; left: 12px; right: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .hud-title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #00ff88;
+    text-shadow: 0 0 8px rgba(0,255,136,0.4);
+    background: rgba(0,0,0,0.5);
+    padding: 6px 14px;
+    border: 1px solid rgba(0,255,136,0.3);
+    border-radius: 4px;
+  }
+  .hud-coords {
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    color: #ccc;
+    background: rgba(0,0,0,0.5);
+    padding: 6px 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    min-width: 180px;
+    text-align: center;
+  }
+  /* Layer toggle */
+  .hud-layers {
+    position: absolute;
+    top: 56px; left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: auto;
+  }
+  .layer-btn {
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #aaa;
+    padding: 8px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .layer-btn:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+  .layer-btn.active {
+    color: #00ff88;
+    border-color: rgba(0,255,136,0.5);
+    background: rgba(0,255,136,0.08);
+    box-shadow: 0 0 10px rgba(0,255,136,0.15);
+  }
+  /* Zoom controls */
+  .hud-zoom {
+    position: absolute;
+    bottom: 80px; right: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: auto;
+  }
+  .zoom-btn {
+    width: 44px; height: 44px;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .zoom-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.4); }
+  .zoom-btn:active { transform: scale(0.95); }
+  /* Tool buttons */
+  .hud-tools {
+    position: absolute;
+    bottom: 12px; left: 12px;
+    display: flex;
+    gap: 8px;
+    pointer-events: auto;
+  }
+  .tool-btn {
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #aaa;
+    padding: 10px 18px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .tool-btn:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+  .tool-btn.active {
+    color: #00aaff;
+    border-color: rgba(0,170,255,0.5);
+    background: rgba(0,170,255,0.08);
+    box-shadow: 0 0 10px rgba(0,170,255,0.15);
+  }
+  /* Info panel */
+  .hud-info {
+    position: absolute;
+    bottom: 12px; right: 12px;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    color: #888;
+    background: rgba(0,0,0,0.5);
+    padding: 8px 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    text-align: right;
+    line-height: 1.6;
+  }
+  .hud-info span { color: #ccc; }
+  /* Measure result */
+  #measureResult {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 18px;
+    font-family: 'Courier New', monospace;
+    color: #ffaa00;
+    background: rgba(0,0,0,0.7);
+    padding: 12px 24px;
+    border: 1px solid rgba(255,170,0,0.4);
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 20;
+    text-shadow: 0 0 8px rgba(255,170,0,0.3);
+  }
+  #measureResult.show { opacity: 1; }
+  /* Waypoint popup */
+  #waypointPopup {
+    position: absolute;
+    background: rgba(0,0,0,0.8);
+    border: 1px solid rgba(0,255,136,0.4);
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    color: #00ff88;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 20;
+    white-space: nowrap;
+  }
+  #waypointPopup.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<canvas id="mapCanvas"></canvas>
+
+<div id="hud">
+  <div class="hud-top">
+    <div class="hud-title">MAP V1</div>
+    <div class="hud-coords" id="coordsDisplay">GRID: 00 00 00 00</div>
+  </div>
+
+  <div class="hud-layers">
+    <button class="layer-btn active" data-layer="satellite" onclick="setLayer('satellite')">Satellite</button>
+    <button class="layer-btn" data-layer="topo" onclick="setLayer('topo')">Topo</button>
+    <button class="layer-btn" data-layer="night" onclick="setLayer('night')">Night</button>
+  </div>
+
+  <div class="hud-zoom">
+    <button class="zoom-btn" onclick="zoomIn()">+</button>
+    <button class="zoom-btn" onclick="zoomOut()">−</button>
+  </div>
+
+  <div class="hud-tools">
+    <button class="tool-btn" id="btnPan" onclick="setTool('pan')">Pan</button>
+    <button class="tool-btn" id="btnWaypoint" onclick="setTool('waypoint')">Waypoint</button>
+    <button class="tool-btn" id="btnMeasure" onclick="setTool('measure')">Measure</button>
+  </div>
+
+  <div class="hud-info">
+    <div>ZOOM: <span id="zoomLevel">1.0x</span></div>
+    <div>WAYPOINTS: <span id="wpCount">0</span></div>
+  </div>
+</div>
+
+<div id="measureResult"></div>
+<div id="waypointPopup"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  const canvas = document.getElementById('mapCanvas');
+  const ctx = canvas.getContext('2d');
+  const coordsDisplay = document.getElementById('coordsDisplay');
+  const zoomLevelDisplay = document.getElementById('zoomLevel');
+  const wpCountDisplay = document.getElementById('wpCount');
+  const measureResult = document.getElementById('measureResult');
+  const waypointPopup = document.getElementById('waypointPopup');
+
+  // Map state
+  let width, height;
+  let offsetX = 0, offsetY = 0;
+  let zoom = 1.0;
+  const minZoom = 0.3, maxZoom = 5.0;
+  let currentLayer = 'satellite';
+  let currentTool = 'pan';
+  let isDragging = false;
+  let dragStartX, dragStartY;
+  let waypoints = [];
+  let measurePoints = [];
+
+  // Procedural map data
+  const MAP_SEED = 12345;
+  function seededRandom(seed) {
+    let s = seed;
+    return function() {
+      s = (s * 16807 + 0) % 2147483647;
+      return (s - 1) / 2147483646;
+    };
+  }
+  const rng = seededRandom(MAP_SEED);
+  const roads = [];
+  const buildings = [];
+  const pois = [];
+
+  // Generate procedural features
+  function generateFeatures() {
+    const r = seededRandom(MAP_SEED + 1);
+    // Roads
+    for (let i = 0; i < 40; i++) {
+      const x1 = (r() - 0.5) * 4000;
+      const y1 = (r() - 0.5) * 4000;
+      const angle = r() * Math.PI * 2;
+      const len = 200 + r() * 800;
+      const segments = 3 + Math.floor(r() * 5);
+      const points = [{x: x1, y: y1}];
+      let cx = x1, cy = y1, ca = angle;
+      for (let j = 0; j < segments; j++) {
+        ca += (r() - 0.5) * 1.2;
+        const slen = len / segments;
+        cx += Math.cos(ca) * slen;
+        cy += Math.sin(ca) * slen;
+        points.push({x: cx, y: cy});
+      }
+      roads.push({points, width: 2 + r() * 4});
+    }
+    // Buildings
+    for (let i = 0; i < 120; i++) {
+      const x = (r() - 0.5) * 3600;
+      const y = (r() - 0.5) * 3600;
+      const w = 15 + r() * 50;
+      const h = 15 + r() * 50;
+      const rot = r() * Math.PI * 2;
+      buildings.push({x, y, w, h, rot});
+    }
+    // POIs
+    const poiTypes = ['RADAR', 'BASE', 'TOWER', 'DEPOT', 'RELAY', 'OUTPOST'];
+    for (let i = 0; i < 25; i++) {
+      const x = (r() - 0.5) * 3200;
+      const y = (r() - 0.5) * 3200;
+      pois.push({x, y, type: poiTypes[Math.floor(r() * poiTypes.length)], id: i + 1});
+    }
+  }
+  generateFeatures();
+
+  // Resize
+  function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width * window.devicePixelRatio;
+    canvas.height = height * window.devicePixelRatio;
+    ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Elevation noise (simple value noise)
+  function noise(x, y) {
+    const scale = 0.002;
+    const n = Math.sin(x * scale * 3.7 + y * scale * 2.3) * 0.5 +
+              Math.sin(x * scale * 5.1 - y * scale * 4.7) * 0.3 +
+              Math.sin(x * scale * 11.3 + y * scale * 7.9) * 0.2;
+    return (n + 1) * 0.5;
+  }
+
+  function getElevationColor(elev, layer) {
+    if (layer === 'satellite') {
+      // Green-brown terrain
+      if (elev < 0.25) return `rgb(${30+elev*80}, ${60+elev*120}, ${30+elev*60})`; // low
+      if (elev < 0.5)  return `rgb(${80+elev*100}, ${120+elev*80}, ${50+elev*40})`;
+      if (elev < 0.75) return `rgb(${140+elev*60}, ${140+elev*40}, ${60+elev*30})`;
+      return `rgb(${200+elev*40}, ${200+elev*30}, ${180+elev*40})`; // high
+    } else if (layer === 'topo') {
+      if (elev < 0.2) return '#1a3a5c';
+      if (elev < 0.35) return '#2a5a3c';
+      if (elev < 0.5) return '#4a7a3c';
+      if (elev < 0.65) return '#8a9a4c';
+      if (elev < 0.8) return '#b8a060';
+      return '#e0d0c0';
+    } else {
+      // Night
+      const v = Math.floor(elev * 40 + 10);
+      return `rgb(${v}, ${v+5}, ${v+15})`;
+    }
+  }
+
+  function getGridColor(layer) {
+    if (layer === 'satellite') return 'rgba(255,255,255,0.12)';
+    if (layer === 'topo') return 'rgba(0,0,0,0.15)';
+    return 'rgba(0,255,136,0.08)';
+  }
+
+  // World <-> Screen
+  function worldToScreen(wx, wy) {
+    return {
+      x: (wx - offsetX) * zoom + width / 2,
+      y: (wy - offsetY) * zoom + height / 2
+    };
+  }
+  function screenToWorld(sx, sy) {
+    return {
+      x: (sx - width / 2) / zoom + offsetX,
+      y: (sy - height / 2) / zoom + offsetY
+    };
+  }
+
+  // Military grid string
+  function toMGRS(x, y) {
+    const gx = Math.floor((x + 2000) / 10);
+    const gy = Math.floor((y + 2000) / 10);
+    const sx = Math.floor(((x + 2000) % 10) * 10);
+    const sy = Math.floor(((y + 2000) % 10) * 10);
+    return `${String(gx).padStart(2,'0')} ${String(gy).padStart(2,'0')} ${String(sx).padStart(2,'0')} ${String(sy).padStart(2,'0')}`;
+  }
+
+  // Drawing
+  function draw() {
+    ctx.fillStyle = currentLayer === 'night' ? '#0a0a12' : '#1a1a1a';
+    ctx.fillRect(0, 0, width, height);
+
+    const tileSize = 40 * zoom;
+    const startWX = offsetX - (width / 2) / zoom;
+    const endWX = offsetX + (width / 2) / zoom;
+    const startWY = offsetY - (height / 2) / zoom;
+    const endWY = offsetY + (height / 2) / zoom;
+
+    // Terrain tiles
+    const step = Math.max(20 / zoom, 4);
+    for (let wx = startWX; wx < endWX; wx += step) {
+      for (let wy = startWY; wy < endWY; wy += step) {
+        const elev = noise(wx, wy);
+        const color = getElevationColor(elev, currentLayer);
+        const p1 = worldToScreen(wx, wy);
+        const p2 = worldToScreen(wx + step, wy + step);
+        ctx.fillStyle = color;
+        ctx.fillRect(p1.x, p1.y, p2.x - p1.x + 1, p2.y - p1.y + 1);
+      }
+    }
+
+    // Grid overlay
+    const gridSpacing = 100;
+    ctx.strokeStyle = getGridColor(currentLayer);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let gx = Math.floor(startWX / gridSpacing) * gridSpacing; gx < endWX; gx += gridSpacing) {
+      const p1 = worldToScreen(gx, startWY);
+      const p2 = worldToScreen(gx, endWY);
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+    }
+    for (let gy = Math.floor(startWY / gridSpacing) * gridSpacing; gy < endWY; gy += gridSpacing) {
+      const p1 = worldToScreen(startWX, gy);
+      const p2 = worldToScreen(endWX, gy);
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+    }
+    ctx.stroke();
+
+    // Grid labels
+    ctx.font = '10px "Courier New", monospace';
+    ctx.fillStyle = currentLayer === 'night' ? 'rgba(0,255,136,0.4)' : 'rgba(255,255,255,0.35)';
+    for (let gx = Math.floor(startWX / gridSpacing) * gridSpacing; gx < endWX; gx += gridSpacing) {
+      for (let gy = Math.floor(startWY / gridSpacing) * gridSpacing; gy < endWY; gy += gridSpacing) {
+        const p = worldToScreen(gx, gy);
+        if (p.x > -20 && p.x < width + 20 && p.y > -20 && p.y < height + 20) {
+          ctx.fillText(toMGRS(gx, gy), p.x + 4, p.y + 12);
+        }
+      }
+    }
+
+    // Roads
+    ctx.strokeStyle = currentLayer === 'night' ? 'rgba(200,200,180,0.3)' : 'rgba(220,210,180,0.6)';
+    ctx.lineWidth = Math.max(1, 2 * zoom * 0.5);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const road of roads) {
+      ctx.beginPath();
+      let first = true;
+      for (const pt of road.points) {
+        const p = worldToScreen(pt.x, pt.y);
+        if (first) { ctx.moveTo(p.x, p.y); first = false; }
+        else { ctx.lineTo(p.x, p.y); }
+      }
+      ctx.stroke();
+    }
+
+    // Buildings
+    ctx.fillStyle = currentLayer === 'night' ? 'rgba(100,100,120,0.4)' : 'rgba(180,170,150,0.5)';
+    ctx.strokeStyle = currentLayer === 'night' ? 'rgba(120,120,140,0.3)' : 'rgba(160,150,130,0.4)';
+    ctx.lineWidth = 1;
+    for (const b of buildings) {
+      const p = worldToScreen(b.x, b.y);
+      const sw = b.w * zoom;
+      const sh = b.h * zoom;
+      if (p.x + sw < -50 || p.x - sw > width + 50 || p.y + sh < -50 || p.y - sh > height + 50) continue;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(b.rot);
+      ctx.fillRect(-sw/2, -sh/2, sw, sh);
+      ctx.strokeRect(-sw/2, -sh/2, sw, sh);
+      ctx.restore();
+    }
+
+    // POIs
+    for (const poi of pois) {
+      const p = worldToScreen(poi.x, poi.y);
+      if (p.x < -30 || p.x > width + 30 || p.y < -30 || p.y > height + 30) continue;
+      const size = Math.max(6, 10 * Math.min(zoom, 2));
+      // Glow
+      ctx.fillStyle = currentLayer === 'night' ? 'rgba(255,80,80,0.15)' : 'rgba(255,100,50,0.1)';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      // Diamond marker
+      ctx.fillStyle = currentLayer === 'night' ? '#ff5555' : '#ff6600';
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - size);
+      ctx.lineTo(p.x + size * 0.7, p.y);
+      ctx.lineTo(p.x, p.y + size);
+      ctx.lineTo(p.x - size * 0.7, p.y);
+      ctx.closePath();
+      ctx.fill();
+      // Label
+      if (zoom > 0.8) {
+        ctx.font = `bold ${Math.max(9, 11 * Math.min(zoom, 1.5))}px "Segoe UI", sans-serif`;
+        ctx.fillStyle = currentLayer === 'night' ? 'rgba(255,200,200,0.7)' : 'rgba(60,40,20,0.8)';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${poi.type}-${poi.id}`, p.x, p.y - size - 4);
+      }
+    }
+
+    // Waypoints
+    for (let i = 0; i < waypoints.length; i++) {
+      const wp = waypoints[i];
+      const p = worldToScreen(wp.x, wp.y);
+      const size = Math.max(8, 12 * Math.min(zoom, 2));
+      // Outer ring
+      ctx.strokeStyle = '#00ff88';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+      ctx.stroke();
+      // Inner dot
+      ctx.fillStyle = '#00ff88';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      // Label
+      if (zoom > 0.6) {
+        ctx.font = `bold ${Math.max(9, 11 * Math.min(zoom, 1.5))}px "Courier New", monospace`;
+        ctx.fillStyle = '#00ff88';
+        ctx.textAlign = 'center';
+        ctx.fillText(`WP${i+1}`, p.x, p.y - size - 4);
+      }
+    }
+
+    // Measure line
+    if (measurePoints.length >= 1) {
+      const p1 = worldToScreen(measurePoints[0].x, measurePoints[0].y);
+      ctx.strokeStyle = '#ffaa00';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.arc(p1.x, p1.y, 5, 0, Math.PI * 2);
+      ctx.stroke();
+      if (measurePoints.length >= 2) {
+        const p2 = worldToScreen(measurePoints[1].x, measurePoints[1].y);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(p2.x, p2.y, 5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+  }
+
+  // Animation loop
+  function loop() {
+    draw();
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  // Tools
+  window.setTool = function(tool) {
+    currentTool = tool;
+    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+    const btn = document.getElementById('btn' + tool.charAt(0).toUpperCase() + tool.slice(1));
+    if (btn) btn.classList.add('active');
+    canvas.style.cursor = tool === 'pan' ? 'grab' : 'crosshair';
+    if (tool !== 'measure') {
+      measurePoints = [];
+      measureResult.classList.remove('show');
+    }
+  };
+  setTool('pan');
+
+  window.setLayer = function(layer) {
+    currentLayer = layer;
+    document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`[data-layer="${layer}"]`).classList.add('active');
+  };
+
+  window.zoomIn = function() {
+    zoom = Math.min(zoom * 1.3, maxZoom);
+    zoomLevelDisplay.textContent = zoom.toFixed(1) + 'x';
+  };
+  window.zoomOut = function() {
+    zoom = Math.max(zoom / 1.3, minZoom);
+    zoomLevelDisplay.textContent = zoom.toFixed(1) + 'x';
+  };
+
+  // Mouse / Touch events
+  function getPos(e) {
+    if (e.touches && e.touches.length > 0) {
+      return {x: e.touches[0].clientX, y: e.touches[0].clientY};
+    }
+    return {x: e.clientX, y: e.clientY};
+  }
+
+  canvas.addEventListener('mousedown', onDown);
+  canvas.addEventListener('touchstart', onDown, {passive: false});
+
+  function onDown(e) {
+    if (e.type === 'touchstart') e.preventDefault();
+    const pos = getPos(e);
+    if (currentTool === 'pan') {
+      isDragging = true;
+      dragStartX = pos.x;
+      dragStartY = pos.y;
+      canvas.style.cursor = 'grabbing';
+    } else if (currentTool === 'waypoint') {
+      const w = screenToWorld(pos.x, pos.y);
+      waypoints.push(w);
+      wpCountDisplay.textContent = waypoints.length;
+      // Show popup
+      waypointPopup.textContent = `WP${waypoints.length}  ${toMGRS(w.x, w.y)}  E:${w.x.toFixed(0)} N:${w.y.toFixed(0)}`;
+      waypointPopup.style.left = (pos.x + 12) + 'px';
+      waypointPopup.style.top = (pos.y - 12) + 'px';
+      waypointPopup.classList.add('show');
+      setTimeout(() => waypointPopup.classList.remove('show'), 2000);
+    } else if (currentTool === 'measure') {
+      const w = screenToWorld(pos.x, pos.y);
+      if (measurePoints.length >= 2) measurePoints = [];
+      measurePoints.push(w);
+      if (measurePoints.length === 2) {
+        const dx = measurePoints[1].x - measurePoints[0].x;
+        const dy = measurePoints[1].y - measurePoints[0].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const bearing = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+        measureResult.innerHTML = `DIST: ${dist.toFixed(1)} m<br>BRG: ${bearing.toFixed(1)}°`;
+        measureResult.classList.add('show');
+        setTimeout(() => measureResult.classList.remove('show'), 3000);
+      }
+    }
+  }
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, {passive: false});
+
+  function onMove(e) {
+    if (e.type === 'touchmove') e.preventDefault();
+    const pos = getPos(e);
+    const w = screenToWorld(pos.x, pos.y);
+    coordsDisplay.textContent = 'GRID: ' + toMGRS(w.x, w.y);
+
+    if (isDragging && currentTool === 'pan') {
+      const dx = pos.x - dragStartX;
+      const dy = pos.y - dragStartY;
+      offsetX -= dx / zoom;
+      offsetY -= dy / zoom;
+      dragStartX = pos.x;
+      dragStartY = pos.y;
+    }
+  }
+
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchend', onUp);
+
+  function onUp() {
+    isDragging = false;
+    if (currentTool === 'pan') canvas.style.cursor = 'grab';
+  }
+
+  // Wheel zoom
+  canvas.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    const newZoom = Math.max(minZoom, Math.min(maxZoom, zoom * factor));
+    // Zoom toward mouse
+    const mouseWorld = screenToWorld(e.clientX, e.clientY);
+    zoom = newZoom;
+    const newScreen = worldToScreen(mouseWorld.x, mouseWorld.y);
+    offsetX += (e.clientX - newScreen.x) / zoom;
+    offsetY += (e.clientY - newScreen.y) / zoom;
+    zoomLevelDisplay.textContent = zoom.toFixed(1) + 'x';
+  }, {passive: false});
+
+})();
+</script>
+</body>
+</html>

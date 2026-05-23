@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0e1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Signal Lost">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="Signal Lost">
+  <title>Signal Lost v2</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="styles-v2.css?v=3">
+  <script>
+    // Splash dismiss failsafe — runs before game-v2.js loads
+    // This is the PRIMARY splash handler on mobile. game-v2.js may arrive late or not at all.
+    (function() {
+      var failSafeFired = false;
+
+      function forceDismiss() {
+        if (failSafeFired) return;
+        failSafeFired = true;
+        var splash = document.getElementById('splashScreen');
+        var lobby = document.getElementById('lobbyScreen');
+        var tapBtn = document.getElementById('splashTapToEnter');
+        if (tapBtn) tapBtn.style.display = 'none';
+        if (splash && lobby && window.getComputedStyle(lobby).display === 'none') {
+          splash.classList.add('hidden');
+          lobby.classList.remove('hidden');
+          lobby.style.display = 'flex';
+          lobby.style.opacity = '1';
+          lobby.style.transform = 'none';
+          lobby.style.pointerEvents = 'auto';
+          document.body.dataset.screen = 'lobby';
+        }
+        // If game-v2.js hasn't loaded yet, initLobby() won't exist.
+        // Poll until it does, then wire up the listeners.
+        if (typeof initLobby === 'function') {
+          initLobby();
+        } else {
+          var pollInit = setInterval(function() {
+            if (typeof initLobby === 'function') {
+              clearInterval(pollInit);
+              initLobby();
+            }
+          }, 100);
+          // Stop polling after 15 seconds
+          setTimeout(function() { clearInterval(pollInit); }, 15000);
+        }
+      }
+
+      // Auto-dismiss after 5 seconds
+      var autoTimer = setTimeout(forceDismiss, 5000);
+
+      // Tap ANYWHERE to skip splash immediately
+      document.addEventListener('DOMContentLoaded', function() {
+        document.body.addEventListener('touchstart', function(e) {
+          clearTimeout(autoTimer);
+          forceDismiss();
+        }, { once: true, passive: true });
+        document.body.addEventListener('click', function(e) {
+          clearTimeout(autoTimer);
+          forceDismiss();
+        }, { once: true, passive: true });
+      });
+
+      // Poll for lobby availability every 200ms (handles game-v2.js delayed load)
+      var pollTimer = setInterval(function() {
+        var lobby = document.getElementById('lobbyScreen');
+        if (lobby && window.getComputedStyle(lobby).display !== 'none') {
+          clearInterval(pollTimer);
+          clearTimeout(autoTimer);
+          failSafeFired = true;
+        }
+      }, 200);
+      // Stop polling after 10 seconds
+      setTimeout(function() { clearInterval(pollTimer); }, 10000);
+    })();
+  </script>
+</head>
+<body data-screen="splash" data-theme="classic">
+  <canvas id="themePatternCanvas" aria-hidden="true"></canvas>
+
+  <!-- ====== SPLASH ====== -->
+  <div id="splashScreen" class="screen">
+    <div class="splash-content">
+      <div class="splash-signal-ring"></div>
+      <div class="splash-signal-ring"></div>
+      <div class="splash-signal-ring"></div>
+      <div class="splash-logo">
+        <div class="splash-icon">📡</div>
+        <h1 class="splash-title">Signal Lost</h1>
+        <p class="splash-subtitle">v2</p>
+      </div>
+      <div class="splash-version">v2.0.0</div>
+      <div id="splashPhaseIcon" class="splash-phase-icon"></div>
+      <div class="splash-loading-bar">
+        <div id="splashLoadingFill" class="splash-loading-fill"></div>
+      </div>
+      <div id="splashProgressText" class="splash-progress-text">Initializing…</div>
+      <!-- === PHASE 12.3 LOADING === -->
+      <div id="splashSquad" class="splash-squad-panel hidden"></div>
+      <canvas id="splashMapPreview" class="splash-map-preview hidden" width="200" height="120"></canvas>
+      <!-- === END PHASE 12.3 LOADING === -->
+      <div id="splashTapToEnter" class="splash-tap-prompt">⬆ TAP TO ENTER</div>
+      <div id="splashKeyHint" class="splash-key-hint">Press any key or click to continue</div>
+      <button id="trainingBtn" class="ghost-button large" style="margin-top:12px;z-index:10">Training Ground</button>
+    </div>
+  </div>
+
+  <!-- ====== TUTORIAL ====== -->
+  <div id="tutorialScreen" class="screen"></div>
+
+  <!-- ====== MAP EDITOR ====== -->
+  <div id="mapEditorScreen" class="screen">
+    <header class="setup-header">
+      <button id="backToLobbyFromEditor" class="ghost-button">← Lobby</button>
+      <h2>🗺️ Map Editor</h2>
+      <div class="editor-header-actions">
+        <input id="editorMapName" type="text" placeholder="Map name" maxlength="32" value="Untitled Map">
+        <button id="editorSaveMap" class="compact-button primary">Save</button>
+        <button id="editorTestRun" class="compact-button">Test Run</button>
+        <button id="editorImportMap" class="compact-button">Import</button>
+      </div>
+    </header>
+    <main class="editor-main">
+      <aside class="editor-sidebar">
+        <div class="editor-tabs">
+          <button class="editor-tab active" data-editor-tab="browser">Browser</button>
+          <button class="editor-tab" data-editor-tab="editor">Editor</button>
+        </div>
+        <div data-editor-view="browser" class="editor-view active">
+          <button id="editorNewMap" class="primary-button" style="width:100%;margin-bottom:12px">+ New Map</button>
+          <div id="editorBrowser" class="editor-browser"></div>
+        </div>
+        <div data-editor-view="editor" class="editor-view">
+          <div class="editor-tool-section">
+            <strong>Tool</strong>
+            <div id="editorToolPalette" class="editor-tool-palette">
+              <button class="editor-tool active" data-tool="objective" title="Place Objective">🎯 Obj</button>
+              <button class="editor-tool" data-tool="threat" title="Place Threat">⚠️ Threat</button>
+              <button class="editor-tool" data-tool="extraction" title="Set Extraction">✈️ EVA</button>
+              <button class="editor-tool" data-tool="supply" title="Place Supply">📦 Supply</button>
+              <button class="editor-tool" data-tool="terrain" title="Paint Terrain">🖌️ Terrain</button>
+            </div>
+          </div>
+          <div class="editor-tool-section" id="terrainBrushPanel">
+            <strong>Brush</strong>
+            <select id="editorTerrainBrush">
+              <option value="urban">🏢 Urban</option>
+              <option value="forest">🌲 Forest</option>
+              <option value="industrial">🏭 Industrial</option>
+              <option value="high_ground">⛰️ High Ground</option>
+              <option value="water">💧 Water</option>
+              <option value="open">🌾 Open (erase)</option>
+            </select>
+          </div>
+          <div class="editor-tool-section">
+            <strong>Weather</strong>
+            <select id="editorWeatherPreset">
+              <option value="clear">☀️ Clear</option>
+              <option value="rain">🌧️ Rain</option>
+              <option value="fog">🌫️ Fog</option>
+              <option value="storm">⛈️ Storm</option>
+            </select>
+          </div>
+          <div class="editor-tool-section">
+            <strong>Layers</strong>
+            <label class="editor-layer-toggle"><input type="checkbox" data-editor-layer="terrain" checked> Terrain</label>
+            <label class="editor-layer-toggle"><input type="checkbox" data-editor-layer="labels" checked> Labels</label>
+            <label class="editor-layer-toggle"><input type="checkbox" data-editor-layer="radii" checked> Threat Radii</label>
+          </div>
+          <div id="editorItemList" class="editor-item-list"></div>
+          <div id="editorProperties" class="editor-properties"></div>
+          <div id="editorValidation" class="editor-validation-panel"></div>
+        </div>
+      </aside>
+      <div class="editor-map-wrap">
+        <div id="editorMap" class="map-container" style="height:100%"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ====== BATTLE PASS ====== -->
+  <div id="battlePassScreen" class="screen">
+    <header class="battle-pass-header">
+      <button id="backToLobbyFromBattlePass" class="ghost-button">← Lobby</button>
+      <div class="bp-header-info">
+        <h1 id="bpSeasonTitle">🎖️ Battle Pass</h1>
+        <div class="bp-header-meta">
+          <span id="bpTierLabel">Tier 1 · 0 / 1000 XP</span>
+          <span id="bpSeasonTimer" class="bp-timer">--</span>
+        </div>
+      </div>
+      <button id="bpUpgradeBtn" class="bp-upgrade-btn">Upgrade to Premium</button>
+    </header>
+    <main class="battle-pass-main">
+      <div class="bp-tracks-header">
+        <div class="bp-track-label free">Free</div>
+        <div class="bp-track-label premium">Premium</div>
+      </div>
+      <div id="battlePassTiers" class="bp-tiers"></div>
+    </main>
+  </div>
+
+  <!-- ====== TOURNAMENT ====== -->
+  <div id="tournamentScreen" class="screen">
+    <header class="tournament-header">
+      <button id="backToLobbyFromTournament" class="ghost-button">← Lobby</button>
+      <h1>🏆 Tournaments</h1>
+    </header>
+    <main class="tournament-main">
+      <div id="tournamentLobbyWidget" class="tournament-widget"></div>
+      <div id="tournamentList" class="tournament-list"></div>
+      <div id="tournamentCreateForm" class="tournament-create"></div>
+      <div id="tournamentBracket" class="tournament-bracket"></div>
+    </main>
+  </div>
+
+  <!-- ====== SHOP ====== -->
+  <div id="shopScreen" class="screen">
+    <header class="shop-header">
+      <button id="backToLobbyFromShop" class="ghost-button">← Lobby</button>
+      <h1>🛒 Cosmetic Shop</h1>
+      <div class="shop-header-currency">
+        <span class="shop-header-tokens">🪙 <span id="shopTokens">0</span></span>
+        <span class="shop-header-credits">💎 <span id="shopCredits">0</span></span>
+      </div>
+    </header>
+    <main class="shop-main">
+      <div id="shopContent" class="shop-content"></div>
+    </main>
+  </div>
+
+  <!-- ====== LEADERBOARD ====== -->
+  <div id="leaderboardScreen" class="screen">
+    <header class="leaderboard-header">
+      <button id="backToLobbyFromLeaderboard" class="ghost-button">← Lobby</button>
+      <h1>🏆 Leaderboards</h1>
+    </header>
+    <main class="leaderboard-main" id="leaderboardContent"></main>
+  </div>
+
+  <!-- ====== CLAN ====== -->
+  <div id="clanScreen" class="screen">
+    <header class="clan-header">
+      <button id="backToLobbyFromClan" class="ghost-button">← Lobby</button>
+      <h1>⚔️ Clan</h1>
+    </header>
+    <main class="clan-main" id="clanMain"></main>
+  </div>
+
+  <!-- ====== LOBBY ====== -->
+  <div id="lobbyScreen" class="screen">
+    <header class="lobby-header">
+      <h1>Signal Lost</h1>
+      <p class="tagline">Coordinate. Decode. Extract.</p>
+      <div id="currencyBar" class="currency-bar hidden"><span class="currency-tokens" title="Tokens">🪙 0</span><span class="currency-divider">|</span><span class="currency-credits" title="Credits">💎 0</span></div>
+    </header>
+    <main class="lobby-grid">
+      <section class="card host-card">
+        <h2>Host a Game</h2>
+        <p>Create a new mission and invite your squad.</p>
+        <div class="input-group">
+          <label for="hostName">Name</label>
+          <input id="hostName" type="text" placeholder="Morgan" maxlength="22">
+        </div>
+        <div class="input-group">
+          <label for="hostCallsign">Callsign</label>
+          <input id="hostCallsign" type="text" placeholder="Raven" maxlength="14">
+        </div>
+        <button id="hostGame" class="primary-button">Host Mission</button>
+      </section>
+      <section class="card join-card">
+        <h2>Join a Game</h2>
+        <p>Enter a mission code to link up.</p>
+        <div class="input-group">
+          <label for="joinCode">Mission Code</label>
+          <input id="joinCode" type="text" placeholder="AQUA-RADAR-42" maxlength="40">
+          <small id="accessCodeHint" class="access-code-hint hidden">Access code required</small>
+        </div>
+        <div class="input-group">
+          <label for="joinName">Your Name</label>
+          <input id="joinName" type="text" placeholder="Agent" maxlength="22">
+        </div>
+        <div class="input-group">
+          <label for="joinCallsign">Callsign</label>
+          <input id="joinCallsign" type="text" placeholder="Ghost" maxlength="14">
+        </div>
+        <button id="joinGame" class="primary-button">Link Up</button>
+      </section>
+      <section class="card spectate-card">
+        <h2>👁 Spectate</h2>
+        <p>Watch a live mission without GPS.</p>
+        <div class="input-group">
+          <label for="spectateCode">Mission Code</label>
+          <input id="spectateCode" type="text" placeholder="AQUA-RADAR-42" maxlength="40">
+        </div>
+        <button id="spectateGame" class="primary-button ghost-button">Enter Spectator</button>
+      </section>
+      <section class="card friend-card">
+        <h2>👥 Friends</h2>
+        <p>Add agents by name. Invite them to your lobby.</p>
+        <div class="input-group friend-add-row">
+          <input id="friendNameInput" type="text" placeholder="Agent name" maxlength="22">
+          <input id="friendCallsignInput" type="text" placeholder="Callsign" maxlength="14">
+          <button id="addFriendBtn" class="compact-button" title="Add friend">+</button>
+        </div>
+        <ul id="friendList" class="friend-list"></ul>
+      </section>
+      <section class="card achievements-card">
+        <div id="achievementsLobby"></div>
+      </section>
+      <section class="card daily-missions-card">
+        <div id="dailyMissionsLobby"></div>
+      </section>
+      <section class="card battle-pass-card">
+        <div id="battlePassLobbyWidget"></div>
+      </section>
+      <section class="card leaderboard-card">
+        <div id="leaderboardLobbyWidget"></div>
+      </section>
+      <section class="card shop-card">
+        <div id="shopLobbyWidget"></div>
+      </section>
+      <section class="card clan-card">
+        <div id="clanLobbyWidget"></div>
+      </section>
+    </main>
+    <section class="lobby-chat-card card">
+      <div class="lobby-chat-header">
+        <h3>📡 Squad Comms</h3>
+        <span id="lobbyChatBadge" class="lobby-chat-badge hidden">0</span>
+      </div>
+      <div id="lobbyChatLog" class="lobby-chat-log"></div>
+      <form id="lobbyChatForm" class="lobby-chat-form">
+        <input id="lobbyChatInput" type="text" placeholder="Message squad…" maxlength="140" autocomplete="off">
+        <button type="submit" class="compact-button">Send</button>
+      </form>
+    </section>
+    <footer class="lobby-footer">
+      <div id="httpWarning" class="warning-pill hidden">GPS requires HTTPS or localhost</div>
+      <div class="theme-bar">
+        <button data-theme-palette="classic" class="theme-chip selected">Classic</button>
+        <button data-theme-palette="sunset" class="theme-chip">Sunset</button>
+        <button data-theme-palette="signal" class="theme-chip">Signal</button>
+        <button data-theme-palette="night" class="theme-chip">Night</button>
+        <button id="statsBtn" class="theme-chip" title="Stats">📊 Stats</button>
+        <button id="lobbySettingsBtn" class="theme-chip" title="Settings">⚙️ Settings</button>
+        <button id="lobbyTrainingBtn" class="theme-chip" title="Training Ground">🎓 Training</button>
+        <button id="lobbyShopBtn" class="theme-chip" title="Cosmetic Shop">🛒 Shop</button>
+        <button id="lobbyClanBtn" class="theme-chip" title="Clan">⚔️ Clan</button>
+        <button id="lobbyMapEditorBtn" class="theme-chip" title="Map Editor">🗺️ Editor</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ====== SETUP ====== -->
+  <div id="setupScreen" class="screen">
+    <header class="setup-header">
+      <button id="backToLobby" class="ghost-button">← Lobby</button>
+      <h2>Mission Setup</h2>
+      <span id="setupCode" class="code-pill">AQUA-RADAR-42</span>
+    </header>
+    <main class="setup-main">
+      <section class="setup-col">
+        <div class="card">
+          <h3>Location <button id="locMapMode" class="ghost-button" style="font-size:11px;padding:2px 8px;margin-left:auto" title="Click map to set custom location">📍 Pick on map</button></h3>
+          <div id="mapSelectGrid" class="map-select-grid"></div>
+          <div id="customLocationInfo" style="margin-top:8px;font-size:12px;color:#ffd965;display:none;align-items:center;gap:6px">
+            <span>📍</span>
+            <span id="customLocationCoords"></span>
+            <button id="clearCustomLocation" class="ghost-button" style="font-size:11px;padding:2px 6px">✕ Clear</button>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            <button id="saveFavoriteLocation" class="compact-button" title="Save current location as favorite">⭐ Save as Favorite</button>
+            <select id="loadFavoriteLocation" style="flex:1;min-width:100px;background:#161b22;color:#c9d1d9;border:1px solid #1e2a3a;border-radius:6px;padding:4px 8px;font-size:12px">
+              <option value="">— Favorites —</option>
+            </select>
+            <button id="setDefaultLocation" class="compact-button" title="Set as default for new games">📌 Set Default</button>
+            <button id="clearDefaultLocation" class="compact-button danger-button" title="Clear default location">✕</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Mission Parameters</h3>
+          <div class="input-group">
+            <label for="setupDuration">Duration: <b id="setupDurationValue">60 min</b></label>
+            <input id="setupDuration" type="range" min="30" max="120" value="60">
+          </div>
+          <div class="input-group">
+            <label for="setupPlayers">Squad Size: <b id="setupPlayersValue">6 players</b></label>
+            <input id="setupPlayers" type="range" min="2" max="8" value="6">
+          </div>
+          <div class="input-row toggles">
+            <label class="toggle">
+              <input id="setupPublic" type="checkbox">
+              <span>Public Lobby</span>
+            </label>
+          </div>
+          <div class="input-group">
+            <label for="setupChallengeRating">Challenge Rating: <b id="setupChallengeRatingValue">Auto</b></label>
+            <select id="setupChallengeRating">
+              <option value="0">Auto (recommended)</option>
+              <option value="1">1 — Recruit</option>
+              <option value="2">2 — Operator</option>
+              <option value="3">3 — Veteran</option>
+              <option value="4">4 — Elite</option>
+              <option value="5">5 — Nightmare</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Mission Packs</h3>
+          <div id="moduleList" class="module-grid"></div>
+        </div>
+        <div class="card">
+          <h3>Theme</h3>
+          <div class="theme-bar">
+            <button data-theme-palette="classic" class="theme-chip selected">Classic</button>
+            <button data-theme-palette="sunset" class="theme-chip">Sunset</button>
+            <button data-theme-palette="signal" class="theme-chip">Signal</button>
+            <button data-theme-palette="night" class="theme-chip">Night</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Biome Zones</h3>
+          <div class="biome-legend">
+            <div class="biome-legend-item"><span class="biome-dot biome-urban"></span><strong>Urban</strong> — dense buildings, short sightlines</div>
+            <div class="biome-legend-item"><span class="biome-dot biome-forest"></span><strong>Forest</strong> — reduced signal, threats hide</div>
+            <div class="biome-legend-item"><span class="biome-dot biome-industrial"></span><strong>Industrial</strong> — open sightlines, signal boost</div>
+          </div>
+        </div>
+      </section>
+      <section class="setup-col wide">
+        <div class="card map-card">
+          <h3>Marker Placement <small>Click map to add markers</small></h3>
+          <div id="setupMap" class="map-container"></div>
+          <div class="marker-toolbar">
+            <input id="markerLat" type="hidden" value="">
+            <input id="markerLng" type="hidden" value="">
+            <select id="markerType">
+              <option value="Clue">Clue</option>
+              <option value="Cache">Cache</option>
+              <option value="Waypoint">Waypoint</option>
+              <option value="Danger">Danger</option>
+              <option value="Extraction">Extraction</option>
+            </select>
+            <input id="markerTitle" type="text" placeholder="Marker title">
+            <button id="addMarker" class="compact-button">Add</button>
+            <button id="clearMarkers" class="compact-button danger-button">Clear</button>
+          </div>
+          <div id="markerList" class="marker-list"></div>
+        </div>
+      </section>
+    </main>
+    <footer class="setup-footer">
+      <button id="launchMission" class="primary-button large">Launch Mission</button>
+    </footer>
+  </div>
+
+  <!-- ====== ROLES ====== -->
+  <div id="rolesScreen" class="screen">
+    <header class="setup-header">
+      <button id="backToSetup" class="ghost-button">← Setup</button>
+      <h2>Choose Your Role</h2>
+      <span id="rolesCode" class="code-pill">CODE</span>
+    </header>
+    <main class="roles-main">
+      <div class="card">
+        <h3>Agents on Mission <span id="rosterTeamBadge" class="team-badge hidden"></span></h3>
+        <div id="rosterList" class="roster-list"></div>
+      </div>
+      <div class="role-grid" id="roleGrid">
+        <!-- 7 role cards generated by JS -->
+      </div>
+    </main>
+    <footer class="setup-footer">
+      <button id="spectateFromRoles" class="ghost-button large">👁 Spectate</button>
+      <button id="readyToMission" class="primary-button large">Ready → Launch</button>
+    </footer>
+  </div>
+
+  <!-- ====== LOADOUT ====== -->
+  <div id="loadoutScreen" class="screen">
+    <header class="setup-header">
+      <button id="loadoutBackBtn" class="ghost-button">← Roles</button>
+      <h2>Equip Your Kit</h2>
+      <span id="loadoutCode" class="code-pill">CODE</span>
+    </header>
+    <main class="loadout-main">
+      <div id="loadoutPlayerInfo" class="loadout-player-info">Agent — selecting role...</div>
+
+      <div id="loadoutPresets" class="loadout-presets">
+        <!-- Preset buttons generated by JS -->
+      </div>
+
+      <section class="loadout-section">
+        <h3>🎒 Starting Gear <span class="loadout-hint">(choose one)</span></h3>
+        <div id="loadoutGearCards" class="loadout-grid loadout-gear-grid">
+          <!-- Gear cards generated by JS -->
+        </div>
+      </section>
+
+      <section class="loadout-section">
+        <h3>🔋 Consumables <span class="loadout-hint">(pick 2)</span></h3>
+        <div id="loadoutConsumableSlots" class="loadout-grid loadout-consumable-grid">
+          <!-- Consumable cards generated by JS -->
+        </div>
+      </section>
+
+      <section class="loadout-section">
+        <h3>🎨 Cosmetics <span class="loadout-hint">(unlocked from Role XP)</span></h3>
+        <div id="loadoutCosmeticSlots" class="loadout-grid loadout-cosmetic-grid">
+          <!-- Cosmetic cards generated by JS -->
+        </div>
+      </section>
+
+      <section class="loadout-section">
+        <h3>✨ Role Starting Bonus</h3>
+        <div id="loadoutRoleBonus" class="loadout-role-bonus">
+          <!-- Auto-assigned based on role, shown as read-only -->
+        </div>
+      </section>
+
+      <div id="loadoutReadyList" class="loadout-ready-list">
+        <!-- Shows which players have confirmed -->
+      </div>
+    </main>
+    <footer class="setup-footer">
+      <button id="loadoutConfirmBtn" class="primary-button large">✅ Confirm Loadout</button>
+    </footer>
+  </div>
+
+  <!-- ====== BRIEFING ====== -->
+  <div id="briefingScreen" class="screen">
+    <header class="setup-header">
+      <button id="backToRoles" class="ghost-button">← Roles</button>
+      <h2>Mission Briefing</h2>
+      <span id="briefingCode" class="code-pill">CODE</span>
+    </header>
+    <main class="briefing-main">
+      <section class="briefing-col">
+        <div class="card">
+          <h3>📍 Area Overview</h3>
+          <div id="briefingMap" class="map-container"></div>
+          <div class="briefing-meta">
+            <div class="meta-pill"><span>Location</span><b id="briefingLocation">--</b></div>
+            <div class="meta-pill"><span>Duration</span><b id="briefingDuration">--</b></div>
+            <div class="meta-pill"><span>Squad</span><b id="briefingSquadSize">--</b></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>👥 Squad Roster</h3>
+          <div id="briefingRoster" class="briefing-roster"></div>
+        </div>
+      </section>
+      <section class="briefing-col">
+        <div class="card">
+          <h3>🎯 Objectives <span id="briefingObjCount" class="obj-count-badge">0</span></h3>
+          <div id="briefingObjectives" class="briefing-objectives"></div>
+        </div>
+        <div class="card">
+          <h3>⚠️ Threat Assessment</h3>
+          <div id="briefingThreats" class="briefing-threats"></div>
+        </div>
+      </section>
+    </main>
+    <footer class="setup-footer">
+      <button id="deployMission" class="primary-button large">🚀 Deploy to Mission</button>
+    </footer>
+  </div>
+
+  <!-- ====== MISSION ====== -->
+  <div id="missionScreen" class="screen">
+    <div id="missionMap" class="mission-map"></div>
+
+    <!-- Radar Canvas Overlay -->
+    <div id="missionRadarWrap" class="hud-draggable">
+      <div class="hud-drag-handle"></div>
+      <canvas id="missionRadar" width="160" height="160"></canvas>
+      <!-- Radar view mode indicator -->
+      <div id="radarModeIndicator" class="radar-mode-indicator">2D</div>
+    </div>
+
+    <!-- Compass Rose Overlay -->
+    <div id="compassRoseWrap" class="hud-draggable">
+      <div class="hud-drag-handle"></div>
+      <canvas id="compassRose" width="160" height="160"></canvas>
+    </div>
+
+    <!-- Particle Effects Canvas Overlay -->
+    <canvas id="particleCanvas" class="particle-canvas"></canvas>
+
+    <!-- Fog of War Canvas Overlay -->
+    <canvas id="fogCanvas" class="fog-canvas"></canvas>
+
+    <!-- Command Wheel Canvas Overlay -->
+    <canvas id="commandWheel" class="command-wheel"></canvas>
+
+    <!-- Floating GPS Button (mobile) -->
+    <button id="floatingGpsBtn" class="floating-gps-btn" title="Focus GPS">📍</button>
+
+    <!-- Panel Drawer Overlay (mobile) -->
+    <div id="panelDrawerOverlay" class="panel-drawer-overlay hidden"></div>
+
+    <!-- Mobile Comms Mini-Bar (shows when drawer is closed) -->
+    <div id="commsMiniBar" class="comms-mini-bar">
+      <div class="cmb-msg" id="cmbMsg"><span class="cmb-sender">System</span>Ready to deploy</div>
+      <button class="cmb-btn" id="cmbPanelsBtn" title="Open Panels">📋</button>
+      <button class="cmb-btn cmb-primary" id="cmbVoiceBtn" title="Voice Comms">🎙️</button>
+    </div>
+
+    <!-- Threat Proximity Vignette -->
+    <div id="threatVignette" class="threat-vignette"></div>
+    <div id="threatGlow" class="threat-glow"></div>
+    <div id="threatIndicatorTop" class="threat-indicator" style="top:60px;left:50%;transform:translateX(-50%);"></div>
+    <div id="threatIndicatorBottom" class="threat-indicator" style="bottom:60px;left:50%;transform:translateX(-50%);"></div>
+    <div id="threatIndicatorLeft" class="threat-indicator" style="top:50%;left:8px;transform:translateY(-50%);"></div>
+    <div id="threatIndicatorRight" class="threat-indicator" style="top:50%;right:8px;transform:translateY(-50%);"></div>
+    <div id="threatDirectionArrow" class="threat-direction-arrow"></div>
+
+    <!-- FPS Debug Overlay -->
+    <div id="fpsDebugOverlay" class="fps-debug-overlay hidden">FPS: --</div>
+
+    <!-- Report Modal (Phase 6 Task 8) -->
+    <div id="reportModal" class="report-modal hidden"></div>
+
+    <!-- Vote Kick Toast (Phase 6 Task 8) -->
+    <div id="voteToast" class="vote-toast hidden"></div>
+
+    <!-- Event Log / Kill Feed Overlay -->
+    <div id="eventLogOverlay" class="event-log-overlay"></div>
+
+    <!-- Downed Alert Overlay -->
+    <div id="downedAlert" class="downed-alert hidden">
+      <div class="downed-title">🚨 YOU ARE DOWNED</div>
+      <div class="downed-timer">Revive in <span id="downedCountdown">60</span>s</div>
+      <div class="downed-hint">A Medic can revive you faster. Stay close to squad.</div>
+    </div>
+
+    <!-- Revive Prompt (shown when near downed squadmate) -->
+    <div id="revivePrompt" class="revive-prompt hidden"></div>
+
+    <!-- Extraction progress overlay -->
+    <div id="extractionOverlay" class="extraction-overlay hidden">
+      <div class="extraction-bar-container">
+        <div class="extraction-bar-label">EXTRACTING</div>
+        <div class="extraction-bar-track"><div id="extractionProgress" class="extraction-bar-fill" style="width:0%"></div></div>
+        <div class="extraction-clock-wrap">
+          <svg class="extraction-clock-svg" viewBox="0 0 40 40">
+            <circle class="extraction-clock-bg" cx="20" cy="20" r="18"/>
+            <circle id="extractionClockRing" class="extraction-clock-ring" cx="20" cy="20" r="18"/>
+          </svg>
+          <div id="extractionTimer" class="extraction-timer">15</div>
+        </div>
+      </div>
+    </div>
+
+    <header class="mission-hud">
+      <div class="hud-left">
+        <span id="missionTimer" class="timer">60:00</span>
+        <span id="missionStatus" class="status-pill">Live</span>
+        <span id="latencyBadge" class="latency-badge" title="Network latency">--ms</span>
+        <span id="weatherHUD" class="weather-hud" title="Current weather conditions">☀️ Clear</span>
+        <span id="gpsDegradationHUD" class="gps-degradation-hud" title="GPS signal quality">GPS: Good</span>
+        <span id="dayNightIndicator" class="day-night-indicator" data-phase="night">
+          <span class="dn-icon">🌙</span><span class="dn-label">NIGHT</span>
+        </span>
+      </div>
+      <div id="progressionHUD" class="progression-hud" title="Role progression">
+        <span class="tier-badge tier-1">T1</span>
+        <span class="xp-bar"><span class="xp-fill" style="width:0%"></span></span>
+        <span class="xp-text">0 XP</span>
+      </div>
+      <div id="dailyMissionsHUD" class="daily-missions-hud" title="Daily missions"></div>
+      <div class="hud-center">
+        <!-- Supply Cache HUD -->
+        <div id="supplyCacheHUD" class="supply-cache-hud hidden"></div>
+        <!-- Terrain HUD -->
+        <div id="terrainHUD" class="terrain-hud" title="Current terrain">Open</div>
+        <div class="hud-bars">
+          <div class="hud-bar-row">
+            <span class="hud-bar-label">SIG</span>
+            <div class="hud-bar-track"><div id="hudSignalBar" class="hud-bar-fill signal-fill" style="width:72%"></div></div>
+          </div>
+          <div class="hud-bar-row">
+            <span class="hud-bar-label">STA</span>
+            <div class="hud-bar-track"><div id="hudStaminaBar" class="hud-bar-fill stamina-fill" style="width:85%"></div></div>
+          </div>
+        </div>
+        <!-- Team Voice Indicators (4.3) -->
+        <div id="voiceIndicatorBar" class="voice-indicator-bar"></div>
+        <!-- Voice Chat Panel (Phase 8 Task 4) -->
+        <div id="voiceChatPanel" class="voice-chat-panel hidden">
+          <div class="voice-chat-header">
+            <span>🎙️ Squad Voice</span>
+            <button id="voicePanelClose" class="voice-chat-close">✕</button>
+          </div>
+          <div id="voiceSquadList" class="voice-squad-list"></div>
+        </div>
+      </div>
+      <div class="hud-right">
+        <span id="spectatorCountIndicator" class="spectator-count-indicator hidden" title="Spectators watching">👁 0</span>
+        <button id="focusGps" class="icon-button" title="GPS Focus">🎯</button>
+        <button id="togglePanels" class="icon-button" title="Panels">📋</button>
+        <div id="hudOverflow" class="hud-overflow">
+          <button id="hudOverflowToggle" class="icon-button overflow-toggle" title="More">•••</button>
+          <div id="hudOverflowMenu" class="hud-overflow-menu">
+            <button id="toggleVoice" class="icon-button voice-button" title="Push to Talk">🎙️</button>
+            <button id="toggleStealth" class="icon-button stealth-button" title="Enter Stealth">🥷</button>
+            <button id="toggleRadar" class="icon-button" title="Toggle Radar">📡</button>
+            <button id="fullscreenRadar" class="icon-button" title="Full Radar">🔄</button>
+            <button id="reportKickBtn" class="icon-button" title="Report / Kick (Tab)">🚩</button>
+            <button id="openSettingsBtn" class="icon-button" title="Settings">⚙️</button>
+            <div class="hud-overflow-separator"></div>
+            <button id="endMissionBtn" class="icon-button danger-icon" title="End Mission">⏹</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Dynamic Music Toggle -->
+    <button id="musicToggle" class="music-toggle" title="Toggle Ambient Music">🎵</button>
+
+    <!-- Triangulation Scan Button (P7-T4) -->
+    <button id="triScanBtn" class="tri-scan-btn hidden" title="Hold to scan signal">
+      <span class="tri-scan-icon">📡</span>
+      <span class="tri-scan-label">SCAN</span>
+      <div class="scan-progress-track"><div class="scan-progress-fill"></div></div>
+    </button>
+
+    <!-- Triangulation Bearing Compass (P7-T4) -->
+    <div id="triBearingCompass" class="tri-bearing-compass hidden">
+      <div class="tri-bearing-ring">
+        <div id="triBearingArrow" class="tri-bearing-arrow">➤</div>
+      </div>
+      <div id="triBearingLabel" class="tri-bearing-label">--°</div>
+    </div>
+
+    <!-- Ability Hotbar (2.2) -->
+    <div id="abilityHotbar" class="ability-hotbar hud-draggable">
+      <div class="hud-drag-handle"></div>
+    </div>
+    <!-- Trap Selector (Phase 4 Task 4) -->
+    <div id="trapSelector" class="trap-selector hidden hud-draggable">
+      <div class="hud-drag-handle"></div>
+      <button class="trap-btn" data-trap="mine" title="Proximity Mine">💥 Mine</button>
+      <button class="trap-btn" data-trap="flare" title="Trip Flare">🔦 Flare</button>
+      <button class="trap-btn" data-trap="decoy" title="Decoy Signal">📡 Decoy</button>
+      <span class="trap-charges">Charges: <span id="trapCharges">2</span></span>
+    </div>
+    <!-- Drone Bar (4.0) -->
+    <div id="droneBar" class="drone-bar hidden hud-draggable">
+      <div class="hud-drag-handle"></div>
+      <button class="drone-btn" data-drone="scout" title="Scout Drone (120s)">🛸 Scout</button>
+      <button class="drone-btn" data-drone="decoy" title="Decoy Drone (15s)">🎯 Decoy</button>
+      <button class="drone-btn" data-drone="shield" title="Shield Drone (30s)">🛡️ Shield</button>
+      <span class="drone-charge">Charges: <span id="droneCharges">1</span></span>
+    </div>
+    <!-- Drone HUD -->
+    <div id="droneHUD" class="drone-hud hidden hud-draggable">
+      <div class="hud-drag-handle"></div>
+      <div id="droneStatus" class="drone-status">No drone active</div>
+      <div id="droneBatteryBar" class="drone-battery-bar"><div class="drone-battery-fill" style="width:0%"></div></div>
+    </div>
+    <!-- Active Buffs (2.2) -->
+    <div id="activeBuffs" class="active-buffs hud-draggable">
+      <div class="hud-drag-handle"></div>
+    </div>
+
+    <!-- Map Legend (2.3) -->
+    <div id="mapLegend" class="map-legend hud-draggable">
+      <div class="hud-drag-handle"></div>
+      <button id="mapLegendToggle" class="map-legend-toggle" title="Toggle Legend">❔</button>
+      <div id="mapLegendContent" class="map-legend-content">
+        <div class="map-legend-title">Legend</div>
+        <div class="map-legend-item">
+          <span class="map-legend-icon map-legend-pulse" style="background:#00bcd4;border:2px solid #fff;"></span>
+          <span class="map-legend-label">You</span>
+        </div>
+        <div class="map-legend-item">
+          <span class="map-legend-icon" style="background:#4fc3f7;border:2px solid #ffd965;"></span>
+          <span class="map-legend-label">Squad North</span>
+        </div>
+        <div class="map-legend-item">
+          <span class="map-legend-icon" style="background:#ff8a65;border:2px solid #ffd965;"></span>
+          <span class="map-legend-label">Squad South</span>
+        </div>
+        <div class="map-legend-item">
+          <span class="map-legend-icon" style="background:#ff8b1f;border:2px solid #fff;"></span>
+          <span class="map-legend-label">Objective</span>
+        </div>
+        <div class="map-legend-item">
+          <span class="map-legend-icon" style="background:#4caf50;border:2px solid #81c784;"></span>
+          <span class="map-legend-label">Objective Found</span>
+        </div>
+        <div class="map-legend-item">
+          <span class="map-legend-icon" style="background:#555;border:2px solid #777;"></span>
+          <span class="map-legend-label">Locked</span>
+        </div>
+        <div class="map-legend-item">
+          <span class="map-legend-icon" style="background:#ef4444;border:2px solid #fff;"></span>
+          <span class="map-legend-label">Threat</span>
+        </div>
+        <div class="map-legend-item">
+          <span class="map-legend-icon" style="background:linear-gradient(135deg,#00e676,#00c853);border:2px solid #fff;"></span>
+          <span class="map-legend-label">Extraction</span>
+        </div>
+      </div>
+    </div>
+
+    <aside id="missionPanels" class="mission-panels">
+      <div class="panel-tabs">
+        <button data-panel-tab="objectives" class="panel-tab active">Objectives</button>
+        <button data-panel-tab="comms" class="panel-tab">Comms</button>
+        <button data-panel-tab="role" class="panel-tab">Role</button>
+        <button data-panel-tab="gps" class="panel-tab">GPS</button>
+        <button data-panel-tab="hud" class="panel-tab">HUD</button>
+      </div>
+      <div class="panel-content">
+        <div data-panel-view="objectives" class="panel-view active">
+          <div class="panel-view-header">
+            <h4>Objectives <span id="objCount">0/0</span></h4>
+          </div>
+          <div id="objectiveList" class="scroll-list"></div>
+        </div>
+        <div data-panel-view="comms" class="panel-view">
+          <div class="panel-view-header">
+            <h4>Comms</h4>
+          </div>
+          <!-- Chat Tabs — PHASE 12.2 CHAT -->
+          <div class="chat-tabs">
+            <button id="chatTabAll" class="chat-tab active">🌐 All <span id="chatBadgeAll" class="chat-badge hidden">0</span></button>
+            <button id="chatTabTeam" class="chat-tab">👥 Team <span id="chatBadgeTeam" class="chat-badge hidden">0</span></button>
+            <button id="chatTabSquad" class="chat-tab">🎯 Squad <span id="chatBadgeSquad" class="chat-badge hidden">0</span></button>
+            <button id="chatTabSystem" class="chat-tab">⚙️ System <span id="chatBadgeSystem" class="chat-badge hidden">0</span></button>
+          </div>
+          <!-- Chat Toolbar -->
+          <div class="chat-toolbar">
+            <button id="chatSoundToggle" class="chat-tool-btn" title="Chat sound ON">🔔</button>
+            <button id="chatTimestampsToggle" class="chat-tool-btn" title="Timestamps ON">🕒</button>
+            <button id="chatTeamToggle" class="chat-tool-btn" title="Send to team only">🌐 All</button>
+          </div>
+          <!-- Voice Squad List (4.3) -->
+          <div id="voiceSquadList" class="voice-squad-list"></div>
+          <div id="chatLog" class="chat-log"></div>
+          <form id="chatForm" class="chat-form">
+            <input id="chatInput" type="text" placeholder="Message…" maxlength="140" autocomplete="off">
+            <button type="submit" class="compact-button">Send</button>
+          </form>
+        </div>
+        <div data-panel-view="radar" class="panel-view">
+          <div class="panel-view-header">
+            <h4>Radar <small style="font-weight:400;color:var(--text-dim)">filter what shows on radar</small></h4>
+          </div>
+          <div id="radarFilterContent" class="radar-filter-content">
+            <div class="input-group">
+              <label>Radar Range</label>
+              <input id="radarRangeSlider" type="range" min="50" max="500" value="200">
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:2px">
+                <span>50m</span><span id="radarRangeLabel">200m</span><span>500m</span>
+              </div>
+            </div>
+            <div class="radar-filter-toggles">
+              <label class="radar-filter-chip active" data-filter="objectives">📍 Objectives</label>
+              <label class="radar-filter-chip active" data-filter="agents">👤 Agents</label>
+              <label class="radar-filter-chip active" data-filter="threats">⚠ Threats</label>
+              <label class="radar-filter-chip active" data-filter="pings">📡 Pings</label>
+              <label class="radar-filter-chip active" data-filter="waypoints">🔷 Waypoints</label>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+              <button id="radarToggleBtn" class="compact-button">Toggle Radar</button>
+              <button id="radarFullscreenBtn" class="compact-button">Fullscreen</button>
+              <button id="radarResetBtn" class="compact-button ghost-button">Reset All</button>
+            </div>
+          </div>
+        </div>
+        <div data-panel-view="role" class="panel-view">
+          <div class="panel-view-header">
+            <h4 id="roleTitle">Role</h4>
+          </div>
+          <div id="roleTools" class="tool-grid"></div>
+        </div>
+        <div data-panel-view="gps" class="panel-view">
+          <div class="panel-view-header">
+            <h4>GPS</h4>
+          </div>
+          <button id="startGps" class="compact-button">Start GPS</button>
+          <button id="stopGps" class="compact-button danger-button">Stop GPS</button>
+          <div class="input-row">
+            <input id="manualLat" type="number" step="0.0001" placeholder="Lat">
+            <input id="manualLng" type="number" step="0.0001" placeholder="Lng">
+          </div>
+          <button id="applyManualGps" class="compact-button">Apply Manual</button>
+          <div id="gpsStatus" class="gps-status">GPS standby</div>
+          <div class="battery-gps-divider"></div>
+          <div class="battery-gps-row">
+            <div id="batteryGpsStatus" class="battery-gps-status">🔋 -- · Normal</div>
+            <button id="toggleBatterySaver" class="compact-button battery-saver-btn">Saver: OFF</button>
+          </div>
+        </div>
+        <div data-panel-view="hud" class="panel-view">
+          <div class="panel-view-header">
+            <h4>HUD <small style="font-weight:400;color:var(--text-dim)">customize layout</small></h4>
+          </div>
+          <div class="hud-customize-content">
+            <div class="input-group">
+              <label>Minimap Zoom</label>
+              <input id="minimapZoomSlider" type="range" min="0.5" max="2.0" step="0.1" value="1.0">
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:2px">
+                <span>50%</span><span id="minimapZoomLabel">100%</span><span>200%</span>
+              </div>
+            </div>
+            <div class="hud-customize-section">
+              <label>Show / Hide Panels</label>
+              <div id="hudPanelToggles" class="hud-panel-toggles">
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="abilityHotbar" checked><span>Ability Bar</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="trapSelector" checked><span>Trap Selector</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="droneBar" checked><span>Drone Bar</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="droneHUD" checked><span>Drone HUD</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="activeBuffs" checked><span>Buffs</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="mapLegend" checked><span>Map Legend</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="compassRose" checked><span>Compass</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="missionRadar" checked><span>Radar</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="threatVignette" checked><span>Threat Vignette</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="progressionHUD" checked><span>XP Bar</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="weatherHUD" checked><span>Weather</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="gpsDegradationHUD" checked><span>GPS Status</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="terrainHUD" checked><span>Terrain</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="supplyCacheHUD" checked><span>Supply Caches</span></label>
+                <label class="hud-toggle"><input type="checkbox" data-hud-panel="jammerSurgeBanner" checked><span>Jammer Banner</span></label>
+              </div>
+            </div>
+            <div class="hud-customize-note">
+              <small>💡 Drag the <strong>⋮⋮</strong> handle on HUD elements to reposition. Layout saves automatically.</small>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+              <button id="hudResetLayoutBtn" class="compact-button ghost-button">Reset Layout</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Drag handle for mobile drawer -->
+      <div class="drawer-handle"><span></span></div>
+    </aside>
+
+    <div id="confirmEndDialog" class="confirm-dialog hidden">
+      <div class="confirm-dialog-content">
+        <h4>End Mission?</h4>
+        <p>This will conclude the current operation.</p>
+        <div class="confirm-dialog-actions">
+          <button id="confirmEndYes" class="danger-button">End Mission</button>
+          <button id="confirmEndNo" class="ghost-button">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SPECTATOR ====== -->
+  <div id="spectatorScreen" class="screen">
+    <div id="spectatorMap" class="spectator-map"></div>
+    <header class="spectator-hud">
+      <div class="spectator-hud-left">
+        <span class="spectator-badge">👁 Spectator</span>
+        <span id="spectatorCode" class="code-pill">AQUA-RADAR-42</span>
+      </div>
+      <div class="spectator-hud-center">
+        <span id="spectatorTimer" class="timer">60:00</span>
+        <span id="spectatorStatus" class="status-pill">Live</span>
+      </div>
+      <div class="spectator-hud-right">
+        <button id="spectatorTogglePanels" class="icon-button" title="Toggle Panels">📋</button>
+        <button id="spectatorLeave" class="icon-button danger-icon" title="Leave">⏹</button>
+      </div>
+    </header>
+    <aside id="spectatorPanels" class="spectator-panels">
+      <div class="panel-tabs">
+        <button data-spectator-tab="agents" class="panel-tab active">Agents</button>
+        <button data-spectator-tab="objectives" class="panel-tab">Objectives</button>
+        <button data-spectator-tab="comms" class="panel-tab">Comms</button>
+        <button data-spectator-tab="threats" class="panel-tab">Threats</button>
+      </div>
+      <div class="panel-content">
+        <div data-spectator-view="agents" class="panel-view active">
+          <div class="panel-view-header"><h4>Live Agents</h4></div>
+          <div id="spectatorAgentList" class="scroll-list"></div>
+        </div>
+        <div data-spectator-view="objectives" class="panel-view">
+          <div class="panel-view-header"><h4>Objectives <span id="spectatorObjCount">0/0</span></h4></div>
+          <div id="spectatorObjectiveList" class="scroll-list"></div>
+        </div>
+        <div data-spectator-view="comms" class="panel-view">
+          <div class="panel-view-header"><h4>Comms</h4></div>
+          <div id="spectatorChatLog" class="chat-log"></div>
+          <form id="spectatorChatForm" class="chat-form">
+            <input id="spectatorChatInput" type="text" placeholder="Message…" maxlength="140" autocomplete="off">
+            <button type="submit" class="compact-button">Send</button>
+          </form>
+        </div>
+        <div data-spectator-view="threats" class="panel-view">
+          <div class="panel-view-header"><h4>Threat Status</h4></div>
+          <div id="spectatorThreatList" class="scroll-list"></div>
+        </div>
+      </div>
+      <div class="drawer-handle"><span></span></div>
+    </aside>
+  </div>
+
+  <!-- ====== REPLAY ====== -->
+  <div id="replayScreen" class="screen">
+    <header class="replay-header">
+      <button id="backToResults" class="ghost-button">← Results</button>
+      <h2>Mission Replay</h2>
+      <span id="replayCode" class="code-pill">AQUA-RADAR-42</span>
+    </header>
+    <div id="replayMap" class="replay-map"></div>
+    <aside class="replay-sidebar">
+      <div class="card">
+        <h3>Path Stats</h3>
+        <div class="stat-row"><span>Distance</span><b id="replayDistance">--</b></div>
+        <div class="stat-row"><span>Waypoints</span><b id="replayWaypoints">--</b></div>
+        <div class="stat-row"><span>Avg Speed</span><b id="replayAvgSpeed">--</b></div>
+        <div class="stat-row"><span>Time Active</span><b id="replayTimeActive">--</b></div>
+      </div>
+      <div class="card">
+        <h3>Threats Encountered</h3>
+        <div id="replayThreatList" class="scroll-list"></div>
+      </div>
+      <div class="card">
+        <h3>Score Breakdown</h3>
+        <div class="stat-row"><span>Objectives</span><b id="replayObjScore">--</b></div>
+        <div class="stat-row"><span>Progress</span><b id="replayProgScore">--</b></div>
+        <div class="stat-row"><span>Time Bonus</span><b id="replayTimeScore">--</b></div>
+        <div class="stat-row"><span>Squad</span><b id="replaySquadScore">--</b></div>
+        <div class="stat-row"><span>Threat Penalty</span><b id="replayThreatPenalty">--</b></div>
+        <div class="stat-row replay-total"><span>Total</span><b id="replayTotalScore">--</b></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ====== RESULTS ====== -->
+  <div id="resultsScreen" class="screen">
+    <canvas id="resultsConfetti" aria-hidden="true"></canvas>
+    <header class="results-header">
+      <h1>Mission Complete</h1>
+      <div id="resultsTrophy" class="results-trophy">🏆</div>
+      <div id="scoreGrade" class="grade">B</div>
+      <div id="scoreValue" class="score">0</div>
+      <p id="scoreSummary" class="score-summary">Objectives found: 0/0</p>
+    </header>
+    <main class="results-main">
+      <div class="card">
+        <h3>Squad Stats</h3>
+        <div class="stat-row">
+          <span>Avg Signal</span><b id="resSignal">--</b>
+        </div>
+        <div class="stat-row">
+          <span>Avg Stamina</span><b id="resStamina">--</b>
+        </div>
+        <div class="stat-row">
+          <span>Time Remaining</span><b id="resTime">--</b>
+        </div>
+        <div class="stat-row">
+          <span>Threat Penalty</span><b id="resThreat">--</b>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Team Standings</h3>
+        <div id="teamList" class="scroll-list"></div>
+      </div>
+    </main>
+    <footer class="results-footer">
+      <button id="playAgain" class="primary-button large">Play Again</button>
+      <button id="revealMapRecap" class="ghost-button large">Reveal Map Recap</button>
+    </footer>
+    <div class="card">
+      <h3>Match History</h3>
+      <div id="matchHistoryList" class="scroll-list"></div>
+    </div>
+  </div>
+
+  <div id="offlineIndicator" class="offline-indicator hidden" aria-live="polite">Offline — cached mode</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="game-v2.js?v=2"></script>
+</body>
+</html>

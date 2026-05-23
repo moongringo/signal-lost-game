@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --body-font: 'Inter', system-ui, sans-serif;
+      --display-font: 'Space Grotesk', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--cream); font-family: var(--body-font); }
+    body { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+
+    h1 { font-family: var(--display-font); font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--ink); }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.9rem; }
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .admin-card {
+      background: rgba(255, 248, 220, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .admin-card:hover {
+      background: rgba(255, 248, 220, 0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+
+    .admin-card h3 {
+      font-family: var(--display-font);
+      font-size: 1rem;
+      color: var(--ink);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    .metric-row:last-child { border-bottom: none; }
+
+    .metric-label { font-size: 0.85rem; color: var(--muted); }
+    .metric-value {
+      font-family: var(--mono-font);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .metric-value.up { color: var(--teal); }
+    .metric-value.down { color: var(--pink); }
+    .metric-value.warn { color: var(--orange); }
+
+    .status-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .status-pill {
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pill-online { background: rgba(0, 140, 148, 0.15); color: var(--teal); border: 1px solid rgba(0, 140, 148, 0.3); }
+    .pill-warn { background: rgba(255, 139, 31, 0.15); color: var(--orange); border: 1px solid rgba(255, 139, 31, 0.3); }
+    .pill-offline { background: rgba(232, 38, 99, 0.15); color: var(--pink); border: 1px solid rgba(232, 38, 99, 0.3); }
+
+    .action-btn {
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--body-font);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover { transform: translateY(-1px); }
+
+    .btn-teal { background: var(--teal); color: var(--cream); }
+    .btn-teal:hover { background: var(--blue); }
+    .btn-coral { background: var(--pink); color: var(--cream); }
+    .btn-coral:hover { background: #c41e4a; }
+    .btn-gold { background: var(--gold); color: var(--ink); }
+    .btn-gold:hover { background: var(--orange); }
+
+    .log-entry {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+      color: var(--muted);
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .log-time { color: var(--teal); margin-right: 0.5rem; }
+    .log-error { color: var(--pink); }
+    .log-warn { color: var(--orange); }
+  </style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="admin-dashboard" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Admin Dashboard</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<h1>🔧 Admin Dashboard</h1>
+  <p class="subtitle">System overview and management controls</p>
+
+  <div class="admin-grid">
+    <!-- Server Status -->
+    <div class="admin-card">
+      <h3>🖥️ Server Status</h3>
+      <div class="metric-row">
+        <span class="metric-label">Uptime</span>
+        <span class="metric-value up">14d 07:32</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">CPU</span>
+        <span class="metric-value">34%</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Memory</span>
+        <span class="metric-value warn">72%</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Players Online</span>
+        <span class="metric-value up">1,247</span>
+      </div>
+      <div class="status-bar">
+        <span class="status-pill pill-online">API Online</span>
+        <span class="status-pill pill-online">WS Online</span>
+        <span class="status-pill pill-warn">DB Warn</span>
+      </div>
+    </div>
+
+    <!-- Match Stats -->
+    <div class="admin-card">
+      <h3>⚔️ Match Stats (24h)</h3>
+      <div class="metric-row">
+        <span class="metric-label">Matches Played</span>
+        <span class="metric-value up">8,432</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Avg Duration</span>
+        <span class="metric-value">12m 34s</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Avg Kills/Match</span>
+        <span class="metric-value">24.5</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Completion Rate</span>
+        <span class="metric-value up">87%</span>
+      </div>
+      <button class="action-btn btn-teal" onclick="alert('Exporting match data...')">📊 Export CSV</button>
+    </div>
+
+    <!-- Player Health -->
+    <div class="admin-card">
+      <h3>👤 Player Health</h3>
+      <div class="metric-row">
+        <span class="metric-label">New Today</span>
+        <span class="metric-value up">+342</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Retention D1</span>
+        <span class="metric-value up">68%</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Retention D7</span>
+        <span class="metric-value">42%</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Churn Rate</span>
+        <span class="metric-value down">3.2%</span>
+      </div>
+      <button class="action-btn btn-gold" onclick="alert('Sending retention survey...')">📧 Survey</button>
+    </div>
+
+    <!-- System Logs -->
+    <div class="admin-card" style="grid-column: span 2;">
+      <h3>📝 Recent Logs</h3>
+      <div id="logContainer">
+        <div class="log-entry"><span class="log-time">14:32:07</span>Server heartbeat — all systems nominal</div>
+        <div class="log-entry"><span class="log-time">14:31:42</span>Match #884321 completed — Alpha Squad wins</div>
+        <div class="log-entry log-warn"><span class="log-time">14:30:18</span>WS connection spike detected (2,400 concurrent)</div>
+        <div class="log-entry"><span class="log-time">14:29:55</span>Database backup completed</div>
+        <div class="log-entry log-error"><span class="log-time">14:28:33</span>Gas field collision bug — player stuck in sector 7</div>
+        <div class="log-entry"><span class="log-time">14:27:10</span>Daily challenge rotated: Sniper Only</div>
+      </div>
+      <button class="action-btn btn-coral" style="margin-top: 1rem;" onclick="alert('Clearing logs...')">🗑️ Clear Logs</button>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="admin-card">
+      <h3>⚡ Quick Actions</h3>
+      <button class="action-btn btn-teal" onclick="alert('Broadcasting message...')">📢 Broadcast</button>
+      <button class="action-btn btn-gold" style="margin-top: 0.5rem;" onclick="alert('Restarting servers...')">🔄 Restart</button>
+      <button class="action-btn btn-coral" style="margin-top: 0.5rem;" onclick="alert('Maintenance mode activated')">🔒 Maintenance</button>
+    </div>
+  </div>
+
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

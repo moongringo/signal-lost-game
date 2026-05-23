@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Command View Radar</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a120a;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    color: #a8c6a8;
+  }
+  #container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+  }
+  canvas {
+    display: block;
+  }
+  #statusPanel {
+    width: 260px;
+    background: #0d1a0d;
+    border-left: 2px solid #1a331a;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .panel-header {
+    font-size: 14px;
+    font-weight: bold;
+    color: #5a8a5a;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border-bottom: 1px solid #1a331a;
+    padding-bottom: 8px;
+  }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #142614;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: #6a9a6a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .stat-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #c8e6c8;
+  }
+  .stat-value.alert { color: #e6a8a8; }
+  .stat-value.warn { color: #e6d8a8; }
+  .legend {
+    margin-top: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 11px;
+    color: #7aaa7a;
+  }
+  .legend-icon {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hud-title {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    font-size: 12px;
+    color: #5a8a5a;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="container">
+  <div style="position:relative; flex:1;">
+    <canvas id="radarCanvas"></canvas>
+    <div class="hud-title">RADAR V11 — COMMAND VIEW</div>
+  </div>
+  <div id="statusPanel">
+    <div class="panel-header">Tactical Status</div>
+    <div class="stat-row">
+      <span class="stat-label">Unit Count</span>
+      <span class="stat-value" id="unitCount">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Allies</span>
+      <span class="stat-value" id="allyCount">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Enemies</span>
+      <span class="stat-value alert" id="enemyCount">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Unknown</span>
+      <span class="stat-value warn" id="unknownCount">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Casualties</span>
+      <span class="stat-value alert" id="casualties">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Time Elapsed</span>
+      <span class="stat-value" id="timeElapsed">00:00:00</span>
+    </div>
+    <div class="panel-header">Legend</div>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-icon"><svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="none" stroke="#6a9ae6" stroke-width="1.5"/><line x1="8" y1="2" x2="8" y2="14" stroke="#6a9ae6" stroke-width="1"/><line x1="2" y1="8" x2="14" y2="8" stroke="#6a9ae6" stroke-width="1"/></svg></div>
+        <span>Infantry (Ally)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-icon"><svg width="16" height="16"><polygon points="8,2 14,14 2,14" fill="none" stroke="#6a9ae6" stroke-width="1.5"/></svg></div>
+        <span>Vehicle (Ally)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-icon"><svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="none" stroke="#e66a6a" stroke-width="1.5"/><line x1="8" y1="2" x2="8" y2="14" stroke="#e66a6a" stroke-width="1"/><line x1="2" y1="8" x2="14" y2="8" stroke="#e66a6a" stroke-width="1"/></svg></div>
+        <span>Infantry (Enemy)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-icon"><svg width="16" height="16"><polygon points="8,2 14,14 2,14" fill="none" stroke="#e6d86a" stroke-width="1.5"/></svg></div>
+        <span>Vehicle (Unknown)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('radarCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = rect.width;
+  H = rect.height;
+  canvas.width = W;
+  canvas.height = H;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const GRID_SIZE = 40;
+const MAP_W = 2000;
+const MAP_H = 1500;
+
+let camera = { x: MAP_W / 2 - W / 2, y: MAP_H / 2 - H / 2 };
+let dragging = false;
+let dragStart = { x: 0, y: 0 };
+let dragCamStart = { x: 0, y: 0 };
+
+const COLORS = {
+  ally: '#6a9ae6',
+  enemy: '#e66a6a',
+  unknown: '#e6d86a',
+  grid: '#1a331a',
+  gridText: '#3a5a3a',
+  bg: '#0a120a',
+  arrow: '#5a8a5a'
+};
+
+function rand(min, max) { return Math.random() * (max - min) + min; }
+function randInt(min, max) { return Math.floor(rand(min, max)); }
+
+const units = [];
+const patrols = [];
+const casualties = [];
+let startTime = Date.now();
+
+function createUnit(type, faction) {
+  return {
+    x: rand(100, MAP_W - 100),
+    y: rand(100, MAP_H - 100),
+    type, // 'infantry' | 'vehicle'
+    faction, // 'ally' | 'enemy' | 'unknown'
+    id: Math.random().toString(36).substr(2, 6).toUpperCase(),
+    alive: true,
+    pulse: rand(0, Math.PI * 2)
+  };
+}
+
+function createPatrol(unit) {
+  const points = [];
+  const n = randInt(3, 6);
+  for (let i = 0; i < n; i++) {
+    points.push({
+      x: Math.max(50, Math.min(MAP_W - 50, unit.x + rand(-300, 300))),
+      y: Math.max(50, Math.min(MAP_H - 50, unit.y + rand(-300, 300)))
+    });
+  }
+  return { unit, points, progress: rand(0, 1) };
+}
+
+// Generate units
+for (let i = 0; i < 18; i++) units.push(createUnit('infantry', 'ally'));
+for (let i = 0; i < 8; i++) units.push(createUnit('vehicle', 'ally'));
+for (let i = 0; i < 14; i++) units.push(createUnit('infantry', 'enemy'));
+for (let i = 0; i < 6; i++) units.push(createUnit('vehicle', 'enemy'));
+for (let i = 0; i < 5; i++) units.push(createUnit('infantry', 'unknown'));
+for (let i = 0; i < 3; i++) units.push(createUnit('vehicle', 'unknown'));
+
+// Generate patrols for some units
+units.forEach(u => {
+  if (Math.random() < 0.6) patrols.push(createPatrol(u));
+});
+
+// Pre-generate some casualties
+for (let i = 0; i < 4; i++) {
+  casualties.push({
+    x: rand(100, MAP_W - 100),
+    y: rand(100, MAP_H - 100),
+    faction: Math.random() < 0.5 ? 'ally' : 'enemy',
+    time: Date.now() - rand(0, 300000)
+  });
+}
+
+function worldToScreen(x, y) {
+  return { x: x - camera.x, y: y - camera.y };
+}
+
+function screenToWorld(x, y) {
+  return { x: x + camera.x, y: y + camera.y };
+}
+
+function drawGrid() {
+  ctx.strokeStyle = COLORS.grid;
+  ctx.lineWidth = 1;
+  ctx.font = '10px Courier New';
+  ctx.fillStyle = COLORS.gridText;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const startX = Math.floor(camera.x / GRID_SIZE) * GRID_SIZE;
+  const startY = Math.floor(camera.y / GRID_SIZE) * GRID_SIZE;
+
+  for (let x = startX; x < camera.x + W + GRID_SIZE; x += GRID_SIZE) {
+    const sx = x - camera.x;
+    ctx.beginPath();
+    ctx.moveTo(sx, 0);
+    ctx.lineTo(sx, H);
+    ctx.stroke();
+    for (let y = startY; y < camera.y + H + GRID_SIZE; y += GRID_SIZE) {
+      if (x === startX) {
+        const sy = y - camera.y;
+        ctx.beginPath();
+        ctx.moveTo(0, sy);
+        ctx.lineTo(W, sy);
+        ctx.stroke();
+      }
+      // Distance markers every 10 units (400px)
+      if ((x / GRID_SIZE) % 10 === 0 && (y / GRID_SIZE) % 10 === 0) {
+        const dist = Math.round(x / GRID_SIZE);
+        ctx.fillText(dist, sx + 2, y - camera.y + 2);
+      }
+    }
+  }
+
+  // Major grid lines every 10 units
+  ctx.strokeStyle = '#2a4a2a';
+  ctx.lineWidth = 1.5;
+  for (let x = startX; x < camera.x + W + GRID_SIZE; x += GRID_SIZE * 10) {
+    const sx = x - camera.x;
+    ctx.beginPath();
+    ctx.moveTo(sx, 0);
+    ctx.lineTo(sx, H);
+    ctx.stroke();
+  }
+  for (let y = startY; y < camera.y + H + GRID_SIZE; y += GRID_SIZE * 10) {
+    const sy = y - camera.y;
+    ctx.beginPath();
+    ctx.moveTo(0, sy);
+    ctx.lineTo(W, sy);
+    ctx.stroke();
+  }
+}
+
+function drawMapBorder() {
+  ctx.strokeStyle = '#3a5a3a';
+  ctx.lineWidth = 2;
+  const tl = worldToScreen(0, 0);
+  const br = worldToScreen(MAP_W, MAP_H);
+  ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+}
+
+function drawArrowLine(x1, y1, x2, y2, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Arrowhead
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const arrowLen = 10;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - arrowLen * Math.cos(angle - 0.5), y2 - arrowLen * Math.sin(angle - 0.5));
+  ctx.lineTo(x2 - arrowLen * Math.cos(angle + 0.5), y2 - arrowLen * Math.sin(angle + 0.5));
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawPatrols() {
+  patrols.forEach(p => {
+    if (!p.unit.alive) return;
+    const pts = p.points;
+    for (let i = 0; i < pts.length; i++) {
+      const a = worldToScreen(pts[i].x, pts[i].y);
+      const b = worldToScreen(pts[(i + 1) % pts.length].x, pts[(i + 1) % pts.length].y);
+      drawArrowLine(a.x, a.y, b.x, b.y, COLORS.arrow);
+    }
+  });
+}
+
+function drawInfantryIcon(x, y, color, size) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y, size, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, y - size);
+  ctx.lineTo(x, y + size);
+  ctx.moveTo(x - size, y);
+  ctx.lineTo(x + size, y);
+  ctx.stroke();
+}
+
+function drawVehicleIcon(x, y, color, size) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y - size);
+  ctx.lineTo(x + size * 0.866, y + size * 0.5);
+  ctx.lineTo(x - size * 0.866, y + size * 0.5);
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawUnits(time) {
+  units.forEach(u => {
+    if (!u.alive) return;
+    const pos = worldToScreen(u.x, u.y);
+    const color = COLORS[u.faction];
+    const pulse = Math.sin(time * 0.003 + u.pulse) * 0.3 + 0.7;
+
+    // Selection glow
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8 * pulse;
+
+    if (u.type === 'infantry') {
+      drawInfantryIcon(pos.x, pos.y, color, 8);
+    } else {
+      drawVehicleIcon(pos.x, pos.y, color, 10);
+    }
+
+    ctx.shadowBlur = 0;
+
+    // Label
+    ctx.fillStyle = color;
+    ctx.font = '9px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(u.id, pos.x, pos.y + 18);
+  });
+}
+
+function drawCasualties() {
+  casualties.forEach(c => {
+    const pos = worldToScreen(c.x, c.y);
+    const color = COLORS[c.faction];
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(pos.x - 6, pos.y - 6);
+    ctx.lineTo(pos.x + 6, pos.y + 6);
+    ctx.moveTo(pos.x + 6, pos.y - 6);
+    ctx.lineTo(pos.x - 6, pos.y + 6);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+}
+
+function updateUnits(dt) {
+  patrols.forEach(p => {
+    if (!p.unit.alive) return;
+    p.progress += dt * 0.0003;
+    if (p.progress >= 1) p.progress -= 1;
+    const idx = Math.floor(p.progress * p.points.length);
+    const nextIdx = (idx + 1) % p.points.length;
+    const segProgress = (p.progress * p.points.length) % 1;
+    const a = p.points[idx];
+    const b = p.points[nextIdx];
+    p.unit.x = a.x + (b.x - a.x) * segProgress;
+    p.unit.y = a.y + (b.y - a.y) * segProgress;
+  });
+
+  // Random casualty
+  if (Math.random() < 0.0005) {
+    const alive = units.filter(u => u.alive);
+    if (alive.length > 0) {
+      const victim = alive[randInt(0, alive.length)];
+      victim.alive = false;
+      casualties.push({
+        x: victim.x,
+        y: victim.y,
+        faction: victim.faction,
+        time: Date.now()
+      });
+    }
+  }
+}
+
+function updatePanel() {
+  const alive = units.filter(u => u.alive);
+  document.getElementById('unitCount').textContent = alive.length;
+  document.getElementById('allyCount').textContent = alive.filter(u => u.faction === 'ally').length;
+  document.getElementById('enemyCount').textContent = alive.filter(u => u.faction === 'enemy').length;
+  document.getElementById('unknownCount').textContent = alive.filter(u => u.faction === 'unknown').length;
+  document.getElementById('casualties').textContent = casualties.length;
+
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+  const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('timeElapsed').textContent = `${h}:${m}:${s}`;
+}
+
+function drawCompass() {
+  const cx = W - 60;
+  const cy = H - 60;
+  const r = 30;
+  ctx.strokeStyle = '#5a8a5a';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = '#a8c6a8';
+  ctx.font = 'bold 12px Courier New';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('N', cx, cy - r - 10);
+
+  // North arrow
+  ctx.strokeStyle = '#a8c6a8';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + r * 0.3);
+  ctx.lineTo(cx, cy - r * 0.7);
+  ctx.lineTo(cx - 4, cy - r * 0.5);
+  ctx.moveTo(cx, cy - r * 0.7);
+  ctx.lineTo(cx + 4, cy - r * 0.5);
+  ctx.stroke();
+}
+
+function drawScale() {
+  const x = 20;
+  const y = H - 40;
+  const len = GRID_SIZE * 10;
+  ctx.strokeStyle = '#5a8a5a';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + len, y);
+  ctx.moveTo(x, y - 5);
+  ctx.lineTo(x, y + 5);
+  ctx.moveTo(x + len, y - 5);
+  ctx.lineTo(x + len, y + 5);
+  ctx.stroke();
+  ctx.fillStyle = '#7aaa7a';
+  ctx.font = '10px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillText('10 UNITS', x + len / 2, y + 14);
+}
+
+let lastTime = Date.now();
+function loop() {
+  const now = Date.now();
+  const dt = now - lastTime;
+  lastTime = now;
+
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  drawGrid();
+  drawMapBorder();
+  drawPatrols();
+  drawCasualties();
+  drawUnits(now);
+  drawCompass();
+  drawScale();
+
+  updateUnits(dt);
+  updatePanel();
+
+  requestAnimationFrame(loop);
+}
+
+// Mouse controls
+canvas.addEventListener('mousedown', e => {
+  dragging = true;
+  dragStart = { x: e.clientX, y: e.clientY };
+  dragCamStart = { ...camera };
+});
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  camera.x = dragCamStart.x + dragStart.x - e.clientX;
+  camera.y = dragCamStart.y + dragStart.y - e.clientY;
+  camera.x = Math.max(0, Math.min(MAP_W - W, camera.x));
+  camera.y = Math.max(0, Math.min(MAP_H - H, camera.y));
+});
+window.addEventListener('mouseup', () => { dragging = false; });
+
+// Touch controls
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    dragging = true;
+    dragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    dragCamStart = { ...camera };
+  }
+});
+canvas.addEventListener('touchmove', e => {
+  if (!dragging || e.touches.length !== 1) return;
+  e.preventDefault();
+  camera.x = dragCamStart.x + dragStart.x - e.touches[0].clientX;
+  camera.y = dragCamStart.y + dragStart.y - e.touches[0].clientY;
+  camera.x = Math.max(0, Math.min(MAP_W - W, camera.x));
+  camera.y = Math.max(0, Math.min(MAP_H - H, camera.y));
+});
+canvas.addEventListener('touchend', () => { dragging = false; });
+
+loop();
+</script>
+</body>
+</html>

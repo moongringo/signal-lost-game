@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scoreboard V1 — Post-Mission Results</title>
+  <style>
+    :root {
+      --bg: #0b0c10;
+      --panel: #14161d;
+      --panel-2: #1a1c26;
+      --accent: #00f0ff;
+      --accent-dim: rgba(0, 240, 255, 0.12);
+      --success: #00ff88;
+      --success-dim: rgba(0, 255, 136, 0.12);
+      --fail: #ff3366;
+      --fail-dim: rgba(255, 51, 102, 0.12);
+      --text: #e6e8ef;
+      --muted: #8b92a8;
+      --border: rgba(255, 255, 255, 0.06);
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --mono: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      overflow-x: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 40px;
+      min-height: 100vh;
+    }
+
+    /* HUD label */
+    .hud-label {
+      position: fixed;
+      top: 12px;
+      left: 16px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      opacity: 0.7;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Top banner */
+    .result-banner {
+      width: 100%;
+      max-width: 720px;
+      text-align: center;
+      padding: 28px 20px 24px;
+      border-radius: 12px;
+      margin-bottom: 28px;
+      position: relative;
+      overflow: hidden;
+      animation: bannerIn 0.6s ease-out both;
+    }
+
+    .result-banner.success {
+      background: linear-gradient(135deg, rgba(0,255,136,0.08), rgba(0,255,136,0.02));
+      border: 1px solid rgba(0,255,136,0.25);
+      box-shadow: 0 0 40px rgba(0,255,136,0.08), inset 0 0 60px rgba(0,255,136,0.04);
+    }
+
+    .result-banner.fail {
+      background: linear-gradient(135deg, rgba(255,51,102,0.08), rgba(255,51,102,0.02));
+      border: 1px solid rgba(255,51,102,0.25);
+      box-shadow: 0 0 40px rgba(255,51,102,0.08), inset 0 0 60px rgba(255,51,102,0.04);
+    }
+
+    @keyframes bannerIn {
+      from { opacity: 0; transform: translateY(-20px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .result-banner .status-label {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      opacity: 0.85;
+    }
+
+    .result-banner.success .status-label { color: var(--success); }
+    .result-banner.fail .status-label    { color: var(--fail); }
+
+    .result-banner .status-title {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      line-height: 1.1;
+    }
+
+    .result-banner.success .status-title { color: var(--success); text-shadow: 0 0 24px rgba(0,255,136,0.35); }
+    .result-banner.fail .status-title    { color: var(--fail);    text-shadow: 0 0 24px rgba(255,51,102,0.35); }
+
+    .result-banner .sub {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    /* Section titles */
+    .section-title {
+      width: 100%;
+      max-width: 720px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 6px 0 14px;
+      opacity: 0.8;
+    }
+
+    /* Stats row */
+    .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      width: 100%;
+      max-width: 720px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      flex: 1 1 120px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 14px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(16px);
+      animation: cardIn 0.45s ease-out forwards;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.15s; }
+    .stat-card:nth-child(2) { animation-delay: 0.25s; }
+    .stat-card:nth-child(3) { animation-delay: 0.35s; }
+    .stat-card:nth-child(4) { animation-delay: 0.45s; }
+    .stat-card:nth-child(5) { animation-delay: 0.55s; }
+    .stat-card:nth-child(6) { animation-delay: 0.65s; }
+
+    @keyframes cardIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      pointer-events: none;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+    }
+
+    .stat-card .label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .stat-card .value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-card.accent .value { color: var(--accent); }
+    .stat-card.success .value { color: var(--success); }
+    .stat-card.fail .value    { color: var(--fail); }
+
+    /* XP section */
+    .xp-section {
+      width: 100%;
+      max-width: 720px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 20px;
+      margin-bottom: 28px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(16px);
+      animation: cardIn 0.5s ease-out 0.75s forwards;
+    }
+
+    .xp-section .xp-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .xp-section .xp-value {
+      font-size: 38px;
+      font-weight: 800;
+      color: var(--accent);
+      text-shadow: 0 0 20px rgba(0,240,255,0.25);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .xp-section .xp-bar-wrap {
+      margin-top: 14px;
+      height: 6px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .xp-section .xp-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #7afcff);
+      border-radius: 3px;
+      transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Team comparison */
+    .chart-section {
+      width: 100%;
+      max-width: 720px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 20px 18px;
+      opacity: 0;
+      transform: translateY(16px);
+      animation: cardIn 0.5s ease-out 0.9s forwards;
+    }
+
+    .chart-section .chart-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    .chart-row {
+      margin-bottom: 18px;
+    }
+
+    .chart-row:last-child { margin-bottom: 0; }
+
+    .chart-row .chart-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chart-row .chart-label span { font-family: var(--mono); font-size: 11px; }
+
+    .bar-track {
+      position: relative;
+      height: 22px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      position: absolute;
+      top: 0; bottom: 0; left: 0;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .bar-fill.team { background: linear-gradient(90deg, var(--accent), #7afcff); }
+    .bar-fill.enemy { background: linear-gradient(90deg, var(--fail), #ff7799); }
+
+    .bar-values {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .bar-values .team-val { color: var(--accent); }
+    .bar-values .enemy-val { color: var(--fail); }
+
+    /* Decorative scanline */
+    .scanline {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.04) 2px,
+        rgba(0,0,0,0.04) 4px
+      );
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div class="scanline"></div>
+  <div class="hud-label">SCOREBOARD V1</div>
+
+  <!-- Result Banner -->
+  <div class="result-banner success" id="resultBanner">
+    <div class="status-label">Mission Status</div>
+    <div class="status-title" id="statusTitle">SUCCESS</div>
+    <div class="sub" id="missionSub">Operation completed within parameters</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="section-title">Player Performance</div>
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="label">Time Elapsed</div>
+      <div class="value" id="timeVal">--</div>
+    </div>
+    <div class="stat-card accent">
+      <div class="label">Kills</div>
+      <div class="value" id="killsVal">--</div>
+    </div>
+    <div class="stat-card fail">
+      <div class="label">Deaths</div>
+      <div class="value" id="deathsVal">--</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Assists</div>
+      <div class="value" id="assistsVal">--</div>
+    </div>
+    <div class="stat-card success">
+      <div class="label">Objectives</div>
+      <div class="value" id="objVal">--</div>
+    </div>
+    <div class="stat-card accent">
+      <div class="label">KDA</div>
+      <div class="value" id="kdaVal">--</div>
+    </div>
+  </div>
+
+  <!-- XP -->
+  <div class="xp-section">
+    <div class="xp-label">XP Earned</div>
+    <div class="xp-value" id="xpValue">0</div>
+    <div class="xp-bar-wrap">
+      <div class="xp-bar" id="xpBar"></div>
+    </div>
+  </div>
+
+  <!-- Team Comparison -->
+  <div class="chart-section">
+    <div class="chart-title">Team Comparison</div>
+
+    <div class="chart-row">
+      <div class="chart-label">
+        KILLS
+        <span>TEAM vs ENEMY</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill team" id="barKillsTeam"></div>
+      </div>
+      <div class="bar-values">
+        <span class="team-val" id="valKillsTeam">0</span>
+        <span class="enemy-val" id="valKillsEnemy">0</span>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-label">
+        DMG DEALT
+        <span>TEAM vs ENEMY</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill team" id="barDmgTeam"></div>
+      </div>
+      <div class="bar-values">
+        <span class="team-val" id="valDmgTeam">0</span>
+        <span class="enemy-val" id="valDmgEnemy">0</span>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-label">
+        OBJECTIVES
+        <span>TEAM vs ENEMY</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill team" id="barObjTeam"></div>
+      </div>
+      <div class="bar-values">
+        <span class="team-val" id="valObjTeam">0</span>
+        <span class="enemy-val" id="valObjEnemy">0</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========================
+    // DEMO DATA
+    // ========================
+    const MISSION_SUCCESS = true; // toggle to false to see fail state
+
+    const player = {
+      timeSec: 847,      // 14:07
+      kills: 18,
+      deaths: 4,
+      assists: 11,
+      objectives: 5,
+    };
+
+    const team = {
+      kills: 54,
+      dmg: 128450,
+      obj: 7,
+    };
+
+    const enemy = {
+      kills: 38,
+      dmg: 96700,
+      obj: 3,
+    };
+
+    const xpEarned = 2450;
+    const xpToNext = 3000;
+    const xpCurrent = 1800; // before match
+
+    // ========================
+    // HELPERS
+    // ========================
+    function fmtTime(totalSec) {
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function fmtNum(n) {
+      return n.toLocaleString();
+    }
+
+    function animateValue(el, start, end, duration, formatter = v => v) {
+      const startTime = performance.now();
+      function tick(now) {
+        const t = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const val = Math.round(start + (end - start) * eased);
+        el.textContent = formatter(val);
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // ========================
+    // RENDER
+    // ========================
+    (function init() {
+      // Banner state
+      const banner = document.getElementById('resultBanner');
+      const statusTitle = document.getElementById('statusTitle');
+      const missionSub = document.getElementById('missionSub');
+
+      if (!MISSION_SUCCESS) {
+        banner.classList.remove('success');
+        banner.classList.add('fail');
+        statusTitle.textContent = 'FAIL';
+        missionSub.textContent = 'Mission parameters not met — extraction failed';
+      }
+
+      // Stats
+      document.getElementById('timeVal').textContent = fmtTime(player.timeSec);
+      document.getElementById('killsVal').textContent = player.kills;
+      document.getElementById('deathsVal').textContent = player.deaths;
+      document.getElementById('assistsVal').textContent = player.assists;
+      document.getElementById('objVal').textContent = player.objectives;
+
+      const kda = player.deaths === 0 ? player.kills + player.assists : ((player.kills + player.assists) / player.deaths).toFixed(2);
+      document.getElementById('kdaVal').textContent = kda;
+
+      // XP counter animation
+      const xpEl = document.getElementById('xpValue');
+      animateValue(xpEl, 0, xpEarned, 1200, v => '+' + fmtNum(v) + ' XP');
+
+      // XP bar
+      setTimeout(() => {
+        const pct = Math.min(((xpCurrent + xpEarned) / xpToNext) * 100, 100);
+        document.getElementById('xpBar').style.width = pct + '%';
+      }, 400);
+
+      // Team comparison bars
+      function setBar(teamVal, enemyVal, barId, valTeamId, valEnemyId, isDmg = false) {
+        const max = Math.max(teamVal, enemyVal, 1);
+        const teamPct = (teamVal / max) * 100;
+        const enemyPct = (enemyVal / max) * 100;
+
+        document.getElementById(valTeamId).textContent = isDmg ? fmtNum(teamVal) : teamVal;
+        document.getElementById(valEnemyId).textContent = isDmg ? fmtNum(enemyVal) : enemyVal;
+
+        setTimeout(() => {
+          document.getElementById(barId).style.width = teamPct + '%';
+        }, 600);
+
+        // Enemy bar (we render it as a second fill inside the same track for visual comparison)
+        const track = document.getElementById(barId).parentElement;
+        if (!track.querySelector('.bar-fill.enemy')) {
+          const enemyBar = document.createElement('div');
+          enemyBar.className = 'bar-fill enemy';
+          enemyBar.style.left = 'auto';
+          enemyBar.style.right = '0';
+          track.appendChild(enemyBar);
+          setTimeout(() => {
+            enemyBar.style.width = enemyPct + '%';
+          }, 600);
+        }
+      }
+
+      setBar(team.kills, enemy.kills, 'barKillsTeam', 'valKillsTeam', 'valKillsEnemy');
+      setBar(team.dmg, enemy.dmg, 'barDmgTeam', 'valDmgTeam', 'valDmgEnemy', true);
+      setBar(team.obj, enemy.obj, 'barObjTeam', 'valObjTeam', 'valObjEnemy');
+    })();
+  </script>
+</body>
+</html>

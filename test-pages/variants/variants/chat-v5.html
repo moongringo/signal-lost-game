@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chat V5 — Headset HUD</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #000;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ========== BATTLEFIELD VIEW ========== */
+  .battlefield {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      /* Sky */
+      linear-gradient(180deg, #0b1a2b 0%, #1a2f4a 40%, #2a4a3a 70%, #1e3a2a 100%);
+  }
+
+  /* Distant mountains / terrain layers */
+  .terrain-layer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  .terrain-back {
+    height: 45%;
+    background: linear-gradient(180deg, #1a2f3a 0%, #0f1f28 100%);
+    clip-path: polygon(
+      0% 100%, 0% 55%, 8% 40%, 15% 50%, 22% 35%, 30% 48%, 38% 30%,
+      45% 42%, 52% 25%, 60% 38%, 68% 22%, 75% 35%, 82% 20%, 90% 32%, 100% 15%, 100% 100%
+    );
+    opacity: 0.7;
+  }
+
+  .terrain-mid {
+    height: 35%;
+    background: linear-gradient(180deg, #243a2a 0%, #152418 100%);
+    clip-path: polygon(
+      0% 100%, 0% 45%, 10% 30%, 18% 42%, 25% 25%, 35% 38%, 42% 20%,
+      50% 32%, 58% 18%, 65% 28%, 72% 15%, 80% 25%, 88% 12%, 95% 22%, 100% 10%, 100% 100%
+    );
+    opacity: 0.85;
+  }
+
+  .terrain-front {
+    height: 22%;
+    background: linear-gradient(180deg, #2a3a22 0%, #1a2818 100%);
+    clip-path: polygon(
+      0% 100%, 0% 35%, 12% 20%, 20% 30%, 28% 15%, 38% 25%, 45% 12%,
+      55% 22%, 62% 10%, 70% 18%, 78% 8%, 85% 15%, 92% 5%, 100% 12%, 100% 100%
+    );
+  }
+
+  /* Buildings in background */
+  .building {
+    position: absolute;
+    bottom: 45%;
+    background: linear-gradient(180deg, #1e2a35 0%, #0f1a22 100%);
+    border: 1px solid #2a3a45;
+  }
+
+  .building::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 6px,
+        rgba(40, 60, 70, 0.3) 6px,
+        rgba(40, 60, 70, 0.3) 7px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 10px,
+        rgba(40, 60, 70, 0.2) 10px,
+        rgba(40, 60, 70, 0.2) 11px
+      );
+  }
+
+  .b1 { left: 12%; width: 40px; height: 80px; }
+  .b2 { left: 18%; width: 55px; height: 120px; }
+  .b3 { left: 65%; width: 35px; height: 60px; }
+  .b4 { left: 72%; width: 50px; height: 95px; }
+  .b5 { left: 82%; width: 30px; height: 70px; }
+
+  /* Faint grid overlay for HUD feel */
+  .hud-grid {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 40px,
+        rgba(0, 255, 150, 0.03) 40px,
+        rgba(0, 255, 150, 0.03) 41px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 40px,
+        rgba(0, 255, 150, 0.03) 40px,
+        rgba(0, 255, 150, 0.03) 41px
+      );
+  }
+
+  /* Vignette */
+  .vignette {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
+  }
+
+  /* ========== HUD FRAME ========== */
+  .hud-frame {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    border: 1px solid rgba(0, 255, 150, 0.15);
+    margin: 12px;
+    border-radius: 4px;
+  }
+
+  .hud-corner {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-color: rgba(0, 255, 150, 0.4);
+    border-style: solid;
+  }
+
+  .hud-corner.tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .hud-corner.tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+  .hud-corner.bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+  .hud-corner.br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+  /* ========== CHAT PANEL ========== */
+  .chat-panel {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    right: 24px;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .chat-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 14px;
+    background: rgba(0, 20, 10, 0.75);
+    border: 1px solid rgba(0, 255, 150, 0.35);
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #00ff96;
+    text-transform: uppercase;
+    pointer-events: auto;
+  }
+
+  .chat-header .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00ff96;
+    box-shadow: 0 0 6px #00ff96;
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 14px;
+    background: rgba(0, 15, 8, 0.6);
+    border: 1px solid rgba(0, 255, 150, 0.25);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    backdrop-filter: blur(3px);
+    max-height: 280px;
+    overflow-y: auto;
+    pointer-events: auto;
+  }
+
+  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 150, 0.3);
+    border-radius: 2px;
+  }
+
+  /* ========== MESSAGE ROW ========== */
+  .msg {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 3px;
+    background: rgba(0, 30, 15, 0.45);
+    border-left: 2px solid rgba(0, 255, 150, 0.3);
+    transition: background 0.2s;
+  }
+
+  .msg:hover {
+    background: rgba(0, 50, 25, 0.55);
+  }
+
+  .msg.speaking {
+    border-left-color: #00ff96;
+    background: rgba(0, 60, 30, 0.6);
+  }
+
+  /* Speaker icon */
+  .speaker {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    position: relative;
+  }
+
+  .speaker svg {
+    width: 100%;
+    height: 100%;
+    fill: rgba(0, 255, 150, 0.6);
+    transition: fill 0.2s;
+  }
+
+  .msg.speaking .speaker svg {
+    fill: #00ff96;
+  }
+
+  /* Voice activity bars */
+  .voice-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+    margin-left: 2px;
+  }
+
+  .vbar {
+    width: 3px;
+    background: rgba(0, 255, 150, 0.35);
+    border-radius: 1px;
+    transition: height 0.08s ease;
+  }
+
+  .msg.speaking .vbar {
+    background: #00ff96;
+    box-shadow: 0 0 4px rgba(0, 255, 150, 0.5);
+  }
+
+  /* Text */
+  .msg-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 1px;
+  }
+
+  .msg-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #00ff96;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .msg-time {
+    font-size: 9px;
+    color: rgba(0, 255, 150, 0.4);
+    font-family: 'Courier New', monospace;
+  }
+
+  .msg-text {
+    font-size: 12px;
+    color: rgba(200, 230, 210, 0.85);
+    line-height: 1.45;
+  }
+
+  /* ========== CROSSHAIR ========== */
+  .crosshair {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    pointer-events: none;
+    width: 24px;
+    height: 24px;
+  }
+
+  .crosshair::before,
+  .crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(0, 255, 150, 0.5);
+  }
+
+  .crosshair::before {
+    width: 1px;
+    height: 100%;
+    left: 50%;
+    top: 0;
+  }
+
+  .crosshair::after {
+    height: 1px;
+    width: 100%;
+    top: 50%;
+    left: 0;
+  }
+
+  .crosshair-dot {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: rgba(0, 255, 150, 0.8);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* ========== TOP-RIGHT HUD INFO ========== */
+  .hud-info {
+    position: fixed;
+    top: 28px;
+    right: 28px;
+    z-index: 10;
+    pointer-events: none;
+    text-align: right;
+  }
+
+  .hud-info .info-row {
+    font-size: 10px;
+    color: rgba(0, 255, 150, 0.5);
+    letter-spacing: 1px;
+    line-height: 1.8;
+    font-family: 'Courier New', monospace;
+  }
+
+  .hud-info .info-val {
+    color: rgba(0, 255, 150, 0.8);
+    font-weight: 700;
+  }
+
+  /* ========== BOTTOM-RIGHT COMPASS ========== */
+  .compass {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 10;
+    pointer-events: none;
+    width: 100px;
+    height: 24px;
+    background: rgba(0, 20, 10, 0.6);
+    border: 1px solid rgba(0, 255, 150, 0.2);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: rgba(0, 255, 150, 0.6);
+    letter-spacing: 3px;
+  }
+
+  .compass .deg {
+    position: absolute;
+    top: -16px;
+    font-size: 10px;
+    color: #00ff96;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<!-- Battlefield -->
+<div class="battlefield">
+  <div class="terrain-layer terrain-back"></div>
+  <div class="terrain-layer terrain-mid"></div>
+  <div class="terrain-layer terrain-front"></div>
+  <div class="building b1"></div>
+  <div class="building b2"></div>
+  <div class="building b3"></div>
+  <div class="building b4"></div>
+  <div class="building b5"></div>
+</div>
+
+<!-- HUD overlays -->
+<div class="hud-grid"></div>
+<div class="vignette"></div>
+<div class="hud-frame">
+  <div class="hud-corner tl"></div>
+  <div class="hud-corner tr"></div>
+  <div class="hud-corner bl"></div>
+  <div class="hud-corner br"></div>
+</div>
+
+<!-- Crosshair -->
+<div class="crosshair"><div class="crosshair-dot"></div></div>
+
+<!-- Top-right info -->
+<div class="hud-info">
+  <div class="info-row">SQUAD: <span class="info-val">ALPHA-2</span></div>
+  <div class="info-row">NET: <span class="info-val">SECURE</span></div>
+  <div class="info-row">FREQ: <span class="info-val">142.375 MHz</span></div>
+  <div class="info-row">SIG: <span class="info-val">-72 dBm</span></div>
+</div>
+
+<!-- Compass -->
+<div class="compass">
+  <span class="deg">247°</span>
+  W — SW — S
+</div>
+
+<!-- Chat -->
+<div class="chat-panel">
+  <div class="chat-header">
+    <span class="status-dot"></span>
+    CHAT V5 — Squad Comms
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <!-- Messages injected by JS -->
+  </div>
+</div>
+
+<script>
+  const messages = [
+    { name: 'Raptor-1', text: 'Enemy contact, grid Bravo-4. Two hostiles moving east.', time: '14:23:07' },
+    { name: 'Viper-3', text: 'Copy that. I have eyes on. Engaging from rooftop.', time: '14:23:11' },
+    { name: 'Raptor-1', text: 'Hold fire, civilian vehicle approaching from the south.', time: '14:23:18' },
+    { name: 'Ghost-7', text: 'Drone feed confirms three more behind the warehouse. Wait for my mark.', time: '14:23:24' },
+    { name: 'Viper-3', text: 'Roger. Holding position. Wind is picking up, adjust two clicks left.', time: '14:23:31' },
+    { name: 'Raptor-1', text: 'All units, flashbang out in three... two... one...', time: '14:23:38' },
+    { name: 'Ghost-7', text: 'Clear. Moving to secure the objective. Watch for IEDs on the alley.', time: '14:23:45' },
+    { name: 'Viper-3', text: 'South alley is clear. I see the package. Exfil in five mikes.', time: '14:23:52' },
+    { name: 'Raptor-1', text: 'Solid copy. Rally at checkpoint Delta. Good work, team.', time: '14:23:58' },
+  ];
+
+  const chatMessages = document.getElementById('chatMessages');
+
+  function renderMessages() {
+    chatMessages.innerHTML = messages.map((m, i) => `
+      <div class="msg" data-index="${i}">
+        <div class="speaker">
+          <svg viewBox="0 0 24 24">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+          </svg>
+          <div class="voice-bars" id="bars-${i}">
+            <div class="vbar" style="height:3px"></div>
+            <div class="vbar" style="height:5px"></div>
+            <div class="vbar" style="height:4px"></div>
+            <div class="vbar" style="height:6px"></div>
+            <div class="vbar" style="height:3px"></div>
+          </div>
+        </div>
+        <div class="msg-body">
+          <div class="msg-meta">
+            <span class="msg-name">${m.name}</span>
+            <span class="msg-time">${m.time}</span>
+          </div>
+          <div class="msg-text">${m.text}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  renderMessages();
+
+  // Animate voice activity bars randomly
+  function animateBars() {
+    messages.forEach((_, i) => {
+      const msgEl = chatMessages.children[i];
+      const bars = msgEl.querySelectorAll('.vbar');
+
+      // Randomly decide if this message is "speaking"
+      const isSpeaking = Math.random() > 0.75;
+      msgEl.classList.toggle('speaking', isSpeaking);
+
+      bars.forEach(bar => {
+        if (isSpeaking) {
+          const h = 3 + Math.random() * 11; // 3px to 14px
+          bar.style.height = h + 'px';
+        } else {
+          bar.style.height = (3 + Math.random() * 4) + 'px';
+        }
+      });
+    });
+  }
+
+  setInterval(animateBars, 120);
+
+  // Auto-scroll to bottom
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+</script>
+</body>
+</html>

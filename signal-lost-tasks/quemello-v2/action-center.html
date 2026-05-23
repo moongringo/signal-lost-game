@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quemello — Action Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="quemello-theme.css">
+  <style>
+    .weapon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .weapon-cell {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      text-align: center;
+      transition: all 0.3s;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .weapon-cell:hover {
+      border-color: var(--gold);
+      box-shadow: 0 0 20px var(--gold-dim);
+      transform: translateY(-2px);
+    }
+    .weapon-cell.active {
+      border-color: var(--teal);
+      background: var(--teal-dim);
+      box-shadow: 0 0 20px var(--teal-dim);
+    }
+    .weapon-icon { font-size: 28px; margin-bottom: 8px; }
+    .weapon-name { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+    .weapon-meta { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+    .f-bar {
+      height: 4px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .f-fill { height: 100%; border-radius: 2px; }
+    .stat-bar-group { margin-bottom: 14px; }
+    .stat-bar-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
+    .stat-bar-track { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+    .stat-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+    .stat-bar-fill.health { background: linear-gradient(90deg, var(--coral), var(--coral-light)); }
+    .stat-bar-fill.stamina { background: linear-gradient(90deg, var(--teal), var(--teal-light)); }
+    .stat-bar-fill.suppression { background: linear-gradient(90deg, var(--purple), var(--purple-light)); }
+    .kill-feed { display: flex; flex-direction: column; gap: 6px; }
+    .kill-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.02);
+      font-size: 12px;
+    }
+    .kill-item .killer { color: var(--teal); font-weight: 700; }
+    .kill-item .victim { color: var(--coral); font-weight: 700; }
+    .kill-item .weapon { color: var(--text-dim); font-size: 10px; }
+    .cmd-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .cmd-btn {
+      padding: 14px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .cmd-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); box-shadow: 0 0 15px var(--gold-dim); }
+    .cmd-btn.fire:hover { border-color: var(--coral); color: var(--coral); background: var(--coral-dim); box-shadow: 0 0 15px var(--coral-dim); }
+    .mini-map {
+      aspect-ratio: 1;
+      max-height: 200px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .mini-map::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 19px, var(--border) 20px),
+                  repeating-linear-gradient(90deg, transparent, transparent 19px, var(--border) 20px);
+      opacity: 0.3;
+    }
+    .mini-blip {
+      position: absolute;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .mini-blip.self { background: var(--gold); box-shadow: 0 0 8px var(--gold); top: 50%; left: 50%; }
+    .mini-blip.enemy { background: var(--coral); box-shadow: 0 0 6px var(--coral); }
+    .mini-blip.friendly { background: var(--teal); box-shadow: 0 0 6px var(--teal); }
+  </style>
+  <link rel="stylesheet" href="../../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="action-center" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Quemello — Action Center</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../../design-flow-setup.html">Setup</a>
+        <a href="../../design-flow-roles.html">Roles</a>
+        <a href="../../design-flow-control.html">Control</a>
+
+        <a href="../../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../../login.html">Login</a>
+              <a href="../../server-browser.html">Server Browser</a>
+              <a href="../../map-selection.html">Map Selection</a>
+              <a href="../../role-selection.html">Role Selection</a>
+              <a href="../../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../../player-profile.html">Player Profile</a>
+              <a href="../../career-stats.html">Career Stats</a>
+              <a href="../../match-result.html">Match Result</a>
+              <a href="../../post-match-report.html">Post-Match Report</a>
+              <a href="../../kill-cam.html">Kill Cam</a>
+              <a href="../../death-recap.html">Death Recap</a>
+              <a href="../../spectator-mode.html">Spectator Mode</a>
+              <a href="../../replay-viewer.html">Replay Viewer</a>
+              <a href="../../tournament-bracket.html">Tournament</a>
+              <a href="../../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../../store.html">Store</a>
+              <a href="../../friends.html">Friends</a>
+              <a href="../../squad.html">Squad</a>
+              <a href="../../clan-wars.html">Clan Wars</a>
+              <a href="../../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../../token-dashboard.html">Token Dashboard</a>
+              <a href="../../daily-challenges.html">Daily Challenges</a>
+              <a href="../../inventory.html">Inventory</a>
+              <a href="../../loadout-builder.html">Loadout Builder</a>
+              <a href="../../battle-pass.html">Battle Pass</a>
+              <a href="../../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../../R&D-INDEX.html">R&D Index</a>
+              <a href="../../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../../leaderboard.html">Leaderboard</a>
+              <a href="../../settings.html">Settings</a>
+              <a href="../../design-system.html">Design System</a>
+              <a href="../../design-flow-setup.html">Setup Page</a>
+              <a href="../../design-flow-roles.html">Roles Page</a>
+              <a href="../../design-flow-control.html">Control Page</a>
+              <a href="../../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../../mobile-radar.html">Mobile Radar</a>
+              <a href="../../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+
+  <div class="particle"></div><div class="particle"></div>
+    <div class="particle"></div><div class="particle"></div>
+  </div>
+  <nav class="q-nav">
+    <a href="index.html" class="q-nav-logo">Quemello<span>.</span></a>
+    <div class="q-nav-right">
+      <span class="q-pill live">● Live Combat</span>
+      <span class="q-pill info" id="q-clock">00:00:00 UTC</span>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <div class="q-grid">
+
+      <!-- LEFT -->
+      <div class="q-col">
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Weapon Loadout</h3><span class="tag">Slot 1/3</span></div>
+          <div class="q-card-body">
+            <div class="weapon-grid">
+              <div class="weapon-cell active">
+                <div class="weapon-icon">🔫</div>
+                <div class="weapon-name">M16A1</div>
+                <div class="weapon-meta">24/30</div>
+                <div class="f-bar"><div class="f-fill" style="width:80%;background:linear-gradient(90deg,var(--teal),var(--teal-light))"></div></div>
+              </div>
+              <div class="weapon-cell">
+                <div class="weapon-icon">🔫</div>
+                <div class="weapon-name">M1911</div>
+                <div class="weapon-meta">5/7</div>
+                <div class="f-bar"><div class="f-fill" style="width:71%;background:linear-gradient(90deg,var(--gold),var(--gold-light))"></div></div>
+              </div>
+              <div class="weapon-cell">
+                <div class="weapon-icon">💣</div>
+                <div class="weapon-name">M67 Frag</div>
+                <div class="weapon-meta">2 left</div>
+                <div class="f-bar"><div class="f-fill" style="width:40%;background:linear-gradient(90deg,var(--coral),var(--coral-light))"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Personal Stats</h3><span class="tag">SGT. Morgan</span></div>
+          <div class="q-card-body">
+            <div class="stat-bar-group">
+              <div class="stat-bar-label"><span>Health</span><span>85%</span></div>
+              <div class="stat-bar-track"><div class="stat-bar-fill health" style="width:85%"></div></div>
+            </div>
+            <div class="stat-bar-group">
+              <div class="stat-bar-label"><span>Stamina</span><span>62%</span></div>
+              <div class="stat-bar-track"><div class="stat-bar-fill stamina" style="width:62%"></div></div>
+            </div>
+            <div class="stat-bar-group">
+              <div class="stat-bar-label"><span>Suppression</span><span>12%</span></div>
+              <div class="stat-bar-track"><div class="stat-bar-fill suppression" style="width:12%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Mini Map</h3><span class="tag">Sector 7G</span></div>
+          <div class="q-card-body">
+            <div class="mini-map">
+              <div class="mini-blip self"></div>
+              <div class="mini-blip enemy" style="top:30%;left:70%"></div>
+              <div class="mini-blip enemy" style="top:60%;left:80%"></div>
+              <div class="mini-blip friendly" style="top:45%;left:35%"></div>
+              <div class="mini-blip friendly" style="top:70%;left:50%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER -->
+      <div class="q-col">
+        <div class="q-card enter-stagger" style="flex:1">
+          <div class="q-card-header"><h3>Tactical View</h3><span class="tag">FOV: 120°</span></div>
+          <div class="q-card-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px">
+            <div style="font-size:120px;opacity:0.1">👁</div>
+            <div style="font-size:12px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-top:20px">Tactical Overlay Active</div>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Kill Feed</h3><span class="tag" style="color:var(--coral)">Live</span></div>
+          <div class="q-card-body">
+            <div class="kill-feed">
+              <div class="kill-item"><span class="killer">MORGAN</span><span style="color:var(--text-dim)">→</span><span class="victim">SCOUT</span><span class="weapon">M16A1</span></div>
+              <div class="kill-item"><span class="killer">CHEN</span><span style="color:var(--text-dim)">→</span><span class="victim">SNIPER</span><span class="weapon">M40</span></div>
+              <div class="kill-item"><span class="victim">KOWALSKI</span><span style="color:var(--text-dim)">←</span><span class="killer">GUNNER</span><span class="weapon">AK47</span></div>
+              <div class="kill-item"><span class="killer">O'BRIEN</span><span style="color:var(--text-dim)">→</span><span class="victim">RIFLEMAN</span><span class="weapon">M60</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Command Bar</h3><span class="tag">6 Actions</span></div>
+          <div class="q-card-body">
+            <div class="cmd-bar">
+              <button class="cmd-btn fire">FIRE</button>
+              <button class="cmd-btn">MARK</button>
+              <button class="cmd-btn">SUPPORT</button>
+              <button class="cmd-btn">ABORT</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="q-col">
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Scoreboard</h3><span class="tag">Round 3/5</span></div>
+          <div class="q-card-body" style="padding:0">
+            <table class="q-score-tbl">
+              <thead><tr><th>Unit</th><th>K</th><th>D</th><th>Score</th></tr></thead>
+              <tbody>
+                <tr><td class="f">SGT. MORGAN</td><td>7</td><td>1</td><td class="pts">1,240</td></tr>
+                <tr><td class="f">CPL. CHEN</td><td>5</td><td>2</td><td class="pts">890</td></tr>
+                <tr><td class="f">PFC. O'BRIEN</td><td>2</td><td>3</td><td class="pts">420</td></tr>
+                <tr><td class="e">ENEMY GUNNER</td><td>4</td><td>1</td><td class="pts">760</td></tr>
+                <tr><td class="e">ENEMY SCOUT</td><td>3</td><td>2</td><td class="pts">580</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Comms</h3><span class="tag" style="color:var(--gold)">4 New</span></div>
+          <div class="q-card-body" style="max-height:180px;overflow-y:auto">
+            <div class="q-comm-line"><div class="q-comm-time">03:21Z</div><div><span class="q-comm-name">MORGAN</span> <span class="q-comm-msg">Contact north, 200m.</span></div></div>
+            <div class="q-comm-line"><div class="q-comm-time">03:22Z</div><div><span class="q-comm-alert">KOWALSKI DOWN</span> <span class="q-comm-msg">MEDEVAC requested.</span></div></div>
+            <div class="q-comm-line"><div class="q-comm-time">03:24Z</div><div><span class="q-comm-name">CHEN</span> <span class="q-comm-msg">Sniper eliminated.</span></div></div>
+          </div>
+        </div>
+
+        <div class="q-card enter-stagger">
+          <div class="q-card-header"><h3>Ammo Status</h3><span class="tag">Critical</span></div>
+          <div class="q-card-body">
+            <div class="stat-bar-group"><div class="stat-bar-label"><span>5.56mm</span><span>80%</span></div><div class="stat-bar-track"><div class="stat-bar-fill" style="width:80%;background:linear-gradient(90deg,var(--teal),var(--teal-light))"></div></div></div>
+            <div class="stat-bar-group"><div class="stat-bar-label"><span>.45 ACP</span><span>71%</span></div><div class="stat-bar-track"><div class="stat-bar-fill" style="width:71%;background:linear-gradient(90deg,var(--gold),var(--gold-light))"></div></div></div>
+            <div class="stat-bar-group"><div class="stat-bar-label"><span>Grenades</span><span>40%</span></div><div class="stat-bar-track"><div class="stat-bar-fill" style="width:40%;background:linear-gradient(90deg,var(--coral),var(--coral-light))"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="quemello-effects.js"></script>
+
+
+    </div>
+  </main>
+  <script src="../../design-system.js"></script>
+  <script src="../../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

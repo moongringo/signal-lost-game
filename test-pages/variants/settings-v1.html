@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings V1 — Audio</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+
+  /* HUD */
+  .hud {
+    position: fixed;
+    top: 12px;
+    left: 16px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #555;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 300;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+    color: #fff;
+  }
+
+  /* Panel */
+  .panel {
+    width: 100%;
+    max-width: 480px;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 32px;
+  }
+
+  /* Slider */
+  .slider-group {
+    margin-bottom: 28px;
+  }
+  .slider-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 10px;
+  }
+  .slider-label span:last-child {
+    color: #ccc;
+    font-variant-numeric: tabular-nums;
+  }
+  .slider-track {
+    position: relative;
+    height: 6px;
+    background: #222;
+    border-radius: 3px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .slider-fill {
+    position: absolute;
+    top: 0; left: 0;
+    height: 100%;
+    background: #4a9eff;
+    border-radius: 3px 0 0 3px;
+    pointer-events: none;
+  }
+  .slider-knob {
+    position: absolute;
+    top: 50%;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px rgba(74, 158, 255, 0.4);
+    cursor: grab;
+    transition: box-shadow .15s;
+  }
+  .slider-knob:active {
+    cursor: grabbing;
+    box-shadow: 0 0 14px rgba(74, 158, 255, 0.7);
+  }
+
+  /* Toggles */
+  .toggle-group {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #222;
+  }
+  .toggle-title {
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 12px;
+  }
+  .toggle-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .toggle-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 10px 16px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #888;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+  }
+  .toggle-btn:hover {
+    border-color: #444;
+    color: #bbb;
+  }
+  .toggle-btn.active {
+    background: #1a2f4a;
+    border-color: #4a9eff;
+    color: #4a9eff;
+  }
+
+  /* Test button */
+  .test-btn {
+    margin-top: 32px;
+    width: 100%;
+    padding: 14px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #888;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .test-btn:hover {
+    border-color: #4a9eff;
+    color: #4a9eff;
+  }
+  .test-btn.playing {
+    background: #1a2f4a;
+    border-color: #4a9eff;
+    color: #4a9eff;
+  }
+
+  /* Visual indicator */
+  .indicator {
+    margin-top: 16px;
+    height: 4px;
+    background: #222;
+    border-radius: 2px;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .indicator.active {
+    opacity: 1;
+  }
+  .indicator-bar {
+    height: 100%;
+    width: 0%;
+    background: #4a9eff;
+    border-radius: 2px;
+    animation: ping 1.2s ease-in-out infinite;
+  }
+  @keyframes ping {
+    0%   { width: 0%; opacity: 1; }
+    50%  { width: 100%; opacity: .6; }
+    100% { width: 100%; opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hud">Settings V1 — Audio</div>
+
+<h1>Audio Settings</h1>
+
+<div class="panel">
+
+  <!-- Sliders -->
+  <div class="slider-group" data-key="master">
+    <div class="slider-label"><span>Master Volume</span><span class="val">80%</span></div>
+    <div class="slider-track">
+      <div class="slider-fill" style="width:80%"></div>
+      <div class="slider-knob" style="left:80%"></div>
+    </div>
+  </div>
+
+  <div class="slider-group" data-key="sfx">
+    <div class="slider-label"><span>SFX Volume</span><span class="val">65%</span></div>
+    <div class="slider-track">
+      <div class="slider-fill" style="width:65%"></div>
+      <div class="slider-knob" style="left:65%"></div>
+    </div>
+  </div>
+
+  <div class="slider-group" data-key="music">
+    <div class="slider-label"><span>Music Volume</span><span class="val">45%</span></div>
+    <div class="slider-track">
+      <div class="slider-fill" style="width:45%"></div>
+      <div class="slider-knob" style="left:45%"></div>
+    </div>
+  </div>
+
+  <div class="slider-group" data-key="voice">
+    <div class="slider-label"><span>Voice Chat Volume</span><span class="val">70%</span></div>
+    <div class="slider-track">
+      <div class="slider-fill" style="width:70%"></div>
+      <div class="slider-knob" style="left:70%"></div>
+    </div>
+  </div>
+
+  <div class="slider-group" data-key="mic">
+    <div class="slider-label"><span>Microphone Sensitivity</span><span class="val">50%</span></div>
+    <div class="slider-track">
+      <div class="slider-fill" style="width:50%"></div>
+      <div class="slider-knob" style="left:50%"></div>
+    </div>
+  </div>
+
+  <!-- Audio Output -->
+  <div class="toggle-group">
+    <div class="toggle-title">Audio Output</div>
+    <div class="toggle-row" data-toggle="output">
+      <button class="toggle-btn active" data-value="speakers">Speakers</button>
+      <button class="toggle-btn" data-value="headset">Headset</button>
+    </div>
+  </div>
+
+  <!-- Voice Chat Mode -->
+  <div class="toggle-group">
+    <div class="toggle-title">Voice Chat Mode</div>
+    <div class="toggle-row" data-toggle="voicemode">
+      <button class="toggle-btn active" data-value="push">Push to Talk</button>
+      <button class="toggle-btn" data-value="open">Open Mic</button>
+      <button class="toggle-btn" data-value="disabled">Disabled</button>
+    </div>
+  </div>
+
+  <!-- Test -->
+  <button class="test-btn" id="testBtn">Test Audio</button>
+  <div class="indicator" id="indicator"><div class="indicator-bar"></div></div>
+
+</div>
+
+<script>
+(function() {
+  /* -------- Sliders -------- */
+  document.querySelectorAll('.slider-group').forEach(group => {
+    const track = group.querySelector('.slider-track');
+    const fill  = group.querySelector('.slider-fill');
+    const knob  = group.querySelector('.slider-knob');
+    const valEl = group.querySelector('.val');
+
+    function setFromX(clientX) {
+      const rect = track.getBoundingClientRect();
+      let pct = (clientX - rect.left) / rect.width;
+      pct = Math.max(0, Math.min(1, pct));
+      const rounded = Math.round(pct * 100);
+      fill.style.width = rounded + '%';
+      knob.style.left  = rounded + '%';
+      valEl.textContent = rounded + '%';
+      return rounded;
+    }
+
+    let dragging = false;
+
+    knob.addEventListener('pointerdown', e => {
+      dragging = true;
+      knob.setPointerCapture(e.pointerId);
+      knob.classList.add('active');
+    });
+    knob.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      setFromX(e.clientX);
+    });
+    knob.addEventListener('pointerup', () => {
+      dragging = false;
+    });
+
+    track.addEventListener('pointerdown', e => {
+      if (e.target === knob) return;
+      setFromX(e.clientX);
+      dragging = true;
+      knob.setPointerCapture(e.pointerId);
+    });
+    track.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      setFromX(e.clientX);
+    });
+    track.addEventListener('pointerup', () => {
+      dragging = false;
+    });
+  });
+
+  /* -------- Toggles -------- */
+  document.querySelectorAll('.toggle-row').forEach(row => {
+    row.addEventListener('click', e => {
+      const btn = e.target.closest('.toggle-btn');
+      if (!btn) return;
+      row.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  /* -------- Test Audio -------- */
+  const testBtn = document.getElementById('testBtn');
+  const indicator = document.getElementById('indicator');
+  let audioCtx, osc, gain;
+
+  testBtn.addEventListener('click', () => {
+    if (testBtn.classList.contains('playing')) {
+      stopTest();
+      return;
+    }
+    startTest();
+  });
+
+  function startTest() {
+    testBtn.classList.add('playing');
+    testBtn.textContent = 'Stop Test';
+    indicator.classList.add('active');
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    osc = audioCtx.createOscillator();
+    gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+
+    // Auto-stop after 2s
+    setTimeout(stopTest, 2000);
+  }
+
+  function stopTest() {
+    if (osc) { try { osc.stop(); } catch(e){} osc = null; }
+    if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
+    testBtn.classList.remove('playing');
+    testBtn.textContent = 'Test Audio';
+    indicator.classList.remove('active');
+  }
+})();
+</script>
+</body>
+</html>

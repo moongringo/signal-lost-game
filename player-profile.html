@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Player Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="design-system.css" />
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --body-font: 'Inter', system-ui, sans-serif;
+      --display-font: 'Space Grotesk', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--cream); font-family: var(--body-font); }
+    body { padding: 2rem; max-width: 800px; margin: 0 auto; }
+
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .profile-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--teal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--cream);
+      box-shadow: 0 4px 16px rgba(0, 140, 148, 0.3);
+    }
+
+    .profile-info h1 {
+      font-family: var(--display-font);
+      font-size: 1.5rem;
+      color: var(--ink);
+      margin-bottom: 0.25rem;
+    }
+
+    .profile-info p {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .rank-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: var(--gold);
+      color: var(--ink);
+      margin-top: 0.5rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: rgba(255, 248, 220, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 12px;
+      padding: 1.25rem;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+      background: rgba(255, 248, 220, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .stat-value {
+      font-family: var(--mono-font);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .section {
+      background: rgba(255, 248, 220, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .section h2 {
+      font-family: var(--display-font);
+      font-size: 1rem;
+      color: var(--ink);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .match-history-item {
+      display: grid;
+      grid-template-columns: 80px 1fr 60px 60px;
+      gap: 1rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      align-items: center;
+    }
+
+    .match-history-item:last-child { border-bottom: none; }
+
+    .match-result {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .result-win { background: rgba(0, 140, 148, 0.15); color: var(--teal); }
+    .result-loss { background: rgba(232, 38, 99, 0.15); color: var(--pink); }
+
+    .match-details {
+      font-size: 0.85rem;
+      color: var(--ink);
+    }
+
+    .match-details small {
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    .match-stat {
+      font-family: var(--mono-font);
+      font-size: 0.85rem;
+      color: var(--ink);
+      text-align: right;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 1s ease-out;
+    }
+
+    .achievement-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .achievement {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.3);
+      transition: all 0.2s;
+    }
+
+    .achievement:hover {
+      background: rgba(255, 255, 255, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .achievement-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .achievement-name {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--ink);
+      text-align: center;
+    }
+
+    .achievement.locked { opacity: 0.4; }
+    .achievement.locked .achievement-icon { background: var(--muted); }
+  </style>
+  <link rel="stylesheet" href="./design-flow.css" />
+</head><body data-flow-page="player-profile" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Player Profile</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./design-flow-setup.html">Setup</a>
+        <a href="./design-flow-roles.html">Roles</a>
+        <a href="./design-flow-control.html">Control</a>
+
+        <a href="./design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="./login.html">Login</a>
+              <a href="./server-browser.html">Server Browser</a>
+              <a href="./map-selection.html">Map Selection</a>
+              <a href="./role-selection.html">Role Selection</a>
+              <a href="./matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="./player-profile.html" aria-current="page">Player Profile</a>
+              <a href="./career-stats.html">Career Stats</a>
+              <a href="./match-result.html">Match Result</a>
+              <a href="./post-match-report.html">Post-Match Report</a>
+              <a href="./kill-cam.html">Kill Cam</a>
+              <a href="./death-recap.html">Death Recap</a>
+              <a href="./spectator-mode.html">Spectator Mode</a>
+              <a href="./replay-viewer.html">Replay Viewer</a>
+              <a href="./tournament-bracket.html">Tournament</a>
+              <a href="./emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="./store.html">Store</a>
+              <a href="./friends.html">Friends</a>
+              <a href="./squad.html">Squad</a>
+              <a href="./clan-wars.html">Clan Wars</a>
+              <a href="./patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="./token-dashboard.html">Token Dashboard</a>
+              <a href="./daily-challenges.html">Daily Challenges</a>
+              <a href="./inventory.html">Inventory</a>
+              <a href="./loadout-builder.html">Loadout Builder</a>
+              <a href="./battle-pass.html">Battle Pass</a>
+              <a href="./loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="./R&D-INDEX.html">R&D Index</a>
+              <a href="./ai-battle-arena.html">AI Battle Arena</a>
+              <a href="./admin-dashboard.html">Admin Dashboard</a>
+              <a href="./leaderboard.html">Leaderboard</a>
+              <a href="./settings.html">Settings</a>
+              <a href="./design-system.html">Design System</a>
+              <a href="./design-flow-setup.html">Setup Page</a>
+              <a href="./design-flow-roles.html">Roles Page</a>
+              <a href="./design-flow-control.html">Control Page</a>
+              <a href="./action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="./mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="./mobile-radar.html">Mobile Radar</a>
+              <a href="./gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="numberedPagesBtn">🔢 All Pages (1-50+) ▾</button>
+          <div class="page-menu" id="numberedPagesMenu">
+            <div class="page-menu-group"><div class="page-menu-title">Auth & Flow (1-5)</div><a href="./login.html">1 — Login</a><a href="./server-browser.html">2 — Server Browser</a><a href="./map-selection.html">3 — Map Selection</a><a href="./role-selection.html">4 — Role Selection</a><a href="./matchmaking.html">5 — Matchmaking</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Game Screens (6-15)</div><a href="./player-profile.html" aria-current="page">6 — Player Profile</a><a href="./career-stats.html">7 — Career Stats</a><a href="./match-result.html">8 — Match Result</a><a href="./post-match-report.html">9 — Post-Match Report</a><a href="./kill-cam.html">10 — Kill Cam</a><a href="./death-recap.html">11 — Death Recap</a><a href="./spectator-mode.html">12 — Spectator Mode</a><a href="./replay-viewer.html">13 — Replay Viewer</a><a href="./tournament-bracket.html">14 — Tournament</a><a href="./emote-wheel.html">15 — Emote Wheel</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Live & Social (16-20)</div><a href="./store.html">16 — Store</a><a href="./friends.html">17 — Friends</a><a href="./squad.html">18 — Squad</a><a href="./clan-wars.html">19 — Clan Wars</a><a href="./patch-notes.html">20 — Patch Notes</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Management (21-26)</div><a href="./token-dashboard.html">21 — Token Dashboard</a><a href="./daily-challenges.html">22 — Daily Challenges</a><a href="./inventory.html">23 — Inventory</a><a href="./loadout-builder.html">24 — Loadout Builder</a><a href="./battle-pass.html">25 — Battle Pass</a><a href="./loot-crate.html">26 — Loot Crate</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Tools & Systems (27-36)</div><a href="./R&D-INDEX.html">27 — R&D Index</a><a href="./ai-battle-arena.html">28 — AI Battle Arena</a><a href="./admin-dashboard.html">29 — Admin Dashboard</a><a href="./leaderboard.html">30 — Leaderboard</a><a href="./settings.html">31 — Settings</a><a href="./design-system.html">32 — Design System</a><a href="./design-flow-setup.html">33 — Setup Page</a><a href="./design-flow-roles.html">34 — Roles Page</a><a href="./design-flow-control.html">35 — Control Page</a><a href="./action-center.html">36 — Action Center</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Mobile (37-39)</div><a href="./mobile-ui-kit.html">37 — Mobile UI Kit</a><a href="./mobile-radar.html">38 — Mobile Radar</a><a href="./gps-tracker.html">39 — GPS Tracker</a></div>
+          </div>
+        </div>
+
+        <a href="./design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<div class="profile-header">
+    <div class="profile-avatar">M</div>
+    <div class="profile-info">
+      <h1>Morgan</h1>
+      <p>Member since January 2026 • 142 matches played</p>
+      <span class="rank-badge">🏆 Gold Rank III</span>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">142</div>
+      <div class="stat-label">Matches</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">87</div>
+      <div class="stat-label">Wins</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">2.4</div>
+      <div class="stat-label">K/D Ratio</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">12m</div>
+      <div class="stat-label">Avg Time</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📈 Performance</h2>
+    <div style="margin-bottom: 1rem;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+        <span style="font-size: 0.85rem; color: var(--ink);">Win Rate</span>
+        <span style="font-size: 0.85rem; color: var(--teal); font-weight: 700;">61%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 61%; background: var(--teal);"></div>
+      </div>
+    </div>
+    <div style="margin-bottom: 1rem;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+        <span style="font-size: 0.85rem; color: var(--ink);">Accuracy</span>
+        <span style="font-size: 0.85rem; color: var(--orange); font-weight: 700;">34%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 34%; background: var(--orange);"></div>
+      </div>
+    </div>
+    <div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+        <span style="font-size: 0.85rem; color: var(--ink);">Survival</span>
+        <span style="font-size: 0.85rem; color: var(--pink); font-weight: 700;">78%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 78%; background: var(--pink);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🎖️ Achievements</h2>
+    <div class="achievement-grid">
+      <div class="achievement">
+        <div class="achievement-icon" style="background: var(--gold);">🎯</div>
+        <span class="achievement-name">First Blood</span>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon" style="background: var(--teal);">🏆</div>
+        <span class="achievement-name">Champion</span>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon" style="background: var(--orange);">🔥</div>
+        <span class="achievement-name">Killing Spree</span>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon" style="background: var(--pink);">⚡</div>
+        <span class="achievement-name">Speed Run</span>
+      </div>
+      <div class="achievement locked">
+        <div class="achievement-icon">💀</div>
+        <span class="achievement-name">Grim Reaper</span>
+      </div>
+      <div class="achievement locked">
+        <div class="achievement-icon">👑</div>
+        <span class="achievement-name">King Slayer</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📋 Recent Matches</h2>
+    <div class="match-history-item">
+      <span class="match-result result-win">WIN</span>
+      <div class="match-details">
+        Alpha Squad vs Bravo Squad<br>
+        <small>Battle Royale • 14:32 today</small>
+      </div>
+      <span class="match-stat">12</span>
+      <span class="match-stat">14m</span>
+    </div>
+    <div class="match-history-item">
+      <span class="match-result result-win">WIN</span>
+      <div class="match-details">
+        Alpha Squad vs Charlie Squad<br>
+        <small>Battle Royale • 13:15 today</small>
+      </div>
+      <span class="match-stat">8</span>
+      <span class="match-stat">11m</span>
+    </div>
+    <div class="match-history-item">
+      <span class="match-result result-loss">LOSS</span>
+      <div class="match-details">
+        Alpha Squad vs Delta Squad<br>
+        <small>Battle Royale • 12:40 today</small>
+      </div>
+      <span class="match-stat">5</span>
+      <span class="match-stat">8m</span>
+    </div>
+    <div class="match-history-item">
+      <span class="match-result result-win">WIN</span>
+      <div class="match-details">
+        Alpha Squad vs Echo Squad<br>
+        <small>Battle Royale • 11:20 today</small>
+      </div>
+      <span class="match-stat">15</span>
+      <span class="match-stat">16m</span>
+    </div>
+  </div>
+
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ scrollReveal: true, reducedMotion: true });
+
+    // Animate progress bars on load
+    document.querySelectorAll('.progress-fill').forEach(bar => {
+      const width = bar.style.width;
+      bar.style.width = '0';
+      setTimeout(() => { bar.style.width = width; }, 300);
+    });
+  </script>
+
+    </div>
+  </main>
+  <script src="design-system.js"></script>
+  <script src="./design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+    // Numbered pages menu toggle
+    const numberedPagesBtn = document.getElementById('numberedPagesBtn');
+    const numberedPagesMenu = document.getElementById('numberedPagesMenu');
+    if (numberedPagesBtn && numberedPagesMenu) {
+      numberedPagesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        numberedPagesMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!numberedPagesMenu.contains(e.target) && !numberedPagesBtn.contains(e.target)) {
+          numberedPagesMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

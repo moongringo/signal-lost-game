@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Quemello — Mobile Command</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <style>
+    :root {
+      --cream: #FAF8F5;
+      --gold: #C9A96E;
+      --gold-light: #E8D5A3;
+      --gold-dim: rgba(201, 169, 110, 0.15);
+      --coral: #E85D4E;
+      --coral-light: #F4A89E;
+      --coral-dim: rgba(232, 93, 78, 0.15);
+      --teal: #4A9B9B;
+      --teal-light: #8EC9C9;
+      --teal-dim: rgba(74, 155, 155, 0.15);
+      --purple: #6B3FA0;
+      --purple-light: #9B7FD0;
+      --purple-dim: rgba(107, 63, 160, 0.15);
+      --charcoal: #0a0e17;
+      --charcoal-light: #111827;
+      --charcoal-elevated: #1a1f2e;
+      --text: #FAF8F5;
+      --text-dim: #a0a0a0;
+      --text-muted: #4a4a4a;
+      --border: rgba(201, 169, 110, 0.12);
+      --border-hover: rgba(201, 169, 110, 0.3);
+      --success: #4A9B9B;
+      --warning: #C9A96E;
+      --pink: #E85D4E;
+      --accent: #4A9B9B;
+      --ink: #201116;
+      --cream-soft: #fff0c7;
+      --muted: #4a4a4a;
+      --panel-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      background: var(--charcoal);
+      color: var(--text);
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      overflow-x: hidden;
+      touch-action: manipulation;
+    }
+
+    /* ====== ALIVE BACKGROUND ====== */
+    .alive-bg {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 80%, var(--purple-dim) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, var(--coral-dim) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, var(--teal-dim) 0%, transparent 60%),
+        radial-gradient(ellipse at 70% 70%, var(--gold-dim) 0%, transparent 50%),
+        linear-gradient(135deg, var(--charcoal) 0%, var(--charcoal-light) 50%, var(--charcoal) 100%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.35;
+      filter: blur(50px);
+      animation: float 18s infinite ease-in-out;
+    }
+    .particle:nth-child(1) { width: 300px; height: 300px; background: radial-gradient(circle, var(--purple) 0%, transparent 70%); top: 10%; left: 10%; animation-duration: 22s; }
+    .particle:nth-child(2) { width: 220px; height: 220px; background: radial-gradient(circle, var(--coral) 0%, transparent 70%); top: 60%; left: 70%; animation-duration: 26s; animation-delay: -5s; }
+    .particle:nth-child(3) { width: 260px; height: 260px; background: radial-gradient(circle, var(--teal) 0%, transparent 70%); top: 30%; left: 80%; animation-duration: 20s; animation-delay: -10s; }
+    .particle:nth-child(4) { width: 190px; height: 190px; background: radial-gradient(circle, var(--gold) 0%, transparent 70%); top: 70%; left: 20%; animation-duration: 24s; animation-delay: -8s; }
+    .particle:nth-child(5) { width: 160px; height: 160px; background: radial-gradient(circle, var(--purple-light) 0%, transparent 70%); top: 15%; left: 60%; animation-duration: 18s; animation-delay: -3s; }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(30px, -50px) scale(1.1); }
+      50% { transform: translate(-20px, 30px) scale(0.9); }
+      75% { transform: translate(40px, 20px) scale(1.05); }
+    }
+
+    /* Paisley overlay */
+    .paisley-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.025;
+      background-image:
+        radial-gradient(ellipse 20px 30px at 20% 30%, transparent 48%, var(--gold) 50%, transparent 52%),
+        radial-gradient(ellipse 15px 25px at 70% 60%, transparent 48%, var(--coral) 50%, transparent 52%),
+        radial-gradient(ellipse 25px 20px at 50% 80%, transparent 48%, var(--teal) 50%, transparent 52%),
+        radial-gradient(ellipse 18px 28px at 80% 20%, transparent 48%, var(--purple) 50%, transparent 52%);
+      background-size: 200px 200px;
+      animation: drift 30s linear infinite;
+    }
+    @keyframes drift { 0% { background-position: 0 0; } 100% { background-position: 200px 200px; } }
+
+    /* Scanlines */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 212, 255, 0.025) 2px, rgba(0, 212, 255, 0.025) 4px);
+    }
+
+    /* Noise */
+    .noise {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    /* ====== MOBILE SHELL ====== */
+    .mobile-shell {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      padding: 0;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .mobile-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10, 14, 23, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mobile-header .header-left { display: flex; align-items: center; gap: 12px; }
+    .mobile-header h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.2rem;
+      margin: 0;
+      color: var(--gold);
+      text-shadow: 0 0 10px var(--gold-dim);
+    }
+    .menu-btn {
+      width: 40px; height: 40px; border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--charcoal-elevated);
+      font-size: 1.2rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: var(--gold);
+    }
+    .mobile-menu {
+      display: none;
+      position: absolute; top: 56px; left: 12px; z-index: 150;
+      background: var(--charcoal-elevated);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 12px; min-width: 200px;
+      box-shadow: var(--panel-shadow);
+      backdrop-filter: blur(20px);
+    }
+    .mobile-menu.open { display: block; }
+    .mobile-menu a {
+      display: block; padding: 10px 14px; border-radius: 10px;
+      color: var(--text); text-decoration: none; font-weight: 700; font-size: 0.9rem;
+    }
+    .mobile-menu a:hover { background: var(--gold-dim); color: var(--gold); }
+    .mobile-menu .menu-divider { height: 1px; background: var(--border); margin: 8px 0; }
+    .mobile-menu .menu-label {
+      font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted);
+      padding: 4px 14px; font-weight: 700; letter-spacing: 2px;
+    }
+    .role-badge {
+      background: linear-gradient(135deg, var(--coral), var(--purple));
+      color: white;
+      padding: 4px 12px; border-radius: 999px;
+      font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    /* Nav tabs */
+    .mobile-nav {
+      display: flex; gap: 8px; overflow-x: auto;
+      padding: 12px 16px;
+      background: rgba(10, 14, 23, 0.6);
+      backdrop-filter: blur(10px);
+      scrollbar-width: none;
+      border-bottom: 1px solid var(--border);
+    }
+    .mobile-nav::-webkit-scrollbar { display: none; }
+    .mobile-nav a {
+      white-space: nowrap; padding: 8px 16px; border-radius: 18px;
+      background: var(--charcoal-elevated);
+      border: 1px solid var(--border);
+      font-size: 0.8rem; font-weight: 700; text-decoration: none;
+      color: var(--text-dim); letter-spacing: 1px;
+    }
+    .mobile-nav a.active {
+      background: linear-gradient(135deg, var(--purple), var(--coral));
+      color: white;
+      border-color: transparent;
+    }
+
+    /* Cards */
+    .mobile-card {
+      margin: 12px 16px; padding: 16px; border-radius: 16px;
+      background: rgba(17, 24, 39, 0.7);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
+    }
+    .mobile-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--purple), var(--coral), var(--teal), var(--gold));
+      opacity: 0.5;
+    }
+    .mobile-card h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 1px;
+    }
+    .mobile-card .kicker {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    /* Vitals */
+    .vitals-bar {
+      display: flex; gap: 12px; padding: 12px 0;
+      margin-bottom: 8px; font-size: 0.8rem;
+    }
+    .vital-item { flex: 1; }
+    .vital-label {
+      font-size: 0.65rem; text-transform: uppercase;
+      font-weight: 700; color: var(--text-dim);
+      margin-bottom: 4px; letter-spacing: 2px;
+    }
+    .bar-track { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06); overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+    .health-fill { background: linear-gradient(90deg, var(--teal), var(--teal-light)); }
+    .health-fill.low { background: linear-gradient(90deg, var(--gold), var(--gold-light)); }
+    .health-fill.critical { background: linear-gradient(90deg, var(--coral), var(--coral-light)); }
+    .stamina-fill { background: linear-gradient(90deg, var(--purple), var(--purple-light)); }
+
+    /* Timer & Score */
+    .match-timer {
+      text-align: center; padding: 8px; border-radius: 12px;
+      background: var(--charcoal-elevated);
+      color: var(--gold);
+      font-weight: 700; font-size: 1.1rem;
+      letter-spacing: 2px;
+      font-family: 'JetBrains Mono', monospace;
+      border: 1px solid var(--border);
+    }
+    .score-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--gold-dim), var(--coral-dim));
+      border: 1px solid var(--border);
+      font-size: 0.8rem; font-weight: 700;
+      color: var(--gold);
+    }
+
+    /* Status badge */
+    #statusBadge {
+      margin-top: 8px; text-align: center;
+      font-weight: 700; font-size: 0.85rem;
+    }
+    #bleedoutTimer {
+      display: none; margin-top: 8px;
+      text-align: center; font-weight: 700;
+      font-size: 1rem; color: var(--coral);
+      animation: pulse 1s infinite;
+    }
+
+    /* Inventory */
+    .inventory-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;
+    }
+    .inv-item {
+      padding: 8px; border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      text-align: center; font-size: 0.75rem;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    .inv-item .count { font-size: 1rem; font-weight: 700; display: block; color: var(--gold); }
+    .inv-item.empty { opacity: 0.4; }
+
+    /* Buttons */
+    .mobile-btn {
+      width: 100%; padding: 14px; border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--charcoal-elevated);
+      color: var(--gold);
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700; font-size: 0.9rem;
+      margin-top: 8px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      letter-spacing: 1px;
+    }
+    .mobile-btn:hover {
+      border-color: var(--gold);
+      box-shadow: 0 0 20px var(--gold-dim);
+    }
+    .mobile-btn.primary {
+      background: linear-gradient(135deg, var(--purple), var(--coral));
+      border-color: transparent;
+      color: var(--cream);
+    }
+    .mobile-btn.primary:hover {
+      box-shadow: 0 0 30px var(--coral-dim);
+    }
+    .mobile-btn.warn {
+      background: linear-gradient(135deg, var(--gold), var(--coral));
+      border-color: transparent;
+      color: var(--cream);
+    }
+    .mobile-btn.danger {
+      background: linear-gradient(135deg, var(--coral), var(--purple));
+      border-color: transparent;
+      color: var(--cream);
+    }
+    .mobile-btn:active { transform: scale(0.96); opacity: 0.9; }
+
+    /* Action grid */
+    .action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
+    .action-grid .mobile-btn { margin-top: 0; font-size: 0.85rem; padding: 12px; }
+
+    /* Maps */
+    .mobile-map { height: 300px; border-radius: 16px; margin: 8px 0; border: 1px solid var(--border); }
+
+    /* GPS */
+    .gps-status {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+    }
+    .gps-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted); }
+    .gps-dot.active { background: var(--teal); box-shadow: 0 0 8px var(--teal); animation: pulse-dot 1.5s infinite; }
+    .gps-dot.error { background: var(--coral); }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* Chat */
+    .chat-bubble {
+      padding: 10px 14px; border-radius: 16px; margin: 6px 0;
+      background: rgba(255,255,255,0.04);
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+    }
+    .chat-bubble.me {
+      background: linear-gradient(135deg, var(--purple-dim), var(--coral-dim));
+      color: var(--cream);
+      margin-left: 20%;
+      border-color: var(--border-hover);
+    }
+    .chat-bubble.them { margin-right: 20%; color: var(--text-dim); }
+    .chat-meta { font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+    .chat-input-row {
+      display: flex; gap: 8px; margin-top: 12px; align-items: center;
+    }
+    .chat-input-row input {
+      flex: 1; padding: 12px 14px; border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--charcoal-elevated);
+      color: var(--text);
+      font-size: 1rem;
+      height: 44px;
+    }
+    .chat-input-row input::placeholder { color: var(--text-muted); }
+    .chat-input-row .send-btn {
+      width: auto; padding: 0 20px; margin-top: 0;
+      white-space: nowrap; height: 44px; border-radius: 14px;
+    }
+
+    /* Objectives */
+    .objective-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px; border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      margin: 6px 0;
+      border: 1px solid var(--border);
+    }
+    .objective-item input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--gold); }
+    .objective-item.done { opacity: 0.5; text-decoration: line-through; }
+
+    /* Metrics */
+    .metric-row {
+      display: flex; justify-content: space-between;
+      padding: 6px 0; border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .metric-row:last-child { border-bottom: none; }
+    .badge { padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; }
+    .badge.online { background: var(--teal-dim); color: var(--teal); }
+    .badge.busy { background: var(--gold-dim); color: var(--gold); }
+    .badge.idle { background: rgba(255,255,255,0.06); color: var(--text-dim); }
+
+    /* Radar overlay */
+    .reference-radar {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      border-radius: 16px; pointer-events: none; opacity: 0.75; z-index: 1000;
+      border: 1px solid var(--border);
+    }
+    .reference-radar .bearing {
+      position: absolute;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .reference-radar .bearing.north { top: 8px; left: 50%; transform: translateX(-50%); }
+    .reference-radar .bearing.east { top: 50%; right: 8px; transform: translateY(-50%); }
+    .reference-radar .bearing.south { bottom: 8px; left: 50%; transform: translateX(-50%); }
+    .reference-radar .bearing.west { top: 50%; left: 8px; transform: translateY(-50%); }
+    .reference-radar .scan-line {
+      position: absolute; top: 50%; left: 50%;
+      width: 50%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      transform-origin: left center;
+      animation: sweep 4s linear infinite;
+    }
+    .reference-radar .radar-target {
+      position: absolute;
+      font-size: 0.7rem;
+      color: var(--teal);
+      font-weight: 700;
+    }
+    .reference-radar .radar-target small { display: block; font-size: 0.55rem; color: var(--text-dim); }
+    .reference-radar .target-one { top: 30%; left: 25%; }
+    .reference-radar .target-two { top: 60%; left: 65%; }
+    .reference-radar .target-three { top: 45%; left: 45%; }
+
+    @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* Role panels */
+    .role-panel { display: none; }
+    .role-panel.active { display: block; }
+
+    /* Log scroll */
+    .log-scroll { max-height: 200px; overflow-y: auto; }
+
+    /* SOS */
+    .sos-btn {
+      position: fixed; bottom: 20px; right: 20px; z-index: 200;
+      width: 64px; height: 64px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--coral), var(--purple));
+      color: white; border: 3px solid var(--charcoal);
+      font-size: 1.4rem; font-weight: 700;
+      box-shadow: 0 8px 24px var(--coral-dim);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .sos-btn:active { transform: scale(0.92); }
+
+    /* Special items */
+    .patrol-drone { font-size: 1.4rem; filter: drop-shadow(0 2px 4px var(--coral-dim)); }
+    .patrol-drone.hijacked { filter: drop-shadow(0 2px 4px var(--teal-dim)); }
+    .sniper-nest { font-size: 1rem; animation: blink 2s infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .c4-charge { font-size: 1rem; }
+    .disarmed-mine { font-size: 1rem; color: var(--success); font-weight: 700; }
+    .decoy-beacon { font-size: 1.2rem; animation: pulse 2s infinite; }
+    .loot-drop {
+      font-size: 1.2rem; font-weight: 700; color: #ffd700;
+      background: #000; border-radius: 50%;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+
+    /* Leaflet dark override */
+    .leaflet-container { background: var(--charcoal) !important; }
+    .leaflet-popup-content-wrapper {
+      background: var(--charcoal-elevated) !important;
+      color: var(--text) !important;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .leaflet-popup-tip { background: var(--charcoal-elevated) !important; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    @media (min-width: 600px) {
+      .mobile-shell { max-width: 480px; margin: 0 auto; }
+    }
+  </style>
+  <link rel="stylesheet" href="../../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="mobile-playable" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Quemello — Mobile Command</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../../design-flow-setup.html">Setup</a>
+        <a href="../../design-flow-roles.html">Roles</a>
+        <a href="../../design-flow-control.html">Control</a>
+
+        <a href="../../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../../login.html">Login</a>
+              <a href="../../server-browser.html">Server Browser</a>
+              <a href="../../map-selection.html">Map Selection</a>
+              <a href="../../role-selection.html">Role Selection</a>
+              <a href="../../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../../player-profile.html">Player Profile</a>
+              <a href="../../career-stats.html">Career Stats</a>
+              <a href="../../match-result.html">Match Result</a>
+              <a href="../../post-match-report.html">Post-Match Report</a>
+              <a href="../../kill-cam.html">Kill Cam</a>
+              <a href="../../death-recap.html">Death Recap</a>
+              <a href="../../spectator-mode.html">Spectator Mode</a>
+              <a href="../../replay-viewer.html">Replay Viewer</a>
+              <a href="../../tournament-bracket.html">Tournament</a>
+              <a href="../../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../../store.html">Store</a>
+              <a href="../../friends.html">Friends</a>
+              <a href="../../squad.html">Squad</a>
+              <a href="../../clan-wars.html">Clan Wars</a>
+              <a href="../../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../../token-dashboard.html">Token Dashboard</a>
+              <a href="../../daily-challenges.html">Daily Challenges</a>
+              <a href="../../inventory.html">Inventory</a>
+              <a href="../../loadout-builder.html">Loadout Builder</a>
+              <a href="../../battle-pass.html">Battle Pass</a>
+              <a href="../../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../../R&D-INDEX.html">R&D Index</a>
+              <a href="../../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../../leaderboard.html">Leaderboard</a>
+              <a href="../../settings.html">Settings</a>
+              <a href="../../design-system.html">Design System</a>
+              <a href="../../design-flow-setup.html">Setup Page</a>
+              <a href="../../design-flow-roles.html">Roles Page</a>
+              <a href="../../design-flow-control.html">Control Page</a>
+              <a href="../../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../../mobile-radar.html">Mobile Radar</a>
+              <a href="../../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+
+  <!-- Background layers -->
+  <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+  <div class="mobile-shell">
+    <header class="mobile-header">
+      <div class="header-left">
+        <button class="menu-btn" onclick="toggleMenu()" id="menuBtn">☰</button>
+        <h1>Quemello</h1>
+        <div class="mobile-menu" id="mobileMenu">
+          <div class="menu-label">Main Pages</div>
+          <a href="../../index.html">🏠 Home</a>
+          <a href="../../roles.html">🎭 Roles</a>
+          <a href="../../control.html">🎮 Control</a>
+          <a href="../../leaderboard.html">🏆 Leaderboard</a>
+          <a href="../../dashboard.html">📊 Dashboard</a>
+          <div class="menu-divider"></div>
+          <div class="menu-label">This Page</div>
+          <a href="../../mobile.html">📱 Mobile Command</a>
+          <div class="menu-divider"></div>
+          <div class="menu-label">Reference</div>
+          <a href="../../DESIGN.md" target="_blank">📄 Design Doc</a>
+          <a href="../../RND.md" target="_blank">🔬 R&D Notes</a>
+        </div>
+      </div>
+      <span class="role-badge" id="currentRole">Mission Control</span>
+    </header>
+
+    <nav class="mobile-nav" id="roleTabs">
+      <a href="#" class="active" data-role="mc">Mission Control</a>
+      <a href="#" data-role="nav">Navigator</a>
+      <a href="#" data-role="dec">Decoder</a>
+      <a href="#" data-role="drone">Drone</a>
+      <a href="#" data-role="medic">Medic</a>
+      <a href="#" data-role="mech">Mechanic</a>
+      <a href="#" data-role="courier">Courier</a>
+    </nav>
+
+    <!-- GPS Status -->
+    <div class="mobile-card" style="margin-top: 12px; padding: 12px 16px;">
+      <div class="gps-status" id="gpsStatus">
+        <div class="gps-dot" id="gpsDot"></div>
+        <span id="gpsText">Waiting for GPS...</span>
+      </div>
+      <div id="gpsCoords" style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-muted);">--</div>
+    </div>
+
+    <!-- VITALS PANEL -->
+    <div class="mobile-card" style="margin-top: 0;">
+      <p class="kicker">Vitals</p>
+      <div class="vitals-bar">
+        <div class="vital-item">
+          <div class="vital-label">Health</div>
+          <div class="bar-track"><div class="bar-fill health-fill" id="healthBar" style="width: 100%"></div></div>
+        </div>
+        <div class="vital-item">
+          <div class="vital-label">Stamina</div>
+          <div class="bar-track"><div class="bar-fill stamina-fill" id="staminaBar" style="width: 100%"></div></div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center;">
+        <span class="score-pill" id="scorePill">🏆 0 pts</span>
+        <div class="match-timer" id="matchTimer">30:00</div>
+      </div>
+      <div id="statusBadge">🟢 HEALTHY</div>
+      <div id="bleedoutTimer">⏱️ BLEEDOUT: 120s</div>
+    </div>
+
+    <!-- AI THREATS -->
+    <div class="mobile-card">
+      <p class="kicker">AI Threats</p>
+      <h3>Threat Simulation</h3>
+      <div class="action-grid">
+        <button class="mobile-btn danger" onclick="spawnDrone()">🛸 Spawn Drone</button>
+        <button class="mobile-btn warn" onclick="spawnSniper()">🔴 Spawn Sniper</button>
+        <button class="mobile-btn" onclick="spawnMine()">💣 Spawn Mine</button>
+        <button class="mobile-btn" onclick="spawnGas()">☠️ Spawn Gas</button>
+        <button class="mobile-btn" onclick="spawnEMP()">⚡ Spawn EMP</button>
+        <button class="mobile-btn" onclick="spawnLoot()">🎒 Spawn Loot</button>
+      </div>
+      <div class="action-grid" style="margin-top: 8px;">
+        <button class="mobile-btn danger" onclick="simulateHit()">💥 Simulate Hit (-35 HP)</button>
+        <button class="mobile-btn" onclick="simulateSprint()">🏃 Sprint (Drain Stamina)</button>
+      </div>
+      <button class="mobile-btn primary" onclick="clearThreats()" style="margin-top: 8px;">🧹 Clear All Threats</button>
+    </div>
+
+    <!-- SQUAD STATUS -->
+    <div class="mobile-card">
+      <p class="kicker">Squad Status</p>
+      <h3>Team Overview</h3>
+      <div id="squadList">
+        <div class="metric-row"><span>Alpha-1</span><span class="badge online">Online</span></div>
+        <div class="metric-row"><span>Beta-2</span><span class="badge online">Online</span></div>
+        <div class="metric-row"><span>Gamma-3</span><span class="badge busy">Busy</span></div>
+      </div>
+    </div>
+
+    <!-- MISSION CONTROL PANEL -->
+    <div class="role-panel active" id="panel-mc">
+      <div class="mobile-card">
+        <p class="kicker">Loadout</p>
+        <h3>Inventory</h3>
+        <div class="inventory-grid" id="inventoryGrid">
+          <div class="inv-item" id="invMedkits"><span class="count">2</span>Medkits</div>
+          <div class="inv-item" id="invAmmo"><span class="count">90</span>Ammo</div>
+          <div class="inv-item" id="invEMP"><span class="count">1</span>EMP Grenades</div>
+          <div class="inv-item" id="invDecoys"><span class="count">1</span>Decoys</div>
+          <div class="inv-item" id="invSmoke"><span class="count">2</span>Smoke</div>
+          <div class="inv-item empty" id="invGasMask"><span class="count">0</span>Gas Mask</div>
+          <div class="inv-item empty" id="invDrone"><span class="count">0</span>Recon Drone</div>
+        </div>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Command</p>
+        <h3>Directives</h3>
+        <div class="action-grid">
+          <button class="mobile-btn" onclick="sendDirective('move')">📍 Move</button>
+          <button class="mobile-btn" onclick="sendDirective('hold')">⛔ Hold</button>
+          <button class="mobile-btn" onclick="sendDirective('regroup')">🔄 Regroup</button>
+          <button class="mobile-btn warn" onclick="sendDirective('extract')">🚁 Extract</button>
+        </div>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Live Map</p>
+        <div style="position: relative;">
+          <div class="mobile-map" id="mcMap"></div>
+          <div class="reference-radar">
+            <span class="bearing north">0</span>
+            <span class="bearing east">90</span>
+            <span class="bearing south">180</span>
+            <span class="bearing west">270</span>
+            <i class="scan-line"></i>
+            <span class="radar-target target-one"><b>Alpha-1</b><small>RNG 180m</small></span>
+            <span class="radar-target target-two"><b>Beta-2</b><small>RNG 320m</small></span>
+            <span class="radar-target target-three"><b>Gamma-3</b><small>RNG 210m</small></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NAVIGATOR PANEL -->
+    <div class="role-panel" id="panel-nav">
+      <div class="mobile-card">
+        <p class="kicker">Position</p>
+        <h3>Navigation</h3>
+        <div style="position: relative;">
+          <div class="mobile-map" id="navMap"></div>
+          <div class="reference-radar">
+            <span class="bearing north">0</span>
+            <span class="bearing east">90</span>
+            <span class="bearing south">180</span>
+            <span class="bearing west">270</span>
+            <i class="scan-line"></i>
+            <span class="radar-target target-one"><b>Waypoint A</b><small>RNG 450m</small></span>
+            <span class="radar-target target-two"><b>Waypoint B</b><small>RNG 280m</small></span>
+            <span class="radar-target target-three"><b>Extraction</b><small>RNG 890m</small></span>
+          </div>
+        </div>
+        <button class="mobile-btn primary" onclick="setWaypoint()">📍 Set Waypoint</button>
+        <button class="mobile-btn" onclick="shareLocation()">📤 Share Location</button>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Ability</p>
+        <h3>Mine Detection</h3>
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 12px;">Scan 50m radius for proximity mines. Detected mines shown on map with warning.</p>
+        <button class="mobile-btn warn" onclick="scoutMines()">⚠️ Scout for Mines</button>
+        <div id="scoutLog" style="margin-top: 12px; font-size: 0.8rem;"></div>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Course</p>
+        <h3>Active Waypoints</h3>
+        <div id="waypointList">
+          <div class="objective-item"><span>📍 Extraction Point Alpha</span></div>
+          <div class="objective-item"><span>📍 Relay Station B</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DECODER PANEL -->
+    <div class="role-panel" id="panel-dec">
+      <div class="mobile-card">
+        <p class="kicker">Cipher</p>
+        <h3>Signal Decoder</h3>
+        <div id="cipherDisplay" style="font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; letter-spacing: 0.2em; text-align: center; padding: 20px; background: rgba(0,0,0,0.1); border-radius: 14px; margin: 12px 0; color: var(--gold); border: 1px solid var(--border);">••• ••• •••</div>
+        <div class="action-grid">
+          <button class="mobile-btn primary" onclick="decodeSignal()">🔓 Decode</button>
+          <button class="mobile-btn" onclick="scanFrequency()">📡 Scan</button>
+        </div>
+        <div id="decodeResult" style="margin-top: 12px; font-size: 0.9rem;"></div>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Ability</p>
+        <h3>Signal Intercept</h3>
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 12px;">Attempt to capture fragments of enemy squad radio transmissions. 60s cooldown.</p>
+        <button class="mobile-btn warn" onclick="signalIntercept()">📻 Intercept Enemy Comms</button>
+        <div id="interceptLog" style="margin-top: 12px; font-size: 0.8rem;"></div>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Intel</p>
+        <h3>Decrypted Messages</h3>
+        <div class="log-scroll" id="intelLog">
+          <div class="chat-bubble them">Cipher #4 decrypted: "Move to extraction"<div class="chat-meta">Gamma-3 · 06:35</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DRONE PANEL -->
+    <div class="role-panel" id="panel-drone">
+      <div class="mobile-card">
+        <p class="kicker">UAV Control</p>
+        <h3>Drone Operator</h3>
+        <div style="position: relative;">
+          <div class="mobile-map" id="droneMap"></div>
+          <div class="reference-radar">
+            <span class="bearing north">0</span>
+            <span class="bearing east">90</span>
+            <span class="bearing south">180</span>
+            <span class="bearing west">270</span>
+            <i class="scan-line"></i>
+            <span class="radar-target target-one"><b>Target A</b><small>RNG 120m</small></span>
+            <span class="radar-target target-two"><b>Target B</b><small>RNG 340m</small></span>
+            <span class="radar-target target-three"><b>Hostile</b><small>RNG 560m</small></span>
+          </div>
+        </div>
+        <div class="action-grid">
+          <button class="mobile-btn primary" onclick="launchDrone()">🛸 Launch</button>
+          <button class="mobile-btn" onclick="recallDrone()">🏠 Recall</button>
+          <button class="mobile-btn" onclick="dronePhoto()">📸 Photo</button>
+          <button class="mobile-btn warn" onclick="droneScan()">🔍 Scan</button>
+        </div>
+        <div id="droneStatus" style="margin-top: 12px; font-size: 0.85rem; color: var(--text-dim);">Drone: Standby</div>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Ability</p>
+        <h3>Drone Hijack</h3>
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 12px;">Attempt to override enemy drone control within 50m. 3-second channel. +50 pts if successful.</p>
+        <button class="mobile-btn danger" onclick="hijackDrone()">🔴 Hijack Enemy Drone</button>
+        <button class="mobile-btn" onclick="throwSmoke()">💨 Smoke Grenade</button>
+        <button class="mobile-btn warn" onclick="radioJam()">📡 Radio Jam</button>
+        <div id="hijackLog" style="margin-top: 12px; font-size: 0.8rem;"></div>
+      </div>
+    </div>
+
+    <!-- MEDIC PANEL -->
+    <div class="role-panel" id="panel-medic">
+      <div class="mobile-card">
+        <p class="kicker">Triage</p>
+        <h3>Casualty Status</h3>
+        <div id="casualtyList">
+          <div class="objective-item"><span>🟢 Alpha-1</span><span id="casualtyAlpha1">Healthy</span></div>
+          <div class="objective-item"><span>🟡 Beta-2</span><span id="casualtyBeta2">Healthy</span></div>
+          <div class="objective-item"><span>🟢 Gamma-3</span><span id="casualtyGamma3">Healthy</span></div>
+        </div>
+        <button class="mobile-btn primary" onclick="healSelf()">💊 Use Medkit</button>
+        <button class="mobile-btn warn" onclick="reviveTeammate()" style="margin-top:8px;">✅ Revive Teammate</button>
+        <button class="mobile-btn primary" onclick="fieldSurgery()" style="margin-top:8px;">🏥 Field Surgery</button>
+        <button class="mobile-btn" onclick="useStimPack()" style="margin-top:8px;">💉 Stim Pack</button>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Supplies</p>
+        <h3>Medical Kit</h3>
+        <div class="metric-row"><span>Bandages</span><span>8/10</span></div>
+        <div class="metric-row"><span>Morphine</span><span id="morphineCount">3/5</span></div>
+        <div class="metric-row"><span>Medkits</span><span id="medkitCount">2/4</span></div>
+      </div>
+    </div>
+
+    <!-- MECHANIC PANEL -->
+    <div class="role-panel" id="panel-mech">
+      <div class="mobile-card">
+        <p class="kicker">Diagnostics</p>
+        <h3>Equipment Status</h3>
+        <div id="equipmentList">
+          <div class="objective-item"><span>📻 Comms Array</span><span class="badge online">Online</span></div>
+          <div class="objective-item"><span>🔋 Power Cell</span><span class="badge busy">Charging</span></div>
+          <div class="objective-item"><span>🚗 Vehicle</span><span class="badge idle">Parked</span></div>
+        </div>
+        <button class="mobile-btn primary" onclick="repairEquipment()">🔧 Quick Repair</button>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Ability</p>
+        <h3>Trap Disarm</h3>
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 12px;">Detect and defuse proximity mines within 10m. +25 pts per disarm. Scout range: 5m warning.</p>
+        <button class="mobile-btn warn" onclick="disarmTrap()">🛡️ Disarm Nearby Trap</button>
+        <button class="mobile-btn" onclick="deployTrophy()">🛡️ Trophy System</button>
+        <button class="mobile-btn primary" onclick="resupplyAmmo()" style="margin-top:8px;">🎒 Ammo Resupply</button>
+        <div id="disarmLog" style="margin-top: 12px; font-size: 0.8rem;"></div>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Schematics</p>
+        <h3>Repair Queue</h3>
+        <div class="log-scroll" id="repairLog">
+          <div class="chat-bubble them">Drone motor replaced<div class="chat-meta">Delta-4 · 06:42</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COURIER PANEL -->
+    <div class="role-panel" id="panel-courier">
+      <div class="mobile-card">
+        <p class="kicker">Delivery</p>
+        <h3>Package Tracking</h3>
+        <div style="position: relative;">
+          <div class="mobile-map" id="courierMap"></div>
+          <div class="reference-radar">
+            <span class="bearing north">0</span>
+            <span class="bearing east">90</span>
+            <span class="bearing south">180</span>
+            <span class="bearing west">270</span>
+            <i class="scan-line"></i>
+            <span class="radar-target target-one"><b>Pickup</b><small>RNG 200m</small></span>
+            <span class="radar-target target-two"><b>Dropoff</b><small>RNG 450m</small></span>
+            <span class="radar-target target-three"><b>Checkpoint</b><small>RNG 320m</small></span>
+          </div>
+        </div>
+        <div class="action-grid">
+          <button class="mobile-btn primary" onclick="pickupPackage()">📦 Pickup</button>
+          <button class="mobile-btn" onclick="dropPackage()">📥 Drop</button>
+          <button class="mobile-btn" onclick="confirmDelivery()">✅ Confirm</button>
+          <button class="mobile-btn warn" onclick="reportDelay()">⚠️ Delay</button>
+        </div>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Ability</p>
+        <h3>Speed Boost</h3>
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 12px;">Adrenaline shot allows 10-second sprint with no stamina drain. 60s cooldown.</p>
+        <button class="mobile-btn primary" onclick="speedBoost()">⚡ Speed Boost</button>
+        <button class="mobile-btn" onclick="deployDecoy()">📡 Deploy Decoy</button>
+        <div id="speedLog" style="margin-top: 12px; font-size: 0.8rem;"></div>
+      </div>
+      <div class="mobile-card">
+        <p class="kicker">Manifest</p>
+        <h3>Active Deliveries</h3>
+        <div id="deliveryList">
+          <div class="objective-item"><input type="checkbox"><span>Intel package to Alpha</span></div>
+          <div class="objective-item"><input type="checkbox"><span>Medkit to Echo-5</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAT PANEL (All roles) -->
+    <div class="mobile-card" style="margin-bottom: 100px;">
+      <p class="kicker">Comms</p>
+      <h3>Squad Chat</h3>
+      <div class="log-scroll" id="chatLog" style="max-height: 160px;">
+        <div class="chat-bubble them">All units, check in.<div class="chat-meta">Alpha-1 · 08:38</div></div>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" placeholder="Message...">
+        <button class="mobile-btn primary send-btn" onclick="sendChat()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="sos-btn" onclick="triggerSOS()">SOS</button>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="../../design-flow.js?v=10"></script>
+  <script src="../../test-data.js?v=10"></script>
+  <script src="../../ai-threats.js?v=18"></script>
+  <script src="../../game-engine.js?v=10"></script>
+  <script src="../../threat-sync.js?v=1"></script>
+  <script>
+    // ====== GAME ENGINE + ALL ORIGINAL LOGIC ======
+
+    const roleTabs = document.querySelectorAll('#roleTabs a');
+    const rolePanels = document.querySelectorAll('.role-panel');
+    const currentRole = document.getElementById('currentRole');
+
+    roleTabs.forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        e.preventDefault();
+        roleTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        rolePanels.forEach(p => p.classList.remove('active'));
+        const panel = document.getElementById('panel-' + tab.dataset.role);
+        panel.classList.add('active');
+        currentRole.textContent = tab.textContent;
+        setTimeout(() => {
+          const mapId = tab.dataset.role === 'mc' ? 'mcMap' :
+                        tab.dataset.role === 'nav' ? 'navMap' :
+                        tab.dataset.role === 'drone' ? 'droneMap' :
+                        tab.dataset.role === 'courier' ? 'courierMap' : null;
+          if (mapId && maps[mapId.replace('Map', '')]) {
+            maps[mapId.replace('Map', '')].invalidateSize();
+          }
+        }, 50);
+      });
+    });
+
+    let userPosition = null;
+    let gpsWatchId = null;
+    const maps = {};
+
+    function initMap(id, center) {
+      const map = L.map(id).setView(center || [59.9139, 10.7522], 15);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; CartoDB | &copy; OpenStreetMap',
+        maxZoom: 19,
+        crossOrigin: true
+      }).addTo(map);
+      setTimeout(() => map.invalidateSize(), 250);
+      setTimeout(() => map.invalidateSize(), 1000);
+      return map;
+    }
+
+    function updateGPSDisplay(position) {
+      const { latitude, longitude, accuracy } = position.coords;
+      userPosition = [latitude, longitude];
+      document.getElementById('gpsCoords').textContent =
+        `${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${Math.round(accuracy)}m)`;
+      document.getElementById('gpsDot').className = 'gps-dot active';
+      document.getElementById('gpsText').textContent = 'GPS Active';
+      Object.values(maps).forEach(map => {
+        if (!map._userMarker) {
+          map._userMarker = L.circleMarker(userPosition, {
+            radius: 10, color: '#00a9c7', fillColor: '#00a9c7', fillOpacity: 0.8
+          }).addTo(map).bindPopup('You are here');
+        } else {
+          map._userMarker.setLatLng(userPosition);
+        }
+        map.panTo(userPosition);
+      });
+    }
+
+    function gpsError(err) {
+      document.getElementById('gpsDot').className = 'gps-dot error';
+      document.getElementById('gpsText').textContent = 'GPS Error: ' + err.message;
+    }
+
+    function startGPS() {
+      if (!navigator.geolocation) {
+        document.getElementById('gpsText').textContent = 'GPS Not Available';
+        document.getElementById('gpsDot').className = 'gps-dot error';
+        return;
+      }
+      gpsWatchId = navigator.geolocation.watchPosition(updateGPSDisplay, gpsError, {
+        enableHighAccuracy: true, maximumAge: 30000, timeout: 27000
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      maps.mc = initMap('mcMap');
+      maps.nav = initMap('navMap');
+      maps.drone = initMap('droneMap');
+      maps.courier = initMap('courierMap');
+      startGPS();
+      const chatInput = document.getElementById('chatInput');
+      if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); });
+      }
+      initGameEngine();
+    });
+
+    // ====== ACTION HANDLERS ======
+    function sendDirective(type) {
+      if (!player) { logChat(`Directive: ${type.toUpperCase()} sent`, 'me'); return; }
+      switch(type) {
+        case 'move':
+          if (player.status !== 'healthy') { logChat('❌ Cannot move while ' + player.status, 'me'); return; }
+          player.stamina = Math.max(0, player.stamina - 5);
+          logChat(`📍 MOVE — Stamina: ${Math.round(player.stamina)}`, 'me');
+          updateVitals();
+          break;
+        case 'hold': logChat('⛔ HOLD POSITION — Defensive stance', 'me'); break;
+        case 'regroup': logChat('🔄 REGROUP — All units converge', 'me'); break;
+        case 'extract':
+          if (player.status === 'downed' || player.status === 'dead') {
+            logChat('❌ Cannot extract while ' + player.status, 'me'); return;
+          }
+          if (squad && squad.checkExtraction(player.position)) {
+            squad.startExtraction(player.position);
+            logChat('🚁 EXTRACTION INITIATED — Hold position 30s', 'me');
+          } else { logChat('❌ Not at extraction point', 'me'); }
+          break;
+        default: logChat(`Directive: ${type.toUpperCase()} sent`, 'me');
+      }
+    }
+    function setWaypoint() {
+      const pos = userPosition || maps.nav.getCenter();
+      L.marker(pos).addTo(maps.nav).bindPopup('Waypoint').openPopup();
+      logChat('Waypoint set', 'me');
+    }
+    function shareLocation() {
+      const pos = userPosition || [59.9139, 10.7522];
+      logChat(`Location: ${pos[0].toFixed(4)}, ${pos[1].toFixed(4)}`, 'me');
+    }
+    function decodeSignal() {
+      const ciphers = ['ALPHA', 'BRAVO', 'EXTRACT', 'REGROUP', 'SIGNAL LOST'];
+      const result = ciphers[Math.floor(Math.random() * ciphers.length)];
+      document.getElementById('cipherDisplay').textContent = result;
+      document.getElementById('decodeResult').innerHTML = `<span style="color: var(--success);">✓ Decrypted: "${result}"</span>`;
+    }
+    function scanFrequency() {
+      document.getElementById('cipherDisplay').textContent = 'SCANNING...';
+      setTimeout(() => {
+        document.getElementById('cipherDisplay').textContent = '••• ••• •••';
+        document.getElementById('decodeResult').textContent = 'No signal detected';
+      }, 2000);
+    }
+    function launchDrone() {
+      document.getElementById('droneStatus').textContent = 'Drone: Airborne';
+      const pos = userPosition || maps.drone.getCenter();
+      L.circleMarker(pos, {radius: 6, color: '#ff8b45'}).addTo(maps.drone).bindPopup('Drone');
+    }
+    function recallDrone() { document.getElementById('droneStatus').textContent = 'Drone: Returning'; }
+    function dronePhoto() {
+      if (!player || !match) { logChat('📸 No drone deployed', 'me'); return; }
+      if (player._empDisabled) { logChat('❌ EMP interference — drone offline', 'me'); return; }
+      const pos = player.position || (maps.drone ? maps.drone.getCenter() : [59.9139, 10.7522]);
+      logChat('📸 Drone photo intel — scanning 80m radius...', 'me');
+      if (!threatManager) { logChat('❌ No threats in area', 'me'); return; }
+      const intel = threatManager.photoIntel(pos, 80);
+      const totalFound = intel.mines.length + intel.drones.length + intel.snipers.length + intel.loot.length;
+      if (totalFound > 0) {
+        let details = [];
+        if (intel.mines.length) details.push(intel.mines.length + ' mine(s)');
+        if (intel.drones.length) details.push(intel.drones.length + ' drone(s)');
+        if (intel.snipers.length) details.push(intel.snipers.length + ' sniper(s)');
+        if (intel.loot.length) details.push(intel.loot.length + ' loot drop(s)');
+        logChat('📸 INTEL: ' + details.join(', ') + ' — blips on map for 10s', 'them');
+        if (squad) squad.addScore(15, 'intel_gathered');
+      } else { logChat('📸 Area clear — no threats detected', 'me'); }
+    }
+    function droneScan() { logChat('Drone: Scanning area...', 'me'); }
+    function requestEvac() { logChat('MEDIC: Requesting immediate evacuation!', 'me'); }
+    function repairEquipment() { logChat('Mechanic: Repair in progress', 'me'); }
+    function pickupPackage() { logChat('Courier: Package picked up', 'me'); }
+    function dropPackage() { logChat('Courier: Package delivered', 'me'); }
+    function confirmDelivery() { logChat('Courier: Delivery confirmed', 'me'); }
+    function reportDelay() { logChat('Courier: Delay reported', 'me'); }
+
+    // ====== ROLE ABILITIES ======
+    function signalIntercept() {
+      if (!player) { logChat('📻 Intercepting... static only', 'me'); return; }
+      const now = Date.now();
+      if (now < player.cooldowns.scan) {
+        const remaining = Math.ceil((player.cooldowns.scan - now) / 1000);
+        logChat(`❌ Signal Intercept on cooldown — ${remaining}s`, 'me');
+        return;
+      }
+      player.cooldowns.scan = now + 60000;
+      const fragments = [
+        'Enemy: "Moving to objective..."',
+        'Enemy: "Sniper in position..."',
+        'Enemy: "Mines laid at grid..."',
+        'Enemy: "Requesting extraction..."',
+        'Static... [signal lost]'
+      ];
+      const fragment = fragments[Math.floor(Math.random() * fragments.length)];
+      logChat(`📻 INTERCEPTED: "${fragment}"`, 'them');
+      document.getElementById('interceptLog').innerHTML = `Last intercept: ${fragment}`;
+      if (squad) squad.addScore(25, 'signal_intercept');
+    }
+
+    function hijackDrone() {
+      if (!player || !match) { logChat('🔴 No drone in range', 'me'); return; }
+      if (player._empDisabled) { logChat('❌ EMP interference — cannot hack', 'me'); return; }
+      const pos = player.position || (maps.mc ? maps.mc.getCenter() : [59.9139, 10.7522]);
+      const nearest = threatManager ? threatManager.findNearestDrone(pos, 50) : null;
+      if (!nearest) {
+        logChat('🔴 No drone within 50m — move closer', 'me');
+        document.getElementById('hijackLog').innerHTML = '<span style="color: var(--coral);">No drone in range</span>';
+        return;
+      }
+      logChat('🔴 Hijacking ' + nearest.drone.id + ' — ' + nearest.distance + 'm away — 3s channel...', 'me');
+      document.getElementById('hijackLog').innerHTML = '<span style="color: var(--warning);">Channeling... 3s</span>';
+      setTimeout(() => {
+        const success = Math.random() > 0.3;
+        if (success) {
+          threatManager.hijackDrone(nearest.drone.id);
+          logChat('✅ ' + nearest.drone.id + ' HIJACKED — friendly patrol!', 'me');
+          if (squad) squad.addScore(50, 'drone_hijacked');
+          document.getElementById('hijackLog').innerHTML = '<span style="color: var(--success);">Last hijack: SUCCESS</span>';
+        } else {
+          logChat('❌ Hijack failed — ' + nearest.drone.id + ' self-destructed!', 'them');
+          document.getElementById('hijackLog').innerHTML = '<span style="color: var(--coral);">Last hijack: FAILED</span>';
+        }
+      }, 3000);
+    }
+
+    function disarmTrap() {
+      if (!player || !match) { logChat('🛡️ No traps detected nearby', 'me'); return; }
+      if (player._empDisabled) { logChat('❌ EMP interference — tools offline', 'me'); return; }
+      const pos = player.position || (maps.mc ? maps.mc.getCenter() : [59.9139, 10.7522]);
+      const nearest = threatManager && threatManager.traps ? threatManager.traps.findNearestMine(pos, 20) : null;
+      if (!nearest) {
+        logChat('🛡️ No armed mines within 20m', 'me');
+        document.getElementById('disarmLog').innerHTML = '<span style="color: var(--text-muted);">No mines in range</span>';
+        return;
+      }
+      logChat('🛡️ Disarming mine — ' + nearest.distance + 'm away...', 'me');
+      setTimeout(() => {
+        const success = threatManager.traps.disarmMine(nearest.mine.position, 'alpha');
+        if (success) {
+          logChat('✅ MINE DISARMED at ' + nearest.distance + 'm — +25 pts', 'me');
+          if (squad) squad.addScore(25, 'trap_disarmed');
+          document.getElementById('disarmLog').innerHTML = '<span style="color: var(--success);">DISARMED — +' + nearest.distance + 'm</span>';
+        } else {
+          logChat('❌ Disarm failed — mine already triggered?', 'them');
+          document.getElementById('disarmLog').innerHTML = '<span style="color: var(--coral);">DISARM FAILED</span>';
+        }
+      }, 2000);
+    }
+
+    function scoutMines() {
+      if (!player || !match) { logChat('⚠️ Mine scan unavailable', 'me'); return; }
+      if (player._empDisabled) { logChat('❌ EMP interference — scanner offline', 'me'); return; }
+      const pos = player.position || (maps.mc ? maps.mc.getCenter() : [59.9139, 10.7522]);
+      logChat('⚠️ Scanning 50m radius for mines...', 'me');
+      setTimeout(() => {
+        if (!threatManager || !threatManager.traps) {
+          logChat('✅ No minefield data — area clear', 'me');
+          document.getElementById('scoutLog').innerHTML = '<span style="color: var(--success);">Scan complete: No mines</span>';
+          return;
+        }
+        const result = threatManager.traps.scanMines(pos, 50);
+        if (result.count > 0) {
+          const distances = result.mines.map(m => m.distance + 'm').join(', ');
+          logChat('🚨 ' + result.count + ' MINE(S) DETECTED — ' + distances, 'them');
+          document.getElementById('scoutLog').innerHTML = '<span style="color: var(--coral);">ALERT: ' + result.count + ' mine(s) at ' + distances + '</span>';
+        } else {
+          logChat('✅ No mines detected in 50m radius', 'me');
+          document.getElementById('scoutLog').innerHTML = '<span style="color: var(--success);">Scan complete: No mines</span>';
+        }
+      }, 1500);
+    }
+
+    function speedBoost() {
+      if (!player) { logChat('⚡ Speed boost unavailable', 'me'); return; }
+      if (player.status !== 'healthy') {
+        logChat('❌ Cannot use speed boost while ' + player.status, 'me');
+        return;
+      }
+      logChat('⚡ SPEED BOOST — No stamina drain for 10s!', 'me');
+      player._speedBoost = true;
+      setTimeout(() => { player._speedBoost = false; logChat('⚡ Speed boost ended', 'me'); }, 10000);
+    }
+
+    // ====== ADVANCED ABILITIES ======
+    function throwSmoke() {
+      if (!player || !match) { logChat('💨 Cannot deploy smoke', 'me'); return; }
+      if (player._empDisabled) { logChat('❌ EMP interference — grenade fuses offline', 'me'); return; }
+      if (player.inventory.smokeGrenades <= 0) { logChat('❌ No smoke grenades', 'sys'); return; }
+      player.inventory.smokeGrenades--;
+      updateInventoryDisplay();
+      const pos = player.position || (maps.mc ? maps.mc.getCenter() : [59.9139, 10.7522]);
+      threatManager.throwSmoke(pos, 40, 15000);
+      logChat('💨 SMOKE GRENADE deployed — concealment for 15s', 'me');
+      if (squad) squad.addScore(10, 'smoke_deployed');
+    }
+
+    function fieldSurgery() {
+      if (!player || !match) { logChat('🏥 Cannot perform surgery', 'me'); return; }
+      if (player._empDisabled) { logChat('❌ EMP interference — medical tools offline', 'me'); return; }
+      if (player.status === 'dead') { logChat('❌ You are dead', 'sys'); return; }
+      if (player.status !== 'downed' && player.status !== 'injured') { logChat('🚫 Surgery only when injured/downed', 'sys'); return; }
+      if (player._fieldSurgeryUsed) { logChat('❌ Field surgery already used this match', 'sys'); return; }
+      logChat('🏥 Field Surgery — 8s channel... DO NOT MOVE', 'me');
+      setTimeout(() => {
+        const success = threatManager.fieldSurgery(player);
+        if (success) {
+          logChat('🏥 FIELD SURGERY complete — FULL RESTORE to 100 HP', 'sys');
+          if (squad) squad.addScore(75, 'field_surgery');
+          updateVitals();
+        } else { logChat('❌ Surgery interrupted — conditions not met', 'sys'); }
+      }, 8000);
+    }
+
+    function radioJam() {
+      if (!player || !match) { logChat('📡 Cannot jam', 'me'); return; }
+      if (player._empDisabled) { logChat('❌ EMP interference — jammer offline', 'me'); return; }
+      if (player.inventory.empGrenades <= 0) { logChat('❌ No EMP grenades for jamming', 'sys'); return; }
+      player.inventory.empGrenades--;
+      updateInventoryDisplay();
+      const pos = player.position || (maps.mc ? maps.mc.getCenter() : [59.9139, 10.7522]);
+      const result = threatManager.radioJam(pos, 100, 20000);
+      logChat('📡 RADIO JAM deployed — ' + result.jammedCount + ' drone(s) disabled for 20s', 'me');
+      if (squad && result.jammedCount > 0) squad.addScore(25 * result.jammedCount, 'radio_jam');
+    }
+
+    function deployDecoy() {
+      if (!player || !match) { logChat('📡 Cannot deploy decoy', 'me'); return; }
+      if (player._empDisabled) { logChat('❌ EMP interference — decoy offline', 'me'); return; }
+      if (player.inventory.decoys <= 0) { logChat('❌ No decoys remaining', 'sys'); return; }
+      player.inventory.decoys--;
+      updateInventoryDisplay();
+      const pos = player.position || (maps.mc ? maps.mc.getCenter() : [59.9139, 10.7522]);
+      const offset = [pos[0] + (Math.random() - 0.5) * 0.001, pos[1] + (Math.random() - 0.5) * 0.001];
+      threatManager.deployDecoy(offset, 30000);
+      logChat('📡 DECOY BEACON deployed — AI will investigate fake signal', 'me');
+      if (squad) squad.addScore(15, 'decoy_deployed');
+    }
+
+    function deployTrophy() {
+      if (!player || !match) { logChat('🛡️ Cannot deploy trophy', 'me'); return; }
+      if (player._empDisabled) { logChat('❌ EMP interference — trophy offline', 'me'); return; }
+      const pos = player.position || (maps.mc ? maps.mc.getCenter() : [59.9139, 10.7522]);
+      threatManager.deployTrophy(pos, 30000);
+      logChat('🛡️ TROPHY SYSTEM deployed — 3 charges, intercepts projectiles', 'me');
+      if (squad) squad.addScore(20, 'trophy_deployed');
+    }
+
+    function useStimPack() {
+      if (!player || !match) { logChat('💉 Cannot use stim', 'me'); return; }
+      if (player._empDisabled) { logChat('❌ EMP interference — stim offline', 'me'); return; }
+      if (player.status === 'dead') { logChat('❌ You are dead', 'sys'); return; }
+      if (player._stimActive) { logChat('⚡ Stim already active', 'sys'); return; }
+      const result = threatManager.useStimPack(player);
+      logChat('💉 STIM PACK — +' + result.healed + ' HP, speed + resistance for 15s', 'me');
+      if (squad) squad.addScore(15, 'stim_used');
+      updateVitals();
+    }
+
+    function resupplyAmmo() {
+      if (!player || !match || !squad) { logChat('🎒 Cannot resupply', 'me'); return; }
+      if (player._empDisabled) { logChat('❌ EMP interference — resupply offline', 'me'); return; }
+      const result = threatManager.resupplyAmmo(player, squad);
+      logChat('🎒 RESUPPLY complete — ' + result.totalAdded + ' rounds distributed to ' + result.playersResupplied + ' squadmate(s)', 'me');
+      if (result.totalAdded > 0 && squad) squad.addScore(20, 'resupply');
+      updateInventoryDisplay();
+    }
+
+    // ====== CHAT & LOGGING ======
+    function logChat(msg, who) {
+      const log = document.getElementById('chatLog');
+      const div = document.createElement('div');
+      div.className = 'chat-bubble ' + who;
+      const now = new Date();
+      const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      div.innerHTML = `${msg}<div class="chat-meta">You · ${time}</div>`;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function updateInventoryDisplay() {
+      if (!player) return;
+      const inv = player.inventory;
+      const items = [
+        { id: 'invMedkits', count: inv.medkits, label: 'Medkits' },
+        { id: 'invAmmo', count: inv.ammo, label: 'Ammo' },
+        { id: 'invEMP', count: inv.empGrenades, label: 'EMP Grenades' },
+        { id: 'invDecoys', count: inv.decoys, label: 'Decoys' },
+        { id: 'invSmoke', count: inv.smokeGrenades || 0, label: 'Smoke' },
+        { id: 'invGasMask', count: inv.hasGasMask ? 1 : 0, label: 'Gas Mask' },
+        { id: 'invDrone', count: inv.hasReconDrone ? 1 : 0, label: 'Recon Drone' }
+      ];
+      items.forEach(item => {
+        const el = document.getElementById(item.id);
+        if (el) {
+          const countEl = el.querySelector('.count');
+          if (countEl) countEl.textContent = item.count;
+          el.className = 'inv-item' + (item.count <= 0 ? ' empty' : '');
+        }
+      });
+    }
+
+    function updateCasualtyDisplay() {
+      if (!match || !player) return;
+      const labels = { healthy: 'Healthy', injured: 'Injured', downed: 'DOWNED', dead: 'KIA', extracted: 'Extracted' };
+      const a1 = document.getElementById('casualtyAlpha1');
+      if (a1) a1.textContent = labels[player.status] || player.status;
+      const a2 = document.getElementById('casualtyBeta2');
+      const a3 = document.getElementById('casualtyGamma3');
+      if (a2) a2.textContent = 'Healthy';
+      if (a3) a3.textContent = 'Healthy';
+    }
+
+    // ====== GAME ENGINE INIT ======
+    let match, squad, player, combat;
+
+    function initGameEngine() {
+      match = new GameEngine.Match('match-' + Date.now());
+      squad = new GameEngine.Squad('alpha-1', 'Alpha Squad', 'alpha');
+      player = new GameEngine.Player('p1', 'Alpha-1', 'mc', 'alpha-1');
+      squad.addPlayer(player);
+      match.addSquad(squad);
+      combat = new GameEngine.CombatSystem(match);
+
+      document.addEventListener('game:playerDowned', (e) => {
+        logChat('🚨 ' + e.detail.player.name + ' is DOWNED!', 'them');
+        updateVitals();
+      });
+      document.addEventListener('game:playerDied', (e) => {
+        logChat('💀 ' + e.detail.player.name + ' has died', 'them');
+        updateVitals();
+      });
+      document.addEventListener('game:playerRevived', (e) => {
+        logChat('✅ ' + e.detail.player.name + ' revived', 'them');
+        updateVitals();
+      });
+      document.addEventListener('game:scoreChanged', (e) => { updateScore(e.detail.newTotal); });
+
+      setTimeout(() => {
+        match.start();
+        logChat('🎮 MATCH STARTED — 30:00 on the clock', 'me');
+        startTimerUpdate();
+      }, 2000);
+    }
+
+    function updateVitals() {
+      if (!player) return;
+      const hp = document.getElementById('healthBar');
+      const st = document.getElementById('staminaBar');
+      const statusBadge = document.getElementById('statusBadge');
+      const bleedoutEl = document.getElementById('bleedoutTimer');
+      if (!hp || !st || !statusBadge) return;
+
+      hp.style.width = player.health + '%';
+      hp.className = 'bar-fill health-fill';
+      if (player.health < 30) hp.classList.add('critical');
+      else if (player.health < 60) hp.classList.add('low');
+
+      st.style.width = player.stamina + '%';
+
+      const statusMap = {
+        healthy: '🟢 HEALTHY',
+        injured: '🟡 INJURED',
+        downed: '🔴 DOWNED — BLEEDING OUT',
+        dead: '⚫ KIA',
+        extracted: '🏁 EXTRACTED'
+      };
+      statusBadge.textContent = statusMap[player.status] || player.status;
+      statusBadge.style.color = player.status === 'healthy' ? 'var(--success)' :
+                                 player.status === 'downed' ? 'var(--coral)' : 'var(--warning)';
+
+      if (bleedoutEl) {
+        if (player.status === 'downed' && player.bleedoutStart) {
+          const elapsed = Date.now() - player.bleedoutStart;
+          const remaining = Math.max(0, 120000 - elapsed);
+          bleedoutEl.style.display = 'block';
+          bleedoutEl.textContent = '⏱️ BLEEDOUT: ' + Math.ceil(remaining / 1000) + 's';
+        } else { bleedoutEl.style.display = 'none'; }
+      }
+      updateInventoryDisplay();
+      updateCasualtyDisplay();
+    }
+
+    function updateScore(score) {
+      const pill = document.getElementById('scorePill');
+      if (pill) pill.textContent = '🏆 ' + (score || 0) + ' pts';
+    }
+
+    function startTimerUpdate() {
+      setInterval(() => {
+        if (!match) return;
+        const remaining = match.getTimeRemaining();
+        if (remaining !== null) {
+          const mins = Math.floor(remaining / 60000);
+          const secs = Math.floor((remaining % 60000) / 1000);
+          const timer = document.getElementById('matchTimer');
+          if (timer) timer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        if (player) updateVitals();
+      }, 1000);
+    }
+
+    // ====== AI THREAT EVENTS ======
+    function _distToThreat(pos) {
+      const p = player && player.position ? player.position : (userPosition || [59.9139, 10.7522]);
+      const t = pos.lat !== undefined ? [pos.lat, pos.lng] : pos;
+      return GameEngine.calculateDistance(p, t);
+    }
+
+    document.addEventListener('droneAlert', (e) => {
+      if (player && player.status !== 'dead') {
+        const dist = _distToThreat(e.detail.position);
+        if (dist < 100) {
+          player.takeDamage(15, { type: 'drone' });
+          logChat('💥 Drone gunfire! -15 HP', 'them');
+          updateVitals();
+        }
+      }
+      logChat('⚠️ Drone ' + e.detail.droneId + ' spotted movement!', 'them');
+    });
+
+    document.addEventListener('mineTriggered', (e) => {
+      if (player && player.status !== 'dead') {
+        const dist = _distToThreat(e.detail.position);
+        if (dist < 30) {
+          player.takeDamage(60, { type: 'mine' });
+          logChat('💥 MINE BLAST! -60 HP', 'them');
+          updateVitals();
+        }
+      }
+      logChat('💥 MINE DETONATED — check casualties!', 'them');
+    });
+
+    document.addEventListener('gasTick', (e) => {
+      if (player && player.status !== 'dead') {
+        const dist = _distToThreat(e.detail.position);
+        if (dist < (e.detail.radius || 80) && !player.inventory.hasGasMask) {
+          const dmg = e.detail.damage || 5;
+          player.takeDamage(dmg, { type: 'gas' });
+          logChat('☠️ Gas exposure! -' + dmg + ' HP', 'them');
+          updateVitals();
+        }
+      }
+    });
+
+    document.addEventListener('empPulse', (e) => {
+      if (player && player.status !== 'dead') {
+        const dist = _distToThreat(e.detail.position);
+        if (dist < (e.detail.radius || 120)) {
+          logChat('⚡ EMP FIELD — abilities disabled 10s!', 'them');
+          player._empDisabled = true;
+          setTimeout(() => { player._empDisabled = false; logChat('⚡ EMP effect faded', 'me'); }, 10000);
+        }
+      }
+    });
+
+    // ====== UI HELPERS ======
+    function toggleMenu() {
+      const menu = document.getElementById('mobileMenu');
+      menu.classList.toggle('open');
+    }
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('mobileMenu');
+      const btn = document.getElementById('menuBtn');
+      if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== btn) {
+        menu.classList.remove('open');
+      }
+    });
+
+    function sendChat() {
+      const input = document.getElementById('chatInput');
+      if (input.value.trim()) { logChat(input.value, 'me'); input.value = ''; }
+    }
+
+    function triggerSOS() {
+      if (!player) {
+        logChat('🚨 EMERGENCY SOS SIGNAL SENT 🚨', 'me');
+        const pos = userPosition || (maps.mc ? maps.mc.getCenter() : [59.9139, 10.7522]);
+        if (maps.mc) {
+          L.marker(pos, {icon: L.divIcon({className: 'sos-marker', html: '🚨', iconSize: [30,30]})}).addTo(maps.mc);
+        }
+        return;
+      }
+      const now = Date.now();
+      if (now < player.cooldowns.sos) {
+        const remaining = Math.ceil((player.cooldowns.sos - now) / 1000);
+        logChat(`❌ SOS on cooldown — ${remaining}s remaining`, 'me');
+        return;
+      }
+      player.cooldowns.sos = now + (10 * 60 * 1000);
+      const pos = player.position || (maps.mc ? maps.mc.getCenter() : [59.9139, 10.7522]);
+      logChat('🚨 EMERGENCY SOS SIGNAL SENT 🚨', 'me');
+      logChat('📡 Position revealed to ALL squads: ' + pos[0].toFixed(4) + ', ' + pos[1].toFixed(4), 'them');
+      if (maps.mc) {
+        L.marker(pos, {icon: L.divIcon({className: 'sos-marker', html: '🚨', iconSize: [30,30]})}).addTo(maps.mc);
+      }
+      if (squad) squad.addScore(-50, 'sos_false_alarm');
+      emit('sosTriggered', { player, position: pos, timestamp: now });
+    }
+
+    function emit(eventName, data) {
+      const event = new CustomEvent('game:' + eventName, { detail: data });
+      document.dispatchEvent(event);
+    }
+
+    // ====== AI THREAT DEMO FUNCTIONS ======
+    window.threatManager = null;
+
+    function spawnDrone() {
+      if (!maps.mc) return;
+      if (!threatManager) threatManager = new window.AIThreats.AIThreatManager(maps.mc);
+      const center = maps.mc.getCenter();
+      const waypoints = [
+        [center.lat + 0.002, center.lng],
+        [center.lat + 0.002, center.lng + 0.002],
+        [center.lat, center.lng + 0.002],
+        [center.lat, center.lng]
+      ];
+      threatManager.spawnDrone(waypoints);
+      logChat('🛸 Patrol drone deployed', 'me');
+    }
+
+    function spawnSniper() {
+      if (!maps.mc) return;
+      if (!threatManager) threatManager = new window.AIThreats.AIThreatManager(maps.mc);
+      const center = maps.mc.getCenter();
+      const pos = [center.lat + 0.001, center.lng + 0.001];
+      threatManager.spawnSniper(pos);
+      logChat('🔴 Sniper nest established', 'me');
+    }
+
+    function spawnMine() {
+      if (!maps.mc) return;
+      if (!threatManager) threatManager = new window.AIThreats.AIThreatManager(maps.mc);
+      const center = maps.mc.getCenter();
+      const pos = [center.lat + (Math.random()-0.5)*0.002, center.lng + (Math.random()-0.5)*0.002];
+      threatManager.traps.placeMine(pos, 'bravo');
+      logChat('💣 Mine placed', 'me');
+    }
+
+    function spawnGas() {
+      if (!maps.mc) return;
+      if (!threatManager) threatManager = new window.AIThreats.AIThreatManager(maps.mc);
+      const center = maps.mc.getCenter();
+      threatManager.hazards.spawnGasZone(center, 80, 60000);
+      logChat('☠️ Poison gas zone active', 'me');
+    }
+
+    function spawnEMP() {
+      if (!maps.mc) return;
+      if (!threatManager) threatManager = new window.AIThreats.AIThreatManager(maps.mc);
+      const center = maps.mc.getCenter();
+      threatManager.hazards.spawnEMP(center, 120, 60000);
+      logChat('⚡ EMP field active', 'me');
+    }
+
+    function spawnLoot() {
+      if (!maps.mc) return;
+      if (!threatManager) threatManager = new window.AIThreats.AIThreatManager(maps.mc);
+      const center = maps.mc.getCenter();
+      const pos = [center.lat + (Math.random()-0.5)*0.003, center.lng + (Math.random()-0.5)*0.003];
+      const items = ['Medkit', 'Ammo', 'Gas Mask', 'Energy Bar'];
+      const randomItems = items.sort(() => 0.5 - Math.random()).slice(0, 2);
+      threatManager.loot.spawnDrop(pos, randomItems);
+      logChat('🎒 Supply drop detected', 'me');
+    }
+
+    function clearThreats() {
+      if (threatManager) {
+        threatManager.clearAll();
+        threatManager = null;
+        logChat('🧹 All threats cleared', 'me');
+      }
+    }
+
+    function simulateHit() {
+      if (!player) return;
+      const result = player.takeDamage(35, { type: 'gunshot' });
+      logChat(`💥 HIT! Health: ${Math.round(player.health)}/100 — Status: ${result}`, 'them');
+      updateVitals();
+      if (result === 'downed') { logChat('🚨 YOU ARE DOWNED! Medic needed!', 'them'); }
+    }
+
+    function simulateSprint() {
+      if (!player) return;
+      if (player.status !== 'healthy') {
+        logChat('❌ Cannot sprint while ' + player.status, 'me');
+        return;
+      }
+      player.startSprint();
+      logChat('🏃 SPRINTING — Stamina: ' + Math.round(player.stamina), 'me');
+      let sprintTicks = 0;
+      const sprintInterval = setInterval(() => {
+        sprintTicks++;
+        player.stamina = Math.max(0, player.stamina - 10);
+        updateVitals();
+        if (sprintTicks >= 5 || player.stamina <= 0) {
+          clearInterval(sprintInterval);
+          player.stopSprint();
+          logChat('🏃 Sprint ended — Stamina: ' + Math.round(player.stamina), 'me');
+        }
+      }, 1000);
+    }
+
+    function healSelf() {
+      if (!player) return;
+      if (player.status === 'dead') { logChat('❌ You are dead', 'sys'); return; }
+      if (player.inventory.medkits <= 0) { logChat('❌ No medkits remaining', 'me'); return; }
+      player.inventory.medkits--;
+      const healed = player.heal(50);
+      logChat('💊 Medkit used — +' + healed + ' HP — Health: ' + Math.round(player.health) + '/100', 'me');
+      updateVitals();
+    }
+
+    function reviveTeammate() {
+      if (!player || !match) return;
+      const squadObj = match.squads.get('alpha-1');
+      if (!squadObj) return;
+      const downed = squadObj.getDownedPlayers();
+      if (downed.length === 0) { logChat('✅ No downed teammates', 'me'); return; }
+      const target = downed[0];
+      if (combat) combat.revive(player, target);
+      logChat(`✅ Revived ${target.name} — +75 pts`, 'me');
+      updateVitals();
+    }
+  </script>
+
+    </div>
+  </main>
+  <script src="../../design-system.js"></script>
+  <script src="../../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

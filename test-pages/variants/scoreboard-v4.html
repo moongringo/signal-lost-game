@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SCOREBOARD V4 — Battle Pass</title>
+<style>
+  :root {
+    --bg: #0b0c10;
+    --panel: #1f2833;
+    --accent: #66fcf1;
+    --gold: #ffd700;
+    --gold-dim: #bfa230;
+    --gray: #8a8d91;
+    --gray-dark: #4a4d52;
+    --text: #c5c6c7;
+    --text-light: #ffffff;
+    --danger: #ff4d4d;
+    --success: #45a049;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* HUD */
+  .hud {
+    position: fixed;
+    top: 12px;
+    left: 16px;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    color: var(--accent);
+    opacity: 0.7;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  /* Header */
+  .header {
+    padding: 48px 24px 16px;
+    text-align: center;
+    background: linear-gradient(180deg, rgba(31,40,51,0.9) 0%, rgba(11,12,16,0) 100%);
+  }
+
+  .header h1 {
+    font-size: 1.8rem;
+    color: var(--text-light);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .header .subtitle {
+    font-size: 0.85rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Stats Bar */
+  .stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    padding: 12px 24px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat .label {
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: var(--gray);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .stat .value {
+    font-size: 1.1rem;
+    color: var(--text-light);
+    font-weight: 600;
+  }
+
+  .stat .value.accent { color: var(--accent); }
+  .stat .value.gold { color: var(--gold); }
+  .stat .value.danger { color: var(--danger); }
+
+  /* Progress Section */
+  .progress-section {
+    padding: 12px 24px 24px;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .progress-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .progress-top .tier-label { color: var(--accent); font-weight: 600; }
+  .progress-top .xp-label { color: var(--gray); }
+
+  .progress-bar-bg {
+    height: 10px;
+    background: var(--panel);
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+    border-radius: 5px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  /* Scroll Controls */
+  .scroll-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 0 16px 12px;
+  }
+
+  .scroll-btn {
+    background: var(--panel);
+    border: 1px solid var(--gray-dark);
+    color: var(--text-light);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .scroll-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .scroll-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    border-color: var(--gray-dark);
+    color: var(--gray);
+  }
+
+  /* Track Container */
+  .track-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+    padding: 8px 0;
+  }
+
+  .track {
+    display: flex;
+    gap: 16px;
+    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    padding: 0 8px;
+  }
+
+  /* Tier Node */
+  .tier {
+    flex-shrink: 0;
+    width: 130px;
+    background: var(--panel);
+    border: 2px solid var(--gray-dark);
+    border-radius: 12px;
+    padding: 14px 10px;
+    text-align: center;
+    position: relative;
+    transition: all 0.25s ease;
+    cursor: default;
+  }
+
+  .tier:hover {
+    transform: translateY(-4px);
+    border-color: var(--gray);
+  }
+
+  .tier.current {
+    border-color: var(--accent);
+    box-shadow: 0 0 18px rgba(102, 252, 241, 0.25);
+  }
+
+  .tier.current .tier-num {
+    color: var(--accent);
+  }
+
+  .tier.completed {
+    border-color: var(--success);
+    opacity: 0.75;
+  }
+
+  .tier.completed .tier-num {
+    color: var(--success);
+  }
+
+  .tier-num {
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--gray);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .tier-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 10px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+  }
+
+  .tier.free .tier-icon {
+    background: rgba(138, 141, 145, 0.15);
+    color: var(--gray);
+  }
+
+  .tier.premium .tier-icon {
+    background: rgba(255, 215, 0, 0.12);
+    color: var(--gold);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+  }
+
+  .tier.current.premium .tier-icon {
+    background: rgba(255, 215, 0, 0.2);
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.25);
+  }
+
+  .tier-name {
+    font-size: 0.78rem;
+    color: var(--text-light);
+    font-weight: 500;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .tier-type {
+    font-size: 0.6rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gray);
+  }
+
+  .tier.premium .tier-type {
+    color: var(--gold-dim);
+  }
+
+  .tier-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 0.6rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: none;
+  }
+
+  .tier.current .tier-badge {
+    display: block;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    padding: 16px;
+    font-size: 0.7rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gray);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .legend-dot.free { background: var(--gray-dark); }
+  .legend-dot.premium { background: var(--gold); }
+  .legend-dot.current { background: var(--accent); }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 16px;
+    font-size: 0.65rem;
+    color: var(--gray-dark);
+    letter-spacing: 1px;
+  }
+
+  /* Scrollbar hide */
+  .track-wrapper::-webkit-scrollbar { display: none; }
+  .track-wrapper { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .tier { width: 110px; padding: 12px 8px; }
+    .tier-icon { width: 48px; height: 48px; font-size: 1.3rem; }
+    .stats-bar { gap: 18px; }
+    .header h1 { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="hud">SCOREBOARD V4</div>
+
+  <div class="header">
+    <h1>Battle Pass</h1>
+    <div class="subtitle">Season 4 — Signal Lost</div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="label">Current Tier</div>
+      <div class="value accent" id="currentTierDisplay">7 / 20</div>
+    </div>
+    <div class="stat">
+      <div class="label">XP to Next</div>
+      <div class="value" id="xpToNextDisplay">3,250 XP</div>
+    </div>
+    <div class="stat">
+      <div class="label">Time Remaining</div>
+      <div class="value danger" id="timeRemainingDisplay">12d 04h 33m</div>
+    </div>
+  </div>
+
+  <div class="progress-section">
+    <div class="progress-top">
+      <span class="tier-label">Tier 7</span>
+      <span class="xp-label">6,750 / 10,000 XP</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressBarFill"></div>
+    </div>
+  </div>
+
+  <div class="scroll-controls">
+    <button class="scroll-btn" id="scrollLeft" aria-label="Scroll left">&#10094;</button>
+    <div class="track-wrapper" id="trackWrapper">
+      <div class="track" id="track"></div>
+    </div>
+    <button class="scroll-btn" id="scrollRight" aria-label="Scroll right">&#10095;</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot free"></div>
+      <span>Free Reward</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot premium"></div>
+      <span>Premium Reward</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot current"></div>
+      <span>Current Tier</span>
+    </div>
+  </div>
+
+  <div class="footer">Battle Pass resets at season end &bull; Premium unlocks all gold tiers</div>
+
+<script>
+  const TIERS = 20;
+  const CURRENT_TIER = 7;           // 1-based
+  const CURRENT_XP = 6750;
+  const XP_PER_TIER = 10000;
+  const SEASON_END = new Date(Date.now() + (12 * 24 * 60 * 60 * 1000) + (4 * 60 * 60 * 1000) + (33 * 60 * 1000));
+
+  const rewards = [
+    { name: "Recruit Patch", type: "free", icon: "🎖️" },
+    { name: "50 Credits", type: "free", icon: "💰" },
+    { name: "Carbon Skin", type: "premium", icon: "🔫" },
+    { name: "XP Boost 1h", type: "free", icon: "⚡" },
+    { name: "Tactical Patch", type: "premium", icon: "🛡️" },
+    { name: "100 Credits", type: "free", icon: "💰" },
+    { name: "Crimson Skin", type: "premium", icon: "🔫" },
+    { name: "XP Boost 2h", type: "free", icon: "⚡" },
+    { name: "Veteran Patch", type: "premium", icon: "🎖️" },
+    { name: "150 Credits", type: "free", icon: "💰" },
+    { name: "Gold Skin", type: "premium", icon: "🔫" },
+    { name: "XP Boost 3h", type: "free", icon: "⚡" },
+    { name: "Elite Patch", type: "premium", icon: "🛡️" },
+    { name: "200 Credits", type: "free", icon: "💰" },
+    { name: "Obsidian Skin", type: "premium", icon: "🔫" },
+    { name: "XP Boost 4h", type: "free", icon: "⚡" },
+    { name: "Legend Patch", type: "premium", icon: "🎖️" },
+    { name: "300 Credits", type: "free", icon: "💰" },
+    { name: "Platinum Skin", type: "premium", icon: "🔫" },
+    { name: "Mythic Patch", type: "premium", icon: "👑" },
+  ];
+
+  const track = document.getElementById('track');
+  const trackWrapper = document.getElementById('trackWrapper');
+  const scrollLeftBtn = document.getElementById('scrollLeft');
+  const scrollRightBtn = document.getElementById('scrollRight');
+  const progressBarFill = document.getElementById('progressBarFill');
+  const currentTierDisplay = document.getElementById('currentTierDisplay');
+  const xpToNextDisplay = document.getElementById('xpToNextDisplay');
+  const timeRemainingDisplay = document.getElementById('timeRemainingDisplay');
+
+  let scrollIndex = 0;
+
+  function buildTrack() {
+    track.innerHTML = '';
+    rewards.forEach((reward, idx) => {
+      const tierNum = idx + 1;
+      const tierEl = document.createElement('div');
+      tierEl.className = 'tier';
+      if (reward.type === 'premium') tierEl.classList.add('premium');
+      else tierEl.classList.add('free');
+      if (tierNum < CURRENT_TIER) tierEl.classList.add('completed');
+      if (tierNum === CURRENT_TIER) tierEl.classList.add('current');
+
+      tierEl.innerHTML = `
+        <div class="tier-num">Tier ${tierNum}</div>
+        <div class="tier-icon">${reward.icon}</div>
+        <div class="tier-name">${reward.name}</div>
+        <div class="tier-type">${reward.type}</div>
+        ${tierNum === CURRENT_TIER ? '<div class="tier-badge">Now</div>' : ''}
+      `;
+      track.appendChild(tierEl);
+    });
+  }
+
+  function updateProgress() {
+    const pct = Math.min(100, Math.max(0, (CURRENT_XP / XP_PER_TIER) * 100));
+    progressBarFill.style.width = pct + '%';
+    currentTierDisplay.textContent = `${CURRENT_TIER} / ${TIERS}`;
+    const xpNeeded = Math.max(0, XP_PER_TIER - CURRENT_XP);
+    xpToNextDisplay.textContent = `${xpNeeded.toLocaleString()} XP`;
+  }
+
+  function updateTime() {
+    const now = Date.now();
+    const diff = SEASON_END - now;
+    if (diff <= 0) {
+      timeRemainingDisplay.textContent = "Season Ended";
+      return;
+    }
+    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    timeRemainingDisplay.textContent = `${d}d ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m`;
+  }
+
+  function getVisibleCount() {
+    const wrapperWidth = trackWrapper.clientWidth;
+    const tierWidth = 130 + 16; // tier width + gap
+    return Math.max(1, Math.floor(wrapperWidth / tierWidth));
+  }
+
+  function updateScroll() {
+    const visible = getVisibleCount();
+    const maxIndex = Math.max(0, TIERS - visible);
+    scrollIndex = Math.max(0, Math.min(scrollIndex, maxIndex));
+
+    const tierWidth = 130 + 16;
+    track.style.transform = `translateX(-${scrollIndex * tierWidth}px)`;
+
+    scrollLeftBtn.disabled = scrollIndex === 0;
+    scrollRightBtn.disabled = scrollIndex >= maxIndex;
+  }
+
+  scrollLeftBtn.addEventListener('click', () => { scrollIndex--; updateScroll(); });
+  scrollRightBtn.addEventListener('click', () => { scrollIndex++; updateScroll(); });
+
+  window.addEventListener('resize', updateScroll);
+
+  buildTrack();
+  updateProgress();
+  updateTime();
+  setInterval(updateTime, 60000);
+
+  // Center current tier on load
+  requestAnimationFrame(() => {
+    const visible = getVisibleCount();
+    scrollIndex = Math.max(0, CURRENT_TIER - Math.floor(visible / 2) - 1);
+    updateScroll();
+  });
+</script>
+</body>
+</html>

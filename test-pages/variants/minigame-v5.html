@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MINIGAME V5 — DEFUSE</title>
+  <style>
+    :root {
+      --bg: #0b0c10;
+      --panel: #1f2833;
+      --accent: #66fcf1;
+      --accent-dim: #45a29e;
+      --danger: #ef233c;
+      --danger-dim: #a61b2e;
+      --success: #2ecc71;
+      --success-dim: #1e8449;
+      --text: #c5c6c7;
+      --muted: #6c757d;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s;
+    }
+
+    /* HUD */
+    #hud {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      z-index: 10;
+    }
+    #hud h1 {
+      margin: 0;
+      font-size: 1.6rem;
+      letter-spacing: 2px;
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent-dim);
+    }
+    #timer-display {
+      margin-top: 6px;
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--danger);
+      text-shadow: 0 0 10px var(--danger-dim);
+    }
+    #status-msg {
+      margin-top: 6px;
+      font-size: 0.95rem;
+      color: var(--muted);
+      min-height: 1.2em;
+    }
+
+    /* Bomb body */
+    #bomb {
+      position: relative;
+      width: 640px;
+      max-width: 92vw;
+      background: var(--panel);
+      border: 2px solid var(--accent-dim);
+      border-radius: 16px;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 16px;
+      box-shadow: 0 0 20px rgba(102, 252, 241, 0.1);
+      z-index: 5;
+    }
+
+    .module {
+      background: #151b22;
+      border: 1px solid #2a3b4c;
+      border-radius: 10px;
+      padding: 14px;
+      position: relative;
+    }
+    .module-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent-dim);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .module-title .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 6px var(--danger);
+    }
+    .module-title .dot.done {
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+    }
+
+    /* Wire module */
+    #wire-module { grid-column: 1 / 2; grid-row: 1 / 2; }
+    #wire-hint {
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    .wires {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .wire {
+      width: 56px;
+      height: 110px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 2px solid rgba(255,255,255,0.15);
+      transition: transform 0.15s, opacity 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    }
+    .wire:hover { transform: translateY(-4px); }
+    .wire.cut {
+      opacity: 0.35;
+      transform: translateY(6px);
+      pointer-events: none;
+    }
+    .wire[data-color="red"] { background: #c0392b; }
+    .wire[data-color="blue"] { background: #2980b9; }
+    .wire[data-color="green"] { background: #27ae60; }
+    .wire[data-color="yellow"] { background: #f1c40f; color: rgba(0,0,0,0.7); text-shadow: none; }
+    .wire[data-color="white"] { background: #ecf0f1; color: rgba(0,0,0,0.7); text-shadow: none; }
+
+    /* Button sequence module */
+    #button-module { grid-column: 2 / 3; grid-row: 1 / 2; }
+    #seq-info {
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+      min-height: 1.3em;
+    }
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .btn-tile {
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      border: 2px solid rgba(255,255,255,0.1);
+      background: #0f141a;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1rem;
+      color: var(--text);
+      transition: transform 0.1s, background 0.2s, border-color 0.2s;
+    }
+    .btn-tile:hover { transform: scale(1.04); }
+    .btn-tile.lit {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-dim);
+    }
+    .btn-tile.correct {
+      background: var(--success);
+      border-color: var(--success);
+      color: #000;
+    }
+    .btn-tile.wrong {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #fff;
+    }
+
+    /* Keypad module */
+    #keypad-module { grid-column: 1 / 3; grid-row: 2 / 3; }
+    #code-display {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 1.6rem;
+      letter-spacing: 8px;
+      background: #0b0f14;
+      border: 1px solid #2a3b4c;
+      border-radius: 8px;
+      padding: 10px 14px;
+      text-align: center;
+      color: var(--accent);
+      margin-bottom: 10px;
+      min-height: 2.2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+    .key {
+      padding: 14px 0;
+      border-radius: 8px;
+      border: 2px solid rgba(255,255,255,0.1);
+      background: #0f141a;
+      color: var(--text);
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+      text-align: center;
+    }
+    .key:hover { transform: scale(1.04); background: #1a232e; }
+    .key:active { transform: scale(0.98); }
+    .key.wide { grid-column: span 2; }
+
+    /* Overlay */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #overlay.active { opacity: 1; pointer-events: auto; }
+    #overlay .msg {
+      font-size: 3rem;
+      font-weight: bold;
+      text-align: center;
+      padding: 30px 50px;
+      border-radius: 16px;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(6px);
+      border: 2px solid currentColor;
+      text-shadow: 0 0 20px currentColor;
+    }
+
+    /* Effects */
+    .shake {
+      animation: shake 0.5s ease-in-out;
+    }
+    @keyframes shake {
+      0% { transform: translate(0,0); }
+      20% { transform: translate(-8px, 6px); }
+      40% { transform: translate(8px, -6px); }
+      60% { transform: translate(-6px, 8px); }
+      80% { transform: translate(6px, -8px); }
+      100% { transform: translate(0,0); }
+    }
+
+    .flash-red {
+      animation: flashRed 0.6s ease-in-out;
+    }
+    @keyframes flashRed {
+      0% { background: var(--bg); }
+      30% { background: #4a0006; }
+      100% { background: var(--bg); }
+    }
+
+    .flash-green {
+      animation: flashGreen 0.6s ease-in-out;
+    }
+    @keyframes flashGreen {
+      0% { background: var(--bg); }
+      30% { background: #003d1a; }
+      100% { background: var(--bg); }
+    }
+
+    /* Start / restart button */
+    #start-btn {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      padding: 12px 28px;
+      font-size: 1rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      border-radius: 10px;
+      border: 2px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    #start-btn:hover { background: var(--accent); color: #000; }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      #bomb { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+      #wire-module { grid-column: 1 / 2; grid-row: 1 / 2; }
+      #button-module { grid-column: 1 / 2; grid-row: 2 / 3; }
+      #keypad-module { grid-column: 1 / 2; grid-row: 3 / 4; }
+      .wire { width: 48px; height: 90px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="hud">
+      <h1>MINIGAME V5 — DEFUSE</h1>
+      <div id="timer-display">60.0</div>
+      <div id="status-msg">Press START to begin</div>
+    </div>
+
+    <div id="bomb">
+      <!-- Wire Module -->
+      <div class="module" id="wire-module">
+        <div class="module-title">
+          <span class="dot" id="wire-dot"></span>
+          Wire Cutting
+        </div>
+        <div id="wire-hint">Hint will appear here</div>
+        <div class="wires" id="wires"></div>
+      </div>
+
+      <!-- Button Sequence Module -->
+      <div class="module" id="button-module">
+        <div class="module-title">
+          <span class="dot" id="btn-dot"></span>
+          Button Sequence
+        </div>
+        <div id="seq-info">Watch the pattern…</div>
+        <div class="buttons" id="buttons"></div>
+      </div>
+
+      <!-- Keypad Module -->
+      <div class="module" id="keypad-module">
+        <div class="module-title">
+          <span class="dot" id="key-dot"></span>
+          Disarm Code
+        </div>
+        <div id="code-display">_ _ _ _</div>
+        <div class="keypad" id="keypad"></div>
+      </div>
+    </div>
+
+    <button id="start-btn">START</button>
+
+    <div id="overlay">
+      <div class="msg" id="overlay-msg"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ===================== STATE ===================== */
+    const TOTAL_TIME = 60;
+    let timeLeft = TOTAL_TIME;
+    let timerInterval = null;
+    let gameActive = false;
+    let gameEnded = false;
+
+    const modules = {
+      wire: { solved: false },
+      button: { solved: false },
+      keypad: { solved: false }
+    };
+
+    /* ===================== DOM ===================== */
+    const container = document.getElementById('game-container');
+    const timerDisplay = document.getElementById('timer-display');
+    const statusMsg = document.getElementById('status-msg');
+    const startBtn = document.getElementById('start-btn');
+    const overlay = document.getElementById('overlay');
+    const overlayMsg = document.getElementById('overlay-msg');
+
+    const wireHint = document.getElementById('wire-hint');
+    const wiresContainer = document.getElementById('wires');
+    const wireDot = document.getElementById('wire-dot');
+
+    const seqInfo = document.getElementById('seq-info');
+    const buttonsContainer = document.getElementById('buttons');
+    const btnDot = document.getElementById('btn-dot');
+
+    const codeDisplay = document.getElementById('code-display');
+    const keypadContainer = document.getElementById('keypad');
+    const keyDot = document.getElementById('key-dot');
+
+    /* ===================== HELPERS ===================== */
+    function randInt(n) { return Math.floor(Math.random() * n); }
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = randInt(i + 1);
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    function setStatus(msg) { statusMsg.textContent = msg; }
+
+    /* ===================== TIMER ===================== */
+    function startTimer() {
+      clearInterval(timerInterval);
+      timeLeft = TOTAL_TIME;
+      timerDisplay.textContent = timeLeft.toFixed(1);
+      timerInterval = setInterval(() => {
+        if (!gameActive || gameEnded) return;
+        timeLeft -= 0.1;
+        if (timeLeft <= 0) {
+          timeLeft = 0;
+          timerDisplay.textContent = '0.0';
+          endGame(false);
+        } else {
+          timerDisplay.textContent = timeLeft.toFixed(1);
+          if (timeLeft <= 10) timerDisplay.style.color = '#ff4d4d';
+          else timerDisplay.style.color = '';
+        }
+      }, 100);
+    }
+
+    /* ===================== WIRE MODULE ===================== */
+    const WIRE_COLORS = ['red','blue','green','yellow','white'];
+    let correctWireColor = '';
+
+    function buildWireModule() {
+      wiresContainer.innerHTML = '';
+      modules.wire.solved = false;
+      wireDot.classList.remove('done');
+
+      const colors = shuffle([...WIRE_COLORS]);
+      correctWireColor = colors[randInt(colors.length)];
+
+      const hints = [
+        `Cut the ${correctWireColor.toUpperCase()} wire.`,
+        `The ${correctWireColor.toUpperCase()} wire must be severed.`,
+        `Only the ${correctWireColor.toUpperCase()} wire is safe to cut.`,
+        `Snip the ${correctWireColor.toUpperCase()} one.`,
+        `Disarm by cutting the ${correctWireColor.toUpperCase()} wire.`
+      ];
+      wireHint.textContent = hints[randInt(hints.length)];
+
+      colors.forEach(color => {
+        const w = document.createElement('div');
+        w.className = 'wire';
+        w.dataset.color = color;
+        w.textContent = color[0].toUpperCase();
+        w.addEventListener('click', () => cutWire(w, color));
+        wiresContainer.appendChild(w);
+      });
+    }
+
+    function cutWire(el, color) {
+      if (!gameActive || gameEnded || modules.wire.solved) return;
+      el.classList.add('cut');
+      if (color === correctWireColor) {
+        modules.wire.solved = true;
+        wireDot.classList.add('done');
+        setStatus('Wire module disarmed!');
+        checkWin();
+      } else {
+        setStatus('Wrong wire! Time penalty -10s');
+        timeLeft = Math.max(0, timeLeft - 10);
+        timerDisplay.textContent = timeLeft.toFixed(1);
+        if (timeLeft <= 0) endGame(false);
+      }
+    }
+
+    /* ===================== BUTTON SEQUENCE MODULE ===================== */
+    const BTN_LABELS = ['A','B','C','D','E','F','G','H','I'];
+    let sequence = [];
+    let playerSeqIndex = 0;
+    let showingPattern = false;
+
+    function buildButtonModule() {
+      buttonsContainer.innerHTML = '';
+      modules.button.solved = false;
+      btnDot.classList.remove('done');
+      playerSeqIndex = 0;
+      sequence = [];
+      showingPattern = false;
+      seqInfo.textContent = 'Watch the pattern…';
+
+      // create tiles
+      BTN_LABELS.forEach((label, idx) => {
+        const b = document.createElement('div');
+        b.className = 'btn-tile';
+        b.textContent = label;
+        b.dataset.idx = idx;
+        b.addEventListener('click', () => pressButton(idx, b));
+        buttonsContainer.appendChild(b);
+      });
+
+      // generate sequence (4 steps)
+      for (let i = 0; i < 4; i++) sequence.push(randInt(BTN_LABELS.length));
+
+      // show pattern after short delay
+      setTimeout(() => showPattern(), 800);
+    }
+
+    async function showPattern() {
+      if (!gameActive || gameEnded) return;
+      showingPattern = true;
+      seqInfo.textContent = 'Memorize the pattern…';
+      const tiles = Array.from(buttonsContainer.children);
+      for (let i = 0; i < sequence.length; i++) {
+        if (!gameActive || gameEnded) return;
+        const idx = sequence[i];
+        const tile = tiles[idx];
+        tile.classList.add('lit');
+        await wait(350);
+        tile.classList.remove('lit');
+        await wait(150);
+      }
+      showingPattern = false;
+      seqInfo.textContent = 'Repeat the pattern!';
+    }
+
+    function pressButton(idx, el) {
+      if (!gameActive || gameEnded || modules.button.solved || showingPattern) return;
+      if (idx === sequence[playerSeqIndex]) {
+        el.classList.add('correct');
+        setTimeout(() => el.classList.remove('correct'), 250);
+        playerSeqIndex++;
+        if (playerSeqIndex >= sequence.length) {
+          modules.button.solved = true;
+          btnDot.classList.add('done');
+          setStatus('Button module disarmed!');
+          checkWin();
+        }
+      } else {
+        el.classList.add('wrong');
+        setTimeout(() => el.classList.remove('wrong'), 300);
+        setStatus('Wrong button! Pattern restarted.');
+        playerSeqIndex = 0;
+        // replay pattern
+        setTimeout(() => showPattern(), 600);
+      }
+    }
+
+    /* ===================== KEYPAD MODULE ===================== */
+    let correctCode = '';
+    let enteredCode = '';
+
+    function buildKeypadModule() {
+      keypadContainer.innerHTML = '';
+      modules.keypad.solved = false;
+      keyDot.classList.remove('done');
+      enteredCode = '';
+      updateCodeDisplay();
+
+      correctCode = String(1000 + randInt(9000));
+
+      const keys = [
+        '1','2','3',
+        '4','5','6',
+        '7','8','9',
+        'C','0','OK'
+      ];
+      keys.forEach(k => {
+        const key = document.createElement('div');
+        key.className = 'key' + (k === 'C' || k === 'OK' ? ' wide' : '');
+        key.textContent = k;
+        key.addEventListener('click', () => pressKey(k));
+        keypadContainer.appendChild(key);
+      });
+    }
+
+    function pressKey(k) {
+      if (!gameActive || gameEnded || modules.keypad.solved) return;
+      if (k === 'C') {
+        enteredCode = '';
+      } else if (k === 'OK') {
+        if (enteredCode === correctCode) {
+          modules.keypad.solved = true;
+          keyDot.classList.add('done');
+          setStatus('Keypad disarmed!');
+          checkWin();
+        } else {
+          setStatus('Incorrect code!');
+          enteredCode = '';
+        }
+      } else {
+        if (enteredCode.length < 4) enteredCode += k;
+      }
+      updateCodeDisplay();
+    }
+
+    function updateCodeDisplay() {
+      let s = enteredCode.padEnd(4, '_');
+      codeDisplay.textContent = s.split('').join(' ');
+    }
+
+    /* ===================== GAME FLOW ===================== */
+    function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function checkWin() {
+      if (modules.wire.solved && modules.button.solved && modules.keypad.solved) {
+        endGame(true);
+      }
+    }
+
+    function endGame(success) {
+      if (gameEnded) return;
+      gameEnded = true;
+      gameActive = false;
+      clearInterval(timerInterval);
+
+      if (success) {
+        container.classList.add('flash-green');
+        overlayMsg.textContent = 'BOMB DEFUSED';
+        overlayMsg.style.color = 'var(--success)';
+        setStatus('All modules cleared — great work!');
+      } else {
+        container.classList.add('flash-red', 'shake');
+        overlayMsg.textContent = 'BOOM!';
+        overlayMsg.style.color = 'var(--danger)';
+        setStatus('The bomb exploded…');
+      }
+
+      overlay.classList.add('active');
+      startBtn.textContent = 'RESTART';
+      startBtn.style.display = 'block';
+
+      setTimeout(() => {
+        container.classList.remove('flash-green', 'flash-red', 'shake');
+      }, 800);
+    }
+
+    function startGame() {
+      // reset
+      gameActive = true;
+      gameEnded = false;
+      overlay.classList.remove('active');
+      startBtn.style.display = 'none';
+      timerDisplay.style.color = '';
+      setStatus('Defuse all 3 modules before time runs out!');
+
+      buildWireModule();
+      buildButtonModule();
+      buildKeypadModule();
+      startTimer();
+    }
+
+    startBtn.addEventListener('click', startGame);
+  </script>
+</body>
+</html>

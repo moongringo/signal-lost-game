@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MINIGAME V1 — HACK</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #050505;
+      color: #00ff41;
+      font-family: 'VT323', monospace;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Matrix falling code background */
+    #matrix-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      opacity: 0.15;
+      pointer-events: none;
+    }
+
+    /* CRT scanline overlay */
+    .crt-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 100;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.15),
+          rgba(0, 0, 0, 0.15) 1px,
+          transparent 1px,
+          transparent 2px
+        );
+    }
+
+    /* Screen flicker */
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.98; }
+      52% { opacity: 1; }
+      55% { opacity: 0.97; }
+      56% { opacity: 1; }
+    }
+
+    .screen-flicker {
+      animation: flicker 0.15s infinite;
+    }
+
+    /* HUD Header */
+    .hud-header {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .hud-title {
+      font-size: 2.5rem;
+      letter-spacing: 6px;
+      color: #00ff41;
+      text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41;
+    }
+
+    .hud-subtitle {
+      font-size: 1.2rem;
+      color: #008f11;
+      letter-spacing: 3px;
+      margin-top: 5px;
+    }
+
+    /* Timer bar */
+    .timer-container {
+      position: relative;
+      z-index: 10;
+      width: 600px;
+      max-width: 90vw;
+      margin-bottom: 20px;
+    }
+
+    .timer-label {
+      font-size: 1rem;
+      color: #008f11;
+      margin-bottom: 5px;
+      letter-spacing: 2px;
+    }
+
+    .timer-bar-bg {
+      width: 100%;
+      height: 12px;
+      background: #0a0a0a;
+      border: 1px solid #004411;
+    }
+
+    .timer-bar-fill {
+      height: 100%;
+      background: #00ff41;
+      box-shadow: 0 0 10px #00ff41;
+      transition: width 0.1s linear;
+    }
+
+    .timer-bar-fill.warning {
+      background: #ffaa00;
+      box-shadow: 0 0 10px #ffaa00;
+    }
+
+    .timer-bar-fill.danger {
+      background: #ff0044;
+      box-shadow: 0 0 10px #ff0044;
+    }
+
+    /* Main terminal container */
+    .terminal {
+      position: relative;
+      z-index: 10;
+      width: 600px;
+      max-width: 90vw;
+      background: rgba(5, 10, 5, 0.92);
+      border: 2px solid #004411;
+      padding: 20px;
+    }
+
+    .terminal::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      border: 1px solid #00ff41;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    /* Hex grid */
+    .hex-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .hex-cell {
+      font-size: 1.1rem;
+      padding: 8px 4px;
+      text-align: center;
+      background: rgba(0, 20, 0, 0.6);
+      border: 1px solid #003300;
+      color: #008f11;
+      cursor: default;
+      transition: all 0.1s;
+      letter-spacing: 1px;
+    }
+
+    .hex-cell:hover {
+      border-color: #005500;
+      color: #00cc33;
+    }
+
+    .hex-cell.cursor-active {
+      border-color: #00ff41;
+      color: #00ff41;
+      background: rgba(0, 255, 65, 0.1);
+      box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+    }
+
+    .hex-cell.correct {
+      background: rgba(0, 255, 65, 0.3);
+      border-color: #00ff41;
+      color: #00ff41;
+      box-shadow: 0 0 15px #00ff41;
+    }
+
+    .hex-cell.wrong {
+      background: rgba(255, 0, 68, 0.3);
+      border-color: #ff0044;
+      color: #ff0044;
+      box-shadow: 0 0 15px #ff0044;
+    }
+
+    /* Input section */
+    .input-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .input-prompt {
+      font-size: 1.3rem;
+      color: #00ff41;
+      text-shadow: 0 0 5px #00ff41;
+    }
+
+    .hex-input {
+      flex: 1;
+      background: rgba(0, 20, 0, 0.8);
+      border: 1px solid #004411;
+      color: #00ff41;
+      font-family: 'VT323', monospace;
+      font-size: 1.5rem;
+      padding: 8px 12px;
+      outline: none;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    .hex-input:focus {
+      border-color: #00ff41;
+      box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+    }
+
+    .hex-input::placeholder {
+      color: #004411;
+    }
+
+    .submit-btn {
+      background: rgba(0, 255, 65, 0.1);
+      border: 1px solid #00ff41;
+      color: #00ff41;
+      font-family: 'VT323', monospace;
+      font-size: 1.2rem;
+      padding: 8px 20px;
+      cursor: pointer;
+      letter-spacing: 2px;
+      transition: all 0.2s;
+    }
+
+    .submit-btn:hover {
+      background: rgba(0, 255, 65, 0.2);
+      box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Status log */
+    .status-log {
+      font-size: 1rem;
+      min-height: 80px;
+      max-height: 120px;
+      overflow-y: auto;
+      border-top: 1px solid #003300;
+      padding-top: 10px;
+    }
+
+    .log-entry {
+      margin-bottom: 4px;
+      opacity: 0.8;
+    }
+
+    .log-entry.success {
+      color: #00ff41;
+    }
+
+    .log-entry.error {
+      color: #ff0044;
+    }
+
+    .log-entry.info {
+      color: #008f11;
+    }
+
+    /* Flash overlays */
+    .flash-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 50;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    .flash-overlay.green {
+      background: rgba(0, 255, 65, 0.15);
+      box-shadow: inset 0 0 100px rgba(0, 255, 65, 0.3);
+    }
+
+    .flash-overlay.red {
+      background: rgba(255, 0, 68, 0.15);
+      box-shadow: inset 0 0 100px rgba(255, 0, 68, 0.3);
+    }
+
+    .flash-overlay.active {
+      opacity: 1;
+    }
+
+    /* Game over / win modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 200;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-title {
+      font-size: 3rem;
+      letter-spacing: 8px;
+      margin-bottom: 20px;
+    }
+
+    .modal-title.win {
+      color: #00ff41;
+      text-shadow: 0 0 20px #00ff41;
+    }
+
+    .modal-title.lose {
+      color: #ff0044;
+      text-shadow: 0 0 20px #ff0044;
+    }
+
+    .modal-message {
+      font-size: 1.3rem;
+      color: #008f11;
+      margin-bottom: 30px;
+    }
+
+    .restart-btn {
+      background: rgba(0, 255, 65, 0.1);
+      border: 2px solid #00ff41;
+      color: #00ff41;
+      font-family: 'VT323', monospace;
+      font-size: 1.5rem;
+      padding: 12px 40px;
+      cursor: pointer;
+      letter-spacing: 4px;
+      transition: all 0.2s;
+    }
+
+    .restart-btn:hover {
+      background: rgba(0, 255, 65, 0.2);
+      box-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
+    }
+
+    /* Cursor blink */
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    .cursor-blink {
+      animation: blink 1s infinite;
+    }
+
+    /* Stats row */
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1rem;
+      color: #008f11;
+      margin-bottom: 15px;
+      letter-spacing: 2px;
+    }
+
+    .stat-value {
+      color: #00ff41;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0a0a0a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #004411;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #008f11;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="matrix-canvas"></canvas>
+  <div class="crt-overlay"></div>
+  <div class="flash-overlay green" id="green-flash"></div>
+  <div class="flash-overlay red" id="red-flash"></div>
+
+  <div class="hud-header screen-flicker">
+    <div class="hud-title">MINIGAME V1 — HACK</div>
+    <div class="hud-subtitle">CYBERPUNK CODEBREAKING INTERFACE v1.0.4</div>
+  </div>
+
+  <div class="timer-container">
+    <div class="timer-label">SYSTEM BREACH TIMER</div>
+    <div class="timer-bar-bg">
+      <div class="timer-bar-fill" id="timer-bar" style="width: 100%;"></div>
+    </div>
+  </div>
+
+  <div class="terminal screen-flicker">
+    <div class="stats-row">
+      <span>ATTEMPTS: <span class="stat-value" id="attempts">0</span></span>
+      <span>TARGET: <span class="stat-value">4 HEX DIGITS</span></span>
+      <span>STATUS: <span class="stat-value" id="status">ACTIVE</span></span>
+    </div>
+
+    <div class="hex-grid" id="hex-grid"></div>
+
+    <div class="input-section">
+      <span class="input-prompt">&gt;</span>
+      <input
+        type="text"
+        class="hex-input"
+        id="hex-input"
+        placeholder="____"
+        maxlength="4"
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <button class="submit-btn" id="submit-btn">EXECUTE</button>
+    </div>
+
+    <div class="status-log" id="status-log">
+      <div class="log-entry info">&gt; Initializing breach protocol...</div>
+      <div class="log-entry info">&gt; Scanning hex grid for access codes...</div>
+      <div class="log-entry info">&gt; Enter 4-digit hex code to proceed.</div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-message" id="modal-message"></div>
+    <button class="restart-btn" id="restart-btn">REBOOT SYSTEM</button>
+  </div>
+
+  <script>
+    // ==================== MATRIX BACKGROUND ====================
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
+
+    let width, height;
+    const cols = [];
+    const fontSize = 14;
+    const chars = '0123456789ABCDEF';
+
+    function resizeCanvas() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      const numCols = Math.floor(width / fontSize);
+      for (let i = 0; i < numCols; i++) {
+        cols[i] = Math.random() * height;
+      }
+    }
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawMatrix() {
+      ctx.fillStyle = 'rgba(5, 5, 5, 0.05)';
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = '#00ff41';
+      ctx.font = fontSize + 'px VT323, monospace';
+
+      const numCols = Math.floor(width / fontSize);
+      for (let i = 0; i < numCols; i++) {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        const x = i * fontSize;
+        const y = cols[i];
+        ctx.fillText(char, x, y);
+        cols[i] += fontSize;
+        if (cols[i] > height && Math.random() > 0.975) {
+          cols[i] = 0;
+        }
+      }
+      requestAnimationFrame(drawMatrix);
+    }
+    drawMatrix();
+
+    // ==================== GAME STATE ====================
+    const GRID_SIZE = 40; // 5 rows x 8 cols
+    const TIMER_DURATION = 60; // seconds
+    let solution = '';
+    let attempts = 0;
+    let timeLeft = TIMER_DURATION;
+    let timerInterval = null;
+    let cursorIndex = 0;
+    let isGameOver = false;
+
+    const hexGrid = document.getElementById('hex-grid');
+    const hexInput = document.getElementById('hex-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const attemptsEl = document.getElementById('attempts');
+    const statusEl = document.getElementById('status');
+    const statusLog = document.getElementById('status-log');
+    const timerBar = document.getElementById('timer-bar');
+    const greenFlash = document.getElementById('green-flash');
+    const redFlash = document.getElementById('red-flash');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMessage = document.getElementById('modal-message');
+    const restartBtn = document.getElementById('restart-btn');
+
+    // ==================== UTILITIES ====================
+    function randomHexDigit() {
+      return '0123456789ABCDEF'[Math.floor(Math.random() * 16)];
+    }
+
+    function generateSolution() {
+      let s = '';
+      for (let i = 0; i < 4; i++) s += randomHexDigit();
+      return s;
+    }
+
+    function generateGridCells() {
+      const cells = [];
+      for (let i = 0; i < GRID_SIZE; i++) {
+        let cell = '';
+        for (let j = 0; j < 4; j++) cell += randomHexDigit();
+        cells.push(cell);
+      }
+      // Ensure solution is somewhere in the grid
+      const solutionPos = Math.floor(Math.random() * GRID_SIZE);
+      cells[solutionPos] = solution;
+      return cells;
+    }
+
+    function log(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `> ${message}`;
+      statusLog.appendChild(entry);
+      statusLog.scrollTop = statusLog.scrollHeight;
+    }
+
+    function flash(type) {
+      const el = type === 'green' ? greenFlash : redFlash;
+      el.classList.add('active');
+      setTimeout(() => el.classList.remove('active'), 200);
+    }
+
+    // ==================== GRID & CURSOR ====================
+    let gridCells = [];
+    let cursorRow = 0;
+
+    function renderGrid() {
+      hexGrid.innerHTML = '';
+      gridCells.forEach((cell, i) => {
+        const div = document.createElement('div');
+        div.className = 'hex-cell';
+        div.textContent = cell;
+        div.dataset.index = i;
+        if (Math.floor(i / 8) === cursorRow) {
+          div.classList.add('cursor-active');
+        }
+        hexGrid.appendChild(div);
+      });
+    }
+
+    function moveCursor() {
+      cursorRow = (cursorRow + 1) % 5;
+      renderGrid();
+    }
+
+    let cursorInterval = setInterval(moveCursor, 800);
+
+    // ==================== TIMER ====================
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        timeLeft -= 0.1;
+        if (timeLeft <= 0) {
+          timeLeft = 0;
+          endGame(false);
+        }
+        updateTimerBar();
+      }, 100);
+    }
+
+    function updateTimerBar() {
+      const pct = (timeLeft / TIMER_DURATION) * 100;
+      timerBar.style.width = pct + '%';
+      timerBar.classList.remove('warning', 'danger');
+      if (pct < 20) timerBar.classList.add('danger');
+      else if (pct < 50) timerBar.classList.add('warning');
+    }
+
+    // ==================== GAME LOGIC ====================
+    function checkInput() {
+      if (isGameOver) return;
+      const val = hexInput.value.toUpperCase().trim();
+      if (val.length !== 4) {
+        log('INVALID INPUT — 4 HEX DIGITS REQUIRED', 'error');
+        flash('red');
+        return;
+      }
+      attempts++;
+      attemptsEl.textContent = attempts;
+
+      if (val === solution) {
+        log(`CODE ${val} ACCEPTED — ACCESS GRANTED`, 'success');
+        flash('green');
+        // Highlight correct cells
+        document.querySelectorAll('.hex-cell').forEach(cell => {
+          if (cell.textContent === solution) cell.classList.add('correct');
+        });
+        endGame(true);
+      } else {
+        log(`CODE ${val} REJECTED — ACCESS DENIED`, 'error');
+        flash('red');
+        // Highlight wrong cells briefly
+        document.querySelectorAll('.hex-cell').forEach(cell => {
+          if (cell.textContent === val) {
+            cell.classList.add('wrong');
+            setTimeout(() => cell.classList.remove('wrong'), 500);
+          }
+        });
+      }
+      hexInput.value = '';
+      hexInput.focus();
+    }
+
+    function endGame(won) {
+      isGameOver = true;
+      clearInterval(timerInterval);
+      clearInterval(cursorInterval);
+      hexInput.disabled = true;
+      submitBtn.disabled = true;
+      statusEl.textContent = won ? 'BREACHED' : 'LOCKED';
+      statusEl.style.color = won ? '#00ff41' : '#ff0044';
+
+      setTimeout(() => {
+        modalTitle.textContent = won ? 'ACCESS GRANTED' : 'SYSTEM LOCKED';
+        modalTitle.className = 'modal-title ' + (won ? 'win' : 'lose');
+        modalMessage.textContent = won
+          ? `Breach successful in ${attempts} attempt${attempts !== 1 ? 's' : ''}.`
+          : `Time expired. The correct code was ${solution}.`;
+        modal.classList.add('active');
+      }, won ? 800 : 500);
+    }
+
+    function initGame() {
+      solution = generateSolution();
+      gridCells = generateGridCells();
+      attempts = 0;
+      timeLeft = TIMER_DURATION;
+      cursorRow = 0;
+      isGameOver = false;
+
+      attemptsEl.textContent = '0';
+      statusEl.textContent = 'ACTIVE';
+      statusEl.style.color = '#00ff41';
+      hexInput.value = '';
+      hexInput.disabled = false;
+      submitBtn.disabled = false;
+      timerBar.style.width = '100%';
+      timerBar.classList.remove('warning', 'danger');
+      statusLog.innerHTML = '';
+      log('Initializing breach protocol...', 'info');
+      log('Scanning hex grid for access codes...', 'info');
+      log('Enter 4-digit hex code to proceed.', 'info');
+      modal.classList.remove('active');
+
+      renderGrid();
+      startTimer();
+      if (cursorInterval) clearInterval(cursorInterval);
+      cursorInterval = setInterval(moveCursor, 800);
+      hexInput.focus();
+    }
+
+    // ==================== EVENTS ====================
+    submitBtn.addEventListener('click', checkInput);
+
+    hexInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') checkInput();
+      // Only allow hex chars
+      const allowed = /[0-9a-fA-F\b\t\r\n]/;
+      if (e.key.length === 1 && !allowed.test(e.key)) {
+        e.preventDefault();
+      }
+    });
+
+    hexInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.toUpperCase().replace(/[^0-9A-F]/g, '');
+    });
+
+    restartBtn.addEventListener('click', initGame);
+
+    // Keep focus on input
+    document.addEventListener('click', (e) => {
+      if (!isGameOver && !modal.classList.contains('active') && e.target !== restartBtn) {
+        hexInput.focus();
+      }
+    });
+
+    // ==================== START ====================
+    initGame();
+  </script>
+</body>
+</html>

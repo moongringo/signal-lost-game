@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MENU V4 — PAUSE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ===================== GAME VIEWPORT (BACKGROUND) ===================== */
+        .game-viewport {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            overflow: hidden;
+        }
+
+        /* Simulated gameplay elements - CSS shapes */
+        .game-element {
+            position: absolute;
+            border-radius: 4px;
+        }
+
+        .game-element.player {
+            width: 40px;
+            height: 40px;
+            background: #00d4aa;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            box-shadow: 0 0 20px rgba(0, 212, 170, 0.4);
+        }
+
+        .game-element.enemy {
+            width: 30px;
+            height: 30px;
+            background: #e94560;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.4);
+        }
+
+        .game-element.enemy:nth-child(2) { top: 15%; left: 20%; }
+        .game-element.enemy:nth-child(3) { top: 25%; right: 25%; }
+        .game-element.enemy:nth-child(4) { top: 10%; left: 60%; }
+        .game-element.enemy:nth-child(5) { top: 35%; left: 40%; }
+
+        .game-element.asteroid {
+            background: #4a4a6a;
+            border-radius: 50%;
+            box-shadow: inset -3px -3px 8px rgba(0,0,0,0.4);
+        }
+
+        .game-element.asteroid:nth-child(6) { width: 60px; height: 55px; top: 20%; left: 10%; }
+        .game-element.asteroid:nth-child(7) { width: 40px; height: 40px; top: 60%; right: 15%; }
+        .game-element.asteroid:nth-child(8) { width: 80px; height: 70px; bottom: 30%; left: 25%; }
+        .game-element.asteroid:nth-child(9) { width: 35px; height: 35px; top: 45%; right: 40%; }
+
+        .game-element.projectile {
+            width: 4px;
+            height: 16px;
+            background: #00d4aa;
+            border-radius: 2px;
+            box-shadow: 0 0 8px rgba(0, 212, 170, 0.6);
+        }
+
+        .game-element.projectile:nth-child(10) { bottom: 130px; left: 48%; }
+        .game-element.projectile:nth-child(11) { bottom: 160px; left: 52%; }
+        .game-element.projectile:nth-child(12) { bottom: 120px; left: 50%; }
+
+        .game-element.collectible {
+            width: 20px;
+            height: 20px;
+            background: #f5a623;
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(245, 166, 35, 0.5);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .game-element.collectible:nth-child(13) { top: 50%; left: 15%; }
+        .game-element.collectible:nth-child(14) { top: 30%; right: 10%; }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+
+        /* HUD elements in game */
+        .game-hud {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            padding: 20px 30px;
+        }
+
+        .game-hud .health-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 30px;
+            width: 200px;
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .game-hud .health-bar::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 75%;
+            height: 100%;
+            background: linear-gradient(90deg, #00d4aa, #00a884);
+            border-radius: 6px;
+        }
+
+        .game-hud .ammo {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            letter-spacing: 2px;
+        }
+
+        .game-hud .minimap {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            width: 100px;
+            height: 100px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+        }
+
+        /* ===================== PAUSE OVERLAY ===================== */
+        .pause-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 10, 20, 0.65);
+            backdrop-filter: blur(12px) saturate(0.8);
+            -webkit-backdrop-filter: blur(12px) saturate(0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Animated subtle background behind overlay */
+        .pause-overlay::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 30%, rgba(0, 212, 170, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, rgba(233, 69, 96, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(245, 166, 35, 0.04) 0%, transparent 60%);
+            animation: bgShift 8s ease-in-out infinite alternate;
+            pointer-events: none;
+        }
+
+        @keyframes bgShift {
+            0% {
+                background-position: 0% 0%, 100% 100%, 50% 50%;
+                transform: scale(1);
+            }
+            100% {
+                background-position: 100% 100%, 0% 0%, 50% 50%;
+                transform: scale(1.05);
+            }
+        }
+
+        /* ===================== HUD LABEL ===================== */
+        .hud-label {
+            position: absolute;
+            top: 24px;
+            left: 30px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            color: rgba(255, 255, 255, 0.35);
+            text-transform: uppercase;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        /* ===================== MISSION INFO PANEL ===================== */
+        .mission-info {
+            position: absolute;
+            top: 24px;
+            right: 30px;
+            display: flex;
+            gap: 32px;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 14px 24px;
+            backdrop-filter: blur(8px);
+        }
+
+        .mission-info .info-block {
+            text-align: right;
+        }
+
+        .mission-info .info-label {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 2.5px;
+            color: rgba(255, 255, 255, 0.35);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .mission-info .info-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.85);
+            letter-spacing: 0.5px;
+        }
+
+        .mission-info .info-value.mission-name {
+            color: #00d4aa;
+            font-weight: 600;
+        }
+
+        .mission-info .info-value.score {
+            color: #f5a623;
+            font-weight: 600;
+        }
+
+        /* ===================== PAUSE MENU CONTENT ===================== */
+        .pause-content {
+            position: relative;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            animation: slideUp 0.4s ease-out 0.1s both;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .pause-title {
+            font-size: 42px;
+            font-weight: 300;
+            letter-spacing: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+            text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .pause-title::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            margin: 16px auto 0;
+        }
+
+        .pause-divider {
+            width: 200px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+            margin: 8px 0 16px;
+        }
+
+        .menu-options {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 320px;
+        }
+
+        .menu-btn {
+            position: relative;
+            padding: 14px 24px;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.25s ease;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .menu-btn::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: linear-gradient(90deg, rgba(0, 212, 170, 0.1), transparent);
+            transition: width 0.3s ease;
+            border-radius: 6px 0 0 6px;
+        }
+
+        .menu-btn:hover {
+            color: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.04);
+            letter-spacing: 3.5px;
+        }
+
+        .menu-btn:hover::before {
+            width: 100%;
+        }
+
+        .menu-btn.primary {
+            color: #00d4aa;
+        }
+
+        .menu-btn.primary:hover {
+            color: #00f0bc;
+            background: rgba(0, 212, 170, 0.06);
+        }
+
+        .menu-btn.primary::before {
+            background: linear-gradient(90deg, rgba(0, 212, 170, 0.12), transparent);
+        }
+
+        .menu-btn.danger {
+            color: #e94560;
+        }
+
+        .menu-btn.danger:hover {
+            color: #ff6b7a;
+            background: rgba(233, 69, 96, 0.06);
+        }
+
+        .menu-btn.danger::before {
+            background: linear-gradient(90deg, rgba(233, 69, 96, 0.12), transparent);
+        }
+
+        .menu-btn .btn-icon {
+            display: inline-block;
+            width: 0;
+            opacity: 0;
+            transition: all 0.25s ease;
+            margin-right: 0;
+        }
+
+        .menu-btn:hover .btn-icon {
+            width: 18px;
+            opacity: 1;
+            margin-right: 8px;
+        }
+
+        /* Separator between menu sections */
+        .menu-separator {
+            width: 40px;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.08);
+            margin: 8px auto;
+        }
+
+        /* ===================== PAUSED INDICATOR ===================== */
+        .paused-indicator {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 20;
+        }
+
+        .paused-dot {
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: dotPulse 1.5s ease-in-out infinite;
+        }
+
+        .paused-dot:nth-child(2) { animation-delay: 0.2s; }
+        .paused-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes dotPulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.3); }
+        }
+
+        .paused-text {
+            font-size: 10px;
+            letter-spacing: 4px;
+            color: rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+            margin-left: 4px;
+        }
+
+        /* ===================== SCANLINES OVERLAY ===================== */
+        .scanlines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 15;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.03) 2px,
+                rgba(0, 0, 0, 0.03) 4px
+            );
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===================== GAME VIEWPORT (BACKGROUND) ===================== -->
+    <div class="game-viewport">
+        <!-- Simulated gameplay elements -->
+        <div class="game-element player"></div>
+        <div class="game-element enemy"></div>
+        <div class="game-element enemy"></div>
+        <div class="game-element enemy"></div>
+        <div class="game-element enemy"></div>
+        <div class="game-element asteroid"></div>
+        <div class="game-element asteroid"></div>
+        <div class="game-element asteroid"></div>
+        <div class="game-element asteroid"></div>
+        <div class="game-element projectile"></div>
+        <div class="game-element projectile"></div>
+        <div class="game-element projectile"></div>
+        <div class="game-element collectible"></div>
+        <div class="game-element collectible"></div>
+
+        <!-- In-game HUD -->
+        <div class="game-hud">
+            <div class="health-bar"></div>
+            <div class="ammo">∞ / 240</div>
+            <div class="minimap"></div>
+        </div>
+    </div>
+
+    <!-- ===================== PAUSE OVERLAY ===================== -->
+    <div class="pause-overlay">
+        <div class="scanlines"></div>
+
+        <!-- HUD Label -->
+        <div class="hud-label">MENU V4 — PAUSE</div>
+
+        <!-- Mission Info Panel -->
+        <div class="mission-info">
+            <div class="info-block">
+                <div class="info-label">Mission</div>
+                <div class="info-value mission-name">Operation: Void Shard</div>
+            </div>
+            <div class="info-block">
+                <div class="info-label">Time Elapsed</div>
+                <div class="info-value">14:32:07</div>
+            </div>
+            <div class="info-block">
+                <div class="info-label">Score</div>
+                <div class="info-value score">47,850</div>
+            </div>
+        </div>
+
+        <!-- Pause Menu Content -->
+        <div class="pause-content">
+            <h1 class="pause-title">Paused</h1>
+            <div class="pause-divider"></div>
+
+            <nav class="menu-options">
+                <button class="menu-btn primary">
+                    <span class="btn-icon">▶</span>Resume
+                </button>
+                <button class="menu-btn">
+                    <span class="btn-icon">↻</span>Restart Mission
+                </button>
+                <button class="menu-btn">
+                    <span class="btn-icon">⚙</span>Loadout
+                </button>
+                <button class="menu-btn">
+                    <span class="btn-icon">◈</span>Settings
+                </button>
+
+                <div class="menu-separator"></div>
+
+                <button class="menu-btn">
+                    <span class="btn-icon">⌂</span>Return to Lobby
+                </button>
+                <button class="menu-btn danger">
+                    <span class="btn-icon">✕</span>Quit Game
+                </button>
+            </nav>
+        </div>
+
+        <!-- Paused Indicator -->
+        <div class="paused-indicator">
+            <div class="paused-dot"></div>
+            <div class="paused-dot"></div>
+            <div class="paused-dot"></div>
+            <span class="paused-text">Game Paused</span>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost Flow Design - Mission Control</title>
+  <link rel="stylesheet" href="./design-flow.css?v=3" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>
+    .leaflet-container { background: #0e1925; }
+    #setupMap, #controlMap, #leaderboardMap { width: 100%; border-radius: var(--radius); min-height: 320px; }
+    .map-stage { padding: 0; }
+    .leaflet-popup-content-wrapper { background: rgba(14,25,37,0.95); color: var(--text); border: 1px solid var(--line); }
+    .leaflet-popup-tip { background: rgba(14,25,37,0.95); }
+  </style>
+</head>
+<body data-flow-page="control" data-background="psychedelic-waves">
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <section class="mc-shell" aria-label="Mission control reference layout option">
+      <header class="mc-topbar">
+        <div class="mc-brand">
+          <span class="mc-emblem">SL</span>
+          <div><strong>Signal Lost</strong><small>Mission Control</small></div>
+        </div>
+        <nav class="mc-nav" aria-label="Flow design pages">
+          <a href="./index.html">Setup</a>
+          <a href="./roles.html">Roles</a>
+          <a href="./control.html" aria-current="page">Control</a>
+          <a href="./leaderboard.html">Status</a>
+          <a href="./dashboard.html">Dashboard</a>
+          <a href="./mobile.html">Mobile</a>
+        </nav>
+        <div class="mc-stat"><span>System Status</span><b>Online</b></div>
+        <div class="mc-stat"><span>Sat Link</span><b>Active</b></div>
+        <div class="mc-stat"><span>Mission Time</span><b>02:46:18</b></div>
+        <div class="compact-audio" aria-label="Theme song controls">
+          <button id="audioToggle" type="button">Play</button>
+          <label><span>Vol</span><input id="volumeSlider" type="range" min="0" max="100" value="70" /></label>
+          <span id="audioTime">00:00</span>
+          <span id="audioStatus">Idle</span>
+          <audio id="themeAudio" src="./assets/retro-heist-run.mp3" preload="metadata" loop></audio>
+        </div>
+      </header>
+
+      <div class="mc-grid">
+        <aside class="mc-panel team-panel">
+          <p class="kicker">Team Status</p>
+          <div class="oxygen-readout">
+            <div>
+              <span>Squad Signal</span>
+              <strong>72%</strong>
+              <small>Stable</small>
+            </div>
+            <i aria-hidden="true"><b></b></i>
+          </div>
+          <div class="crew-list">
+            <article><span>M</span><div><b>Maverick</b><small>Team leader / online</small></div><i></i></article>
+            <article><span>R</span><div><b>Ripper</b><small>Tech specialist / online</small></div><i></i></article>
+            <article><span>V</span><div><b>Vortex</b><small>Field operative / online</small></div><i></i></article>
+            <article><span>P</span><div><b>Phantom</b><small>Recon expert / online</small></div><i></i></article>
+          </div>
+          <div class="system-log">
+            <p class="kicker">System Log</p>
+            <span>02:43:12 satellite link established</span>
+            <span>02:44:02 unknown signal detected</span>
+            <span class="alert">02:45:09 signal lost</span>
+            <span>02:45:10 attempting reconnection</span>
+          </div>
+        </aside>
+
+        <section class="mc-panel radar-panel">
+          <p class="kicker">Live Radar + OpenStreetMap</p>
+          <div style="position: relative; width: 100%; max-width: 560px; margin: 0 auto;">
+            <!-- OpenStreetMap base layer -->
+            <div id="controlMap" style="height: 420px; border-radius: 10px;"></div>
+            
+            <!-- Radar overlay -->
+            <div class="reference-radar" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 10px; pointer-events: none; opacity: 0.75; z-index: 1000;">
+              <span class="bearing north">0</span>
+              <span class="bearing east">90</span>
+              <span class="bearing south">180</span>
+              <span class="bearing west">270</span>
+              <i class="scan-line"></i>
+              <span class="radar-target target-one"><b>Ripper</b><small>RNG 180m</small></span>
+              <span class="radar-target target-two"><b>Maverick</b><small>RNG 320m</small></span>
+              <span class="radar-target target-three"><b>Phantom</b><small>RNG 210m</small></span>
+            </div>
+          </div>
+          <div class="radar-metrics">
+            <span><b>Map Source</b>OSM</span>
+            <span><b>Refresh</b>Live</span>
+            <span><b>Zoom</b>15</span>
+            <span><b>Agents</b>4</span>
+          </div>
+        </section>
+
+        <aside class="mc-panel comms-panel">
+          <p class="kicker">Communications</p>
+          <div class="comms-tabs" role="group" aria-label="Communication channels">
+            <button class="is-active" type="button">Chat</button>
+            <button type="button">Voice</button>
+            <button type="button">Broadcast</button>
+          </div>
+          <div class="voice-status">
+            <strong>Voice Relay</strong>
+            <span>Open channel / squad loop armed</span>
+          </div>
+          <div class="chat-stack">
+            <article><span>Decoder</span><b>Packet A17 opened</b><small>02:43:26</small></article>
+            <article><span>AI Watch</span><b>Hunter crossing east grid</b><small>02:44:02</small></article>
+            <article><span>Navigator</span><b>Route shift through river sector</b><small>02:44:18</small></article>
+            <article><span>Mission Control</span><b>Hold south bridge until signal clears</b><small>02:45:10</small></article>
+          </div>
+          <div class="comms-compose">
+            <label><span>Operator Message</span><input value="Reroute through river sector" /></label>
+            <button type="button">Send</button>
+          </div>
+          <p class="kicker">Cipher Key</p>
+          <div class="cipher-row"><span>7A3F</span><span>9C2B</span><span>1D8E</span><span>4F6A</span></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <script src="./design-flow.js?v=3"></script>
+    
+    <!-- Hidden elements for JS compatibility -->
+    <div style="display:none;" aria-hidden="true">
+      <div id="roleTitle"></div>
+      <div id="roleState"></div>
+      <div id="roleTools"></div>
+      <div id="roleCardList"></div>
+      <div id="roleReadinessList"></div>
+      <div id="roleReadinessPill"></div>
+      <select id="roleSelect"><option value="Drone">Drone</option></select>
+      <input id="roleAgentName" type="text" />
+      <input id="roleAccessCodeInput" type="text" />
+      <select id="roleTeamSelect"><option value="Alpha">Alpha</option></select>
+      <input id="agentName" type="text" />
+      <select id="teamSelect"><option value="Alpha">Alpha</option></select>
+      <input id="agentAccessCodeInput" type="text" />
+      <button id="joinGame" type="button"></button>
+      <div id="fieldAgentTitle"></div>
+      <div id="fieldAgentRole"></div>
+      <div id="fieldSignal"></div>
+      <div id="fieldStamina"></div>
+      <div id="fieldSquadList"></div>
+      <div id="fieldObjectiveTitle"></div>
+      <div id="fieldObjectiveDistance"></div>
+      <div id="fieldThreatDistance"></div>
+      <div id="fieldObjectiveVital"></div>
+      <div id="fieldThreatVital"></div>
+      <div id="fieldCueStatus"></div>
+      <div id="fieldRoleCue"></div>
+      <div id="mapLayerControl"></div>
+      <div id="mapTitle"></div>
+      <div id="mapSourceLabel"></div>
+      <div id="mapZoomValue"></div>
+      <div id="mapLayerBadge"></div>
+      <div id="mapNotice"></div>
+      <div id="gpsStatus"></div>
+      <div id="gpsPermissionPill"></div>
+      <div id="gpsHelpText"></div>
+      <div id="gpsAccuracyReadout"></div>
+      <input id="manualLat" type="text" />
+      <input id="manualLng" type="text" />
+      <div id="syncStatus"></div>
+      <div id="coordinateSyncStatus"></div>
+      <div id="coordinateSyncDetail"></div>
+      <div id="sessionToolStatus"></div>
+      <div id="gmStatusPill"></div>
+      <div id="gmStatusText"></div>
+      <input id="gmBroadcastInput" type="text" />
+      <form id="gmBroadcastForm"></form>
+      <div id="moderationCount"></div>
+      <div id="moderationStatus"></div>
+      <div id="moderationRoster"></div>
+      <div id="auditFilterBar"></div>
+      <div id="auditCountPill"></div>
+      <div id="auditLog"></div>
+      <div id="chatFilterBar"></div>
+      <div id="chatFilterPill"></div>
+      <div id="threatList"></div>
+      <div id="sessionPayload"></div>
+      <div id="recapSummary"></div>
+      <div id="recapTitle"></div>
+      <div id="scoreGrade"></div>
+      <div id="scoreValue"></div>
+      <div id="teamScoreList"></div>
+      <div id="nearestDistance"></div>
+      <div id="teamLeadValue"></div>
+      <div id="foundCount"></div>
+      <div id="markerTaskState"></div>
+      <div id="markerTitle"></div>
+      <div id="markerType"></div>
+      <div id="activeGames"></div>
+      <div id="missionReviewTitle"></div>
+      <div id="missionReviewPill"></div>
+      <div id="missionReviewList"></div>
+      <div id="missionTimer"></div>
+      <div id="gameStatus"></div>
+      <div id="identitySummary"></div>
+      <div id="privacyPill"></div>
+      <div id="signalValue"></div>
+      <div id="mapZoomIn"></div>
+      <div id="mapZoomOut"></div>
+      <div id="useDeviceGps"></div>
+      <div id="applyManualGps"></div>
+      <div id="hostView"></div>
+      <div id="fieldView"></div>
+      <div id="radarView"></div>
+      <div id="exportSession"></div>
+      <div id="importSession"></div>
+      <div id="refreshSessions"></div>
+      <div id="removeSession"></div>
+      <div id="syncNow"></div>
+      <div id="toggleLobbyLock"></div>
+      <div id="clearInactiveAgents"></div>
+      <div id="gmRevealClue"></div>
+      <div id="gmJamZone"></div>
+      <div id="gmDropCache"></div>
+      <div id="gmRerouteExtraction"></div>
+      <div id="organizerAccessCodeInput"></div>
+      <div id="organizerClientPill"></div>
+      <div id="organizerNameInput"></div>
+      <div id="organizerCallsignInput"></div>
+      <div id="setupSessionCode"></div>
+      <div id="setupSessionMode"></div>
+      <div id="setupPublicToggle"></div>
+      <div id="setupAudioToggle"></div>
+      <div id="setupAudioStatus"></div>
+      <div id="setupAudioTime"></div>
+      <div id="setupVolumeSlider"></div>
+      <div id="setupMapPreview"></div>
+      <div id="setupLeafletMap"></div>
+      <div id="setupMapCaption"></div>
+      <div id="themePaletteSelect"></div>
+      <div id="setupModuleList"></div>
+      <div id="moduleList"></div>
+      <div id="templateNameInput"></div>
+      <div id="saveTemplate"></div>
+      <div id="loadTemplate"></div>
+      <div id="removeTemplate"></div>
+      <div id="templateList"></div>
+      <div id="templateStatus"></div>
+      <div id="templateCountPill"></div>
+      <div id="copyJoinLink"></div>
+      <div id="continueToRoles"></div>
+      <div id="openControlFromSetup"></div>
+      <div id="backToSetup"></div>
+      <div id="enterMissionControl"></div>
+      <div id="returnToSetup"></div>
+      <div id="returnToRoles"></div>
+      <div id="setupStep"></div>
+      <div id="rolesStep"></div>
+      <div id="controlStep"></div>
+      <div id="onboardingTitle"></div>
+      <div id="roleStackToggle"></div>
+      <div id="roleStackHint"></div>
+      <div id="roleDetail"></div>
+      <div id="setupCitySelect"></div>
+      <div id="setupCountrySelect"></div>
+      <div id="setupDurationInput"></div>
+      <div id="setupPlayerSlider"></div>
+      <div id="setupSummary"></div>
+      <div id="requireAccessCodeToggle"></div>
+      <div id="useCityCenterMarker"></div>
+      <div id="addCustomMarker"></div>
+      <div id="cancelMarkerEdit"></div>
+      <div id="markerLat"></div>
+      <div id="markerLng"></div>
+      <div id="markerRadius"></div>
+      <div id="markerArtifact"></div>
+      <div id="markerDraftStatus"></div>
+      <div id="customMarkerList"></div>
+      <div id="themePatternCanvas"></div>
+      <div id="setupDurationValue"></div>
+      <div id="setupPlayerValue"></div>
+      <div id="decodeObjective"></div>
+      <div id="citySearch"></div>
+      <div id="shuffleRoles"></div>
+      <div id="createObjective"></div>
+      <div id="sessionCode"></div>
+      <div id="audioToggle"></div>
+      <div id="audioStatus"></div>
+      <div id="audioTime"></div>
+      <div id="volumeSlider"></div>
+      <div id="themeAudio"></div>
+      <div id="systemStatus"></div>
+      <div id="satLink"></div>
+      <div id="playerCount"></div>
+      <div id="missionClock"></div>
+      <div id="signalStrength"></div>
+      <div id="threatLevel"></div>
+      <div id="objectiveCount"></div>
+      <div id="gpsSpark"></div>
+      <div id="satSpark"></div>
+      <div id="crewSpark"></div>
+      <div id="timeSpark"></div>
+      <div id="signalSpark"></div>
+      <div id="threatSpark"></div>
+      <div id="agentList"></div>
+      <div id="map"></div>
+      <div id="mapFallback"></div>
+      <div id="warningGraph"></div>
+      <div id="signalWarningTitle"></div>
+      <div id="threatBadge"></div>
+      <div id="chatLog"></div>
+      <div id="chatForm"></div>
+      <div id="chatInput"></div>
+      <div id="objectiveList"></div>
+      <div id="decodeNext"></div>
+      <div id="roleTabs"></div>
+      <div id="themeOptions"></div>
+      <div id="collapseButton"></div>
+      <div id="startGame"></div>
+      <div id="resetGame"></div>
+      <div id="citySelect"></div>
+      <div id="durationInput"></div>
+      <div id="playerSlider"></div>
+      <div id="publicToggle"></div>
+      <div id="sessionModeSelect"></div>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script>
+      // Initialize Mission Control Map — deferred to ensure container is rendered
+      let controlMap;
+      function initControlMap() {
+        const container = document.getElementById('controlMap');
+        if (!container || container.clientWidth === 0) {
+          setTimeout(initControlMap, 100);
+          return;
+        }
+        controlMap = L.map('controlMap').setView([59.9139, 10.7522], 14);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; CartoDB | &copy; OpenStreetMap',
+          maxZoom: 19,
+          crossOrigin: true
+        }).addTo(controlMap);
+        // Agent markers
+        const agents = [
+          {name: 'Maverick', pos: [59.9145, 10.7530], role: 'Team Leader', color: '#00d4ff'},
+          {name: 'Ripper', pos: [59.9130, 10.7510], role: 'Tech', color: '#ff6b35'},
+          {name: 'Vortex', pos: [59.9150, 10.7545], role: 'Field', color: '#00ff88'},
+          {name: 'Phantom', pos: [59.9120, 10.7500], role: 'Recon', color: '#9B7FD0'}
+        ];
+        agents.forEach(a => {
+          const icon = L.divIcon({
+            className: 'custom-agent-marker',
+            html: `<div style="width:14px;height:14px;background:${a.color};border-radius:50%;border:2px solid #ffd965;box-shadow:0 0 10px ${a.color},0 0 20px ${a.color}60;"></div>`,
+            iconSize: [14, 14]
+          });
+          L.marker(a.pos, {icon}).addTo(controlMap).bindPopup(`<b style="color:${a.color}">${a.name}</b><br>${a.role}`);
+        });
+        // Objective circle
+        L.circle([59.9139, 10.7522], {radius: 200, color: '#ff8b1f', fillOpacity: 0.15, dashArray: '5,5'}).addTo(controlMap);
+        // Fix grey tiles by forcing a resize after container is stable
+        setTimeout(() => controlMap.invalidateSize(), 250);
+        setTimeout(() => controlMap.invalidateSize(), 1000);
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initControlMap);
+      } else {
+        initControlMap();
+      }
+    </script>
+    <!-- Fix unclickable buttons -->
+    <script>
+      // Chat/Voice/Broadcast tab switching
+      document.querySelectorAll('.comm-tabs button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.comm-tabs button').forEach(b => b.classList.remove('is-active'));
+          btn.classList.add('is-active');
+        });
+      });
+
+      // Send button
+      document.querySelector('.comm-input button')?.addEventListener('click', () => {
+        const input = document.querySelector('.comm-input input');
+        if (input && input.value.trim()) {
+          const log = document.querySelector('.system-log');
+          if (log) {
+            const entry = document.createElement('span');
+            entry.textContent = '> ' + input.value.trim();
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+          }
+          input.value = '';
+        }
+      });
+
+      // joinGame button
+      document.getElementById('joinGame')?.addEventListener('click', () => {
+        const code = document.getElementById('joinCode')?.value?.trim();
+        if (code) {
+          alert('Joining game: ' + code);
+        } else {
+          alert('Please enter a join code');
+        }
+      });
+    </script>
+    <script src="./app.js"></script>
+    <script src="./game-engine.js?v=6"></script>
+  <script src="./ai-threats.js?v=13"></script>
+  <script src="./threat-sync.js?v=1"></script>
+</body>
+</html>

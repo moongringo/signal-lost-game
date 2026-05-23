@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ERA V1 — WW2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Courier+Prime:wght@400;700&display=swap');
+
+  :root {
+    --olive: #4a4a2f;
+    --olive-dark: #2e2e1a;
+    --olive-light: #6b6b4a;
+    --khaki: #c2b280;
+    --khaki-dark: #8f7e50;
+    --paper: #e8dcc8;
+    --paper-dark: #c4b59a;
+    --crt-green: #33ff33;
+    --crt-dim: #1a801a;
+    --stencil: #3a3a2a;
+    --metal: #6e6e5e;
+    --metal-dark: #3a3a2e;
+    --bakelite: #1f1a14;
+    --bakelite-light: #3a3028;
+    --warning: #cc3333;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--olive-dark);
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E"),
+      linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 50%, rgba(0,0,0,0.3) 100%);
+    font-family: 'Courier Prime', monospace;
+    color: var(--stencil);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* Paper texture overlay */
+  .paper-texture {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1000;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.15 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)'/%3E%3C/svg%3E");
+    mix-blend-mode: multiply;
+  }
+
+  /* Stencil font effect */
+  .stencil {
+    font-family: 'Black Ops One', cursive;
+    color: var(--stencil);
+    text-shadow:
+      2px 2px 0 rgba(0,0,0,0.3),
+      -1px -1px 0 rgba(255,255,255,0.1),
+      0 0 8px rgba(0,0,0,0.2);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  /* Vignette */
+  .vignette {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(30,25,15,0.6) 100%);
+  }
+
+  /* --- HUD --- */
+  .hud {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+    background: var(--paper);
+    border: 3px solid var(--metal-dark);
+    border-radius: 2px;
+    padding: 6px 24px;
+    box-shadow:
+      inset 0 0 12px rgba(0,0,0,0.15),
+      0 4px 12px rgba(0,0,0,0.4),
+      0 0 0 1px var(--khaki-dark);
+  }
+  .hud::before, .hud::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    background: var(--metal);
+    border-radius: 50%;
+    transform: translateY(-50%);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+  }
+  .hud::before { left: 6px; }
+  .hud::after { right: 6px; }
+  .hud-text {
+    font-size: 1.1rem;
+    text-shadow:
+      1px 1px 0 rgba(0,0,0,0.25),
+      -0.5px -0.5px 0 rgba(255,255,255,0.15);
+  }
+
+  /* --- LOADING SCREEN (Teletype) --- */
+  #loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--olive-dark);
+    transition: opacity 1.2s ease;
+  }
+  #loading-screen.hidden { opacity: 0; pointer-events: none; }
+
+  .teletype-container {
+    width: 720px;
+    max-width: 92vw;
+    background: var(--bakelite);
+    border-radius: 8px;
+    padding: 28px;
+    box-shadow:
+      0 20px 60px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    position: relative;
+  }
+  .teletype-container::before {
+    content: '';
+    position: absolute;
+    top: -6px; left: 20px; right: 20px;
+    height: 6px;
+    background: var(--metal-dark);
+    border-radius: 3px 3px 0 0;
+  }
+  .teletype-brand {
+    color: var(--khaki);
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-align: center;
+    margin-bottom: 14px;
+    opacity: 0.7;
+  }
+  .paper-roll {
+    background: var(--paper);
+    border: 2px solid var(--metal-dark);
+    border-radius: 2px;
+    padding: 20px 24px;
+    min-height: 220px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.08);
+    position: relative;
+    overflow: hidden;
+  }
+  .paper-roll::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: 4px;
+    background: repeating-linear-gradient(90deg, var(--paper-dark) 0px, var(--paper-dark) 12px, transparent 12px, transparent 24px);
+    opacity: 0.4;
+  }
+  .paper-roll::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 30px;
+    background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.06));
+  }
+  .teletype-text {
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--stencil);
+    white-space: pre-wrap;
+    min-height: 160px;
+  }
+  .teletype-cursor {
+    display: inline-block;
+    width: 10px;
+    height: 18px;
+    background: var(--stencil);
+    vertical-align: text-bottom;
+    margin-left: 2px;
+    animation: cursorBlink 0.6s step-end infinite;
+  }
+  @keyframes cursorBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  .teletype-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--bakelite-light);
+  }
+  .status-light {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--olive);
+    border: 2px solid var(--metal-dark);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.4);
+    transition: background 0.3s;
+  }
+  .status-light.on { background: var(--crt-green); box-shadow: 0 0 8px var(--crt-green), inset 0 -1px 2px rgba(0,0,0,0.3); }
+  .status-light.busy { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+  .status-label {
+    color: var(--khaki);
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .progress-track {
+    flex: 1;
+    height: 10px;
+    background: var(--bakelite-light);
+    border-radius: 1px;
+    overflow: hidden;
+    border: 1px solid var(--metal-dark);
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--khaki-dark);
+    transition: width 0.2s linear;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .teletype-knobs {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 18px;
+  }
+  .knob {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--metal);
+    border: 3px solid var(--metal-dark);
+    box-shadow:
+      0 3px 8px rgba(0,0,0,0.4),
+      inset 0 2px 4px rgba(255,255,255,0.15);
+    position: relative;
+  }
+  .knob::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    width: 3px;
+    height: 12px;
+    background: var(--bakelite);
+    transform: translateX(-50%);
+    border-radius: 1px;
+  }
+
+  /* --- MAIN INTERFACE --- */
+  #main-interface {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: none;
+    padding: 70px 20px 20px;
+    gap: 20px;
+  }
+  #main-interface.active { display: flex; }
+
+  /* Radar Panel */
+  .radar-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+  }
+  .radar-frame {
+    background: var(--bakelite);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow:
+      0 12px 40px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+    position: relative;
+  }
+  .radar-frame::before {
+    content: 'RADAR SCOPE — MODEL AN/APS-6';
+    position: absolute;
+    top: -28px;
+    left: 0;
+    color: var(--khaki);
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+  }
+  .radar-screws {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--metal-dark);
+    border-radius: 50%;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+  }
+  .radar-screws.tl { top: 6px; left: 6px; }
+  .radar-screws.tr { top: 6px; right: 6px; }
+  .radar-screws.bl { bottom: 6px; left: 6px; }
+  .radar-screws.br { bottom: 6px; right: 6px; }
+  .radar-screws::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 6px; height: 1.5px;
+    background: var(--metal);
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+  #radar-canvas {
+    border-radius: 50%;
+    display: block;
+    background: #0a1a0a;
+    box-shadow:
+      inset 0 0 40px rgba(0,0,0,0.8),
+      0 0 0 3px var(--metal-dark),
+      0 0 20px rgba(51,255,51,0.08);
+  }
+  .radar-controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 14px;
+    justify-content: center;
+  }
+  .radar-btn {
+    background: var(--olive);
+    border: 2px solid var(--olive-dark);
+    color: var(--khaki);
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    padding: 6px 14px;
+    cursor: pointer;
+    border-radius: 2px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .radar-btn:hover { background: var(--olive-light); }
+  .radar-btn:active { transform: translateY(1px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
+  /* Chat Panel */
+  .chat-panel {
+    width: 420px;
+    max-width: 42vw;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .radio-case {
+    background: var(--bakelite);
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow:
+      0 16px 50px rgba(0,0,0,0.55),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+  }
+  .radio-case::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -10px;
+    width: 10px;
+    height: 60px;
+    background: var(--bakelite-light);
+    border-radius: 4px 0 0 4px;
+    transform: translateY(-50%);
+    box-shadow: inset -2px 0 4px rgba(0,0,0,0.3);
+  }
+  .radio-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--bakelite-light);
+  }
+  .handset-icon {
+    width: 44px;
+    height: 44px;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .handset-icon svg {
+    width: 100%; height: 100%;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  }
+  .radio-title {
+    color: var(--khaki);
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    line-height: 1.4;
+  }
+  .radio-title .freq {
+    color: var(--khaki-dark);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+  }
+  .radio-dials {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+    justify-content: center;
+  }
+  .dial {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--metal);
+    border: 3px solid var(--metal-dark);
+    box-shadow:
+      0 4px 10px rgba(0,0,0,0.4),
+      inset 0 2px 6px rgba(255,255,255,0.12);
+    position: relative;
+    cursor: pointer;
+  }
+  .dial::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    width: 3px;
+    height: 16px;
+    background: var(--bakelite);
+    transform: translateX(-50%);
+    border-radius: 1px;
+  }
+  .dial-label {
+    position: absolute;
+    bottom: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.55rem;
+    color: var(--khaki-dark);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+  .dial:nth-child(1) { transform: rotate(25deg); }
+  .dial:nth-child(2) { transform: rotate(-15deg); }
+  .dial:nth-child(3) { transform: rotate(45deg); }
+
+  .chat-display {
+    flex: 1;
+    background: var(--paper);
+    border: 2px solid var(--bakelite-light);
+    border-radius: 4px;
+    padding: 14px;
+    overflow-y: auto;
+    box-shadow: inset 0 0 16px rgba(0,0,0,0.1);
+    margin-bottom: 12px;
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+  .chat-display::-webkit-scrollbar { width: 8px; }
+  .chat-display::-webkit-scrollbar-track { background: var(--paper-dark); }
+  .chat-display::-webkit-scrollbar-thumb { background: var(--bakelite-light); border-radius: 2px; }
+  .msg {
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border-radius: 2px;
+    position: relative;
+  }
+  .msg-in {
+    background: rgba(74,74,47,0.08);
+    border-left: 3px solid var(--olive);
+  }
+  .msg-out {
+    background: rgba(194,178,128,0.25);
+    border-left: 3px solid var(--khaki-dark);
+    text-align: right;
+  }
+  .msg-time {
+    font-size: 0.65rem;
+    color: var(--khaki-dark);
+    margin-bottom: 2px;
+    letter-spacing: 0.05em;
+  }
+  .msg-sender {
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: var(--olive);
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .msg-text { color: var(--stencil); }
+
+  .chat-input-area {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .chat-input {
+    flex: 1;
+    background: var(--paper);
+    border: 2px solid var(--bakelite-light);
+    border-radius: 3px;
+    padding: 10px 12px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.9rem;
+    color: var(--stencil);
+    outline: none;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.1);
+  }
+  .chat-input::placeholder { color: var(--khaki-dark); opacity: 0.7; }
+  .chat-send {
+    background: var(--olive);
+    border: 2px solid var(--olive-dark);
+    color: var(--khaki);
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    padding: 0 18px;
+    cursor: pointer;
+    border-radius: 3px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .chat-send:hover { background: var(--olive-light); }
+  .chat-send:active { transform: translateY(1px); }
+
+  /* Scanlines overlay */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+  }
+
+  /* Responsive */
+  @media (max-width: 860px) {
+    #main-interface { flex-direction: column; padding-top: 65px; }
+    .chat-panel { width: 100%; max-width: none; height: 45vh; }
+    .radar-panel { height: 40vh; }
+    #radar-canvas { width: 280px !important; height: 280px !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="paper-texture"></div>
+<div class="vignette"></div>
+<div class="scanlines"></div>
+
+<!-- HUD -->
+<div class="hud stencil">
+  <span class="hud-text">ERA V1 — WW2</span>
+</div>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="teletype-container">
+    <div class="teletype-brand">SIEMENS TELETYPEWRITER MODEL T-52</div>
+    <div class="paper-roll">
+      <div class="teletype-text" id="teletype-text"></div>
+      <span class="teletype-cursor" id="teletype-cursor"></span>
+    </div>
+    <div class="teletype-status">
+      <div class="status-light on" id="status-light"></div>
+      <span class="status-label" id="status-label">ON LINE</span>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+    <div class="teletype-knobs">
+      <div class="knob" style="transform:rotate(30deg)"></div>
+      <div class="knob" style="transform:rotate(-20deg)"></div>
+      <div class="knob" style="transform:rotate(60deg)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN INTERFACE -->
+<div id="main-interface">
+  <!-- Radar -->
+  <div class="radar-panel">
+    <div class="radar-frame">
+      <div class="radar-screws tl"></div>
+      <div class="radar-screws tr"></div>
+      <div class="radar-screws bl"></div>
+      <div class="radar-screws br"></div>
+      <canvas id="radar-canvas" width="360" height="360"></canvas>
+      <div class="radar-controls">
+        <button class="radar-btn" onclick="toggleRadar()">Power</button>
+        <button class="radar-btn" onclick="changeRange()">Range</button>
+        <button class="radar-btn" onclick="addTarget()">Ping</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat-panel">
+    <div class="radio-case">
+      <div class="radio-header">
+        <div class="handset-icon">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="20" y="4" width="24" height="12" rx="4" fill="#3a3028" stroke="#6e6e5e" stroke-width="2"/>
+            <path d="M24 16 L24 36 Q24 48 32 48 Q40 48 40 36 L40 16" fill="#2a2018" stroke="#6e6e5e" stroke-width="2"/>
+            <rect x="18" y="44" width="28" height="14" rx="4" fill="#3a3028" stroke="#6e6e5e" stroke-width="2"/>
+            <line x1="28" y1="52" x2="36" y2="52" stroke="#6e6e5e" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="32" cy="10" r="2" fill="#1a801a"/>
+          </svg>
+        </div>
+        <div class="radio-title">
+          FIELD RADIO<br>
+          <span class="freq">FREQ: 4.2 MHz &nbsp; CH: 7</span>
+        </div>
+      </div>
+      <div class="radio-dials">
+        <div class="dial"><span class="dial-label">VOL</span></div>
+        <div class="dial"><span class="dial-label">TUNE</span></div>
+        <div class="dial"><span class="dial-label">SQUELCH</span></div>
+      </div>
+      <div class="chat-display" id="chat-display">
+        <div class="msg msg-in">
+          <div class="msg-time">0800 HRS</div>
+          <div class="msg-sender">HQ Command</div>
+          <div class="msg-text">Radio check. Confirm reception, over.</div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <input type="text" class="chat-input" id="chat-input" placeholder="Enter message..." maxlength="200">
+        <button class="chat-send" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== TELETYPE LOADING ===================== */
+const orders = [
+  "OPERATIONAL ORDER No. 447",
+  "CLASSIFICATION: RESTRICTED",
+  "",
+  "1. SITUATION: Enemy armor reported grid 47-N. Patrols dispatched 0600.",
+  "2. MISSION: Establish comm relay at checkpoint Able. Maintain silence until 1800.",
+  "3. EXECUTION: All units switch to freq 4.2 MHz. Authentication: THUNDERCLAP.",
+  "4. SERVICE SUPPORT: Ammunition resupply via convoy Baker at 1400.",
+  "5. COMMAND: Forward OP at coordinates 51°29'N  0°08'W.",
+  "",
+  "ACKNOWLEDGE RECEIPT. END TRANSMISSION."
+];
+
+let lineIndex = 0;
+let charIndex = 0;
+let teletypeDone = false;
+const teletypeEl = document.getElementById('teletype-text');
+const cursorEl = document.getElementById('teletype-cursor');
+const progressEl = document.getElementById('progress-fill');
+const statusLight = document.getElementById('status-light');
+const statusLabel = document.getElementById('status-label');
+
+function typeNextChar() {
+  if (lineIndex >= orders.length) {
+    teletypeDone = true;
+    statusLight.classList.remove('on');
+    statusLight.classList.add('busy');
+    statusLabel.textContent = 'COMPLETE';
+    setTimeout(showMainInterface, 1200);
+    return;
+  }
+  const line = orders[lineIndex];
+  if (charIndex === 0 && lineIndex > 0) {
+    teletypeEl.textContent += '\n';
+  }
+  if (charIndex < line.length) {
+    teletypeEl.textContent += line[charIndex];
+    charIndex++;
+    const totalChars = orders.reduce((a,b)=>a+b.length,0) + orders.length;
+    const doneChars = orders.slice(0,lineIndex).reduce((a,b)=>a+b.length,0) + lineIndex + charIndex;
+    progressEl.style.width = (doneChars/totalChars*100) + '%';
+    setTimeout(typeNextChar, 18 + Math.random()*35);
+  } else {
+    charIndex = 0;
+    lineIndex++;
+    setTimeout(typeNextChar, 120);
+  }
+}
+
+function showMainInterface() {
+  document.getElementById('loading-screen').classList.add('hidden');
+  document.getElementById('main-interface').classList.add('active');
+  resizeRadar();
+  startRadar();
+}
+
+setTimeout(typeNextChar, 600);
+
+/* ===================== RADAR CRT ===================== */
+const canvas = document.getElementById('radar-canvas');
+const ctx = canvas.getContext('2d');
+let radarRunning = true;
+let sweepAngle = 0;
+let rangeMode = 0; // 0=50km, 1=100km, 2=200km
+const ranges = ['50 KM', '100 KM', '200 KM'];
+let targets = [
+  { r: 0.35, a: 0.8, blip: 1 },
+  { r: 0.6, a: 2.4, blip: 0.8 },
+  { r: 0.2, a: 4.5, blip: 1 },
+  { r: 0.75, a: 5.1, blip: 0.6 },
+];
+let decayMap = null;
+
+function resizeRadar() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const size = Math.min(rect.width, rect.height) || 360;
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+  decayMap = ctx.createImageData(canvas.width, canvas.height);
+  for (let i = 0; i < decayMap.data.length; i += 4) {
+    decayMap.data[i+3] = 0;
+  }
+}
+window.addEventListener('resize', resizeRadar);
+
+function drawRadar() {
+  if (!radarRunning) return;
+  const w = canvas.width / (window.devicePixelRatio||1);
+  const h = canvas.height / (window.devicePixelRatio||1);
+  const cx = w/2, cy = h/2;
+  const radius = Math.min(cx, cy) - 10;
+
+  // Fade decay
+  if (decayMap) {
+    for (let i = 3; i < decayMap.data.length; i += 4) {
+      if (decayMap.data[i] > 0) decayMap.data[i] -= 3;
+    }
+  }
+
+  // Background
+  ctx.fillStyle = '#0a1a0a';
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid rings
+  ctx.strokeStyle = 'rgba(51,255,51,0.12)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 4; i++) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * i/4, 0, Math.PI*2);
+    ctx.stroke();
+  }
+
+  // Crosshairs
+  ctx.strokeStyle = 'rgba(51,255,51,0.08)';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy-radius); ctx.lineTo(cx, cy+radius);
+  ctx.moveTo(cx-radius, cy); ctx.lineTo(cx+radius, cy);
+  ctx.stroke();
+
+  // Range labels
+  ctx.fillStyle = 'rgba(51,255,51,0.35)';
+  ctx.font = '10px "Courier Prime", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(ranges[rangeMode], cx, cy - radius - 4);
+  ctx.fillText('0°', cx + radius + 10, cy + 3);
+  ctx.fillText('90°', cx + 3, cy - radius - 4);
+  ctx.fillText('180°', cx - radius - 10, cy + 3);
+  ctx.fillText('270°', cx + 3, cy + radius + 10);
+
+  // Draw targets on decay map
+  if (decayMap) {
+    const dpr = window.devicePixelRatio || 1;
+    targets.forEach(t => {
+      const tx = cx + Math.cos(t.a) * t.r * radius;
+      const ty = cy + Math.sin(t.a) * t.r * radius;
+      const px = Math.round(tx * dpr);
+      const py = Math.round(ty * dpr);
+      const idx = (py * canvas.width + px) * 4;
+      if (idx >= 0 && idx < decayMap.data.length - 3) {
+        const intensity = Math.floor(180 * t.blip);
+        decayMap.data[idx] = 51;
+        decayMap.data[idx+1] = 255;
+        decayMap.data[idx+2] = 51;
+        decayMap.data[idx+3] = intensity;
+      }
+    });
+    ctx.putImageData(decayMap, 0, 0);
+  }
+
+  // Sweep line
+  sweepAngle += 0.025;
+  const sx = cx + Math.cos(sweepAngle) * radius;
+  const sy = cy + Math.sin(sweepAngle) * radius;
+
+  // Glow
+  ctx.shadowColor = '#33ff33';
+  ctx.shadowBlur = 12;
+  ctx.strokeStyle = 'rgba(51,255,51,0.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(sx, sy);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Leading edge bright
+  ctx.strokeStyle = 'rgba(180,255,180,0.7)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(sx, sy);
+  ctx.stroke();
+
+  // Center dot
+  ctx.fillStyle = 'rgba(51,255,51,0.5)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 2, 0, Math.PI*2);
+  ctx.fill();
+
+  requestAnimationFrame(drawRadar);
+}
+
+function startRadar() { if (radarRunning) drawRadar(); }
+function toggleRadar() {
+  radarRunning = !radarRunning;
+  if (radarRunning) drawRadar();
+}
+function changeRange() { rangeMode = (rangeMode + 1) % ranges.length; }
+function addTarget() {
+  targets.push({
+    r: 0.15 + Math.random()*0.7,
+    a: Math.random()*Math.PI*2,
+    blip: 0.5 + Math.random()*0.5
+  });
+  if (targets.length > 12) targets.shift();
+}
+
+/* ===================== CHAT ===================== */
+const chatDisplay = document.getElementById('chat-display');
+const chatInput = document.getElementById('chat-input');
+
+function formatTime() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  return h + m + ' HRS';
+}
+
+function appendMessage(sender, text, isOut) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + (isOut ? 'msg-out' : 'msg-in');
+  div.innerHTML = `
+    <div class="msg-time">${formatTime()}</div>
+    <div class="msg-sender">${sender}</div>
+    <div class="msg-text">${text.replace(/</g,'&lt;')}</div>
+  `;
+  chatDisplay.appendChild(div);
+  chatDisplay.scrollTop = chatDisplay.scrollHeight;
+}
+
+function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  appendMessage('You', text, true);
+  chatInput.value = '';
+  // Simulated reply
+  setTimeout(() => {
+    const replies = [
+      'Copy that. Standing by.',
+      'Roger. Out.',
+      'Affirmative. Proceed with caution.',
+      'Message received. Will advise.',
+      'Solid copy. Maintain position.'
+    ];
+    appendMessage('HQ Command', replies[Math.floor(Math.random()*replies.length)], false);
+  }, 1200 + Math.random()*1800);
+}
+
+chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+
+/* Init */
+resizeRadar();
+</script>
+</body>
+</html>

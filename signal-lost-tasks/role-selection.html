@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Signal Lost — Role Selection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+<style>
+:root{--ink:#201116;--cream:#fff0c7;--gold:#ffd965;--teal:#008c94;--orange:#ff8b1f;--pink:#e82663;--blue:#18364b;}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--ink);font-family:'Inter',system-ui,sans-serif;color:var(--cream);min-height:100vh}
+body{padding:2rem 1rem;display:flex;justify-content:center}
+
+.role-card{width:100%;max-width:960px;background:linear-gradient(145deg,#1a0d12,#0a0508);border:2px solid rgba(255,217,101,0.15);border-radius:24px;padding:2rem;box-shadow:0 24px 64px rgba(0,0,0,0.5)}
+
+.role-header{text-align:center;margin-bottom:1.5rem}
+.role-header h1{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;margin-bottom:0.25rem}
+.role-header p{font-size:0.8rem;color:rgba(255,240,199,0.5)}
+.timer{font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--orange);margin-top:0.5rem}
+
+.role-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+.role-item{position:relative;border-radius:16px;border:2px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);padding:1rem;text-align:center;cursor:pointer;transition:all .15s}
+.role-item:hover{border-color:rgba(255,217,101,0.2);transform:translateY(-3px);background:rgba(255,255,255,0.04)}
+.role-item.selected{border-color:var(--gold);box-shadow:0 0 24px rgba(255,217,101,0.1);background:rgba(255,217,101,0.05)}
+.role-item.locked{opacity:0.4;cursor:not-allowed;filter:grayscale(.6)}
+.role-icon{font-size:2.5rem;margin-bottom:0.5rem;display:block}
+.role-name{font-weight:900;font-size:0.85rem;margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.03em}
+.role-desc{font-size:0.65rem;color:rgba(255,240,199,0.4);line-height:1.4}
+.role-tag{position:absolute;top:0.5rem;right:0.5rem;padding:2px 6px;border-radius:4px;font-size:0.55rem;font-weight:900;text-transform:uppercase}
+.role-tag.popular{background:var(--orange);color:var(--ink)}
+.role-tag.banned{background:var(--pink);color:var(--cream)}
+.lock-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.5rem;opacity:0.8}
+
+.role-detail{display:none;grid-template-columns:1fr 1fr;gap:1.5rem;padding:1.5rem;background:rgba(255,255,255,0.02);border-radius:16px;border:1px solid rgba(255,255,255,0.04);margin-bottom:1.5rem}
+.role-detail.active{display:grid}
+.detail-stats{display:flex;flex-direction:column;gap:0.75rem}
+.detail-stat{display:flex;align-items:center;gap:0.75rem}
+.detail-stat .label{width:80px;font-size:0.75rem;color:rgba(255,240,199,0.5);text-transform:uppercase}
+.detail-stat .bar{flex:1;height:8px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden}
+.detail-stat .bar .fill{height:100%;border-radius:999px}
+.detail-stat .val{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.8rem;width:28px;text-align:right}
+.detail-abilities h3{font-size:0.75rem;font-weight:900;text-transform:uppercase;color:var(--gold);margin-bottom:0.75rem;letter-spacing:0.05em}
+.ability{display:flex;gap:0.75rem;padding:0.75rem;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:0.5rem}
+.ability .icon{font-size:1.3rem}
+.ability .info b{font-size:0.8rem;display:block;margin-bottom:0.15rem}
+.ability .info span{font-size:0.65rem;color:rgba(255,240,199,0.4)}
+
+.team-comp{display:flex;gap:0.5rem;margin-bottom:1.5rem;justify-content:center}
+.team-slot{width:48px;height:48px;border-radius:12px;border:2px dashed rgba(255,255,255,0.1);display:grid;place-items:center;font-size:1.5rem;background:rgba(255,255,255,0.02);transition:all .15s}
+.team-slot.filled{border-style:solid;border-color:var(--gold);background:rgba(255,217,101,0.08)}
+
+.actions{display:flex;gap:0.75rem}
+.actions button{flex:1;padding:0.875rem;border-radius:12px;border:2px solid var(--gold);background:var(--gold);color:var(--ink);font-weight:900;font-size:0.9rem;cursor:pointer;transition:all .15s}
+.actions button:hover{background:#ffe89a}
+.actions button.secondary{background:transparent;color:var(--cream);border-color:rgba(255,255,255,0.1)}
+.actions button.secondary:hover{background:rgba(255,255,255,0.04)}
+
+@media(max-width:768px){
+.role-grid{grid-template-columns:repeat(2,1fr)}
+.role-detail{grid-template-columns:1fr}
+}
+</style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="role-selection" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Role Selection</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<div class="role-card">
+  <div class="role-header">
+    <h1>Select Your Role</h1>
+    <p>Lock in before the timer expires</p>
+    <div class="timer">⏱ 00:47 remaining</div>
+  </div>
+
+  <div class="team-comp">
+    <div class="team-slot filled">🎯</div>
+    <div class="team-slot"></div>
+    <div class="team-slot"></div>
+    <div class="team-slot"></div>
+    <div class="team-slot"></div>
+  </div>
+
+  <div class="role-grid">
+    <div class="role-item selected" data-role="sniper">
+      <span class="role-icon">🎯</span>
+      <div class="role-name">Sniper</div>
+      <div class="role-desc">Long-range precision elimination</div>
+      <span class="role-tag popular">Popular</span>
+    </div>
+    <div class="role-item" data-role="assault">
+      <span class="role-icon">⚔️</span>
+      <div class="role-name">Assault</div>
+      <div class="role-desc">Frontline breaching &amp; control</div>
+    </div>
+    <div class="role-item" data-role="scout">
+      <span class="role-icon">👁️</span>
+      <div class="role-name">Scout</div>
+      <div class="role-desc">Recon &amp; target spotting</div>
+    </div>
+    <div class="role-item" data-role="medic">
+      <span class="role-icon">🚑</span>
+      <div class="role-name">Medic</div>
+      <div class="role-desc">Squad healing &amp; revives</div>
+    </div>
+    <div class="role-item" data-role="engineer">
+      <span class="role-icon">🔧</span>
+      <div class="role-name">Engineer</div>
+      <div class="role-desc">Traps, mines, &amp; gadgets</div>
+    </div>
+    <div class="role-item" data-role="heavy">
+      <span class="role-icon">🛡️</span>
+      <div class="role-name">Heavy</div>
+      <div class="role-desc">Tank &amp; suppression fire</div>
+    </div>
+    <div class="role-item locked" data-role="hacker">
+      <span class="role-icon">💻</span>
+      <div class="role-name">Hacker</div>
+      <div class="role-desc">Jamming &amp; drone control</div>
+      <span class="lock-icon">🔒</span>
+    </div>
+    <div class="role-item locked banned" data-role="juggernaut">
+      <span class="role-icon">☢️</span>
+      <div class="role-name">Juggernaut</div>
+      <div class="role-desc">Banned this season</div>
+      <span class="role-tag banned">Banned</span>
+    </div>
+  </div>
+
+  <div class="role-detail active" id="detail-sniper">
+    <div class="detail-stats">
+      <div class="detail-stat"><div class="label">Damage</div><div class="bar"><div class="fill" style="width:95%;background:var(--pink)"></div></div><div class="val">95</div></div>
+      <div class="detail-stat"><div class="label">Range</div><div class="bar"><div class="fill" style="width:100%;background:var(--gold)"></div></div><div class="val">100</div></div>
+      <div class="detail-stat"><div class="label">Speed</div><div class="bar"><div class="fill" style="width:40%;background:var(--teal)"></div></div><div class="val">40</div></div>
+      <div class="detail-stat"><div class="label">Health</div><div class="bar"><div class="fill" style="width:60%;background:var(--orange)"></div></div><div class="val">60</div></div>
+    </div>
+    <div class="detail-abilities">
+      <h3>Abilities</h3>
+      <div class="ability"><div class="icon">👁️</div><div class="info"><b>Eagle Eye</b><span>Hold breath for 3s perfect aim</span></div></div>
+      <div class="ability"><div class="icon">🌫️</div><div class="info"><b>Ghost Walk</b><span>Silent movement for 5s</span></div></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="secondary" type="button">Random Role</button>
+    <button type="button">Lock In 🎯</button>
+  </div>
+</div>
+
+<script src="design-system.js"></script>
+<script>
+new SignalLostDesign({ spotlight:true, magneticButtons:true, scrollReveal:true, reducedMotion:true });
+
+const details = {
+  sniper: document.getElementById('detail-sniper')
+};
+
+document.querySelectorAll('.role-item:not(.locked)').forEach(item=>{
+  item.addEventListener('click',()=>{
+    document.querySelectorAll('.role-item').forEach(i=>i.classList.remove('selected'));
+    item.classList.add('selected');
+  });
+});
+</script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

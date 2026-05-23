@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quemello — Mobile Command</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="quemello-theme.css">
+  <style>
+    .mobile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 600px; margin: 0 auto; padding: 80px 16px 16px; }
+    @media (max-width: 500px) { .mobile-grid { grid-template-columns: 1fr; } }
+    .mob-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; backdrop-filter: blur(12px); transition: all 0.3s; }
+    .mob-card:hover { border-color: var(--border-hover); box-shadow: 0 0 20px var(--gold-dim); }
+    .mob-card .icon { font-size: 32px; margin-bottom: 12px; }
+    .mob-card h4 { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+    .mob-card p { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+    .mob-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; display: flex; justify-content: space-around; padding: 12px; background: rgba(10, 14, 23, 0.9); backdrop-filter: blur(20px); border-top: 1px solid var(--border); }
+    .mob-nav a { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-dim); text-decoration: none; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; transition: color 0.3s; }
+    .mob-nav a:hover, .mob-nav a.active { color: var(--gold); }
+    .mob-nav .ico { font-size: 20px; }
+    .status-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 101; display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: rgba(10, 14, 23, 0.9); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); font-size: 11px; }
+    .status-bar .signal { color: var(--gold); font-family: 'JetBrains Mono', monospace; }
+    .status-bar .bat { color: var(--teal); }
+  </style>
+  <link rel="stylesheet" href="../../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="mobile" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Quemello — Mobile Command</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../../design-flow-setup.html">Setup</a>
+        <a href="../../design-flow-roles.html">Roles</a>
+        <a href="../../design-flow-control.html">Control</a>
+
+        <a href="../../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../../login.html">Login</a>
+              <a href="../../server-browser.html">Server Browser</a>
+              <a href="../../map-selection.html">Map Selection</a>
+              <a href="../../role-selection.html">Role Selection</a>
+              <a href="../../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../../player-profile.html">Player Profile</a>
+              <a href="../../career-stats.html">Career Stats</a>
+              <a href="../../match-result.html">Match Result</a>
+              <a href="../../post-match-report.html">Post-Match Report</a>
+              <a href="../../kill-cam.html">Kill Cam</a>
+              <a href="../../death-recap.html">Death Recap</a>
+              <a href="../../spectator-mode.html">Spectator Mode</a>
+              <a href="../../replay-viewer.html">Replay Viewer</a>
+              <a href="../../tournament-bracket.html">Tournament</a>
+              <a href="../../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../../store.html">Store</a>
+              <a href="../../friends.html">Friends</a>
+              <a href="../../squad.html">Squad</a>
+              <a href="../../clan-wars.html">Clan Wars</a>
+              <a href="../../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../../token-dashboard.html">Token Dashboard</a>
+              <a href="../../daily-challenges.html">Daily Challenges</a>
+              <a href="../../inventory.html">Inventory</a>
+              <a href="../../loadout-builder.html">Loadout Builder</a>
+              <a href="../../battle-pass.html">Battle Pass</a>
+              <a href="../../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../../R&D-INDEX.html">R&D Index</a>
+              <a href="../../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../../leaderboard.html">Leaderboard</a>
+              <a href="../../settings.html">Settings</a>
+              <a href="../../design-system.html">Design System</a>
+              <a href="../../design-flow-setup.html">Setup Page</a>
+              <a href="../../design-flow-roles.html">Roles Page</a>
+              <a href="../../design-flow-control.html">Control Page</a>
+              <a href="../../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../../mobile-radar.html">Mobile Radar</a>
+              <a href="../../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+
+  <div class="particle"></div><div class="particle"></div>
+    <div class="particle"></div><div class="particle"></div>
+  </div>
+  <div class="status-bar">
+    <span class="signal">● ONLINE</span>
+    <span id="q-clock">00:00</span>
+    <span class="bat">🔋 84%</span>
+  </div>
+
+  <div class="main-content">
+    <div style="text-align:center;padding:60px 24px 20px;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--gold);letter-spacing:2px;text-shadow:0 0 15px var(--gold-dim);">Quemello</div>
+      <div style="font-size:11px;color:var(--text-dim);letter-spacing:3px;text-transform:uppercase;margin-top:4px;">Mobile Command</div>
+    </div>
+
+    <div class="mobile-grid">
+      <a href="mission-control.html" class="mob-card" style="text-decoration:none;color:inherit">
+        <div class="icon">📡</div>
+        <h4>Mission Control</h4>
+        <p>Real-time tactical overview and radar</p>
+      </a>
+      <a href="action-center.html" class="mob-card" style="text-decoration:none;color:inherit">
+        <div class="icon">⚔️</div>
+        <h4>Action Center</h4>
+        <p>Weapons, stats, and kill feed</p>
+      </a>
+      <a href="dashboard.html" class="mob-card" style="text-decoration:none;color:inherit">
+        <div class="icon">📊</div>
+        <h4>Dashboard</h4>
+        <p>Stats, matches, and squad activity</p>
+      </a>
+      <a href="roles.html" class="mob-card" style="text-decoration:none;color:inherit">
+        <div class="icon">🎭</div>
+        <h4>Roles</h4>
+        <p>Select your combat class</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="mob-nav">
+    <a href="index.html" class="active"><span class="ico">🏠</span><span>Home</span></a>
+    <a href="mission-control.html"><span class="ico">📡</span><span>Radar</span></a>
+    <a href="action-center.html"><span class="ico">⚔️</span><span>Combat</span></a>
+    <a href="dashboard.html"><span class="ico">📊</span><span>Stats</span></a>
+    <a href="roles.html"><span class="ico">🎭</span><span>Roles</span></a>
+  </div>
+
+  <script src="quemello-effects.js"></script>
+  <script>
+    function tick() {
+      const now = new Date();
+      const el = document.getElementById('q-clock');
+      if (el) el.textContent = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    }
+    tick();
+    setInterval(tick, 60000);
+  </script>
+
+
+    </div>
+  </main>
+  <script src="../../design-system.js"></script>
+  <script src="../../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

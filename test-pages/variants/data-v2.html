@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DATA V2 — HEATMAP</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #050505;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+  }
+  #hud {
+    position: absolute;
+    top: 12px;
+    left: 18px;
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #00ffcc;
+    z-index: 10;
+    pointer-events: none;
+    text-shadow: 0 0 6px rgba(0,255,204,0.4);
+  }
+  #canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+  canvas {
+    display: block;
+  }
+  #legend {
+    position: absolute;
+    top: 12px;
+    right: 18px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid #333;
+    padding: 10px 14px;
+    border-radius: 4px;
+    z-index: 10;
+    pointer-events: none;
+  }
+  #legend-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    color: #aaa;
+  }
+  #legend-gradient {
+    width: 160px;
+    height: 12px;
+    border-radius: 2px;
+    background: linear-gradient(to right, #0000ff, #00ffff, #00ff00, #ffff00, #ff8800, #ff0000);
+    margin-bottom: 4px;
+  }
+  #legend-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #888;
+  }
+  #timeline-container {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    max-width: 600px;
+    z-index: 10;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 12px 18px;
+  }
+  #timeline-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #aaa;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  #timeline-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: #333;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  #timeline-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #00ffcc;
+    box-shadow: 0 0 8px rgba(0,255,204,0.6);
+    cursor: pointer;
+  }
+  #timeline-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #00ffcc;
+    box-shadow: 0 0 8px rgba(0,255,204,0.6);
+    cursor: pointer;
+    border: none;
+  }
+  #timeline-steps {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 10px;
+    color: #666;
+  }
+  .step-label {
+    width: 20px;
+    text-align: center;
+  }
+  .step-label.active {
+    color: #00ffcc;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<div id="hud">DATA V2 — HEATMAP</div>
+
+<div id="legend">
+  <div id="legend-title">Threat Level</div>
+  <div id="legend-gradient"></div>
+  <div id="legend-labels">
+    <span>Low</span>
+    <span>High</span>
+  </div>
+</div>
+
+<div id="timeline-container">
+  <div id="timeline-label">Timeline</div>
+  <input type="range" id="timeline-slider" min="0" max="4" step="1" value="0">
+  <div id="timeline-steps">
+    <div class="step-label active">T1</div>
+    <div class="step-label">T2</div>
+    <div class="step-label">T3</div>
+    <div class="step-label">T4</div>
+    <div class="step-label">T5</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <canvas id="heatmapCanvas"></canvas>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('heatmapCanvas');
+  const ctx = canvas.getContext('2d');
+  const slider = document.getElementById('timeline-slider');
+  const stepLabels = document.querySelectorAll('.step-label');
+
+  let W, H;
+  let gridSize = 40;
+  let cols, rows;
+  let timeStep = 0;
+  const totalSteps = 5;
+
+  // Generate seeded random for consistency across time steps
+  function seededRandom(seed) {
+    let s = seed % 2147483647;
+    if (s <= 0) s += 2147483646;
+    return function() {
+      s = (s * 16807) % 2147483647;
+      return (s - 1) / 2147483646;
+    };
+  }
+
+  // Perlin-ish noise for smooth heatmap
+  function noise(x, y, seed) {
+    const rand = seededRandom(seed + Math.floor(x) * 374761 + Math.floor(y) * 668265);
+    const fx = x - Math.floor(x);
+    const fy = y - Math.floor(y);
+    const n00 = rand();
+    const n10 = seededRandom(seed + Math.floor(x+1) * 374761 + Math.floor(y) * 668265)();
+    const n01 = seededRandom(seed + Math.floor(x) * 374761 + Math.floor(y+1) * 668265)();
+    const n11 = seededRandom(seed + Math.floor(x+1) * 374761 + Math.floor(y+1) * 668265)();
+    const nx0 = n00 * (1 - fx) + n10 * fx;
+    const nx1 = n01 * (1 - fx) + n11 * fx;
+    return nx0 * (1 - fy) + nx1 * fy;
+  }
+
+  function getHeat(x, y, t) {
+    // Combine multiple noise layers for organic heat distribution
+    let h = 0;
+    h += noise(x * 0.08, y * 0.08, t * 1000 + 1) * 1.0;
+    h += noise(x * 0.15, y * 0.15, t * 1000 + 2) * 0.5;
+    h += noise(x * 0.30, y * 0.30, t * 1000 + 3) * 0.25;
+    // Shift heat over time
+    h += Math.sin(x * 0.05 + t * 1.2) * 0.15;
+    h += Math.cos(y * 0.05 + t * 0.8) * 0.15;
+    // Normalize roughly to 0-1
+    h = (h - 0.3) * 1.2;
+    return Math.max(0, Math.min(1, h));
+  }
+
+  function heatToColor(h) {
+    // h: 0 = blue, 0.2 = cyan, 0.4 = green, 0.6 = yellow, 0.8 = orange, 1 = red
+    let r, g, b;
+    if (h < 0.2) {
+      const t = h / 0.2;
+      r = 0; g = Math.floor(t * 255); b = 255;
+    } else if (h < 0.4) {
+      const t = (h - 0.2) / 0.2;
+      r = 0; g = 255; b = Math.floor((1 - t) * 255);
+    } else if (h < 0.6) {
+      const t = (h - 0.4) / 0.2;
+      r = Math.floor(t * 255); g = 255; b = 0;
+    } else if (h < 0.8) {
+      const t = (h - 0.6) / 0.2;
+      r = 255; g = Math.floor((1 - t * 0.5) * 255); b = 0;
+    } else {
+      const t = (h - 0.8) / 0.2;
+      r = 255; g = Math.floor((1 - t) * 127); b = 0;
+    }
+    return {r, g, b};
+  }
+
+  // Player positions (white dots) - fixed positions
+  const players = [];
+  function generatePlayers() {
+    players.length = 0;
+    const rand = seededRandom(42);
+    for (let i = 0; i < 12; i++) {
+      players.push({
+        x: 0.1 + rand() * 0.8,
+        y: 0.1 + rand() * 0.8
+      });
+    }
+  }
+
+  // Hot zones: areas with high heat that pulse
+  const hotZones = [];
+  function generateHotZones() {
+    hotZones.length = 0;
+    const rand = seededRandom(99);
+    for (let i = 0; i < 5; i++) {
+      hotZones.push({
+        x: 0.15 + rand() * 0.7,
+        y: 0.15 + rand() * 0.7,
+        radius: 0.08 + rand() * 0.12,
+        phase: rand() * Math.PI * 2,
+        speed: 0.5 + rand() * 1.5
+      });
+    }
+  }
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    cols = Math.ceil(W / gridSize);
+    rows = Math.ceil(H / gridSize);
+  }
+
+  function drawGrid() {
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let c = 0; c <= cols; c++) {
+      const x = c * gridSize;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+    for (let r = 0; r <= rows; r++) {
+      const y = r * gridSize;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+  }
+
+  function drawHeatmap(t) {
+    const cellW = W / cols;
+    const cellH = H / rows;
+    const now = performance.now() / 1000;
+
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows; r++) {
+        const cx = (c + 0.5) / cols;
+        const cy = (r + 0.5) / rows;
+        let h = getHeat(cx * 10, cy * 10, t);
+
+        // Add hot zone pulse influence
+        for (let z = 0; z < hotZones.length; z++) {
+          const zone = hotZones[z];
+          const dx = cx - zone.x;
+          const dy = cy - zone.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const pulse = 0.5 + 0.5 * Math.sin(now * zone.speed + zone.phase);
+          if (dist < zone.radius) {
+            const influence = (1 - dist / zone.radius) * pulse * 0.4;
+            h = Math.min(1, h + influence);
+          }
+        }
+
+        const color = heatToColor(h);
+        ctx.fillStyle = `rgba(${color.r},${color.g},${color.b},0.75)`;
+        ctx.fillRect(c * cellW, r * cellH, cellW + 1, cellH + 1);
+      }
+    }
+  }
+
+  function drawPlayers() {
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      const x = p.x * W;
+      const y = p.y * H;
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      // Subtle glow
+      ctx.shadowColor = 'rgba(255,255,255,0.6)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  function drawHotZonePulses(t) {
+    const now = performance.now() / 1000;
+    for (let z = 0; z < hotZones.length; z++) {
+      const zone = hotZones[z];
+      const pulse = 0.5 + 0.5 * Math.sin(now * zone.speed + zone.phase);
+      const x = zone.x * W;
+      const y = zone.y * H;
+      const radius = zone.radius * Math.min(W, H) * (0.8 + pulse * 0.4);
+
+      ctx.strokeStyle = `rgba(255, 60, 0, ${0.15 + pulse * 0.25})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = `rgba(255, 100, 0, ${0.08 + pulse * 0.12})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 0.7, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawHeatmap(timeStep);
+    drawHotZonePulses(timeStep);
+    drawGrid();
+    drawPlayers();
+    requestAnimationFrame(draw);
+  }
+
+  slider.addEventListener('input', function() {
+    timeStep = parseInt(slider.value);
+    stepLabels.forEach((label, idx) => {
+      if (idx === timeStep) {
+        label.classList.add('active');
+      } else {
+        label.classList.remove('active');
+      }
+    });
+  });
+
+  window.addEventListener('resize', resize);
+
+  resize();
+  generatePlayers();
+  generateHotZones();
+  draw();
+})();
+</script>
+</body>
+</html>

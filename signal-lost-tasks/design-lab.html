@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Design Lab (Test Environment)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --cream-soft: #fff8dc;
+      --peach: #ffc0a0;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --glass-bg: rgba(255, 248, 220, 0.15);
+      --glass-border: rgba(255, 255, 255, 0.25);
+      --glass-hover: rgba(255, 248, 220, 0.25);
+      --shadow: 0 0 20px rgba(0, 0, 0, 0.25);
+      --display-font: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+      --body-font: 'Inter', 'Bookman Old Style', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--cream); font-family: var(--body-font); -webkit-font-smoothing: antialiased; }
+
+    body {
+      max-width: 1400px;
+      margin: 0 auto;
+      color: var(--ink);
+      padding: 2rem;
+    }
+
+    /* ===== CURSOR SPOTLIGHT ===== */
+    .spotlight {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      background: radial-gradient(circle 400px at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.08), transparent);
+      opacity: 0.5;
+    }
+
+    /* ===== LAB HEADER ===== */
+    .lab-header {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 3rem 0 2rem;
+      border-bottom: 2px dashed var(--peach);
+      margin-bottom: 2rem;
+    }
+
+    .lab-header h1 {
+      font-family: var(--display-font);
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .lab-header .subtitle {
+      font-size: 1rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      font-family: var(--mono-font);
+    }
+
+    .lab-header .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: var(--pink);
+      color: var(--cream);
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 4px;
+      margin-top: 1rem;
+      text-transform: uppercase;
+    }
+
+    /* ===== SECTION ===== */
+    .section {
+      position: relative;
+      z-index: 2;
+      margin-bottom: 3rem;
+    }
+
+    .section-title {
+      font-family: var(--display-font);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-title .count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: var(--teal);
+      color: var(--cream);
+      font-family: var(--mono-font);
+      font-size: 0.85rem;
+      border-radius: 8px;
+    }
+
+    /* ===== GLASS PANEL ===== */
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(150%);
+      -webkit-backdrop-filter: blur(20px) saturate(150%);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 2rem;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .glass-panel:hover {
+      background: var(--glass-hover);
+      border-color: rgba(255, 255, 255, 0.4);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    /* ===== BUTTON GALLERY ===== */
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    /* Button: Primary */
+    .btn-primary {
+      padding: 1rem 2rem;
+      background: linear-gradient(135deg, var(--teal), var(--blue));
+      color: var(--cream);
+      border: none;
+      border-radius: 12px;
+      font-family: var(--body-font);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 140, 148, 0.4);
+    }
+
+    .btn-primary:active { transform: scale(0.98); }
+
+    /* Button: Glass */
+    .btn-glass {
+      padding: 1rem 2rem;
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      color: var(--ink);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      font-family: var(--body-font);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .btn-glass:hover {
+      background: var(--glass-hover);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    /* Button: Liquid Fill */
+    .btn-liquid {
+      padding: 1rem 2rem;
+      background: transparent;
+      color: var(--teal);
+      border: 2px solid var(--teal);
+      border-radius: 12px;
+      font-family: var(--body-font);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: color 0.4s var(--ease-out);
+    }
+
+    .btn-liquid::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: var(--teal);
+      transition: height 0.4s var(--ease-out);
+      z-index: -1;
+    }
+
+    .btn-liquid:hover { color: var(--cream); }
+    .btn-liquid:hover::before { height: 100%; }
+
+    /* Button: Gradient Shimmer */
+    .btn-shimmer {
+      padding: 1rem 2rem;
+      background: linear-gradient(90deg, var(--gold), var(--orange), var(--gold));
+      background-size: 200% 100%;
+      color: var(--ink);
+      border: none;
+      border-radius: 12px;
+      font-family: var(--body-font);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      animation: shimmer 3s linear infinite;
+      transition: transform 0.3s var(--ease-out);
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .btn-shimmer:hover { transform: translateY(-2px); }
+
+    /* Button: 3D Press */
+    .btn-3d {
+      padding: 1rem 2rem;
+      background: var(--peach);
+      color: var(--ink);
+      border: none;
+      border-radius: 12px;
+      font-family: var(--body-font);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 0 var(--orange), 0 6px 12px rgba(0, 0, 0, 0.2);
+      transition: all 0.15s var(--ease-out);
+    }
+
+    .btn-3d:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 var(--orange), 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Button: Magnetic (JS-powered) */
+    .btn-magnetic {
+      padding: 1rem 2rem;
+      background: var(--blue);
+      color: var(--cream);
+      border: none;
+      border-radius: 12px;
+      font-family: var(--body-font);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.3s var(--ease-bounce);
+    }
+
+    /* Button: Outline Glow */
+    .btn-glow {
+      padding: 1rem 2rem;
+      background: transparent;
+      color: var(--pink);
+      border: 2px solid var(--pink);
+      border-radius: 12px;
+      font-family: var(--body-font);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+      position: relative;
+    }
+
+    .btn-glow:hover {
+      background: var(--pink);
+      color: var(--cream);
+      box-shadow: 0 0 20px rgba(232, 38, 99, 0.4);
+    }
+
+    /* Button: Ghost */
+    .btn-ghost {
+      padding: 1rem 2rem;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--muted);
+      border-radius: 12px;
+      font-family: var(--body-font);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .btn-ghost:hover {
+      background: var(--muted);
+      color: var(--cream);
+    }
+
+    /* Button: Pill */
+    .btn-pill {
+      padding: 0.75rem 2rem;
+      background: var(--gold);
+      color: var(--ink);
+      border: none;
+      border-radius: 50px;
+      font-family: var(--body-font);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .btn-pill:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 16px rgba(255, 217, 101, 0.4);
+    }
+
+    /* ===== TYPOGRAPHY SHOWCASE ===== */
+    .type-showcase {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .type-sample h3 {
+      font-family: var(--display-font);
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .type-sample p {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .type-sample .label {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--teal);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.25rem;
+    }
+
+    /* ===== EFFECT SHOWCASE ===== */
+    .effect-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .effect-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .effect-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .effect-card h4 {
+      font-family: var(--display-font);
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .effect-card p {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* Radar Effect Demo */
+    .radar-demo {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, transparent 0deg, rgba(0, 140, 148, 0.3) 60deg, transparent 60deg);
+      animation: radarSpin 3s linear infinite;
+      margin: 1rem auto;
+    }
+
+    @keyframes radarSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Pulse Effect Demo */
+    .pulse-demo {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--gold);
+      margin: 1rem auto;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.5); opacity: 0.5; }
+    }
+
+    /* Glitch Effect Demo */
+    .glitch-demo {
+      font-family: var(--mono-font);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--pink);
+      text-align: center;
+      margin: 1rem 0;
+      position: relative;
+    }
+
+    .glitch-demo::before,
+    .glitch-demo::after {
+      content: 'SIGNAL LOST';
+      position: absolute;
+      left: 0;
+      right: 0;
+      opacity: 0.8;
+    }
+
+    .glitch-demo::before {
+      color: var(--teal);
+      animation: glitch1 2s infinite;
+      clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+    }
+
+    .glitch-demo::after {
+      color: var(--gold);
+      animation: glitch2 2s infinite;
+      clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+    }
+
+    @keyframes glitch1 {
+      0%, 100% { transform: translate(0); }
+      20% { transform: translate(-3px, 2px); }
+      40% { transform: translate(3px, -2px); }
+    }
+
+    @keyframes glitch2 {
+      0%, 100% { transform: translate(0); }
+      20% { transform: translate(3px, -2px); }
+      40% { transform: translate(-3px, 2px); }
+    }
+
+    /* Kinetic Type Demo */
+    .kinetic-demo {
+      font-family: var(--display-font);
+      font-size: 2rem;
+      font-weight: 700;
+      text-align: center;
+      margin: 1rem 0;
+    }
+
+    .kinetic-demo span {
+      display: inline-block;
+      animation: wave 2s ease-in-out infinite;
+    }
+
+    @keyframes wave {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    /* ===== SCROLL ANIMATION DEMO ===== */
+    .scroll-demo-container {
+      height: 200px;
+      overflow-y: auto;
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+
+    .scroll-item {
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      background: var(--glass-bg);
+      border-radius: 8px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s var(--ease-out);
+    }
+
+    .scroll-item.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ===== TEST CONTROLS ===== */
+    .test-controls {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 100;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .test-btn {
+      padding: 0.5rem 1rem;
+      background: var(--ink);
+      color: var(--cream);
+      border: none;
+      border-radius: 8px;
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .test-btn:hover {
+      background: var(--teal);
+      transform: translateY(-2px);
+    }
+
+    .test-btn.active {
+      background: var(--teal);
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      body { padding: 1rem; }
+      .btn-grid { grid-template-columns: 1fr; }
+      .effect-grid { grid-template-columns: 1fr; }
+      .test-controls { bottom: 1rem; right: 1rem; left: 1rem; justify-content: center; }
+    }
+  </style>
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="design-lab" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Design Lab (Test Environment)</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <div class="spotlight" id="spotlight"></div>
+
+  <header class="lab-header">
+    <h1>🧪 Design Lab</h1>
+    <p class="subtitle">Test environment for effects, fonts & buttons</p>
+    <span class="badge">TEST ONLY — NOT PRODUCTION</span>
+  </header>
+
+  <!-- BUTTONS SECTION -->
+  <section class="section">
+    <h2 class="section-title"><span class="count">10</span> Button Designs</h2>
+    <div class="glass-panel">
+      <div class="btn-grid">
+        <button class="btn-primary">Primary Gradient</button>
+        <button class="btn-glass">Glassmorphism</button>
+        <button class="btn-liquid">Liquid Fill</button>
+        <button class="btn-shimmer">Gradient Shimmer</button>
+        <button class="btn-3d">3D Press</button>
+        <button class="btn-magnetic" data-magnetic>Magnetic</button>
+        <button class="btn-glow">Outline Glow</button>
+        <button class="btn-ghost">Ghost</button>
+        <button class="btn-pill">Gold Pill</button>
+        <button class="btn-primary" style="background: linear-gradient(135deg, var(--gold), var(--orange));">Gold Primary</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TYPOGRAPHY SECTION -->
+  <section class="section">
+    <h2 class="section-title"><span class="count">3</span> Font Families</h2>
+    <div class="glass-panel">
+      <div class="type-showcase">
+        <div class="type-sample">
+          <div class="label">Display — Space Grotesk</div>
+          <h3>Your Memories, Connected</h3>
+          <p>Used for headlines, section titles, and any text that needs impact. Bold, modern, geometric.</p>
+        </div>
+        <div class="type-sample">
+          <div class="label">Body — Inter</div>
+          <p style="font-size: 1.1rem; line-height: 1.7;">The quick brown fox jumps over the lazy dog. Inter is a variable font family carefully crafted 
+          &amp; designed for computer screens. It features a tall x-height to aid in readability of mixed-case 
+          and lower-case text.</p>
+        </div>
+        <div class="type-sample">
+          <div class="label">Mono — JetBrains Mono</div>
+          <p style="font-family: var(--mono-font);">42.195km • N 59°57' E 10°45' • 72% • 14:32:07</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EFFECTS SECTION -->
+  <section class="section">
+    <h2 class="section-title"><span class="count">6</span> High-Fidelity Effects</h2>
+    <div class="effect-grid">
+      <div class="effect-card">
+        <h4>🎯 Radar Scan</h4>
+        <div class="radar-demo"></div>
+        <p>360° rotating scan line with conic gradient. Used for tracking and detection UI.</p>
+      </div>
+      <div class="effect-card">
+        <h4>💓 Target Pulse</h4>
+        <div class="pulse-demo"></div>
+        <p>Pulsing glow animation for marking active targets or live status indicators.</p>
+      </div>
+      <div class="effect-card">
+        <h4>⚡ Glitch Text</h4>
+        <div class="glitch-demo">SIGNAL LOST</div>
+        <p>Split-layer glitch animation for alerts, death screens, and critical messages.</p>
+      </div>
+      <div class="effect-card">
+        <h4>〰️ Kinetic Type</h4>
+        <div class="kinetic-demo">
+          <span style="animation-delay: 0s">S</span><span style="animation-delay: 0.1s">I</span><span style="animation-delay: 0.2s">G</span><span style="animation-delay: 0.3s">N</span><span style="animation-delay: 0.4s">A</span><span style="animation-delay: 0.5s">L</span>
+        </div>
+        <p>Wave motion on individual characters. Great for loading states and headlines.</p>
+      </div>
+      <div class="effect-card">
+        <h4>📜 Scroll Reveal</h4>
+        <div class="scroll-demo-container" id="scrollContainer">
+          <div class="scroll-item">Scroll item 1 — fades in</div>
+          <div class="scroll-item">Scroll item 2 — fades in</div>
+          <div class="scroll-item">Scroll item 3 — fades in</div>
+          <div class="scroll-item">Scroll item 4 — fades in</div>
+          <div class="scroll-item">Scroll item 5 — fades in</div>
+        </div>
+        <p style="margin-top: 0.5rem;">IntersectionObserver-based reveal. Efficient, no scroll listeners.</p>
+      </div>
+      <div class="effect-card">
+        <h4>🔦 Cursor Spotlight</h4>
+        <p>Mouse-tracking radial gradient that follows cursor across the page. Subtle ambient effect.</p>
+        <p style="margin-top: 0.5rem; font-family: var(--mono-font); font-size: 0.75rem; color: var(--teal);">
+          Move your mouse around this page to see it in action.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- COLOR PALETTE -->
+  <section class="section">
+    <h2 class="section-title"><span class="count">9</span> Color Palette</h2>
+    <div class="glass-panel">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem;">
+        <div style="text-align: center;">
+          <div style="width: 100%; height: 60px; background: var(--ink); border-radius: 8px; margin-bottom: 0.5rem;"></div>
+          <div style="font-family: var(--mono-font); font-size: 0.7rem;">#201116<br>Ink</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 100%; height: 60px; background: var(--muted); border-radius: 8px; margin-bottom: 0.5rem;"></div>
+          <div style="font-family: var(--mono-font); font-size: 0.7rem;">#704a41<br>Muted</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 100%; height: 60px; background: var(--cream); border-radius: 8px; margin-bottom: 0.5rem; border: 1px solid var(--muted);"></div>
+          <div style="font-family: var(--mono-font); font-size: 0.7rem;">#fff0c7<br>Cream</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 100%; height: 60px; background: var(--peach); border-radius: 8px; margin-bottom: 0.5rem;"></div>
+          <div style="font-family: var(--mono-font); font-size: 0.7rem;">#ffc0a0<br>Peach</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 100%; height: 60px; background: var(--gold); border-radius: 8px; margin-bottom: 0.5rem;"></div>
+          <div style="font-family: var(--mono-font); font-size: 0.7rem;">#ffd965<br>Gold</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 100%; height: 60px; background: var(--orange); border-radius: 8px; margin-bottom: 0.5rem;"></div>
+          <div style="font-family: var(--mono-font); font-size: 0.7rem;">#ff8b1f<br>Orange</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 100%; height: 60px; background: var(--pink); border-radius: 8px; margin-bottom: 0.5rem;"></div>
+          <div style="font-family: var(--mono-font); font-size: 0.7rem;">#e82663<br>Pink</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 100%; height: 60px; background: var(--teal); border-radius: 8px; margin-bottom: 0.5rem;"></div>
+          <div style="font-family: var(--mono-font); font-size: 0.7rem;">#008c94<br>Teal</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 100%; height: 60px; background: var(--blue); border-radius: 8px; margin-bottom: 0.5rem;"></div>
+          <div style="font-family: var(--mono-font); font-size: 0.7rem;">#18364b<br>Blue</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GLASSMORPHISM DEMO -->
+  <section class="section">
+    <h2 class="section-title"><span class="count">1</span> Glassmorphism Panel</h2>
+    <div style="background: linear-gradient(135deg, var(--teal), var(--blue)); padding: 3rem; border-radius: 20px;">
+      <div class="glass-panel" style="max-width: 500px; margin: 0 auto;">
+        <h3 style="font-family: var(--display-font); font-size: 1.5rem; margin-bottom: 1rem;">Mission Status</h3>
+        <p style="color: var(--muted); margin-bottom: 1rem;">This panel uses backdrop-filter for the frosted glass effect. Hover to see the lift animation.</p>
+        <div style="display: flex; gap: 0.5rem;">
+          <span style="padding: 0.25rem 0.5rem; background: var(--gold); color: var(--ink); border-radius: 4px; font-size: 0.75rem; font-weight: 600;">ACTIVE</span>
+          <span style="padding: 0.25rem 0.5rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 4px; font-size: 0.75rem;">Oslo, Norway</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Test Controls -->
+  <div class="test-controls">
+    <button class="test-btn active" onclick="toggleSpotlight()">🔦 Spotlight</button>
+    <button class="test-btn" onclick="toggleReducedMotion()">🎬 Reduced Motion</button>
+    <button class="test-btn" onclick="testAllButtons()">🧪 Test Buttons</button>
+  </div>
+
+  <script>
+    // Cursor spotlight
+    const spotlight = document.getElementById('spotlight');
+    let spotlightEnabled = true;
+
+    document.addEventListener('mousemove', (e) => {
+      if (!spotlightEnabled) return;
+      spotlight.style.setProperty('--mx', e.clientX + 'px');
+      spotlight.style.setProperty('--my', e.clientY + 'px');
+    });
+
+    function toggleSpotlight() {
+      spotlightEnabled = !spotlightEnabled;
+      spotlight.style.opacity = spotlightEnabled ? '0.5' : '0';
+      event.target.classList.toggle('active');
+    }
+
+    // Reduced motion toggle
+    function toggleReducedMotion() {
+      const current = document.documentElement.style.getPropertyValue('--reduce-motion');
+      if (current === 'reduce') {
+        document.documentElement.style.setProperty('--reduce-motion', 'no-preference');
+        document.querySelectorAll('*').forEach(el => {
+          el.style.animationDuration = '';
+          el.style.transitionDuration = '';
+        });
+      } else {
+        document.documentElement.style.setProperty('--reduce-motion', 'reduce');
+        document.querySelectorAll('*').forEach(el => {
+          el.style.animationDuration = '0.01ms !important';
+          el.style.transitionDuration = '0.01ms !important';
+        });
+      }
+      event.target.classList.toggle('active');
+    }
+
+    // Test all buttons
+    function testAllButtons() {
+      const buttons = document.querySelectorAll('.btn-grid button');
+      buttons.forEach((btn, i) => {
+        setTimeout(() => {
+          btn.style.transform = 'scale(0.95)';
+          setTimeout(() => btn.style.transform = '', 150);
+        }, i * 100);
+      });
+    }
+
+    // Magnetic buttons
+    document.querySelectorAll('[data-magnetic]').forEach(btn => {
+      btn.addEventListener('mousemove', (e) => {
+        const rect = btn.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        btn.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.transform = '';
+      });
+    });
+
+    // Scroll reveal
+    const scrollObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.scroll-item').forEach(item => {
+      scrollObserver.observe(item);
+    });
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

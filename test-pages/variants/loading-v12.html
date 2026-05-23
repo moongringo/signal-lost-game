@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAP GENERATION // LOADING V12</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0f0a;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            color: #4a7c4e;
+        }
+
+        #canvas {
+            display: block;
+        }
+
+        .hud-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-corner {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 2px solid #3a7c3e;
+        }
+
+        .hud-corner.tl { top: 20px; left: 20px; border-right: none; border-bottom: none; }
+        .hud-corner.tr { top: 20px; right: 20px; border-left: none; border-bottom: none; }
+        .hud-corner.bl { bottom: 20px; left: 20px; border-right: none; border-top: none; }
+        .hud-corner.br { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+
+        .hud-label {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            letter-spacing: 8px;
+            color: #5aaa5e;
+            text-shadow: 0 0 10px rgba(90, 170, 94, 0.4);
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(90, 170, 94, 0.2);
+            animation: scan 4s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div class="hud-overlay">
+        <div class="hud-corner tl"></div>
+        <div class="hud-corner tr"></div>
+        <div class="hud-corner bl"></div>
+        <div class="hud-corner br"></div>
+        <div class="hud-label">LOADING V12</div>
+        <div class="scan-line"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let mapData = null;
+        let currentPhase = 0;
+        let phaseStartTime = 0;
+        let gridCells = [];
+        let contourLines = [];
+        let buildings = [];
+        let roads = [];
+        let vegetation = [];
+        let units = [];
+        let particles = [];
+        let completedTime = 0;
+        let isCompleted = false;
+
+        const PHASES = [
+            { name: 'GENERATING TERRAIN...', duration: 2500, color: '#5aaa5e' },
+            { name: 'PLACING STRUCTURES...', duration: 2500, color: '#7aba6e' },
+            { name: 'ROUTING PATHS...', duration: 2500, color: '#6aaa7e' },
+            { name: 'DEPLOYING ASSETS...', duration: 2500, color: '#5aba6e' }
+        ];
+
+        const GRID_SIZE = 40;
+        const MAP_PADDING = 80;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Seeded random
+        let seed = 12345;
+        function random() {
+            seed = (seed * 16807 + 0) % 2147483647;
+            return (seed - 1) / 2147483646;
+        }
+
+        function generateMapData() {
+            const cols = Math.floor((width - MAP_PADDING * 2) / GRID_SIZE);
+            const rows = Math.floor((height - MAP_PADDING * 2) / GRID_SIZE);
+            const mapX = MAP_PADDING;
+            const mapY = MAP_PADDING;
+            const mapW = cols * GRID_SIZE;
+            const mapH = rows * GRID_SIZE;
+
+            // Generate elevation
+            const elevation = [];
+            for (let r = 0; r < rows; r++) {
+                elevation[r] = [];
+                for (let c = 0; c < cols; c++) {
+                    const nx = c / cols * 4;
+                    const ny = r / rows * 4;
+                    elevation[r][c] = Math.sin(nx * 1.3 + ny * 0.7) * 0.5 +
+                                     Math.sin(nx * 0.5 - ny * 1.2) * 0.3 +
+                                     Math.sin(nx * 2.1 + ny * 1.8) * 0.2 +
+                                     random() * 0.1;
+                }
+            }
+
+            // Generate buildings
+            const buildingList = [];
+            const numBuildings = 8 + Math.floor(random() * 6);
+            for (let i = 0; i < numBuildings; i++) {
+                const bw = 2 + Math.floor(random() * 3);
+                const bh = 2 + Math.floor(random() * 3);
+                const bx = 2 + Math.floor(random() * (cols - bw - 4));
+                const by = 2 + Math.floor(random() * (rows - bh - 4));
+                buildingList.push({ x: bx, y: by, w: bw, h: bh, type: random() > 0.5 ? 'barracks' : 'command' });
+            }
+
+            // Generate roads connecting buildings
+            const roadList = [];
+            for (let i = 0; i < buildingList.length - 1; i++) {
+                const b1 = buildingList[i];
+                const b2 = buildingList[i + 1];
+                const c1 = Math.floor(b1.x + b1.w / 2);
+                const r1 = Math.floor(b1.y + b1.h / 2);
+                const c2 = Math.floor(b2.x + b2.w / 2);
+                const r2 = Math.floor(b2.y + b2.h / 2);
+
+                // L-shaped roads
+                if (random() > 0.5) {
+                    for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++) roadList.push({ c, r: r1 });
+                    for (let r = Math.min(r1, r2); r <= Math.max(r1, r2); r++) roadList.push({ c: c2, r });
+                } else {
+                    for (let r = Math.min(r1, r2); r <= Math.max(r1, r2); r++) roadList.push({ c: c1, r });
+                    for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++) roadList.push({ c, r: r2 });
+                }
+            }
+
+            // Generate vegetation
+            const vegList = [];
+            const numTrees = 15 + Math.floor(random() * 10);
+            for (let i = 0; i < numTrees; i++) {
+                let tx, ty, valid;
+                let attempts = 0;
+                do {
+                    tx = 1 + Math.floor(random() * (cols - 2));
+                    ty = 1 + Math.floor(random() * (rows - 2));
+                    valid = true;
+                    for (const b of buildingList) {
+                        if (tx >= b.x - 1 && tx < b.x + b.w + 1 && ty >= b.y - 1 && ty < b.y + b.h + 1) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    for (const r of roadList) {
+                        if (tx === r.c && ty === r.r) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    attempts++;
+                } while (!valid && attempts < 50);
+                if (valid) vegList.push({ x: tx, y: ty, type: random() > 0.6 ? 'tree' : 'bush' });
+            }
+
+            // Generate units
+            const unitList = [];
+            const numUnits = 5 + Math.floor(random() * 4);
+            for (let i = 0; i < numUnits; i++) {
+                let ux, uy, valid;
+                let attempts = 0;
+                do {
+                    ux = 1 + Math.floor(random() * (cols - 2));
+                    uy = 1 + Math.floor(random() * (rows - 2));
+                    valid = true;
+                    for (const b of buildingList) {
+                        if (ux >= b.x && ux < b.x + b.w && uy >= b.y && uy < b.y + b.h) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    attempts++;
+                } while (!valid && attempts < 50);
+                if (valid) unitList.push({ x: ux, y: uy, type: random() > 0.5 ? 'infantry' : 'vehicle', angle: random() * Math.PI * 2 });
+            }
+
+            return {
+                cols, rows, mapX, mapY, mapW, mapH,
+                elevation, buildings: buildingList, roads: roadList,
+                vegetation: vegList, units: unitList
+            };
+        }
+
+        function initGeneration() {
+            mapData = generateMapData();
+            gridCells = [];
+            contourLines = [];
+            buildings = [];
+            roads = [];
+            vegetation = [];
+            units = [];
+            particles = [];
+            currentPhase = 0;
+            phaseStartTime = performance.now();
+            isCompleted = false;
+
+            // Prepare grid cells for animation - diagonal wave pattern
+            for (let r = 0; r < mapData.rows; r++) {
+                for (let c = 0; c < mapData.cols; c++) {
+                    gridCells.push({ r, c, delay: (r + c) * 12 });
+                }
+            }
+
+            // Prepare contour lines
+            const contourLevels = [-0.3, 0, 0.3, 0.6];
+            for (const level of contourLevels) {
+                for (let r = 0; r < mapData.rows - 1; r++) {
+                    for (let c = 0; c < mapData.cols - 1; c++) {
+                        const e00 = mapData.elevation[r][c];
+                        const e10 = mapData.elevation[r][c + 1];
+                        const e01 = mapData.elevation[r + 1][c];
+                        const e11 = mapData.elevation[r + 1][c + 1];
+
+                        const crossings = [];
+                        if ((e00 - level) * (e10 - level) < 0) {
+                            const t = (level - e00) / (e10 - e00);
+                            crossings.push({ x: c + t, y: r });
+                        }
+                        if ((e10 - level) * (e11 - level) < 0) {
+                            const t = (level - e10) / (e11 - e10);
+                            crossings.push({ x: c + 1, y: r + t });
+                        }
+                        if ((e11 - level) * (e01 - level) < 0) {
+                            const t = (level - e11) / (e01 - e11);
+                            crossings.push({ x: c + 1 - t, y: r + 1 });
+                        }
+                        if ((e01 - level) * (e00 - level) < 0) {
+                            const t = (level - e01) / (e00 - e01);
+                            crossings.push({ x: c, y: r + 1 - t });
+                        }
+
+                        if (crossings.length >= 2) {
+                            contourLines.push({
+                                x1: crossings[0].x, y1: crossings[0].y,
+                                x2: crossings[1].x, y2: crossings[1].y,
+                                level,
+                                delay: (r + c) * 6 + (level + 0.5) * 150
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Prepare buildings with staggered delays
+            for (let i = 0; i < mapData.buildings.length; i++) {
+                buildings.push({ ...mapData.buildings[i], delay: i * 180 });
+            }
+
+            // Prepare roads
+            for (let i = 0; i < mapData.roads.length; i++) {
+                roads.push({ ...mapData.roads[i], delay: i * 25 });
+            }
+
+            // Prepare vegetation
+            for (let i = 0; i < mapData.vegetation.length; i++) {
+                vegetation.push({ ...mapData.vegetation[i], delay: i * 80 });
+            }
+
+            // Prepare units
+            for (let i = 0; i < mapData.units.length; i++) {
+                units.push({ ...mapData.units[i], delay: i * 200 });
+            }
+        }
+
+        function cellToScreen(c, r) {
+            return {
+                x: mapData.mapX + c * GRID_SIZE,
+                y: mapData.mapY + r * GRID_SIZE
+            };
+        }
+
+        function drawGrid(elapsed) {
+            const phaseElapsed = elapsed - phaseStartTime;
+
+            ctx.strokeStyle = 'rgba(80, 140, 85, 0.5)';
+            ctx.lineWidth = 1;
+
+            for (const cell of gridCells) {
+                const cellElapsed = phaseElapsed - cell.delay;
+                if (cellElapsed < 0) continue;
+
+                const alpha = Math.min(cellElapsed / 250, 1);
+                const pos = cellToScreen(cell.c, cell.r);
+
+                ctx.globalAlpha = alpha * 0.7;
+                ctx.strokeRect(pos.x, pos.y, GRID_SIZE, GRID_SIZE);
+
+                // Elevation color - much brighter
+                const elev = mapData.elevation[cell.r][cell.c];
+                const brightness = 0.15 + (elev + 0.5) * 0.25;
+                const r = Math.floor(50 + brightness * 60);
+                const g = Math.floor(100 + brightness * 100);
+                const b = Math.floor(55 + brightness * 50);
+                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${brightness * alpha * 0.8})`;
+                ctx.fillRect(pos.x + 1, pos.y + 1, GRID_SIZE - 2, GRID_SIZE - 2);
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function drawContours(elapsed) {
+            const phaseElapsed = elapsed - phaseStartTime;
+
+            for (const line of contourLines) {
+                const lineElapsed = phaseElapsed - line.delay;
+                if (lineElapsed < 0) continue;
+
+                const alpha = Math.min(lineElapsed / 180, 1);
+                const pos1 = cellToScreen(line.x1, line.y1);
+                const pos2 = cellToScreen(line.x2, line.y2);
+
+                const levelAlpha = 0.5 + (line.level + 0.5) * 0.4;
+                ctx.strokeStyle = `rgba(100, 170, 105, ${levelAlpha * alpha})`;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(pos1.x, pos1.y);
+                ctx.lineTo(pos2.x, pos2.y);
+                ctx.stroke();
+            }
+        }
+
+        function drawBuildings(elapsed) {
+            const phaseElapsed = elapsed - phaseStartTime;
+
+            for (const b of buildings) {
+                const bElapsed = phaseElapsed - b.delay;
+                if (bElapsed < 0) continue;
+
+                const scale = Math.min(bElapsed / 250, 1);
+                const alpha = Math.min(bElapsed / 180, 1);
+
+                const pos = cellToScreen(b.x, b.y);
+                const w = b.w * GRID_SIZE;
+                const h = b.h * GRID_SIZE;
+
+                const cx = pos.x + w / 2;
+                const cy = pos.y + h / 2;
+
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.scale(scale, scale);
+                ctx.translate(-cx, -cy);
+
+                // Building fill
+                ctx.fillStyle = `rgba(70, 100, 65, ${alpha * 0.75})`;
+                ctx.fillRect(pos.x + 2, pos.y + 2, w - 4, h - 4);
+
+                // Building border
+                ctx.strokeStyle = `rgba(120, 170, 110, ${alpha * 0.9})`;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(pos.x + 2, pos.y + 2, w - 4, h - 4);
+
+                // Building inner detail
+                ctx.strokeStyle = `rgba(100, 150, 90, ${alpha * 0.5})`;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(pos.x + 6, pos.y + 6, w - 12, h - 12);
+
+                // Building label
+                if (scale > 0.8) {
+                    ctx.fillStyle = `rgba(160, 210, 140, ${alpha})`;
+                    ctx.font = 'bold 10px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const label = b.type === 'command' ? 'CMD' : 'BRC';
+                    ctx.fillText(label, cx, cy);
+                }
+
+                ctx.restore();
+
+                // Spawn particles on pop-in
+                if (bElapsed > 0 && bElapsed < 50 && Math.random() > 0.7) {
+                    spawnParticles(cx, cy, { r: 120, g: 170, b: 110 }, 3);
+                }
+            }
+        }
+
+        function drawRoads(elapsed) {
+            const phaseElapsed = elapsed - phaseStartTime;
+
+            for (const r of roads) {
+                const rElapsed = phaseElapsed - r.delay;
+                if (rElapsed < 0) continue;
+
+                const alpha = Math.min(rElapsed / 120, 1);
+                const pos = cellToScreen(r.c, r.r);
+
+                ctx.fillStyle = `rgba(100, 120, 90, ${alpha * 0.6})`;
+                ctx.fillRect(pos.x + 4, pos.y + 4, GRID_SIZE - 8, GRID_SIZE - 8);
+
+                // Road center line
+                ctx.strokeStyle = `rgba(140, 170, 120, ${alpha * 0.5})`;
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(pos.x + GRID_SIZE / 2, pos.y + 4);
+                ctx.lineTo(pos.x + GRID_SIZE / 2, pos.y + GRID_SIZE - 4);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        function drawVegetation(elapsed) {
+            const phaseElapsed = elapsed - phaseStartTime;
+
+            for (const v of vegetation) {
+                const vElapsed = phaseElapsed - v.delay;
+                if (vElapsed < 0) continue;
+
+                const scale = Math.min(vElapsed / 200, 1);
+                const alpha = Math.min(vElapsed / 150, 1);
+                const pos = cellToScreen(v.x, v.y);
+                const cx = pos.x + GRID_SIZE / 2;
+                const cy = pos.y + GRID_SIZE / 2;
+
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.scale(scale, scale);
+
+                if (v.type === 'tree') {
+                    // Tree trunk
+                    ctx.fillStyle = `rgba(120, 100, 60, ${alpha})`;
+                    ctx.fillRect(-2, 0, 4, 8);
+                    // Tree canopy
+                    ctx.fillStyle = `rgba(60, 130, 50, ${alpha * 0.8})`;
+                    ctx.beginPath();
+                    ctx.arc(0, -4, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = `rgba(90, 170, 75, ${alpha * 0.6})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                } else {
+                    // Bush
+                    ctx.fillStyle = `rgba(70, 120, 55, ${alpha * 0.7})`;
+                    ctx.beginPath();
+                    ctx.arc(-4, 2, 6, 0, Math.PI * 2);
+                    ctx.arc(4, 2, 6, 0, Math.PI * 2);
+                    ctx.arc(0, -3, 7, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = `rgba(100, 160, 80, ${alpha * 0.5})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        function drawUnits(elapsed) {
+            const phaseElapsed = elapsed - phaseStartTime;
+
+            for (const u of units) {
+                const uElapsed = phaseElapsed - u.delay;
+                if (uElapsed < 0) continue;
+
+                const scale = Math.min(uElapsed / 250, 1);
+                const alpha = Math.min(uElapsed / 150, 1);
+                const pos = cellToScreen(u.x, u.y);
+                const cx = pos.x + GRID_SIZE / 2;
+                const cy = pos.y + GRID_SIZE / 2;
+
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.scale(scale, scale);
+                ctx.rotate(u.angle);
+
+                if (u.type === 'infantry') {
+                    // Infantry triangle
+                    ctx.fillStyle = `rgba(220, 240, 120, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -8);
+                    ctx.lineTo(-6, 6);
+                    ctx.lineTo(6, 6);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = `rgba(255, 255, 160, ${alpha * 0.8})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                } else {
+                    // Vehicle square with direction
+                    ctx.fillStyle = `rgba(200, 220, 100, ${alpha})`;
+                    ctx.fillRect(-7, -7, 14, 14);
+                    ctx.fillStyle = `rgba(240, 255, 140, ${alpha})`;
+                    ctx.fillRect(-2, -10, 4, 6);
+                    ctx.strokeStyle = `rgba(255, 255, 170, ${alpha * 0.8})`;
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(-7, -7, 14, 14);
+                }
+
+                ctx.restore();
+
+                // Selection ring
+                if (scale > 0.8) {
+                    ctx.strokeStyle = `rgba(220, 240, 120, ${alpha * 0.4})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Spawn particles on pop-in
+                if (uElapsed > 0 && uElapsed < 50 && Math.random() > 0.7) {
+                    spawnParticles(cx, cy, { r: 220, g: 240, b: 120 }, 3);
+                }
+            }
+        }
+
+        function drawHUD(elapsed) {
+            const phase = PHASES[Math.min(currentPhase, PHASES.length - 1)];
+            const phaseElapsed = elapsed - phaseStartTime;
+            const phaseProgress = isCompleted ? 1 : Math.min(phaseElapsed / phase.duration, 1);
+
+            // Phase label
+            ctx.fillStyle = isCompleted ? '#5aaa5e' : phase.color;
+            ctx.font = 'bold 16px Courier New';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const labelY = height - 60;
+            const labelText = isCompleted ? 'MAP GENERATION COMPLETE' : phase.name;
+            ctx.fillText(labelText, width / 2, labelY);
+
+            // Progress bar background
+            const barWidth = 300;
+            const barHeight = 4;
+            const barX = (width - barWidth) / 2;
+            const barY = labelY + 20;
+
+            ctx.fillStyle = 'rgba(60, 120, 65, 0.3)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+
+            // Progress bar fill
+            ctx.fillStyle = isCompleted ? '#5aaa5e' : phase.color;
+            ctx.fillRect(barX, barY, barWidth * phaseProgress, barHeight);
+
+            // Overall percentage
+            const overallProgress = isCompleted ? 100 : ((currentPhase + phaseProgress) / PHASES.length * 100);
+            ctx.fillStyle = '#5aaa5e';
+            ctx.font = '14px Courier New';
+            ctx.fillText(`${overallProgress.toFixed(0)}%`, width / 2, barY + 20);
+
+            // Phase indicators
+            const indicatorY = barY + 40;
+            const spacing = 40;
+            const startX = width / 2 - (PHASES.length - 1) * spacing / 2;
+
+            for (let i = 0; i < PHASES.length; i++) {
+                const ix = startX + i * spacing;
+                if (i < currentPhase || isCompleted) {
+                    ctx.fillStyle = '#5aaa5e';
+                    ctx.beginPath();
+                    ctx.arc(ix, indicatorY, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (i === currentPhase && !isCompleted) {
+                    ctx.fillStyle = phase.color;
+                    ctx.beginPath();
+                    ctx.arc(ix, indicatorY, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = phase.color;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(ix, indicatorY, 8, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = 'rgba(60, 120, 65, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(ix, indicatorY, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Map border
+            ctx.strokeStyle = 'rgba(60, 120, 65, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(mapData.mapX - 4, mapData.mapY - 4, mapData.mapW + 8, mapData.mapH + 8);
+
+            // Grid coordinates
+            ctx.fillStyle = 'rgba(80, 140, 85, 0.5)';
+            ctx.font = '10px Courier New';
+            ctx.textAlign = 'center';
+            for (let c = 0; c < mapData.cols; c += 5) {
+                const pos = cellToScreen(c, 0);
+                ctx.fillText(String.fromCharCode(65 + c % 26), pos.x + GRID_SIZE / 2, mapData.mapY - 10);
+            }
+            for (let r = 0; r < mapData.rows; r += 5) {
+                const pos = cellToScreen(0, r);
+                ctx.fillText((r + 1).toString(), mapData.mapX - 10, pos.y + GRID_SIZE / 2 + 4);
+            }
+
+            // Corner brackets
+            const bracketSize = 20;
+            ctx.strokeStyle = 'rgba(80, 160, 85, 0.7)';
+            ctx.lineWidth = 2;
+
+            // Top-left
+            ctx.beginPath();
+            ctx.moveTo(mapData.mapX - 4, mapData.mapY - 4 + bracketSize);
+            ctx.lineTo(mapData.mapX - 4, mapData.mapY - 4);
+            ctx.lineTo(mapData.mapX - 4 + bracketSize, mapData.mapY - 4);
+            ctx.stroke();
+
+            // Top-right
+            ctx.beginPath();
+            ctx.moveTo(mapData.mapX + mapData.mapW + 4 - bracketSize, mapData.mapY - 4);
+            ctx.lineTo(mapData.mapX + mapData.mapW + 4, mapData.mapY - 4);
+            ctx.lineTo(mapData.mapX + mapData.mapW + 4, mapData.mapY - 4 + bracketSize);
+            ctx.stroke();
+
+            // Bottom-left
+            ctx.beginPath();
+            ctx.moveTo(mapData.mapX - 4, mapData.mapY + mapData.mapH + 4 - bracketSize);
+            ctx.lineTo(mapData.mapX - 4, mapData.mapY + mapData.mapH + 4);
+            ctx.lineTo(mapData.mapX - 4 + bracketSize, mapData.mapY + mapData.mapH + 4);
+            ctx.stroke();
+
+            // Bottom-right
+            ctx.beginPath();
+            ctx.moveTo(mapData.mapX + mapData.mapW + 4 - bracketSize, mapData.mapY + mapData.mapH + 4);
+            ctx.lineTo(mapData.mapX + mapData.mapW + 4, mapData.mapY + mapData.mapH + 4);
+            ctx.lineTo(mapData.mapX + mapData.mapW + 4, mapData.mapY + mapData.mapH + 4 - bracketSize);
+            ctx.stroke();
+        }
+
+        function drawParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.02;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${p.life * p.alpha})`;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+            }
+        }
+
+        function spawnParticles(x, y, color, count = 5) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x, y,
+                    vx: (random() - 0.5) * 2,
+                    vy: (random() - 0.5) * 2,
+                    life: 1,
+                    alpha: 0.5 + random() * 0.5,
+                    size: 1 + random() * 2,
+                    r: color.r, g: color.g, b: color.b
+                });
+            }
+        }
+
+        function updatePhase(elapsed) {
+            if (isCompleted) {
+                if (elapsed - completedTime > 3000) {
+                    initGeneration();
+                }
+                return;
+            }
+
+            const phase = PHASES[currentPhase];
+            const phaseElapsed = elapsed - phaseStartTime;
+
+            if (phaseElapsed >= phase.duration) {
+                currentPhase++;
+                if (currentPhase >= PHASES.length) {
+                    isCompleted = true;
+                    completedTime = elapsed;
+                    return;
+                }
+                phaseStartTime = elapsed;
+            }
+        }
+
+        function animate(elapsed) {
+            ctx.fillStyle = '#0a0f0a';
+            ctx.fillRect(0, 0, width, height);
+
+            // Background noise
+            ctx.fillStyle = 'rgba(30, 50, 30, 0.4)';
+            for (let i = 0; i < 150; i++) {
+                const x = (seed * i * 137 + elapsed * 0.01) % width;
+                const y = (seed * i * 239) % height;
+                ctx.fillRect(Math.abs(x), y, 1, 1);
+            }
+
+            if (!mapData) {
+                initGeneration();
+            }
+
+            // Draw based on current phase
+            drawGrid(elapsed);
+
+            if (currentPhase >= 0) {
+                drawContours(elapsed);
+            }
+
+            if (currentPhase >= 1 || isCompleted) {
+                drawBuildings(elapsed);
+            }
+
+            if (currentPhase >= 2 || isCompleted) {
+                drawRoads(elapsed);
+                drawVegetation(elapsed);
+            }
+
+            if (currentPhase >= 3 || isCompleted) {
+                drawUnits(elapsed);
+            }
+
+            drawParticles();
+            drawHUD(elapsed);
+            updatePhase(elapsed);
+
+            requestAnimationFrame(animate);
+        }
+
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

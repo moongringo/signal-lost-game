@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Radar V2 — Snow</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      overflow: hidden;
+      background: #0a1628;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    canvas {
+      display: block;
+    }
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: #a8d0f0;
+      font-size: 14px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #hud .title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #c8e4f8;
+      margin-bottom: 8px;
+      text-shadow: 0 0 10px rgba(168, 208, 240, 0.5);
+    }
+    #hud .subtitle {
+      font-size: 12px;
+      color: #6a9cc0;
+      letter-spacing: 1px;
+    }
+    #hud .divider {
+      width: 200px;
+      height: 1px;
+      background: linear-gradient(90deg, #4a7a9c, transparent);
+      margin: 8px 0;
+    }
+    #hud .data-row {
+      display: flex;
+      gap: 20px;
+      margin-top: 6px;
+    }
+    #hud .data-item {
+      font-size: 11px;
+      color: #5a8aaa;
+    }
+    #hud .data-item span {
+      color: #8ab8d8;
+    }
+    #legend {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: #6a9cc0;
+      font-size: 11px;
+      text-align: right;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #legend .legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin: 4px 0;
+    }
+    #legend .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    #legend .dot.player {
+      background: #ff6b6b;
+      box-shadow: 0 0 6px rgba(255, 107, 107, 0.6);
+    }
+    #legend .dot.building {
+      background: #5a7a8a;
+    }
+    #legend .dot.snow {
+      background: #e0f0ff;
+      box-shadow: 0 0 4px rgba(224, 240, 255, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <div id="hud">
+      <div class="title">WEATHER V2 — SNOW</div>
+      <div class="subtitle">Live Environment Monitor</div>
+      <div class="divider"></div>
+      <div class="data-row">
+        <div class="data-item">TEMP: <span>-4.2°C</span></div>
+        <div class="data-item">WIND: <span>12 km/h NW</span></div>
+      </div>
+      <div class="data-row">
+        <div class="data-item">VISIBILITY: <span>2.1 km</span></div>
+        <div class="data-item">PRECIP: <span>Heavy</span></div>
+      </div>
+    </div>
+    <div id="legend">
+      <div class="legend-item"><span>Players</span><div class="dot player"></div></div>
+      <div class="legend-item"><span>Buildings</span><div class="dot building"></div></div>
+      <div class="legend-item"><span>Snow</span><div class="dot snow"></div></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a1628);
+    scene.fog = new THREE.FogExp2(0xc8dce8, 0.025);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(0, 25, 35);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    // Lighting - cold blue tones
+    const ambientLight = new THREE.AmbientLight(0x4a6a8a, 0.6);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xa8c8e8, 0.5);
+    directionalLight.position.set(20, 40, 10);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 100;
+    directionalLight.shadow.camera.left = -40;
+    directionalLight.shadow.camera.right = 40;
+    directionalLight.shadow.camera.top = 40;
+    directionalLight.shadow.camera.bottom = -40;
+    scene.add(directionalLight);
+
+    const hemiLight = new THREE.HemisphereLight(0x8ab8d8, 0x2a3a4a, 0.4);
+    scene.add(hemiLight);
+
+    // Ground with snow coverage - white plane with subtle bumps
+    const groundGeometry = new THREE.PlaneGeometry(100, 100, 64, 64);
+    const groundPositions = groundGeometry.attributes.position;
+    for (let i = 0; i < groundPositions.count; i++) {
+      const x = groundPositions.getX(i);
+      const y = groundPositions.getY(i);
+      const z = Math.sin(x * 0.15) * Math.cos(y * 0.15) * 0.3 +
+                Math.sin(x * 0.5 + y * 0.3) * 0.15 +
+                Math.random() * 0.1;
+      groundPositions.setZ(i, z);
+    }
+    groundGeometry.computeVertexNormals();
+
+    const groundMaterial = new THREE.MeshStandardMaterial({
+      color: 0xe8f0f5,
+      roughness: 0.9,
+      metalness: 0.05,
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Track texture for player trails
+    const trackCanvas = document.createElement('canvas');
+    trackCanvas.width = 512;
+    trackCanvas.height = 512;
+    const trackCtx = trackCanvas.getContext('2d');
+    trackCtx.fillStyle = '#e8f0f5';
+    trackCtx.fillRect(0, 0, 512, 512);
+    const trackTexture = new THREE.CanvasTexture(trackCanvas);
+    trackTexture.wrapS = THREE.RepeatWrapping;
+    trackTexture.wrapT = THREE.RepeatWrapping;
+    trackTexture.repeat.set(10, 10);
+    groundMaterial.map = trackTexture;
+    groundMaterial.needsUpdate = true;
+
+    // Buildings with snow caps
+    const buildings = [];
+    const buildingColors = [0x5a6a7a, 0x4a5a6a, 0x6a7a8a, 0x3a4a5a];
+
+    function createBuilding(x, z, width, depth, height) {
+      const group = new THREE.Group();
+
+      // Main building body
+      const bodyGeo = new THREE.BoxGeometry(width, height, depth);
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: buildingColors[Math.floor(Math.random() * buildingColors.length)],
+        roughness: 0.8,
+        metalness: 0.1,
+      });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = height / 2;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      group.add(body);
+
+      // Snow cap on top
+      const capWidth = width + 0.4;
+      const capDepth = depth + 0.4;
+      const capHeight = 0.3;
+      const capGeo = new THREE.BoxGeometry(capWidth, capHeight, capDepth);
+      const capMat = new THREE.MeshStandardMaterial({
+        color: 0xf0f5fa,
+        roughness: 0.95,
+        metalness: 0.0,
+      });
+      const cap = new THREE.Mesh(capGeo, capMat);
+      cap.position.y = height + capHeight / 2;
+      cap.castShadow = true;
+      group.add(cap);
+
+      // Snow accumulation on edges
+      const edgeGeo = new THREE.BoxGeometry(capWidth + 0.2, 0.15, capDepth + 0.2);
+      const edge = new THREE.Mesh(edgeGeo, capMat);
+      edge.position.y = height + 0.08;
+      group.add(edge);
+
+      group.position.set(x, 0, z);
+      scene.add(group);
+      buildings.push(group);
+    }
+
+    // Create buildings layout
+    createBuilding(-15, -10, 4, 4, 6);
+    createBuilding(-8, -15, 3, 5, 8);
+    createBuilding(10, -12, 5, 3, 5);
+    createBuilding(15, -8, 3, 3, 10);
+    createBuilding(-12, 8, 4, 4, 4);
+    createBuilding(8, 10, 5, 5, 7);
+    createBuilding(0, -18, 6, 3, 5);
+    createBuilding(-18, 0, 3, 6, 6);
+    createBuilding(18, 5, 4, 4, 4);
+    createBuilding(5, 15, 3, 4, 9);
+    createBuilding(-5, 12, 5, 3, 3);
+    createBuilding(12, -5, 3, 5, 7);
+
+    // Snow particles
+    const snowCount = 8000;
+    const snowGeometry = new THREE.BufferGeometry();
+    const snowPositions = new Float32Array(snowCount * 3);
+    const snowVelocities = new Float32Array(snowCount);
+    const snowDrifts = new Float32Array(snowCount);
+
+    for (let i = 0; i < snowCount; i++) {
+      snowPositions[i * 3] = (Math.random() - 0.5) * 80;
+      snowPositions[i * 3 + 1] = Math.random() * 40 + 5;
+      snowPositions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+      snowVelocities[i] = 0.02 + Math.random() * 0.06;
+      snowDrifts[i] = Math.random() * Math.PI * 2;
+    }
+
+    snowGeometry.setAttribute('position', new THREE.BufferAttribute(snowPositions, 3));
+
+    const snowMaterial = new THREE.PointsMaterial({
+      color: 0xe0f0ff,
+      size: 0.15,
+      transparent: true,
+      opacity: 0.8,
+      sizeAttenuation: true,
+    });
+
+    const snowSystem = new THREE.Points(snowGeometry, snowMaterial);
+    scene.add(snowSystem);
+
+    // Players (moving dots that leave tracks)
+    const players = [];
+    const playerTrails = [];
+
+    function createPlayer(x, z, color, speed) {
+      const geometry = new THREE.SphereGeometry(0.3, 16, 16);
+      const material = new THREE.MeshStandardMaterial({
+        color: color,
+        emissive: color,
+        emissiveIntensity: 0.5,
+        roughness: 0.3,
+      });
+      const player = new THREE.Mesh(geometry, material);
+      player.position.set(x, 0.35, z);
+      player.castShadow = true;
+      scene.add(player);
+
+      const trail = [];
+      const maxTrailLength = 80;
+
+      players.push({
+        mesh: player,
+        x: x,
+        z: z,
+        angle: Math.random() * Math.PI * 2,
+        speed: speed,
+        trail: trail,
+        maxTrailLength: maxTrailLength,
+      });
+
+      playerTrails.push(trail);
+    }
+
+    createPlayer(0, 0, 0xff6b6b, 0.08);
+    createPlayer(5, 5, 0xff8e53, 0.06);
+    createPlayer(-5, 3, 0xffd93d, 0.07);
+    createPlayer(3, -5, 0x6bcb77, 0.05);
+    createPlayer(-3, -7, 0x4d96ff, 0.09);
+
+    // Trail geometry
+    const trailGeometries = [];
+    const trailMaterials = [];
+
+    for (let i = 0; i < players.length; i++) {
+      const trailGeo = new THREE.BufferGeometry();
+      const trailMat = new THREE.LineBasicMaterial({
+        color: 0x3a4a5a,
+        transparent: true,
+        opacity: 0.6,
+        linewidth: 2,
+      });
+      trailGeometries.push(trailGeo);
+      trailMaterials.push(trailMat);
+      const trailLine = new THREE.Line(trailGeo, trailMat);
+      scene.add(trailLine);
+    }
+
+    // Trees with snow
+    function createTree(x, z) {
+      const group = new THREE.Group();
+
+      // Trunk
+      const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 2, 8);
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.9 });
+      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+      trunk.position.y = 1;
+      trunk.castShadow = true;
+      group.add(trunk);
+
+      // Pine layers
+      const pineColors = [0x2a4a3a, 0x3a5a4a, 0x4a6a5a];
+      for (let i = 0; i < 3; i++) {
+        const coneGeo = new THREE.ConeGeometry(1.5 - i * 0.3, 2, 8);
+        const coneMat = new THREE.MeshStandardMaterial({
+          color: pineColors[i],
+          roughness: 0.8,
+        });
+        const cone = new THREE.Mesh(coneGeo, coneMat);
+        cone.position.y = 2.5 + i * 1.2;
+        cone.castShadow = true;
+        group.add(cone);
+
+        // Snow on tree
+        const snowConeGeo = new THREE.ConeGeometry(1.5 - i * 0.3 + 0.1, 0.4, 8);
+        const snowConeMat = new THREE.MeshStandardMaterial({
+          color: 0xf0f5fa,
+          roughness: 0.95,
+        });
+        const snowCone = new THREE.Mesh(snowConeGeo, snowConeMat);
+        snowCone.position.y = 2.5 + i * 1.2 + 0.8;
+        group.add(snowCone);
+      }
+
+      group.position.set(x, 0, z);
+      scene.add(group);
+    }
+
+    // Add trees
+    const treePositions = [
+      [-20, -20], [-18, -15], [-22, -10], [-25, -5],
+      [20, -20], [22, -15], [18, -10], [25, -5],
+      [-20, 20], [-22, 15], [-18, 10], [-25, 5],
+      [20, 20], [22, 15], [18, 10], [25, 5],
+      [-10, -22], [0, -25], [10, -22],
+      [-10, 22], [0, 25], [10, 22],
+      [-30, 0], [30, 0],
+    ];
+
+    treePositions.forEach(pos => createTree(pos[0], pos[1]));
+
+    // Street lamps with warm glow
+    function createStreetLamp(x, z) {
+      const group = new THREE.Group();
+
+      const poleGeo = new THREE.CylinderGeometry(0.1, 0.15, 5, 8);
+      const poleMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.6, metalness: 0.4 });
+      const pole = new THREE.Mesh(poleGeo, poleMat);
+      pole.position.y = 2.5;
+      pole.castShadow = true;
+      group.add(pole);
+
+      const lampGeo = new THREE.SphereGeometry(0.4, 16, 16);
+      const lampMat = new THREE.MeshStandardMaterial({
+        color: 0xffe8a0,
+        emissive: 0xffe8a0,
+        emissiveIntensity: 0.8,
+        transparent: true,
+        opacity: 0.9,
+      });
+      const lamp = new THREE.Mesh(lampGeo, lampMat);
+      lamp.position.y = 5.2;
+      group.add(lamp);
+
+      const pointLight = new THREE.PointLight(0xffe8a0, 0.5, 15);
+      pointLight.position.y = 5;
+      group.add(pointLight);
+
+      group.position.set(x, 0, z);
+      scene.add(group);
+    }
+
+    createStreetLamp(-10, -5);
+    createStreetLamp(10, 5);
+    createStreetLamp(-5, 10);
+    createStreetLamp(5, -10);
+
+    // Camera controls (simple orbit)
+    let cameraAngle = 0;
+    let cameraRadius = 40;
+    let cameraHeight = 25;
+
+    // Track drawing on canvas texture
+    function updateTrackTexture() {
+      // Fade existing tracks slightly
+      trackCtx.fillStyle = 'rgba(232, 240, 245, 0.02)';
+      trackCtx.fillRect(0, 0, 512, 512);
+
+      players.forEach(player => {
+        const trail = player.trail;
+        if (trail.length < 2) return;
+
+        trackCtx.strokeStyle = '#3a4a5a';
+        trackCtx.lineWidth = 2;
+        trackCtx.lineCap = 'round';
+        trackCtx.beginPath();
+
+        for (let i = 0; i < trail.length; i++) {
+          const canvasX = (trail[i].x + 40) / 80 * 512;
+          const canvasY = (trail[i].z + 40) / 80 * 512;
+
+          if (i === 0) {
+            trackCtx.moveTo(canvasX, canvasY);
+          } else {
+            trackCtx.lineTo(canvasX, canvasY);
+          }
+        }
+        trackCtx.stroke();
+      });
+
+      trackTexture.needsUpdate = true;
+    }
+
+    // Animation loop
+    let frameCount = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      frameCount++;
+
+      // Animate snow
+      const positions = snowSystem.geometry.attributes.position.array;
+      for (let i = 0; i < snowCount; i++) {
+        positions[i * 3 + 1] -= snowVelocities[i];
+        positions[i * 3] += Math.sin(frameCount * 0.01 + snowDrifts[i]) * 0.01;
+        positions[i * 3 + 2] += Math.cos(frameCount * 0.008 + snowDrifts[i]) * 0.008;
+
+        if (positions[i * 3 + 1] < 0) {
+          positions[i * 3 + 1] = 40 + Math.random() * 5;
+          positions[i * 3] = (Math.random() - 0.5) * 80;
+          positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+        }
+      }
+      snowSystem.geometry.attributes.position.needsUpdate = true;
+
+      // Animate players
+      players.forEach((player, index) => {
+        player.angle += (Math.random() - 0.5) * 0.1;
+        player.x += Math.cos(player.angle) * player.speed;
+        player.z += Math.sin(player.angle) * player.speed;
+
+        // Keep within bounds
+        if (Math.abs(player.x) > 35) player.angle = Math.PI - player.angle;
+        if (Math.abs(player.z) > 35) player.angle = -player.angle;
+
+        player.mesh.position.x = player.x;
+        player.mesh.position.z = player.z;
+
+        // Update trail
+        player.trail.push({ x: player.x, z: player.z });
+        if (player.trail.length > player.maxTrailLength) {
+          player.trail.shift();
+        }
+
+        // Update trail line geometry
+        if (player.trail.length > 1) {
+          const trailPositions = new Float32Array(player.trail.length * 3);
+          for (let i = 0; i < player.trail.length; i++) {
+            trailPositions[i * 3] = player.trail[i].x;
+            trailPositions[i * 3 + 1] = 0.05;
+            trailPositions[i * 3 + 2] = player.trail[i].z;
+          }
+          trailGeometries[index].setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+        }
+      });
+
+      // Update track texture periodically
+      if (frameCount % 3 === 0) {
+        updateTrackTexture();
+      }
+
+      // Slow camera orbit
+      cameraAngle += 0.001;
+      camera.position.x = Math.cos(cameraAngle) * cameraRadius;
+      camera.position.z = Math.sin(cameraAngle) * cameraRadius;
+      camera.position.y = cameraHeight + Math.sin(cameraAngle * 2) * 3;
+      camera.lookAt(0, 2, 0);
+
+      renderer.render(scene, camera);
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+  </script>
+</body>
+</html>

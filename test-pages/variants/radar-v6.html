@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RADAR V6 — Pip-Boy Style</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0f0a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'VT323', monospace;
+    overflow: hidden;
+  }
+
+  /* CRT casing with rounded corners */
+  .pipboy-case {
+    position: relative;
+    width: 520px;
+    height: 640px;
+    background: #1a1a1a;
+    border-radius: 40px;
+    padding: 20px;
+    box-shadow:
+      inset 0 0 30px rgba(0,0,0,0.8),
+      0 0 60px rgba(0,255,65,0.08),
+      0 10px 40px rgba(0,0,0,0.6);
+    border: 3px solid #2a2a2a;
+  }
+
+  .pipboy-case::before {
+    content: '';
+    position: absolute;
+    top: 8px; left: 8px; right: 8px; bottom: 8px;
+    border-radius: 32px;
+    border: 1px solid #333;
+    pointer-events: none;
+  }
+
+  /* Screen bezel */
+  .screen-bezel {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #0d1a0d;
+    border-radius: 28px;
+    overflow: hidden;
+    border: 2px solid #1a2a1a;
+    box-shadow: inset 0 0 40px rgba(0,30,0,0.5);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+
+  /* Scan lines overlay */
+  .scanlines {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.25) 2px,
+      rgba(0,0,0,0.25) 4px
+    );
+    border-radius: 28px;
+    z-index: 2;
+  }
+
+  /* Subtle CRT flicker */
+  .flicker {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background: rgba(0,255,65,0.015);
+    animation: flicker 0.15s infinite;
+    border-radius: 28px;
+    z-index: 3;
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.97; }
+  }
+
+  /* Vignette */
+  .vignette {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,10,0,0.4) 100%);
+    border-radius: 28px;
+    z-index: 4;
+  }
+
+  /* Corner screws */
+  .screw {
+    position: absolute;
+    width: 10px; height: 10px;
+    background: #3a3a3a;
+    border-radius: 50%;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+    z-index: 5;
+  }
+  .screw::after {
+    content: '';
+    position: absolute;
+    top: 4px; left: 2px;
+    width: 6px; height: 2px;
+    background: #222;
+    transform: rotate(45deg);
+  }
+  .screw.tl { top: 12px; left: 12px; }
+  .screw.tr { top: 12px; right: 12px; }
+  .screw.bl { bottom: 12px; left: 12px; }
+  .screw.br { bottom: 12px; right: 12px; }
+</style>
+</head>
+<body>
+
+<div class="pipboy-case">
+  <div class="screen-bezel">
+    <canvas id="radar" width="480" height="600"></canvas>
+    <div class="scanlines"></div>
+    <div class="flicker"></div>
+    <div class="vignette"></div>
+    <div class="screw tl"></div>
+    <div class="screw tr"></div>
+    <div class="screw bl"></div>
+    <div class="screw br"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('radar');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Colors — green monochrome palette
+  const C = {
+    bg: '#0a140a',
+    grid: '#0d280d',
+    gridBright: '#143314',
+    primary: '#39ff14',
+    dim: '#1a8a0a',
+    dark: '#0d4a05',
+    text: '#39ff14',
+    textDim: '#1a8a0a',
+    alert: '#ff3333',
+    warn: '#ffaa00'
+  };
+
+  // Player (center, stationary — world moves)
+  const player = { x: W/2, y: H/2, angle: 0 };
+
+  // World entities (dots that move relative to player)
+  const entities = [];
+  const ENTITY_TYPES = {
+    HOSTILE: 0,
+    FRIENDLY: 1,
+    LOOT: 2,
+    UNKNOWN: 3
+  };
+
+  function spawnEntity() {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 120 + Math.random() * 300;
+    const types = [ENTITY_TYPES.HOSTILE, ENTITY_TYPES.HOSTILE, ENTITY_TYPES.FRIENDLY, ENTITY_TYPES.LOOT, ENTITY_TYPES.UNKNOWN];
+    entities.push({
+      x: player.x + Math.cos(angle) * dist,
+      y: player.y + Math.sin(angle) * dist,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: (Math.random() - 0.5) * 0.8,
+      type: types[Math.floor(Math.random() * types.length)],
+      pulse: Math.random() * Math.PI * 2,
+      id: Math.floor(Math.random() * 999).toString().padStart(3, '0')
+    });
+  }
+
+  // Initial spawn
+  for (let i = 0; i < 8; i++) spawnEntity();
+
+  // Stats
+  const stats = {
+    hp: 87,
+    maxHp: 100,
+    armor: 45,
+    maxArmor: 100,
+    ammo: 24,
+    maxAmmo: 30,
+    rads: 12,
+    level: 14
+  };
+
+  // Animation state
+  let time = 0;
+  let scanAngle = 0;
+
+  // Pixel grid offset for retro feel
+  let gridOffset = { x: 0, y: 0 };
+
+  function drawPixelText(ctx, text, x, y, size, color, align) {
+    ctx.font = `${size}px 'VT323', monospace`;
+    ctx.textAlign = align || 'left';
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+
+  function drawBar(ctx, x, y, w, h, val, max, color, label) {
+    const pct = Math.max(0, Math.min(1, val / max));
+    ctx.strokeStyle = C.dim;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = color;
+    ctx.fillRect(x + 1, y + 1, (w - 2) * pct, h - 2);
+    if (label) {
+      ctx.font = `12px 'VT323', monospace`;
+      ctx.fillStyle = C.textDim;
+      ctx.textAlign = 'left';
+      ctx.fillText(label, x, y - 3);
+    }
+  }
+
+  function drawGrid() {
+    const gridSize = 24;
+    const ox = gridOffset.x % gridSize;
+    const oy = gridOffset.y % gridSize;
+
+    ctx.strokeStyle = C.grid;
+    ctx.lineWidth = 1;
+
+    for (let x = ox - gridSize; x < W + gridSize; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+    for (let y = oy - gridSize; y < H + gridSize; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+
+    // Bright grid lines every 4 cells
+    ctx.strokeStyle = C.gridBright;
+    for (let x = ox - gridSize * 4; x < W + gridSize * 4; x += gridSize * 4) {
+      if (x < 0) continue;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+    for (let y = oy - gridSize * 4; y < H + gridSize * 4; y += gridSize * 4) {
+      if (y < 0) continue;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+  }
+
+  function drawCompass() {
+    const cx = W / 2;
+    const cy = 68;
+    const r = 45;
+
+    ctx.strokeStyle = C.dim;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Cardinal ticks
+    const dirs = [
+      { a: 0, l: 'N' },
+      { a: Math.PI/2, l: 'E' },
+      { a: Math.PI, l: 'S' },
+      { a: -Math.PI/2, l: 'W' }
+    ];
+
+    dirs.forEach(d => {
+      const x1 = cx + Math.cos(d.a) * (r - 8);
+      const y1 = cy + Math.sin(d.a) * (r - 8);
+      const x2 = cx + Math.cos(d.a) * r;
+      const y2 = cy + Math.sin(d.a) * r;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      const tx = cx + Math.cos(d.a) * (r - 16);
+      const ty = cy + Math.sin(d.a) * (r - 16);
+      drawPixelText(ctx, d.l, tx, ty + 4, 14, C.textDim, 'center');
+    });
+
+    // Needle
+    const na = -Math.PI / 2 + Math.sin(time * 0.3) * 0.05;
+    ctx.strokeStyle = C.primary;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(na) * (r - 10), cy + Math.sin(na) * (r - 10));
+    ctx.stroke();
+
+    // Center dot
+    ctx.fillStyle = C.primary;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawRadarSweep() {
+    const cx = W / 2;
+    const cy = H / 2 + 10;
+    const maxR = 180;
+
+    // Radar circles
+    ctx.strokeStyle = C.dim;
+    ctx.lineWidth = 1;
+    [60, 120, 180].forEach(r => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+
+    // Crosshairs
+    ctx.beginPath();
+    ctx.moveTo(cx - maxR, cy);
+    ctx.lineTo(cx + maxR, cy);
+    ctx.moveTo(cx, cy - maxR);
+    ctx.lineTo(cx, cy + maxR);
+    ctx.stroke();
+
+    // Sweep wedge
+    const sa = scanAngle;
+    const ea = sa + Math.PI / 4;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+    grad.addColorStop(0, 'rgba(57,255,20,0)');
+    grad.addColorStop(0.5, 'rgba(57,255,20,0.08)');
+    grad.addColorStop(1, 'rgba(57,255,20,0.18)');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, maxR, sa, ea);
+    ctx.closePath();
+    ctx.fill();
+
+    // Sweep line
+    ctx.strokeStyle = 'rgba(57,255,20,0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(sa) * maxR, cy + Math.sin(sa) * maxR);
+    ctx.stroke();
+  }
+
+  function drawPlayer() {
+    const cx = W / 2;
+    const cy = H / 2 + 10;
+
+    // Player triangle
+    ctx.fillStyle = C.primary;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 8);
+    ctx.lineTo(cx - 6, cy + 5);
+    ctx.lineTo(cx + 6, cy + 5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Pulse ring
+    const pulseR = 8 + Math.sin(time * 3) * 4;
+    ctx.strokeStyle = `rgba(57,255,20,${0.3 + Math.sin(time * 3) * 0.2})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, pulseR, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  function drawEntities() {
+    const cx = W / 2;
+    const cy = H / 2 + 10;
+
+    entities.forEach(e => {
+      const dx = e.x - player.x;
+      const dy = e.y - player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist > 200) return; // Outside radar range
+
+      const ex = cx + dx;
+      const ey = cy + dy;
+
+      // Determine color
+      let color = C.dim;
+      let size = 3;
+      if (e.type === ENTITY_TYPES.HOSTILE) { color = C.alert; size = 4; }
+      else if (e.type === ENTITY_TYPES.FRIENDLY) color = C.primary;
+      else if (e.type === ENTITY_TYPES.LOOT) color = C.warn;
+      else if (e.type === ENTITY_TYPES.UNKNOWN) color = C.textDim;
+
+      // Blink hostile
+      if (e.type === ENTITY_TYPES.HOSTILE) {
+        const blink = Math.sin(time * 4 + e.pulse) > 0;
+        if (!blink) color = C.dark;
+      }
+
+      // Draw dot
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(ex, ey, size, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ID label for close entities
+      if (dist < 100) {
+        ctx.font = '10px "VT323", monospace';
+        ctx.fillStyle = C.textDim;
+        ctx.textAlign = 'center';
+        ctx.fillText(e.id, ex, ey - 8);
+      }
+    });
+  }
+
+  function drawHUD() {
+    // Top header
+    drawPixelText(ctx, 'RADAR V6', W/2, 28, 28, C.primary, 'center');
+
+    // Subtitle
+    drawPixelText(ctx, 'WASTELAND SURVEILLANCE SYSTEM', W/2, 44, 12, C.textDim, 'center');
+
+    // Bottom status line
+    const yStatus = H - 16;
+    drawPixelText(ctx, `LVL ${stats.level}`, 12, yStatus, 14, C.textDim, 'left');
+    drawPixelText(ctx, `RADS: ${stats.rads}%`, W/2, yStatus, 14, stats.rads > 50 ? C.alert : C.textDim, 'center');
+
+    const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
+    drawPixelText(ctx, timeStr, W - 12, yStatus, 14, C.textDim, 'right');
+  }
+
+  function drawStats() {
+    const leftX = 16;
+    const rightX = W - 16;
+    const barW = 100;
+    const barH = 10;
+
+    // Left side — HP & Armor
+    drawBar(ctx, leftX, 130, barW, barH, stats.hp, stats.maxHp,
+      stats.hp < 30 ? C.alert : C.primary, 'HP');
+    drawBar(ctx, leftX, 155, barW, barH, stats.armor, stats.maxArmor, C.primary, 'ARMOR');
+
+    // Right side — Ammo
+    drawBar(ctx, rightX - barW, 130, barW, barH, stats.ammo, stats.maxAmmo, C.warn, 'AMMO');
+
+    // Numeric values
+    drawPixelText(ctx, `${stats.hp}/${stats.maxHp}`, leftX + barW + 6, 140, 14, C.text, 'left');
+    drawPixelText(ctx, `${stats.armor}/${stats.maxArmor}`, leftX + barW + 6, 165, 14, C.text, 'left');
+    drawPixelText(ctx, `${stats.ammo}/${stats.maxAmmo}`, rightX - barW - 6, 140, 14, C.warn, 'right');
+
+    // Coordinates
+    const coordY = 185;
+    drawPixelText(ctx, `X:${Math.floor(player.x).toString().padStart(4,'0')} Y:${Math.floor(player.y).toString().padStart(4,'0')}`,
+      leftX, coordY, 12, C.textDim, 'left');
+  }
+
+  function drawLegend() {
+    const lx = 16;
+    const ly = H - 90;
+    const items = [
+      { c: C.alert, t: 'HOSTILE' },
+      { c: C.primary, t: 'FRIENDLY' },
+      { c: C.warn, t: 'LOOT' },
+      { c: C.textDim, t: 'UNKNOWN' }
+    ];
+
+    drawPixelText(ctx, 'LEGEND', lx, ly, 12, C.textDim, 'left');
+
+    items.forEach((item, i) => {
+      const y = ly + 16 + i * 14;
+      ctx.fillStyle = item.c;
+      ctx.beginPath();
+      ctx.arc(lx + 4, y - 3, 3, 0, Math.PI * 2);
+      ctx.fill();
+      drawPixelText(ctx, item.t, lx + 14, y, 11, C.textDim, 'left');
+    });
+  }
+
+  function update(dt) {
+    time += dt;
+    scanAngle += dt * 1.5;
+
+    // Move entities (relative to player = they move, player stays)
+    entities.forEach(e => {
+      e.x += e.vx;
+      e.y += e.vy;
+      e.pulse += dt * 2;
+
+      // Bounce within bounds
+      const dx = e.x - player.x;
+      const dy = e.y - player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 350) {
+        e.vx *= -1;
+        e.vy *= -1;
+      }
+    });
+
+    // Slowly drift grid
+    gridOffset.x += Math.sin(time * 0.2) * 0.3;
+    gridOffset.y += Math.cos(time * 0.15) * 0.3;
+
+    // Random stat fluctuation
+    if (Math.random() < 0.02) {
+      stats.hp = Math.max(0, Math.min(stats.maxHp, stats.hp + (Math.random() > 0.5 ? 1 : -1)));
+    }
+    if (Math.random() < 0.01) {
+      stats.ammo = Math.max(0, Math.min(stats.maxAmmo, stats.ammo + (Math.random() > 0.5 ? 1 : -1)));
+    }
+  }
+
+  function draw() {
+    // Clear with bg
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, W, H);
+
+    drawGrid();
+    drawCompass();
+    drawRadarSweep();
+    drawEntities();
+    drawPlayer();
+    drawHUD();
+    drawStats();
+    drawLegend();
+  }
+
+  let lastTime = performance.now();
+  function loop(now) {
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

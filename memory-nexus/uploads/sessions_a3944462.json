@@ -1,0 +1,1707 @@
+{
+  "version": 1,
+  "savedAt": 1777672943815,
+  "sessions": [
+    {
+      "status": "Live",
+      "code": "NOVA-SIGNAL-13",
+      "revision": 826,
+      "serverRevision": 1,
+      "updatedAt": 1777672943813,
+      "city": "oslo",
+      "duration": 60,
+      "remaining": 2770,
+      "maxPlayers": 6,
+      "isPublic": true,
+      "sessionMode": "public",
+      "organizer": {
+        "name": "Morgan",
+        "callsign": "Raven",
+        "clientId": "cg8s6xou"
+      },
+      "auth": {
+        "accessCode": "RAVEN-719",
+        "requireAccessCode": true,
+        "hostKey": "host-50mm8c3h-monamhyx",
+        "organizerClientId": "cg8s6xou"
+      },
+      "mapLayer": "street",
+      "mapZoom": 0.9999999999999999,
+      "agents": [
+        {
+          "id": "bot-1",
+          "name": "Ada",
+          "role": "Mechanic",
+          "team": "North",
+          "lat": 59.91826108124103,
+          "lng": 10.728857613008838,
+          "signal": 42,
+          "stamina": 35
+        },
+        {
+          "id": "bot-2",
+          "name": "Mika",
+          "role": "Medic",
+          "team": "South",
+          "lat": 59.919955894423985,
+          "lng": 10.751364963108651,
+          "signal": 45,
+          "stamina": 36
+        },
+        {
+          "id": "bot-3",
+          "name": "Rune",
+          "role": "Decoder",
+          "team": "North",
+          "lat": 59.9003602561748,
+          "lng": 10.746189564687947,
+          "signal": 78,
+          "stamina": 36
+        },
+        {
+          "id": "agent-cg8s6xou",
+          "name": "Morgan",
+          "role": "Navigator",
+          "team": "North",
+          "lat": 0.0018074774380271324,
+          "lng": 0.012096875405376363,
+          "signal": 95,
+          "stamina": 38,
+          "clientId": "cg8s6xou",
+          "identity": {
+            "name": "Morgan",
+            "callsign": "Raven",
+            "joinedAt": 1777653928472
+          },
+          "lastSeen": 1777666186898,
+          "gpsAccuracy": 0
+        }
+      ],
+      "objectives": [
+        {
+          "id": "obj-0",
+          "title": "Decode relay A17",
+          "type": "Cipher",
+          "brief": "Break the first packet and reveal the signal route.",
+          "radius": 25,
+          "lat": 59.91119432077926,
+          "lng": 10.751927815193168,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": true,
+          "found": true,
+          "progress": 100
+        },
+        {
+          "id": "obj-1",
+          "title": "Bypass false beacon",
+          "type": "Puzzle",
+          "brief": "Compare beacon timing and reject the decoy pulse.",
+          "radius": 22,
+          "lat": 59.91000448776394,
+          "lng": 10.754348325610163,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": true,
+          "found": false,
+          "progress": 30
+        },
+        {
+          "id": "obj-2",
+          "title": "Recover GPS shard",
+          "type": "Treasure",
+          "brief": "Find the dropped shard before AI Watch triangulates it.",
+          "radius": 18,
+          "lat": 59.91519104008575,
+          "lng": 10.753998458337376,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-3",
+          "title": "Claim cache marker",
+          "type": "Treasure",
+          "brief": "Secure the field cache and carry its key phrase forward.",
+          "radius": 20,
+          "lat": 59.90953196399315,
+          "lng": 10.749456018102723,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-4",
+          "title": "Restore north uplink",
+          "type": "Waypoint",
+          "brief": "Stand inside the relay zone until the uplink stabilizes.",
+          "radius": 30,
+          "lat": 59.91320109030094,
+          "lng": 10.747627317844486,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-5",
+          "title": "Trace safe corridor",
+          "type": "Waypoint",
+          "brief": "Move through the corridor to open the extraction vector.",
+          "radius": 32,
+          "lat": 59.91950364949434,
+          "lng": 10.760898136201634,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-6",
+          "title": "Extract final signal",
+          "type": "Extraction",
+          "brief": "Bring the decoded route, shard, and relay lock to final extraction.",
+          "radius": 35,
+          "lat": 59.91992625656034,
+          "lng": 10.751141416819944,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        }
+      ],
+      "threats": [
+        {
+          "id": "threat-0",
+          "name": "Jammer Kestrel",
+          "radius": 135,
+          "lat": 59.915750249542874,
+          "lng": 10.746755922666484,
+          "angle": 131.51813298397897,
+          "speed": 0.00042,
+          "alert": false,
+          "lastHit": 1777654457831
+        },
+        {
+          "id": "threat-1",
+          "name": "Hunter Relay",
+          "radius": 115,
+          "lat": 59.91853924961172,
+          "lng": 10.756461156522974,
+          "angle": 153.6502689330675,
+          "speed": 0.00034,
+          "alert": false,
+          "lastHit": 0
+        },
+        {
+          "id": "threat-2",
+          "name": "False Beacon",
+          "radius": 95,
+          "lat": 59.91417683318758,
+          "lng": 10.749636402478378,
+          "angle": 183.3653621944174,
+          "speed": 0.0005,
+          "alert": false,
+          "lastHit": 1777654160328
+        }
+      ],
+      "customMarkers": [
+        {
+          "id": "custom-molw9xc3-j6o",
+          "title": "Edited Danger 7953",
+          "type": "Danger",
+          "taskState": "armed",
+          "radius": 45,
+          "lat": 59.9139,
+          "lng": 10.7522,
+          "artifact": "Avoid the tower",
+          "brief": "Organizer danger: Avoid the tower"
+        }
+      ],
+      "enabledModules": {
+        "ciphers": true,
+        "treasure": true,
+        "waypoints": true,
+        "voice": true
+      },
+      "audit": [
+        {
+          "id": "audit-mon18cpg-tsyc",
+          "at": 1777647177556,
+          "type": "Lobby",
+          "actor": "Raven",
+          "message": "Locked visibility"
+        },
+        {
+          "id": "audit-mon18cwy-j1zy",
+          "at": 1777647177826,
+          "type": "Lobby",
+          "actor": "Raven",
+          "message": "Public visibility"
+        },
+        {
+          "id": "audit-mon1eb1w-skkq",
+          "at": 1777647455348,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Drone"
+        },
+        {
+          "id": "audit-mon4qco8-q6uv",
+          "at": 1777653056168,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Mechanic"
+        },
+        {
+          "id": "audit-mon4qm4k-dxil",
+          "at": 1777653068420,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Jammed zone with Jammer Kestrel"
+        },
+        {
+          "id": "audit-mon4qvyi-shod",
+          "at": 1777653081162,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Rerouted extraction to 59.9121, 10.7508"
+        },
+        {
+          "id": "audit-mon4s44m-y45i",
+          "at": 1777653138406,
+          "type": "Moderation",
+          "actor": "Raven",
+          "message": "Morgan removed from roster"
+        },
+        {
+          "id": "audit-mon4sz12-l7t5",
+          "at": 1777653178454,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Revealed clue: Bypass false beacon"
+        },
+        {
+          "id": "audit-mon591qw-5y1e",
+          "at": 1777653928472,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Joined Morgan as Navigator"
+        },
+        {
+          "id": "audit-mon59718-77j0",
+          "at": 1777653935324,
+          "type": "Mission",
+          "actor": "Raven",
+          "message": "Started 60 minute run"
+        },
+        {
+          "id": "audit-mon5ba9t-9kig",
+          "at": 1777654032833,
+          "type": "Objective",
+          "actor": "Mission Control",
+          "message": "Decode relay A17 completed"
+        },
+        {
+          "id": "audit-mon7tkv2-t2pe",
+          "at": 1777658245598,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Broadcast: take cover"
+        },
+        {
+          "id": "audit-mon7we8d-1xy4",
+          "at": 1777658376973,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Revealed clue: Bypass false beacon"
+        },
+        {
+          "id": "audit-mon7xci7-wdfo",
+          "at": 1777658421391,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Navigator"
+        },
+        {
+          "id": "audit-mon7xh6h-g7bd",
+          "at": 1777658427449,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Navigator"
+        },
+        {
+          "id": "audit-mon7xj6j-nsp7",
+          "at": 1777658430043,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Navigator"
+        }
+      ],
+      "chatFilter": "All",
+      "auditFilter": "GM Console",
+      "chat": [
+        [
+          "Organizer",
+          "Treasure Hunt enabled."
+        ],
+        [
+          "Organizer",
+          "Cipher Tasks disabled."
+        ],
+        [
+          "Organizer",
+          "Cipher Tasks enabled."
+        ],
+        [
+          "System",
+          "Morgan joined as Mechanic."
+        ],
+        [
+          "Organizer",
+          "GM jam zone: Jammer Kestrel jammed Ada, Mika."
+        ],
+        [
+          "Organizer",
+          "Extract final signal rerouted by Mission Control."
+        ],
+        [
+          "Organizer",
+          "Morgan removed from the squad roster."
+        ],
+        [
+          "Organizer",
+          "GM revealed Bypass false beacon."
+        ],
+        [
+          "Organizer",
+          "Treasure Hunt disabled."
+        ],
+        [
+          "Organizer",
+          "Treasure Hunt enabled."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "System",
+          "Mission clock started. Restore GPS by decoding the signal chain."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "Mission Control",
+          "Decode relay A17 complete."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada, Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "Organizer",
+          "GM broadcast: take cover",
+          1777658245599,
+          "cg8s6xou"
+        ],
+        [
+          "Organizer",
+          "GM revealed Bypass false beacon."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "Mission Control",
+          "testing",
+          1777658480510,
+          "cg8s6xou"
+        ],
+        [
+          "Navigator",
+          "Guide squad executed."
+        ],
+        [
+          "Navigator",
+          "Set waypoint executed."
+        ],
+        [
+          "Navigator",
+          "Nearest route is 1.1km."
+        ],
+        [
+          "Navigator",
+          "Nearest route is 1.1km."
+        ],
+        [
+          "Navigator",
+          "Nearest route is 1.1km."
+        ],
+        [
+          "Navigator",
+          "Guide squad executed."
+        ]
+      ],
+      "syncedAt": 1777672943815
+    },
+    {
+      "status": "Live",
+      "code": "NOVA-TOWER-46",
+      "revision": 825,
+      "serverRevision": 1,
+      "updatedAt": 1777672942852,
+      "city": "oslo",
+      "duration": 60,
+      "remaining": 2770,
+      "maxPlayers": 6,
+      "isPublic": true,
+      "sessionMode": "public",
+      "organizer": {
+        "name": "Morgan",
+        "callsign": "Raven",
+        "clientId": "cg8s6xou"
+      },
+      "auth": {
+        "accessCode": "RAVEN-719",
+        "requireAccessCode": true,
+        "hostKey": "host-50mm8c3h-monamhyx",
+        "organizerClientId": "cg8s6xou"
+      },
+      "mapLayer": "street",
+      "mapZoom": 0.9999999999999999,
+      "agents": [
+        {
+          "id": "bot-1",
+          "name": "Ada",
+          "role": "Mechanic",
+          "team": "North",
+          "lat": 59.91826108124103,
+          "lng": 10.728857613008838,
+          "signal": 42,
+          "stamina": 35
+        },
+        {
+          "id": "bot-2",
+          "name": "Mika",
+          "role": "Medic",
+          "team": "South",
+          "lat": 59.919955894423985,
+          "lng": 10.751364963108651,
+          "signal": 45,
+          "stamina": 36
+        },
+        {
+          "id": "bot-3",
+          "name": "Rune",
+          "role": "Decoder",
+          "team": "North",
+          "lat": 59.9003602561748,
+          "lng": 10.746189564687947,
+          "signal": 78,
+          "stamina": 36
+        },
+        {
+          "id": "agent-cg8s6xou",
+          "name": "Morgan",
+          "role": "Navigator",
+          "team": "North",
+          "lat": 0.0018074774380271324,
+          "lng": 0.012096875405376363,
+          "signal": 95,
+          "stamina": 38,
+          "clientId": "cg8s6xou",
+          "identity": {
+            "name": "Morgan",
+            "callsign": "Raven",
+            "joinedAt": 1777653928472
+          },
+          "lastSeen": 1777666186898,
+          "gpsAccuracy": 0
+        }
+      ],
+      "objectives": [
+        {
+          "id": "obj-0",
+          "title": "Decode relay A17",
+          "type": "Cipher",
+          "brief": "Break the first packet and reveal the signal route.",
+          "radius": 25,
+          "lat": 59.91119432077926,
+          "lng": 10.751927815193168,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": true,
+          "found": true,
+          "progress": 100
+        },
+        {
+          "id": "obj-1",
+          "title": "Bypass false beacon",
+          "type": "Puzzle",
+          "brief": "Compare beacon timing and reject the decoy pulse.",
+          "radius": 22,
+          "lat": 59.91000448776394,
+          "lng": 10.754348325610163,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": true,
+          "found": false,
+          "progress": 30
+        },
+        {
+          "id": "obj-2",
+          "title": "Recover GPS shard",
+          "type": "Treasure",
+          "brief": "Find the dropped shard before AI Watch triangulates it.",
+          "radius": 18,
+          "lat": 59.91519104008575,
+          "lng": 10.753998458337376,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-3",
+          "title": "Claim cache marker",
+          "type": "Treasure",
+          "brief": "Secure the field cache and carry its key phrase forward.",
+          "radius": 20,
+          "lat": 59.90953196399315,
+          "lng": 10.749456018102723,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-4",
+          "title": "Restore north uplink",
+          "type": "Waypoint",
+          "brief": "Stand inside the relay zone until the uplink stabilizes.",
+          "radius": 30,
+          "lat": 59.91320109030094,
+          "lng": 10.747627317844486,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-5",
+          "title": "Trace safe corridor",
+          "type": "Waypoint",
+          "brief": "Move through the corridor to open the extraction vector.",
+          "radius": 32,
+          "lat": 59.91950364949434,
+          "lng": 10.760898136201634,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-6",
+          "title": "Extract final signal",
+          "type": "Extraction",
+          "brief": "Bring the decoded route, shard, and relay lock to final extraction.",
+          "radius": 35,
+          "lat": 59.91992625656034,
+          "lng": 10.751141416819944,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        }
+      ],
+      "threats": [
+        {
+          "id": "threat-0",
+          "name": "Jammer Kestrel",
+          "radius": 135,
+          "lat": 59.915750249542874,
+          "lng": 10.746755922666484,
+          "angle": 131.51813298397897,
+          "speed": 0.00042,
+          "alert": false,
+          "lastHit": 1777654457831
+        },
+        {
+          "id": "threat-1",
+          "name": "Hunter Relay",
+          "radius": 115,
+          "lat": 59.91853924961172,
+          "lng": 10.756461156522974,
+          "angle": 153.6502689330675,
+          "speed": 0.00034,
+          "alert": false,
+          "lastHit": 0
+        },
+        {
+          "id": "threat-2",
+          "name": "False Beacon",
+          "radius": 95,
+          "lat": 59.91417683318758,
+          "lng": 10.749636402478378,
+          "angle": 183.3653621944174,
+          "speed": 0.0005,
+          "alert": false,
+          "lastHit": 1777654160328
+        }
+      ],
+      "customMarkers": [
+        {
+          "id": "custom-molw9xc3-j6o",
+          "title": "Edited Danger 7953",
+          "type": "Danger",
+          "taskState": "armed",
+          "radius": 45,
+          "lat": 59.9139,
+          "lng": 10.7522,
+          "artifact": "Avoid the tower",
+          "brief": "Organizer danger: Avoid the tower"
+        }
+      ],
+      "enabledModules": {
+        "ciphers": true,
+        "treasure": true,
+        "waypoints": true,
+        "voice": true
+      },
+      "audit": [
+        {
+          "id": "audit-mon18cpg-tsyc",
+          "at": 1777647177556,
+          "type": "Lobby",
+          "actor": "Raven",
+          "message": "Locked visibility"
+        },
+        {
+          "id": "audit-mon18cwy-j1zy",
+          "at": 1777647177826,
+          "type": "Lobby",
+          "actor": "Raven",
+          "message": "Public visibility"
+        },
+        {
+          "id": "audit-mon1eb1w-skkq",
+          "at": 1777647455348,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Drone"
+        },
+        {
+          "id": "audit-mon4qco8-q6uv",
+          "at": 1777653056168,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Mechanic"
+        },
+        {
+          "id": "audit-mon4qm4k-dxil",
+          "at": 1777653068420,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Jammed zone with Jammer Kestrel"
+        },
+        {
+          "id": "audit-mon4qvyi-shod",
+          "at": 1777653081162,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Rerouted extraction to 59.9121, 10.7508"
+        },
+        {
+          "id": "audit-mon4s44m-y45i",
+          "at": 1777653138406,
+          "type": "Moderation",
+          "actor": "Raven",
+          "message": "Morgan removed from roster"
+        },
+        {
+          "id": "audit-mon4sz12-l7t5",
+          "at": 1777653178454,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Revealed clue: Bypass false beacon"
+        },
+        {
+          "id": "audit-mon591qw-5y1e",
+          "at": 1777653928472,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Joined Morgan as Navigator"
+        },
+        {
+          "id": "audit-mon59718-77j0",
+          "at": 1777653935324,
+          "type": "Mission",
+          "actor": "Raven",
+          "message": "Started 60 minute run"
+        },
+        {
+          "id": "audit-mon5ba9t-9kig",
+          "at": 1777654032833,
+          "type": "Objective",
+          "actor": "Mission Control",
+          "message": "Decode relay A17 completed"
+        },
+        {
+          "id": "audit-mon7tkv2-t2pe",
+          "at": 1777658245598,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Broadcast: take cover"
+        },
+        {
+          "id": "audit-mon7we8d-1xy4",
+          "at": 1777658376973,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Revealed clue: Bypass false beacon"
+        },
+        {
+          "id": "audit-mon7xci7-wdfo",
+          "at": 1777658421391,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Navigator"
+        },
+        {
+          "id": "audit-mon7xh6h-g7bd",
+          "at": 1777658427449,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Navigator"
+        },
+        {
+          "id": "audit-mon7xj6j-nsp7",
+          "at": 1777658430043,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Navigator"
+        }
+      ],
+      "chatFilter": "All",
+      "auditFilter": "GM Console",
+      "chat": [
+        [
+          "Organizer",
+          "Treasure Hunt enabled."
+        ],
+        [
+          "Organizer",
+          "Cipher Tasks disabled."
+        ],
+        [
+          "Organizer",
+          "Cipher Tasks enabled."
+        ],
+        [
+          "System",
+          "Morgan joined as Mechanic."
+        ],
+        [
+          "Organizer",
+          "GM jam zone: Jammer Kestrel jammed Ada, Mika."
+        ],
+        [
+          "Organizer",
+          "Extract final signal rerouted by Mission Control."
+        ],
+        [
+          "Organizer",
+          "Morgan removed from the squad roster."
+        ],
+        [
+          "Organizer",
+          "GM revealed Bypass false beacon."
+        ],
+        [
+          "Organizer",
+          "Treasure Hunt disabled."
+        ],
+        [
+          "Organizer",
+          "Treasure Hunt enabled."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "System",
+          "Mission clock started. Restore GPS by decoding the signal chain."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "Mission Control",
+          "Decode relay A17 complete."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada, Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "Organizer",
+          "GM broadcast: take cover",
+          1777658245599,
+          "cg8s6xou"
+        ],
+        [
+          "Organizer",
+          "GM revealed Bypass false beacon."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "Mission Control",
+          "testing",
+          1777658480510,
+          "cg8s6xou"
+        ],
+        [
+          "Navigator",
+          "Guide squad executed."
+        ],
+        [
+          "Navigator",
+          "Set waypoint executed."
+        ],
+        [
+          "Navigator",
+          "Nearest route is 1.1km."
+        ],
+        [
+          "Navigator",
+          "Nearest route is 1.1km."
+        ],
+        [
+          "Navigator",
+          "Nearest route is 1.1km."
+        ],
+        [
+          "Navigator",
+          "Guide squad executed."
+        ]
+      ],
+      "syncedAt": 1777672942858
+    },
+    {
+      "status": "Live",
+      "code": "AQUA-RADAR-42",
+      "revision": 824,
+      "serverRevision": 905,
+      "updatedAt": 1777665150683,
+      "city": "oslo",
+      "duration": 60,
+      "remaining": 2770,
+      "maxPlayers": 6,
+      "isPublic": true,
+      "sessionMode": "public",
+      "organizer": {
+        "name": "Morgan",
+        "callsign": "Raven",
+        "clientId": "cg8s6xou"
+      },
+      "auth": {
+        "accessCode": "RAVEN-719",
+        "requireAccessCode": true,
+        "hostKey": "host-50mm8c3h-monamhyx",
+        "organizerClientId": "cg8s6xou"
+      },
+      "mapLayer": "street",
+      "mapZoom": 0.9999999999999999,
+      "agents": [
+        {
+          "id": "bot-1",
+          "name": "Ada",
+          "role": "Mechanic",
+          "team": "North",
+          "lat": 59.91826108124103,
+          "lng": 10.728857613008838,
+          "signal": 42,
+          "stamina": 35
+        },
+        {
+          "id": "bot-2",
+          "name": "Mika",
+          "role": "Medic",
+          "team": "South",
+          "lat": 59.919955894423985,
+          "lng": 10.751364963108651,
+          "signal": 45,
+          "stamina": 36
+        },
+        {
+          "id": "bot-3",
+          "name": "Rune",
+          "role": "Decoder",
+          "team": "North",
+          "lat": 59.9003602561748,
+          "lng": 10.746189564687947,
+          "signal": 78,
+          "stamina": 36
+        },
+        {
+          "id": "agent-cg8s6xou",
+          "name": "Morgan",
+          "role": "Navigator",
+          "team": "North",
+          "lat": 0.0018074774380271324,
+          "lng": 0.012096875405376363,
+          "signal": 95,
+          "stamina": 38,
+          "clientId": "cg8s6xou",
+          "identity": {
+            "name": "Morgan",
+            "callsign": "Raven",
+            "joinedAt": 1777653928472
+          },
+          "lastSeen": 1777666186898,
+          "gpsAccuracy": 0
+        }
+      ],
+      "objectives": [
+        {
+          "id": "obj-0",
+          "title": "Decode relay A17",
+          "type": "Cipher",
+          "brief": "Break the first packet and reveal the signal route.",
+          "radius": 25,
+          "lat": 59.91119432077926,
+          "lng": 10.751927815193168,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": true,
+          "found": true,
+          "progress": 100
+        },
+        {
+          "id": "obj-1",
+          "title": "Bypass false beacon",
+          "type": "Puzzle",
+          "brief": "Compare beacon timing and reject the decoy pulse.",
+          "radius": 22,
+          "lat": 59.91000448776394,
+          "lng": 10.754348325610163,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": true,
+          "found": false,
+          "progress": 30
+        },
+        {
+          "id": "obj-2",
+          "title": "Recover GPS shard",
+          "type": "Treasure",
+          "brief": "Find the dropped shard before AI Watch triangulates it.",
+          "radius": 18,
+          "lat": 59.91519104008575,
+          "lng": 10.753998458337376,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-3",
+          "title": "Claim cache marker",
+          "type": "Treasure",
+          "brief": "Secure the field cache and carry its key phrase forward.",
+          "radius": 20,
+          "lat": 59.90953196399315,
+          "lng": 10.749456018102723,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-4",
+          "title": "Restore north uplink",
+          "type": "Waypoint",
+          "brief": "Stand inside the relay zone until the uplink stabilizes.",
+          "radius": 30,
+          "lat": 59.91320109030094,
+          "lng": 10.747627317844486,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-5",
+          "title": "Trace safe corridor",
+          "type": "Waypoint",
+          "brief": "Move through the corridor to open the extraction vector.",
+          "radius": 32,
+          "lat": 59.91950364949434,
+          "lng": 10.760898136201634,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        },
+        {
+          "id": "obj-6",
+          "title": "Extract final signal",
+          "type": "Extraction",
+          "brief": "Bring the decoded route, shard, and relay lock to final extraction.",
+          "radius": 35,
+          "lat": 59.91992625656034,
+          "lng": 10.751141416819944,
+          "source": "pack",
+          "markerId": "",
+          "behavior": "",
+          "behaviorLabel": "",
+          "decoded": false,
+          "found": false,
+          "progress": 0
+        }
+      ],
+      "threats": [
+        {
+          "id": "threat-0",
+          "name": "Jammer Kestrel",
+          "radius": 135,
+          "lat": 59.915750249542874,
+          "lng": 10.746755922666484,
+          "angle": 131.51813298397897,
+          "speed": 0.00042,
+          "alert": false,
+          "lastHit": 1777654457831
+        },
+        {
+          "id": "threat-1",
+          "name": "Hunter Relay",
+          "radius": 115,
+          "lat": 59.91853924961172,
+          "lng": 10.756461156522974,
+          "angle": 153.6502689330675,
+          "speed": 0.00034,
+          "alert": false,
+          "lastHit": 0
+        },
+        {
+          "id": "threat-2",
+          "name": "False Beacon",
+          "radius": 95,
+          "lat": 59.91417683318758,
+          "lng": 10.749636402478378,
+          "angle": 183.3653621944174,
+          "speed": 0.0005,
+          "alert": false,
+          "lastHit": 1777654160328
+        }
+      ],
+      "customMarkers": [
+        {
+          "id": "custom-molw9xc3-j6o",
+          "title": "Edited Danger 7953",
+          "type": "Danger",
+          "taskState": "armed",
+          "radius": 45,
+          "lat": 59.9139,
+          "lng": 10.7522,
+          "artifact": "Avoid the tower",
+          "brief": "Organizer danger: Avoid the tower"
+        }
+      ],
+      "enabledModules": {
+        "ciphers": true,
+        "treasure": true,
+        "waypoints": true,
+        "voice": true
+      },
+      "audit": [
+        {
+          "id": "audit-mon18cpg-tsyc",
+          "at": 1777647177556,
+          "type": "Lobby",
+          "actor": "Raven",
+          "message": "Locked visibility"
+        },
+        {
+          "id": "audit-mon18cwy-j1zy",
+          "at": 1777647177826,
+          "type": "Lobby",
+          "actor": "Raven",
+          "message": "Public visibility"
+        },
+        {
+          "id": "audit-mon1eb1w-skkq",
+          "at": 1777647455348,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Drone"
+        },
+        {
+          "id": "audit-mon4qco8-q6uv",
+          "at": 1777653056168,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Mechanic"
+        },
+        {
+          "id": "audit-mon4qm4k-dxil",
+          "at": 1777653068420,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Jammed zone with Jammer Kestrel"
+        },
+        {
+          "id": "audit-mon4qvyi-shod",
+          "at": 1777653081162,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Rerouted extraction to 59.9121, 10.7508"
+        },
+        {
+          "id": "audit-mon4s44m-y45i",
+          "at": 1777653138406,
+          "type": "Moderation",
+          "actor": "Raven",
+          "message": "Morgan removed from roster"
+        },
+        {
+          "id": "audit-mon4sz12-l7t5",
+          "at": 1777653178454,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Revealed clue: Bypass false beacon"
+        },
+        {
+          "id": "audit-mon591qw-5y1e",
+          "at": 1777653928472,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Joined Morgan as Navigator"
+        },
+        {
+          "id": "audit-mon59718-77j0",
+          "at": 1777653935324,
+          "type": "Mission",
+          "actor": "Raven",
+          "message": "Started 60 minute run"
+        },
+        {
+          "id": "audit-mon5ba9t-9kig",
+          "at": 1777654032833,
+          "type": "Objective",
+          "actor": "Mission Control",
+          "message": "Decode relay A17 completed"
+        },
+        {
+          "id": "audit-mon7tkv2-t2pe",
+          "at": 1777658245598,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Broadcast: take cover"
+        },
+        {
+          "id": "audit-mon7we8d-1xy4",
+          "at": 1777658376973,
+          "type": "GM Console",
+          "actor": "Raven",
+          "message": "Revealed clue: Bypass false beacon"
+        },
+        {
+          "id": "audit-mon7xci7-wdfo",
+          "at": 1777658421391,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Navigator"
+        },
+        {
+          "id": "audit-mon7xh6h-g7bd",
+          "at": 1777658427449,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Navigator"
+        },
+        {
+          "id": "audit-mon7xj6j-nsp7",
+          "at": 1777658430043,
+          "type": "Roster",
+          "actor": "North",
+          "message": "Updated Morgan as Navigator"
+        }
+      ],
+      "chatFilter": "All",
+      "auditFilter": "GM Console",
+      "chat": [
+        [
+          "Organizer",
+          "Treasure Hunt enabled."
+        ],
+        [
+          "Organizer",
+          "Cipher Tasks disabled."
+        ],
+        [
+          "Organizer",
+          "Cipher Tasks enabled."
+        ],
+        [
+          "System",
+          "Morgan joined as Mechanic."
+        ],
+        [
+          "Organizer",
+          "GM jam zone: Jammer Kestrel jammed Ada, Mika."
+        ],
+        [
+          "Organizer",
+          "Extract final signal rerouted by Mission Control."
+        ],
+        [
+          "Organizer",
+          "Morgan removed from the squad roster."
+        ],
+        [
+          "Organizer",
+          "GM revealed Bypass false beacon."
+        ],
+        [
+          "Organizer",
+          "Treasure Hunt disabled."
+        ],
+        [
+          "Organizer",
+          "Treasure Hunt enabled."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "System",
+          "Mission clock started. Restore GPS by decoding the signal chain."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "Mission Control",
+          "Decode relay A17 complete."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "False Beacon jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada, Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Ada."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "AI Watch",
+          "Jammer Kestrel jammed Mika."
+        ],
+        [
+          "Organizer",
+          "GM broadcast: take cover",
+          1777658245599,
+          "cg8s6xou"
+        ],
+        [
+          "Organizer",
+          "GM revealed Bypass false beacon."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "System",
+          "Morgan joined as Navigator."
+        ],
+        [
+          "Mission Control",
+          "testing",
+          1777658480510,
+          "cg8s6xou"
+        ],
+        [
+          "Navigator",
+          "Guide squad executed."
+        ],
+        [
+          "Navigator",
+          "Set waypoint executed."
+        ],
+        [
+          "Navigator",
+          "Nearest route is 1.1km."
+        ],
+        [
+          "Navigator",
+          "Nearest route is 1.1km."
+        ],
+        [
+          "Navigator",
+          "Nearest route is 1.1km."
+        ],
+        [
+          "Navigator",
+          "Guide squad executed."
+        ]
+      ],
+      "syncedAt": 1777666186898
+    }
+  ]
+}

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scoreboard V2 - Team Leaderboard</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #111827;
+      --panel-2: #0f1620;
+      --text: #e6edf5;
+      --muted: #9fb3c8;
+      --accent: #3b82f6;
+      --accent-2: #22d3ee;
+      --gold: #f6c050;
+      --silver: #c8d4e0;
+      --bronze: #e08d5f;
+      --green: #34d399;
+      --danger: #f87171;
+      --warning: #fbbf24;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Animated particle background */
+    #particles {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.35;
+      animation: floatUp linear infinite;
+    }
+    @keyframes floatUp {
+      0% { transform: translateY(0) scale(1); opacity: 0.35; }
+      100% { transform: translateY(-120vh) scale(0.6); opacity: 0; }
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 16px;
+    }
+
+    .hud {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(59,130,246,0.18), rgba(34,211,238,0.18));
+      border: 1px solid rgba(59,130,246,0.35);
+      color: var(--accent-2);
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 12px;
+      margin-bottom: 14px;
+    }
+    .hud-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 10px var(--accent-2);
+      animation: hudPulse 2s ease-in-out infinite;
+    }
+    @keyframes hudPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+
+    .title {
+      font-size: clamp(22px, 3.2vw, 34px);
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      margin: 0 0 18px 0;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #fff, #cbe3ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .board {
+      width: min(980px, 96vw);
+      background: linear-gradient(180deg, rgba(17,24,39,0.95), rgba(15,22,32,0.95));
+      border: 1px solid rgba(148,163,184,0.12);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .board-head {
+      display: grid;
+      grid-template-columns: 60px 1fr 90px 90px 90px 110px;
+      align-items: center;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(148,163,184,0.12);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .board-head .col {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s ease;
+    }
+    .board-head .col:hover { color: var(--text); }
+    .board-head .col .sort-arrow {
+      display: inline-block;
+      width: 0; height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      opacity: 0.7;
+      transition: transform 0.2s ease;
+    }
+    .board-head .col.asc .sort-arrow {
+      border-bottom: 5px solid currentColor;
+      border-top: none;
+    }
+    .board-head .col.desc .sort-arrow {
+      border-top: 5px solid currentColor;
+      border-bottom: none;
+    }
+    .board-head .col[data-key="score"] { justify-content: flex-end; }
+    .board-head .col[data-key="kills"] { justify-content: flex-end; }
+    .board-head .col[data-key="deaths"] { justify-content: flex-end; }
+    .board-head .col[data-key="assists"] { justify-content: flex-end; }
+
+    .board-body {
+      max-height: calc(100vh - 210px);
+      overflow-y: auto;
+      padding: 6px 8px 10px;
+    }
+    .board-body::-webkit-scrollbar { width: 8px; }
+    .board-body::-webkit-scrollbar-track { background: transparent; }
+    .board-body::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.25); border-radius: 999px; }
+
+    .row {
+      display: grid;
+      grid-template-columns: 60px 1fr 90px 90px 90px 110px;
+      align-items: center;
+      padding: 12px 14px;
+      margin: 6px 0;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(148,163,184,0.06);
+      transition: transform 0.25s ease, opacity 0.35s ease, background 0.2s ease, border-color 0.2s ease;
+      opacity: 0;
+      transform: translateX(60px);
+    }
+    .row.revealed { opacity: 1; transform: translateX(0); }
+    .row:hover {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(148,163,184,0.14);
+    }
+
+    .row.current {
+      background: rgba(52,211,153,0.08);
+      border-color: rgba(52,211,153,0.35);
+      box-shadow: inset 0 0 0 1px rgba(52,211,153,0.15), 0 0 20px rgba(52,211,153,0.08);
+    }
+    .row.current .name { color: var(--green); }
+
+    .rank {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 900;
+      font-size: 15px;
+    }
+    .rank.gold { color: var(--gold); text-shadow: 0 0 18px rgba(246,192,80,0.35); }
+    .rank.silver { color: var(--silver); text-shadow: 0 0 18px rgba(200,212,224,0.25); }
+    .rank.bronze { color: var(--bronze); text-shadow: 0 0 18px rgba(224,141,95,0.25); }
+
+    .medal {
+      width: 22px; height: 22px;
+      display: grid; place-items: center;
+    }
+    .medal svg { width: 20px; height: 20px; }
+
+    .name {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .num {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      font-size: 14px;
+      text-align: right;
+    }
+    .num.kills { color: var(--danger); }
+    .num.deaths { color: var(--muted); }
+    .num.assists { color: var(--warning); }
+    .num.score { color: var(--accent-2); font-size: 15px; }
+
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 720px) {
+      .board-head { grid-template-columns: 46px 1fr 64px 64px 64px 80px; padding: 12px 10px; }
+      .row { grid-template-columns: 46px 1fr 64px 64px 64px 80px; padding: 10px 10px; }
+      .name { font-size: 13px; }
+      .num { font-size: 13px; }
+      .num.score { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="particles"></canvas>
+
+  <div class="app">
+    <div class="hud"><span class="hud-dot"></span> SCOREBOARD V2</div>
+    <h1 class="title">Team Leaderboard</h1>
+
+    <div class="board">
+      <div class="board-head" id="boardHead">
+        <div class="col" data-key="rank"><span class="sort-arrow"></span>Rank</div>
+        <div class="col" data-key="name">Player</div>
+        <div class="col" data-key="kills"><span class="sort-arrow"></span>Kills</div>
+        <div class="col" data-key="deaths"><span class="sort-arrow"></span>Deaths</div>
+        <div class="col" data-key="assists"><span class="sort-arrow"></span>Assists</div>
+        <div class="col" data-key="score"><span class="sort-arrow"></span>Score</div>
+      </div>
+      <div class="board-body" id="boardBody"></div>
+    </div>
+  </div>
+
+  <script>
+    // ===================== Data =====================
+    const CURRENT_PLAYER = "Vortex";
+
+    const players = [
+      { name: "Vortex", kills: 42, deaths: 18, assists: 31 },
+      { name: "Phantom", kills: 58, deaths: 22, assists: 19 },
+      { name: "Spectre", kills: 51, deaths: 15, assists: 27 },
+      { name: "Reaper", kills: 47, deaths: 25, assists: 22 },
+      { name: "Wraith", kills: 39, deaths: 20, assists: 35 },
+      { name: "Nova", kills: 55, deaths: 19, assists: 24 },
+      { name: "Blaze", kills: 44, deaths: 28, assists: 18 },
+      { name: "Frost", kills: 36, deaths: 16, assists: 29 },
+      { name: "Onyx", kills: 49, deaths: 21, assists: 26 },
+      { name: "Raven", kills: 41, deaths: 23, assists: 33 },
+      { name: "Havoc", kills: 53, deaths: 24, assists: 20 },
+      { name: "Echo", kills: 38, deaths: 17, assists: 30 },
+    ];
+
+    players.forEach(p => {
+      p.score = p.kills * 100 + p.assists * 50 - p.deaths * 25;
+    });
+
+    // ===================== Sorting =====================
+    let sortKey = "score";
+    let sortDir = "desc";
+
+    function sortData() {
+      players.sort((a, b) => {
+        let av = a[sortKey];
+        let bv = b[sortKey];
+        if (sortKey === "rank") {
+          av = getRank(a);
+          bv = getRank(b);
+        }
+        if (typeof av === "string") av = av.toLowerCase();
+        if (typeof bv === "string") bv = bv.toLowerCase();
+        if (av < bv) return sortDir === "asc" ? -1 : 1;
+        if (av > bv) return sortDir === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    function getRank(player) {
+      const sorted = [...players].sort((a, b) => b.score - a.score);
+      return sorted.findIndex(p => p === player) + 1;
+    }
+
+    // ===================== Icons =====================
+    const medalSvgs = {
+      gold: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+      silver: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`,
+      bronze: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.5 9h-9z"/><path d="M9 12v9"/><path d="M15 12v9"/><path d="M6 21h12"/></svg>`,
+    };
+
+    // ===================== Render =====================
+    const boardBody = document.getElementById("boardBody");
+    const boardHead = document.getElementById("boardHead");
+
+    function render() {
+      sortData();
+      boardBody.innerHTML = "";
+
+      if (!players.length) {
+        boardBody.innerHTML = `<div class="empty">No players found.</div>`;
+        return;
+      }
+
+      // Update header sort indicators
+      boardHead.querySelectorAll(".col").forEach(col => {
+        col.classList.remove("asc", "desc");
+        if (col.dataset.key === sortKey) col.classList.add(sortDir);
+      });
+
+      players.forEach((p, i) => {
+        const rank = i + 1;
+        const isCurrent = p.name === CURRENT_PLAYER;
+        const medal = rank === 1 ? "gold" : rank === 2 ? "silver" : rank === 3 ? "bronze" : null;
+
+        const row = document.createElement("div");
+        row.className = `row${isCurrent ? " current" : ""}`;
+        row.innerHTML = `
+          <div class="rank ${medal || ""}">
+            ${medal ? `<span class="medal">${medalSvgs[medal]}</span>` : ""}
+            <span>${rank}</span>
+          </div>
+          <div class="name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}${isCurrent ? " <span style='opacity:.7;font-weight:500;'> (You)</span>" : ""}</div>
+          <div class="num kills">${p.kills}</div>
+          <div class="num deaths">${p.deaths}</div>
+          <div class="num assists">${p.assists}</div>
+          <div class="num score">${p.score.toLocaleString()}</div>
+        `;
+        boardBody.appendChild(row);
+
+        // Staggered reveal
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            row.classList.add("revealed");
+          });
+        });
+      });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+    }
+
+    // Header click -> sort
+    boardHead.querySelectorAll(".col").forEach(col => {
+      col.addEventListener("click", () => {
+        const key = col.dataset.key;
+        if (sortKey === key) {
+          sortDir = sortDir === "asc" ? "desc" : "asc";
+        } else {
+          sortKey = key;
+          sortDir = key === "name" ? "asc" : "desc";
+        }
+        render();
+      });
+    });
+
+    // ===================== Particles =====================
+    const canvas = document.getElementById("particles");
+    const ctx = canvas.getContext("2d");
+    let W, H;
+    const particles = [];
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    function spawnParticle() {
+      const size = Math.random() * 2.5 + 0.8;
+      particles.push({
+        x: Math.random() * W,
+        y: H + size,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: -(Math.random() * 0.8 + 0.3),
+        size,
+        alpha: Math.random() * 0.35 + 0.1,
+        color: Math.random() > 0.7 ? "168, 220, 255" : Math.random() > 0.5 ? "100, 200, 255" : "140, 160, 200",
+        life: 1,
+        decay: Math.random() * 0.002 + 0.001,
+      });
+    }
+
+    function updateParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+        if (p.life <= 0 || p.y < -10) {
+          particles.splice(i, 1);
+        }
+      }
+      if (particles.length < 120) spawnParticle();
+    }
+
+    function drawParticles() {
+      ctx.clearRect(0, 0, W, H);
+      for (const p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${p.color}, ${p.alpha * p.life})`;
+        ctx.fill();
+      }
+    }
+
+    function loop() {
+      updateParticles();
+      drawParticles();
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    // ===================== Init =====================
+    render();
+  </script>
+</body>
+</html>

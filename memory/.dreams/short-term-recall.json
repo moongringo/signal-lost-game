@@ -1,0 +1,506 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-03T23:19:36.445Z",
+  "entries": {
+    "memory:memory/2026-05-03.md:1:30": {
+      "key": "memory:memory/2026-05-03.md:1:30",
+      "path": "memory/2026-05-03.md",
+      "startLine": 1,
+      "endLine": 30,
+      "source": "memory",
+      "snippet": "--- ## Session: 2026-05-03 01:54 UTC ### Morgan — Identity Confirmed - Name: Morgan - Communication channel: Telegram (sender_id: 5723479633, name: Moongringo) - First contact established. Pairing approved. ### Technical Setup Completed - **Telegram Bot Configured**: Token applied, dmPolicy=pairing, requireMention=true, enabled. - **Gateway Restart**: Successful. Multiple buffered messages during connector catch-up phase. - **User Status**: Fully connected via Telegram bot. ### \"Signal Lost\" File Issue - Morgan shared a document (file_id: BQACAgQAAxkBAAMGafYcBp5L-3yjZeYUW4Nrlk6P11sAAg0eAAIcArBT9p1Eub3d6787BA) - Could not access the file through Telegram's internal file IDs. Requested al",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.35833102762699126,
+      "maxScore": 0.35833102762699126,
+      "firstRecalledAt": "2026-05-02T21:12:50.962Z",
+      "lastRecalledAt": "2026-05-02T21:12:50.962Z",
+      "queryHashes": [
+        "530e8714d669"
+      ],
+      "recallDays": [
+        "2026-05-03"
+      ],
+      "conceptTags": [
+        "gateway",
+        "sender-id",
+        "catch-up",
+        "file-id",
+        "utc",
+        "morgan",
+        "identity",
+        "confirmed"
+      ]
+    },
+    "memory:memory/2026-05-03.md:182:213": {
+      "key": "memory:memory/2026-05-03.md:182:213",
+      "path": "memory/2026-05-03.md",
+      "startLine": 182,
+      "endLine": 213,
+      "source": "memory",
+      "snippet": "6. **`readinessChecks()` modification** — When stacking enabled, check that at least one role is selected 7. **`renderRole()` modification** — Show tools for ALL selected roles, not just primary 8. **UI toggle** — Add \"Allow Role Stacking\" checkbox in setup screen - Wire to `setRoleStacking(boolean)` function 9. **Edge cases**: - Minimum 1 role must remain selected - Mission Control can stack with field roles - AI bots get single role only (simpler) ### Files to modify: - `app.js` — Core stacking logic - `index.html` — Add stacking toggle in setup screen **Status:** Waiting for memory flush to complete before writing code changes. ## Signal Lost Testing — 2026-05-03 05:33 U",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.5484580486518037,
+      "maxScore": 0.5484580486518037,
+      "firstRecalledAt": "2026-05-02T21:34:20.657Z",
+      "lastRecalledAt": "2026-05-02T21:34:20.657Z",
+      "queryHashes": [
+        "d2a90cca278b"
+      ],
+      "recallDays": [
+        "2026-05-03"
+      ],
+      "conceptTags": [
+        "app.js",
+        "index.html",
+        "readinesschecks",
+        "modification",
+        "when",
+        "stacking",
+        "enabled",
+        "check"
+      ]
+    },
+    "memory:memory/2026-05-03.md:207:218": {
+      "key": "memory:memory/2026-05-03.md:207:218",
+      "path": "memory/2026-05-03.md",
+      "startLine": 207,
+      "endLine": 218,
+      "source": "memory",
+      "snippet": "4. **fieldView block missing** — Entire field agent dashboard (`fieldAgentTitle`, `fieldSignal`, `fieldStamina`, etc.) absent from HTML **Impact:** When user navigates to Roles screen or Mission screen, JavaScript will throw `TypeError: Cannot set properties of null` and break the entire reactive UI. **Fix strategy:** Add missing elements to HTML + make JS defensive with null guards. **Files to patch:** - `/root/.openclaw/workspace/signal-lost-tasks/index.html` — add roleState, roleTools, hidden roleSelect, fieldView block - `/root/.openclaw/workspace/signal-lost-tasks/app.js` — add null checks in renderRole(), renderFieldDashboard() **Status:** Waiting for memory flush to complete befor",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.4080876737833023,
+      "maxScore": 0.4080876737833023,
+      "firstRecalledAt": "2026-05-02T21:34:20.657Z",
+      "lastRecalledAt": "2026-05-02T21:34:20.657Z",
+      "queryHashes": [
+        "d2a90cca278b"
+      ],
+      "recallDays": [
+        "2026-05-03"
+      ],
+      "conceptTags": [
+        "fieldview",
+        "block",
+        "missing",
+        "entire",
+        "field",
+        "dashboard",
+        "fieldagenttitle",
+        "fieldsignal"
+      ]
+    },
+    "memory:memory/2026-05-03.md:1:40": {
+      "key": "memory:memory/2026-05-03.md:1:40",
+      "path": "memory/2026-05-03.md",
+      "startLine": 1,
+      "endLine": 40,
+      "source": "memory",
+      "snippet": "--- ## Signal Lost — Leaderboard & 24/7 Setup (06:35) User requested: theme song fix, 1960s design consistency, simulated tests, leaderboard page, mobile-friendly HTTPS, 24/7 operation. **Audio Fix:** - Copied `retro-heist-run.mp3` to `assets/retro-heist-run.mp3` - Fixed volume control IDs: `volumeControl` → `volumeSlider` on all 3 pages - Added `audioTime` element to visible controls on all pages - Audio element `<audio id=\"themeAudio\" src=\"./assets/retro-heist-run.mp3\" loop>` present on all pages **Leaderboard Page Created (`leaderboard.html`):** - Uses 1960s design-flow.css aesthetic - Sections: Server Health, Active Agents, Mission Progress, Spending & Limits, Activity Log - Auto-re",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.5004679381847381,
+      "maxScore": 0.5004679381847381,
+      "firstRecalledAt": "2026-05-02T22:36:48.191Z",
+      "lastRecalledAt": "2026-05-02T22:36:48.191Z",
+      "queryHashes": [
+        "5957303eb2bd"
+      ],
+      "recallDays": [
+        "2026-05-03"
+      ],
+      "conceptTags": [
+        "24/7",
+        "mobile-friendly",
+        "retro-heist-run.mp3",
+        "assets/retro-heist-run.mp3",
+        "leaderboard.html",
+        "design-flow.css",
+        "auto-re",
+        "signal"
+      ]
+    },
+    "memory:memory/2026-05-03.md:30:43": {
+      "key": "memory:memory/2026-05-03.md:30:43",
+      "path": "memory/2026-05-03.md",
+      "startLine": 30,
+      "endLine": 43,
+      "source": "memory",
+      "snippet": "- Cron job: `*/5 * * * *` checks if server running, restarts if needed - Server logs to `/tmp/signal-lost-server.log` - PID tracked in `/tmp/signal-lost-server.pid` **All Pages:** - `index.html` — Setup (14KB) - `roles.html` — Role assignment (13KB) - `control.html` — Mission Control (13KB) - `leaderboard.html` — Status & Leaderboard (11KB) **URLs:** - Main: https://paso-proposals-connection-expanded.trycloudflare.com - Status: https://paso-proposals-connection-expanded.trycloudflare.com/leaderboard.html",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.38553352355957027,
+      "maxScore": 0.38553352355957027,
+      "firstRecalledAt": "2026-05-02T22:36:48.191Z",
+      "lastRecalledAt": "2026-05-02T22:36:48.191Z",
+      "queryHashes": [
+        "5957303eb2bd"
+      ],
+      "recallDays": [
+        "2026-05-03"
+      ],
+      "conceptTags": [
+        "tmp/signal-lost-server.log",
+        "tmp/signal-lost-server.pid",
+        "index.html",
+        "roles.html",
+        "control.html",
+        "leaderboard.html",
+        "cron",
+        "job"
+      ]
+    },
+    "memory:memory/2026-05-03.md:131:148": {
+      "key": "memory:memory/2026-05-03.md:131:148",
+      "path": "memory/2026-05-03.md",
+      "startLine": 131,
+      "endLine": 148,
+      "source": "memory",
+      "snippet": "- All threats visible on map, pulsing animations working ### Game Engine Created (10:05) **File:** `signal-lost-tasks/game-engine.js` — 15.4 KB **Classes:** - `Player` — health (0-100), stamina (0-100), status (healthy/injured/downed/dead/extracted), inventory (medkits/ammo/EMP/decoys), position tracking, damage/heal/revive/sprint mechanics, bleedout timer (2 minutes) - `Squad` — player roster, score tracking, objective capture, extraction mechanics (30-second extraction window, 50m radius check, all living must be present) - `Match` — lobby/warmup/active/ended phases, 30-minute timer, win conditions (extraction or last squad standing), game loop at 20 FPS, objective spawning, leaderboard g",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.4074085861444473,
+      "maxScore": 0.4074085861444473,
+      "firstRecalledAt": "2026-05-03T10:16:07.231Z",
+      "lastRecalledAt": "2026-05-03T10:16:07.231Z",
+      "queryHashes": [
+        "b5e4bae8be43"
+      ],
+      "recallDays": [
+        "2026-05-03"
+      ],
+      "conceptTags": [
+        "signal-lost-tasks/game-engine.js",
+        "15.4",
+        "0-100",
+        "medkits/ammo/emp/decoys",
+        "damage/heal/revive/sprint",
+        "30-second",
+        "lobby/warmup/active/ended",
+        "30-minute"
+      ]
+    },
+    "memory:memory/2026-05-03.md:145:170": {
+      "key": "memory:memory/2026-05-03.md:145:170",
+      "path": "memory/2026-05-03.md",
+      "startLine": 145,
+      "endLine": 170,
+      "source": "memory",
+      "snippet": "**Chat privacy model:** Squad channels isolated by default. Other teams cannot see messages. Decoder role may get \"Signal Intercept\" ability to capture cross-team message fragments. **Noise propagation:** Walk 10m, Run 30m, Gunshot 100m, Vehicle 150m, Explosion 200m. Enemies get directional indicator (angle + type) but NOT exact position. **Next steps:** Test game engine integration with mobile UI, implement Hacker drone hijack (50m range, 3s channel), Scout mine detection (5m warning), connect AI threats to gameplay loop. --- ## Signal Lost — Game Engine Integration + Vitals + Role Abilities (10:05–11:02) ### Vitals Panel Integration - Added HTML for health bar, stamina bar, score pil",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.3988949567079544,
+      "maxScore": 0.3988949567079544,
+      "firstRecalledAt": "2026-05-03T10:16:07.231Z",
+      "lastRecalledAt": "2026-05-03T10:16:07.231Z",
+      "queryHashes": [
+        "b5e4bae8be43"
+      ],
+      "recallDays": [
+        "2026-05-03"
+      ],
+      "conceptTags": [
+        "cross-team",
+        "chat",
+        "privacy",
+        "model",
+        "squad",
+        "channels",
+        "isolated",
+        "other"
+      ]
+    },
+    "memory:memory/2026-05-03.md:1:28": {
+      "key": "memory:memory/2026-05-03.md:1:28",
+      "path": "memory/2026-05-03.md",
+      "startLine": 1,
+      "endLine": 28,
+      "source": "memory",
+      "snippet": "## Signal Lost — Mobile UI + GPS Tracking Deployed (08:38) **User request:** Build mobile UI for all roles and verify GPS works for tracking device locations. **Built:** 1. **Mobile Command Center** (`mobile.html`) - Mobile-first design with sticky header and horizontal role tabs - 7 role-specific panels: * **Mission Control** — Squad status, directive buttons (Move/Hold/Regroup/Extract), live map * **Navigator** — GPS map, Set Waypoint, Share Location, active waypoints list * **Decoder** — Cipher display, Decode/Scan buttons, decrypted message log * **Drone** — UAV map, Launch/Recall/Photo/Scan buttons, drone status * **Medic** — Casualty triage list (🟢",
+      "recallCount": 2,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.8222467064857483,
+      "maxScore": 0.4258622586727142,
+      "firstRecalledAt": "2026-05-03T10:16:07.231Z",
+      "lastRecalledAt": "2026-05-03T21:12:43.007Z",
+      "queryHashes": [
+        "b5e4bae8be43",
+        "2964ca6e63e5"
+      ],
+      "recallDays": [
+        "2026-05-03",
+        "2026-05-04"
+      ],
+      "conceptTags": [
+        "mobile.html",
+        "mobile-first",
+        "role-specific",
+        "move/hold/regroup/extract",
+        "decode/scan",
+        "launch/recall/photo/scan",
+        "signal",
+        "lost"
+      ]
+    },
+    "memory:memory/2026-05-03.md:106:136": {
+      "key": "memory:memory/2026-05-03.md:106:136",
+      "path": "memory/2026-05-03.md",
+      "startLine": 106,
+      "endLine": 136,
+      "source": "memory",
+      "snippet": "- `ai-threats.js` — new file, 450+ lines, full threat system - `RND.md` — updated with AI threat catalog and design notes **Token status:** - Context: ~116k/131k (89%) — near compaction - Rolling reset: ~4.5 hours remaining --- ## Signal Lost — Navigation Fix + Game Engine + AI Testing (09:54–10:05) ### Mobile Navigation Fix (09:54–10:02) **Problem:** User couldn't get back to setup page or any other page from mobile. Mobile header had no navigation. **Fix:** Added hamburger menu (☰) to top-left of `.mobile-header`. Menu contains: - **Main Pages** → Home, Roles, Control, Leaderboard, Dashboard - **This Page** → Mobile Command - **Reference** → Design Doc, R&D Notes - Click outside menu",
+      "recallCount": 2,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.7522425174713134,
+      "maxScore": 0.37627974450588225,
+      "firstRecalledAt": "2026-05-03T10:16:07.231Z",
+      "lastRecalledAt": "2026-05-03T21:12:43.007Z",
+      "queryHashes": [
+        "b5e4bae8be43",
+        "2964ca6e63e5"
+      ],
+      "recallDays": [
+        "2026-05-03",
+        "2026-05-04"
+      ],
+      "conceptTags": [
+        "ai-threats.js",
+        "rnd.md",
+        "116k/131k",
+        "4.5",
+        "top-left",
+        "mobile-header",
+        "threats.js",
+        "new"
+      ]
+    },
+    "memory:memory/2026-05-03.md:88:118": {
+      "key": "memory:memory/2026-05-03.md:88:118",
+      "path": "memory/2026-05-03.md",
+      "startLine": 88,
+      "endLine": 118,
+      "source": "memory",
+      "snippet": "6. **Decoy Beacons** — Fake friendly SOS ping. 5-second pulsing ring. Players lose -25 if they investigate and it was fake. Visible on all maps. 7. **Noise/Echo Traps** — Fake gunshot sounds (no visual). Players lose -10 for \"investigating\" nothing. Enemy players within range see directional indicator to noise source (not exact position). 8. **Loot Drops with Ambush** — Golden \"?\" marker with pulse ring. 5% chance C4 trap triggers when opened. Player gets +25 for noticing no enemy guards. Otherwise: supplies (medkit, ammo, recon drone battery, EMP grenade). **Noise System:** - 5 noise types: Walking (10m), Running (30m), Gunshot (100m), Vehicle (150m), Explosion (200m) - Enemies in range",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.3620117485523224,
+      "maxScore": 0.3620117485523224,
+      "firstRecalledAt": "2026-05-03T10:16:07.231Z",
+      "lastRecalledAt": "2026-05-03T10:16:07.231Z",
+      "queryHashes": [
+        "b5e4bae8be43"
+      ],
+      "recallDays": [
+        "2026-05-03"
+      ],
+      "conceptTags": [
+        "5-second",
+        "noise/echo",
+        "decoy",
+        "beacons",
+        "fake",
+        "friendly",
+        "sos",
+        "ping"
+      ]
+    },
+    "memory:memory/2026-05-03.md:50:79": {
+      "key": "memory:memory/2026-05-03.md:50:79",
+      "path": "memory/2026-05-03.md",
+      "startLine": 50,
+      "endLine": 79,
+      "source": "memory",
+      "snippet": "3. AI vs AI match simulation expansion --- ## Signal Lost — Mobile Fixes + AI Threat System (09:02–09:29) ### Mobile UI Fixes (09:02–09:13) - **Send button misalignment** — Added `.chat-input-row` CSS class with `align-items: stretch` so Send button sits flush next to input - **Enter key support** — Pressing Enter in chat input now sends message - **GPS fallback for buttons** — `Set Waypoint`, `Share Location`, `Launch Drone` previously appeared broken without GPS permission: * Set Waypoint → uses map center if no GPS * Share Location → shares map center coordinates * Launch Drone → launches from map center ### AI Threat System Brainstorm & Implementation (09:13–09:29) **User asked",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.35383077859878537,
+      "maxScore": 0.35383077859878537,
+      "firstRecalledAt": "2026-05-03T10:16:07.231Z",
+      "lastRecalledAt": "2026-05-03T10:16:07.231Z",
+      "queryHashes": [
+        "b5e4bae8be43"
+      ],
+      "recallDays": [
+        "2026-05-03"
+      ],
+      "conceptTags": [
+        "chat-input-row",
+        "align-items",
+        "match",
+        "simulation",
+        "expansion",
+        "signal",
+        "lost",
+        "mobile"
+      ]
+    },
+    "memory:memory/2026-05-03.md:21:58": {
+      "key": "memory:memory/2026-05-03.md:21:58",
+      "path": "memory/2026-05-03.md",
+      "startLine": 21,
+      "endLine": 58,
+      "source": "memory",
+      "snippet": "- **GPS Status Panel** — Shows real-time GPS state with animated dot (active/error) 2. **GPS Integration** - Uses `navigator.geolocation.watchPosition()` with high accuracy - Updates all 4 maps (MC, Navigator, Drone, Courier) with user marker - Shows coordinates + accuracy radius in meters - Handles permission denied gracefully with error message - Pan-to-user on position updates - **Note:** Browser test environment shows \"GPS Error: User denied Geolocation\" — this is expected. On real mobile devices, it will prompt for permission and track actual GPS coordinates. 3. **Navigation Updates** - Added \"Mobile\" link to all 6 pages (index, roles, control, leaderboard, das",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.3952273577451706,
+      "maxScore": 0.3952273577451706,
+      "firstRecalledAt": "2026-05-03T21:12:43.007Z",
+      "lastRecalledAt": "2026-05-03T21:12:43.007Z",
+      "queryHashes": [
+        "2964ca6e63e5"
+      ],
+      "recallDays": [
+        "2026-05-04"
+      ],
+      "conceptTags": [
+        "real-time",
+        "active/error",
+        "pan-to-user",
+        "gps",
+        "status",
+        "panel",
+        "shows",
+        "real"
+      ]
+    },
+    "memory:memory/2026-05-03.md:682:709": {
+      "key": "memory:memory/2026-05-03.md:682:709",
+      "path": "memory/2026-05-03.md",
+      "startLine": 682,
+      "endLine": 709,
+      "source": "memory",
+      "snippet": "### Patch Scripts Created (can be reused) - `signal-lost-tasks/patch-mobile.js` — consolidated patch for all 5 bugs - `signal-lost-tasks/patch-heal3.js` — targeted healSelf fix (worked after escaping backtick issue) - `signal-lost-tasks/cache-bump.js` — increments all `?v=N` tags by +1 ### User Request: \"Continue to build\" Morgan wants forward progress. Ready tasks: - Deploy mobile fixes to other pages (index, roles, control, leaderboard, dashboard) - Build token/limit dashboard page (\"page where I can see token spending, limits, reset timer\") - Mobile UI for remaining roles (Mechanic, Courier panels need more depth) - GPS verification on real mobile devices - AI vs AI match simulation (set",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.3814401388168335,
+      "maxScore": 0.3814401388168335,
+      "firstRecalledAt": "2026-05-03T21:12:43.007Z",
+      "lastRecalledAt": "2026-05-03T21:12:43.007Z",
+      "queryHashes": [
+        "2964ca6e63e5"
+      ],
+      "recallDays": [
+        "2026-05-04"
+      ],
+      "conceptTags": [
+        "signal-lost-tasks/patch-heal3.js",
+        "signal-lost-tasks/cache-bump.js",
+        "token/limit",
+        "patch",
+        "scripts",
+        "created",
+        "can",
+        "reused"
+      ]
+    },
+    "memory:memory/2026-05-03.md:233:255": {
+      "key": "memory:memory/2026-05-03.md:233:255",
+      "path": "memory/2026-05-03.md",
+      "startLine": 233,
+      "endLine": 255,
+      "source": "memory",
+      "snippet": "- `calculateDistanceToDrone` still undefined in droneAlert handler (line ~950, uses old function name instead of `GameEngine.calculateDistance`). Event listener exists but function call will throw if drone gets within range. - Gas/EMP hazards not yet connected to player status effects (only visual on map) - Hacker hijack and Scout mine detection not connected to actual AI threat manager instances - Extraction zone 30-second channel timer UI not implemented - Match end screen / leaderboard display not implemented - Bleedout countdown timer display not shown in UI (player just sees DOWNED) **Token status:** ~125k/131k (95%) — imminent compaction --- ## Signal Lost — BUG AUDIT: mobile.html",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.3741210669279098,
+      "maxScore": 0.3741210669279098,
+      "firstRecalledAt": "2026-05-03T21:12:43.007Z",
+      "lastRecalledAt": "2026-05-03T21:12:43.007Z",
+      "queryHashes": [
+        "2964ca6e63e5"
+      ],
+      "recallDays": [
+        "2026-05-04"
+      ],
+      "conceptTags": [
+        "gameengine.calculatedistance",
+        "gas/emp",
+        "30-second",
+        "125k/131k",
+        "mobile.html",
+        "calculatedistancetodrone",
+        "still",
+        "undefined"
+      ]
+    },
+    "memory:memory/2026-05-03.md:781:814": {
+      "key": "memory:memory/2026-05-03.md:781:814",
+      "path": "memory/2026-05-03.md",
+      "startLine": 781,
+      "endLine": 814,
+      "source": "memory",
+      "snippet": "| Gas damage | ✅ -5 HP ×3, player reached 0 HP | | Scout scan (50m) | ✅ 1 mine at 37m found, cyan ring + blips | | Hijack attempt | ✅ Found drone-1 at 4m, 3s channel, failed (30% roll) | | Disarm trap | ✅ Mine at 19m disarmed, +25 pts, marker removed | | EMP disable | ✅ Abilities blocked during EMP | ### Files Modified - `ai-threats.js` — Threat visibility styles, `clearAll()` fix, `findNearestDrone()`, `findNearestMine()`, `scanMines()`, `hijack()` method on PatrolDrone - `mobile.html` — `scoutMines()`, `hijackDrone()`, `disarmTrap()` replaced with real integrations - `patch-abilities.js` — Patch script for mobile.html function replacements - `mobile.html` cache-bust: `?v=10` → `?v=11` ##",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.3730313181877136,
+      "maxScore": 0.3730313181877136,
+      "firstRecalledAt": "2026-05-03T21:12:43.007Z",
+      "lastRecalledAt": "2026-05-03T21:12:43.007Z",
+      "queryHashes": [
+        "2964ca6e63e5"
+      ],
+      "recallDays": [
+        "2026-05-04"
+      ],
+      "conceptTags": [
+        "drone-1",
+        "ai-threats.js",
+        "mobile.html",
+        "patch-abilities.js",
+        "cache-bust",
+        "gas",
+        "damage",
+        "player"
+      ]
+    },
+    "memory:memory/2026-05-04.md:1:35": {
+      "key": "memory:memory/2026-05-04.md:1:35",
+      "path": "memory/2026-05-04.md",
+      "startLine": 1,
+      "endLine": 35,
+      "source": "memory",
+      "snippet": "## R&D Team Autonomous Work Log (2026-05-04 06:48 - ongoing) ### Completed Research - ✅ Web Effects & Trends (2015-2025) — Full decade analysis - ✅ Typography & Fonts — Top fonts, pairings, variable fonts - ✅ Button Designs — 20 button effects, best practices, CSS patterns - ✅ Top 200 award sites cataloged with signature effects - ✅ Tools & Technologies — GSAP, Three.js, WebGL, Lenis, Spline ### Built Components (13 files) 1. ✅ design-system.html — 10 button styles, 6 effects, typography showcase 2. ✅ design-flow-enhanced.html — Mission Control with glassmorphism, animations 3. ✅ design-flow-setup-enhanced.html — Setup page with form micro-interactions 4. ✅ design-flow-roles-enhanced.html",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.6852247152887974,
+      "maxScore": 0.6852247152887974,
+      "firstRecalledAt": "2026-05-03T23:19:36.445Z",
+      "lastRecalledAt": "2026-05-03T23:19:36.445Z",
+      "queryHashes": [
+        "91d0128b964d"
+      ],
+      "recallDays": [
+        "2026-05-04"
+      ],
+      "conceptTags": [
+        "2015-2025",
+        "three.js",
+        "design-system.html",
+        "design-flow-enhanced.html",
+        "design-flow-setup-enhanced.html",
+        "micro-interactions",
+        "design-flow-roles-enhanced.html",
+        "team"
+      ]
+    }
+  }
+}

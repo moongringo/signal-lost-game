@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radar V14 — Split View</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body {
+    width:100%; height:100%;
+    background:#000; color:#0f0;
+    font-family: 'Courier New', Courier, monospace;
+    overflow:hidden;
+  }
+  #hud {
+    position:absolute; top:0; left:0; width:100%; height:28px;
+    background:#001100; border-bottom:1px solid #0f0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px; letter-spacing:2px; z-index:10;
+  }
+  #wrap {
+    position:absolute; top:28px; left:0; right:0; bottom:64px;
+    display:flex;
+  }
+  .pane {
+    flex:1; position:relative; overflow:hidden;
+    border-right:1px solid #0f0;
+  }
+  .pane:last-child { border-right:none; }
+  canvas { display:block; width:100%; height:100%; }
+  #panel {
+    position:absolute; bottom:0; left:0; width:100%; height:64px;
+    background:#001100; border-top:1px solid #0f0;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:0 12px; z-index:10;
+  }
+  .u-btn {
+    background:#000; color:#0f0; border:1px solid #0f0;
+    padding:6px 14px; font-family:inherit; font-size:13px;
+    cursor:pointer; min-width:44px; text-align:center;
+    transition: background .15s, color .15s;
+  }
+  .u-btn:hover { background:#0f0; color:#000; }
+  .u-btn.active { background:#0f0; color:#000; font-weight:bold; }
+  .label {
+    position:absolute; top:6px; left:8px;
+    font-size:11px; opacity:.7; pointer-events:none;
+  }
+</style>
+</head>
+<body>
+<div id="hud">RADAR V14 — SPLIT VIEW</div>
+<div id="wrap">
+  <div class="pane" id="pane-map">
+    <span class="label">TACTICAL MAP</span>
+    <canvas id="mapCanvas"></canvas>
+  </div>
+  <div class="pane" id="pane-pov">
+    <span class="label">UNIT POV</span>
+    <canvas id="povCanvas"></canvas>
+  </div>
+</div>
+<div id="panel"></div>
+
+<script>
+(function(){
+  const panel = document.getElementById('panel');
+  const mapC = document.getElementById('mapCanvas');
+  const povC = document.getElementById('povCanvas');
+  const mapCtx = mapC.getContext('2d');
+  const povCtx = povC.getContext('2d');
+
+  const UNITS = [
+    {id:'P1', type:'player', x:0, z:-20, dir:0, color:'#0f0'},
+    {id:'P2', type:'player', x:25, z:10, dir:2.2, color:'#0f0'},
+    {id:'E1', type:'enemy',  x:-30, z:-5, dir:-1.0, color:'#f00'},
+    {id:'E2', type:'enemy',  x:10, z:30, dir:1.5, color:'#f00'},
+    {id:'N1', type:'neutral',x:-15, z:25, dir:0.7, color:'#ff0'},
+  ];
+
+  let selIndex = 0;
+
+  const BUILDINGS = [
+    {x:-20, z:-20, w:12, d:12, h:18},
+    {x:18, z:-25, w:10, d:16, h:22},
+    {x:-10, z:15, w:14, d:10, h:14},
+    {x:30, z:5, w:8, d:8, h:10},
+    {x:-35, z:10, w:10, d:12, h:16},
+    {x:5, z:-10, w:6, d:6, h:8},
+  ];
+
+  function resize(){
+    const p1 = document.getElementById('pane-map');
+    const p2 = document.getElementById('pane-pov');
+    mapC.width = p1.clientWidth; mapC.height = p1.clientHeight;
+    povC.width = p2.clientWidth; povC.height = p2.clientHeight;
+    draw();
+  }
+  window.addEventListener('resize', resize);
+
+  function makeButtons(){
+    panel.innerHTML = '';
+    UNITS.forEach((u,i)=>{
+      const b = document.createElement('button');
+      b.className = 'u-btn' + (i===selIndex?' active':'');
+      b.textContent = u.id;
+      b.addEventListener('click', ()=>{ selIndex=i; makeButtons(); draw(); });
+      panel.appendChild(b);
+    });
+  }
+
+  // Map helpers
+  function worldToMap(x, z, W, H){
+    const scale = Math.min(W, H) / 120;
+    return { x: W/2 + x*scale, y: H/2 + z*scale, scale };
+  }
+
+  function drawMap(){
+    const W = mapC.width, H = mapC.height;
+    const ctx = mapCtx;
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+
+    const {scale} = worldToMap(0,0,W,H);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(0,255,0,0.15)';
+    ctx.lineWidth = 1;
+    const step = 10;
+    const startX = Math.floor((-W/2)/scale/step)*step;
+    const endX = Math.ceil((W/2)/scale/step)*step;
+    const startZ = Math.floor((-H/2)/scale/step)*step;
+    const endZ = Math.ceil((H/2)/scale/step)*step;
+    for(let gx=startX; gx<=endX; gx+=step){
+      const a = worldToMap(gx, startZ, W, H);
+      const b = worldToMap(gx, endZ, W, H);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    for(let gz=startZ; gz<=endZ; gz+=step){
+      const a = worldToMap(startX, gz, W, H);
+      const b = worldToMap(endX, gz, W, H);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+
+    // Range rings
+    ctx.strokeStyle = 'rgba(0,255,0,0.25)';
+    for(let r=20; r<=60; r+=20){
+      const p = worldToMap(r, 0, W, H);
+      const rad = Math.abs(p.x - W/2);
+      ctx.beginPath(); ctx.arc(W/2, H/2, rad, 0, Math.PI*2); ctx.stroke();
+    }
+
+    // Buildings (top-down rectangles)
+    ctx.strokeStyle = 'rgba(0,255,0,0.5)';
+    ctx.lineWidth = 1.5;
+    BUILDINGS.forEach(b=>{
+      const tl = worldToMap(b.x - b.w/2, b.z - b.d/2, W, H);
+      const br = worldToMap(b.x + b.w/2, b.z + b.d/2, W, H);
+      ctx.strokeRect(tl.x, tl.y, br.x-tl.x, br.y-tl.y);
+    });
+
+    // Units
+    UNITS.forEach((u,i)=>{
+      const p = worldToMap(u.x, u.z, W, H);
+      const isSel = i===selIndex;
+      ctx.fillStyle = u.color;
+      ctx.strokeStyle = u.color;
+      ctx.lineWidth = isSel ? 2.5 : 1.2;
+
+      // Triangle pointing in dir
+      const sz = isSel ? 7 : 5;
+      ctx.beginPath();
+      ctx.moveTo(p.x + Math.cos(u.dir)*sz*1.6, p.y + Math.sin(u.dir)*sz*1.6);
+      ctx.lineTo(p.x + Math.cos(u.dir+2.4)*sz, p.y + Math.sin(u.dir+2.4)*sz);
+      ctx.lineTo(p.x + Math.cos(u.dir-2.4)*sz, p.y + Math.sin(u.dir-2.4)*sz);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      if(isSel){
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, Math.PI*2); ctx.stroke();
+        // FOV wedge
+        ctx.fillStyle = 'rgba(0,255,0,0.08)';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.arc(p.x, p.y, 45, u.dir - 0.6, u.dir + 0.6);
+        ctx.closePath(); ctx.fill();
+      }
+
+      ctx.fillStyle = '#0f0';
+      ctx.font = '10px Courier New';
+      ctx.fillText(u.id, p.x + 8, p.y - 6);
+    });
+
+    // Crosshair center
+    ctx.strokeStyle = 'rgba(0,255,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W/2-6, H/2); ctx.lineTo(W/2+6, H/2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W/2, H/2-6); ctx.lineTo(W/2, H/2+6); ctx.stroke();
+  }
+
+  // POV helpers
+  function projectPOV(wx, wy, wz, W, H, cam){
+    const dx = wx - cam.x;
+    const dy = wy - cam.y;
+    const dz = wz - cam.z;
+    // Rotate around Y by -cam.dir
+    const c = Math.cos(-cam.dir), s = Math.sin(-cam.dir);
+    const rx = dx*c - dz*s;
+    const rz = dx*s + dz*c;
+    if(rz <= 0.1) return null;
+    const fov = 1.0;
+    const px = (rx / (rz*fov)) * (W*0.5) + W*0.5;
+    const py = (-dy / (rz*fov)) * (W*0.5) + H*0.5;
+    return {x:px, y:py, depth:rz};
+  }
+
+  function drawPOV(){
+    const W = povC.width, H = povC.height;
+    const ctx = povCtx;
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+
+    const cam = UNITS[selIndex];
+    const eyeY = 3.5;
+
+    // Ground grid lines
+    ctx.strokeStyle = 'rgba(0,255,0,0.25)';
+    ctx.lineWidth = 1;
+    for(let gz=-60; gz<=60; gz+=10){
+      const a = projectPOV(-60, 0, gz, W, H, {x:cam.x, y:eyeY, z:cam.z, dir:cam.dir});
+      const b = projectPOV(60, 0, gz, W, H, {x:cam.x, y:eyeY, z:cam.z, dir:cam.dir});
+      if(a && b){ ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+    }
+    for(let gx=-60; gx<=60; gx+=10){
+      const a = projectPOV(gx, 0, -60, W, H, {x:cam.x, y:eyeY, z:cam.z, dir:cam.dir});
+      const b = projectPOV(gx, 0, 60, W, H, {x:cam.x, y:eyeY, z:cam.z, dir:cam.dir});
+      if(a && b){ ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+    }
+
+    // Buildings wireframe
+    BUILDINGS.forEach(b=>{
+      const pts = [];
+      const add = (x,y,z)=>{
+        const p = projectPOV(x,y,z, W,H, {x:cam.x, y:eyeY, z:cam.z, dir:cam.dir});
+        if(p) pts.push(p);
+      };
+      // 8 corners
+      const xs=[b.x-b.w/2, b.x+b.w/2];
+      const ys=[0, b.h];
+      const zs=[b.z-b.d/2, b.z+b.d/2];
+      xs.forEach(x=>zs.forEach(z=>{ add(x, ys[0], z); add(x, ys[1], z); }));
+      // Edges
+      const edges = [];
+      const idx = (x,y,z)=> (x?1:0) + (y?2:0) + (z?4:0);
+      const corner = (i)=>{
+        return projectPOV(
+          xs[i&1?1:0], ys[i&2?1:0], zs[i&4?1:0],
+          W,H, {x:cam.x, y:eyeY, z:cam.z, dir:cam.dir}
+        );
+      };
+      const drawEdge = (i,j)=>{
+        const a = corner(i), b2 = corner(j);
+        if(a && b2){
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
+        }
+      };
+      ctx.strokeStyle = 'rgba(0,255,0,0.6)';
+      ctx.lineWidth = 1.2;
+      // bottom square
+      drawEdge(0,1); drawEdge(1,5); drawEdge(5,4); drawEdge(4,0);
+      // top square
+      drawEdge(2,3); drawEdge(3,7); drawEdge(7,6); drawEdge(6,2);
+      // verticals
+      drawEdge(0,2); drawEdge(1,3); drawEdge(4,6); drawEdge(5,7);
+    });
+
+    // Unit markers in POV
+    UNITS.forEach((u,i)=>{
+      if(i===selIndex) return;
+      const p = projectPOV(u.x, 1.5, u.z, W, H, {x:cam.x, y:eyeY, z:cam.z, dir:cam.dir});
+      if(!p) return;
+      ctx.fillStyle = u.color;
+      ctx.strokeStyle = u.color;
+      ctx.lineWidth = 1;
+      const sz = Math.max(4, 12 / (1 + p.depth*0.05));
+      ctx.beginPath(); ctx.arc(p.x, p.y, sz, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,255,0,0.4)';
+      ctx.beginPath(); ctx.moveTo(p.x, p.y+sz); ctx.lineTo(p.x, p.y+sz+10); ctx.stroke();
+      ctx.fillStyle = '#0f0';
+      ctx.font = '11px Courier New';
+      ctx.fillText(u.id, p.x+6, p.y-6);
+    });
+
+    // Horizon line
+    const hY = projectPOV(cam.x, 0, cam.z+10, W, H, {x:cam.x, y:eyeY, z:cam.z, dir:cam.dir});
+    if(hY){
+      ctx.strokeStyle = 'rgba(0,255,0,0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, hY.y); ctx.lineTo(W, hY.y); ctx.stroke();
+    }
+
+    // HUD overlay
+    ctx.fillStyle = '#0f0';
+    ctx.font = '12px Courier New';
+    ctx.fillText('UNIT: ' + cam.id, 10, 20);
+    ctx.fillText('DIR: ' + (cam.dir*180/Math.PI).toFixed(1) + '°', 10, 36);
+    ctx.fillText('POS: ' + cam.x.toFixed(1) + ', ' + cam.z.toFixed(1), 10, 52);
+
+    // Crosshair
+    ctx.strokeStyle = 'rgba(0,255,0,0.6)';
+    ctx.lineWidth = 1;
+    const cx=W/2, cy=H/2;
+    ctx.beginPath(); ctx.moveTo(cx-10, cy); ctx.lineTo(cx+10, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy-10); ctx.lineTo(cx, cy+10); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2); ctx.stroke();
+  }
+
+  function draw(){ drawMap(); drawPOV(); }
+
+  makeButtons();
+  resize();
+  draw();
+})();
+</script>
+</body>
+</html>

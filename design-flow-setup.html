@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost Flow Design - Setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="./design-flow.css" />
+</head>
+<body data-flow-page="setup" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Mission Setup</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./design-flow-setup.html" aria-current="page">Setup</a>
+        <a href="./design-flow-roles.html">Roles</a>
+        <a href="./design-flow-control.html">Control</a>
+        <a href="./design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="./login.html">Login</a>
+              <a href="./server-browser.html">Server Browser</a>
+              <a href="./map-selection.html">Map Selection</a>
+              <a href="./role-selection.html">Role Selection</a>
+              <a href="./matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="./player-profile.html">Player Profile</a>
+              <a href="./career-stats.html">Career Stats</a>
+              <a href="./match-result.html">Match Result</a>
+              <a href="./post-match-report.html">Post-Match Report</a>
+              <a href="./kill-cam.html">Kill Cam</a>
+              <a href="./death-recap.html">Death Recap</a>
+              <a href="./spectator-mode.html">Spectator Mode</a>
+              <a href="./replay-viewer.html">Replay Viewer</a>
+              <a href="./tournament-bracket.html">Tournament</a>
+              <a href="./emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live &amp; Social</div>
+              <a href="./store.html">Store</a>
+              <a href="./friends.html">Friends</a>
+              <a href="./squad.html">Squad</a>
+              <a href="./clan-wars.html">Clan Wars</a>
+              <a href="./patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="./token-dashboard.html">Token Dashboard</a>
+              <a href="./daily-challenges.html">Daily Challenges</a>
+              <a href="./inventory.html">Inventory</a>
+              <a href="./loadout-builder.html">Loadout Builder</a>
+              <a href="./battle-pass.html">Battle Pass</a>
+              <a href="./loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools &amp; Systems</div>
+              <a href="./R&D-INDEX.html">R&D Index</a>
+              <a href="./ai-battle-arena.html">AI Battle Arena</a>
+              <a href="./admin-dashboard.html">Admin Dashboard</a>
+              <a href="./leaderboard.html">Leaderboard</a>
+              <a href="./settings.html">Settings</a>
+              <a href="./design-system.html">Design System</a>
+              <a href="./design-flow-setup.html">Setup Page</a>
+              <a href="./design-flow-roles.html">Roles Page</a>
+              <a href="./design-flow-control.html">Control Page</a>
+              <a href="./action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="./mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="./mobile-radar.html">Mobile Radar</a>
+              <a href="./gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="numberedPagesBtn">🔢 All Pages (1-50+) ▾</button>
+          <div class="page-menu" id="numberedPagesMenu">
+            <div class="page-menu-group"><div class="page-menu-title">Auth & Flow (1-5)</div><a href="./login.html">1 — Login</a><a href="./server-browser.html">2 — Server Browser</a><a href="./map-selection.html">3 — Map Selection</a><a href="./role-selection.html">4 — Role Selection</a><a href="./matchmaking.html">5 — Matchmaking</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Game Screens (6-15)</div><a href="./player-profile.html">6 — Player Profile</a><a href="./career-stats.html">7 — Career Stats</a><a href="./match-result.html">8 — Match Result</a><a href="./post-match-report.html">9 — Post-Match Report</a><a href="./kill-cam.html">10 — Kill Cam</a><a href="./death-recap.html">11 — Death Recap</a><a href="./spectator-mode.html">12 — Spectator Mode</a><a href="./replay-viewer.html">13 — Replay Viewer</a><a href="./tournament-bracket.html">14 — Tournament</a><a href="./emote-wheel.html">15 — Emote Wheel</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Live & Social (16-20)</div><a href="./store.html">16 — Store</a><a href="./friends.html">17 — Friends</a><a href="./squad.html">18 — Squad</a><a href="./clan-wars.html">19 — Clan Wars</a><a href="./patch-notes.html">20 — Patch Notes</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Management (21-26)</div><a href="./token-dashboard.html">21 — Token Dashboard</a><a href="./daily-challenges.html">22 — Daily Challenges</a><a href="./inventory.html">23 — Inventory</a><a href="./loadout-builder.html">24 — Loadout Builder</a><a href="./battle-pass.html">25 — Battle Pass</a><a href="./loot-crate.html">26 — Loot Crate</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Tools & Systems (27-36)</div><a href="./R&D-INDEX.html">27 — R&D Index</a><a href="./ai-battle-arena.html">28 — AI Battle Arena</a><a href="./admin-dashboard.html">29 — Admin Dashboard</a><a href="./leaderboard.html">30 — Leaderboard</a><a href="./settings.html">31 — Settings</a><a href="./design-system.html">32 — Design System</a><a href="./design-flow-setup.html">33 — Setup Page</a><a href="./design-flow-roles.html">34 — Roles Page</a><a href="./design-flow-control.html">35 — Control Page</a><a href="./action-center.html">36 — Action Center</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Mobile (37-39)</div><a href="./mobile-ui-kit.html">37 — Mobile UI Kit</a><a href="./mobile-radar.html">38 — Mobile Radar</a><a href="./gps-tracker.html">39 — GPS Tracker</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Design & Tests (40-43)</div><a href="./design-lab.html">40 — Design Lab</a><a href="./shader-library.html">41 — Shader Library</a><a href="./scroll-animations.html">42 — Scroll Anim</a><a href="./page-transitions.html">43 — Transitions</a></div>
+          </div>
+        </div>
+        <a href="./design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <section class="flow-layout" aria-label="Mission setup layout option">
+      <div class="flow-main">
+        <section class="flow-panel glass-panel reveal">
+          <p class="kicker">Game Runner</p>
+          <h2>Create The Operation</h2>
+          <div class="setup-grid">
+            <label class="field"><span>Organizer Identity</span><input value="Morgen / Host Signal" /></label>
+            <label class="field"><span>Country</span><select><option>Norway</option><option>United Kingdom</option><option>United States</option><option>Sweden</option></select></label>
+            <label class="field"><span>Mission City</span><select><option>Oslo</option><option>Bergen</option><option>London</option><option>New York</option></select></label>
+            <label class="field"><span>Players</span><select><option>2 players</option><option>4 players</option><option>6 players</option><option>8 players</option></select></label>
+            <label class="field"><span>Duration</span><select><option>45 minutes</option><option>60 minutes</option><option>90 minutes</option></select></label>
+            <label class="field"><span>Game Access</span><select><option>Private code required</option><option>Public joinable</option><option>Locked preview</option></select></label>
+          </div>
+          <div class="join-code">
+            <span class="kicker">Unique join code</span>
+            <strong>AQUA-RADAR-42</strong>
+            <p>Creator gets this code after setup. Other players enter it on their phones or tablets to join the same mission.</p>
+          </div>
+        </section>
+
+        <section class="map-stage glass-panel reveal">
+          <p class="kicker">Setup Map Custom Markers</p>
+          <h2>Stage The Playfield</h2>
+          <div class="setup-map world-map" role="img" aria-label="World setup map with HQ, cache, and danger markers">
+            <div class="map-toolbar">
+              <span>World Map / Oslo, Norway</span>
+              <div>
+                <button class="btn btn-glass" type="button">-</button>
+                <button class="btn btn-glass" type="button">+</button>
+              </div>
+            </div>
+            <svg class="world-svg" viewBox="0 0 1000 520" aria-hidden="true">
+              <path class="graticule" d="M120 40v440M300 40v440M500 40v440M700 40v440M880 40v440M40 120h920M40 260h920M40 400h920" />
+              <path class="continent" d="M109 155c40-71 106-87 183-70 57 13 105 51 122 105 13 43-8 82-42 111-35 30-84 30-123 56-33 22-45 76-91 77-55 1-85-69-104-116-24-59 18-105 55-163Z" />
+              <path class="continent" d="M356 76c59-22 138 2 184 42 41 36 38 88 18 134-21 49-58 72-100 101-43 29-71 83-126 81-53-2-98-48-111-99-15-61 46-90 71-139 22-43 14-101 64-120Z" />
+              <path class="continent" d="M601 111c72-42 167-32 237 10 47 28 98 79 77 133-20 52-92 39-139 62-59 29-82 107-149 109-61 2-99-59-118-113-17-47-11-102 25-138 20-20 43-47 67-63Z" />
+              <path class="continent small" d="M504 355c36-15 82 3 105 32 24 30 26 80-8 102-39 26-92 2-124-27-29-27-11-90 27-107Z" />
+              <path class="route-line" d="M468 126C562 167 641 223 704 305" />
+            </svg>
+            <span class="map-pin hq">HQ</span>
+            <span class="map-pin cache">C</span>
+            <span class="map-pin danger">D</span>
+            <span class="draft-marker">Click map to stage marker</span>
+            <div class="map-legend"><span>HQ</span><span>Custom</span><span>Draft</span></div>
+          </div>
+          <div class="marker-list">
+            <div class="marker-row"><div><b>Safehouse Clue</b><br />Armed clue / 70m radius</div><span class="role-token is-active">Edit</span></div>
+            <div class="marker-row"><div><b>Emergency Cache</b><br />Cache reward / restore signal</div><span class="role-token">Arm</span></div>
+            <div class="marker-row"><div><b>Danger Zone</b><br />Hazard / jamming pulse</div><span class="role-token">Plan</span></div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="flow-side glass-panel reveal">
+        <section class="theme-console">
+          <p class="kicker">Background Theme</p>
+          <h3>Game Look</h3>
+          <label>
+            Moving background
+            <select id="backgroundSelect">
+              <option value="sunset-grid">Sunset Grid</option>
+              <option value="signal-candy">Signal Candy</option>
+              <option value="night-static">Night Static</option>
+              <option value="psychedelic-waves">Psychedelic Waves</option>
+              <option value="blue-blocks">Blue Console Blocks</option>
+              <option value="hourglass">Hourglass Repeat</option>
+              <option value="teal-sonar">Teal Sonar</option>
+              <option value="paisley">Black Paisley</option>
+            </select>
+          </label>
+        </section>
+        <section class="song-console">
+          <p class="kicker">Theme Song</p>
+          <h3>Signal Soundtrack</h3>
+          <div class="vu-strip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <button class="mod-button is-active btn btn-primary" data-magnetic id="audioToggle" type="button">Play Theme</button>
+          <label class="volume-field"><span>Volume</span><input id="volumeControl" type="range" min="0" max="100" value="70" /></label>
+          <p id="audioStatus">Theme idle</p>
+          <audio id="themeAudio" src="./assets/retro-heist-run.mp3" preload="metadata" loop></audio>
+        </section>
+        <section class="flow-card">
+          <p class="kicker">Mission Modules</p>
+          <h3>Clean Selection</h3>
+          <div class="module-grid">
+            <article class="module-card is-on glass-panel lift"><b>Ciphers</b><p>Decoder tasks</p></article>
+            <article class="module-card is-on glass-panel lift"><b>Treasure</b><p>Cache hunt</p></article>
+            <article class="module-card glass-panel lift"><b>Voice</b><p>Relay mode</p></article>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script src="./design-flow.js?v=3"></script>
+  <!-- Setup page specific scripts -->
+  <script>
+    // Map zoom buttons
+    const mapSvg = document.querySelector('.world-svg');
+    let mapScale = 1;
+    document.getElementById('btnZoomIn')?.addEventListener('click', () => {
+      mapScale = Math.min(3, mapScale + 0.2);
+      if (mapSvg) mapSvg.style.transform = `scale(${mapScale})`;
+    });
+    document.getElementById('btnZoomOut')?.addEventListener('click', () => {
+      mapScale = Math.max(0.5, mapScale - 0.2);
+      if (mapSvg) mapSvg.style.transform = `scale(${mapScale})`;
+    });
+
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+
+    // Numbered pages menu toggle
+    const numberedPagesBtn = document.getElementById('numberedPagesBtn');
+    const numberedPagesMenu = document.getElementById('numberedPagesMenu');
+    if (numberedPagesBtn && numberedPagesMenu) {
+      numberedPagesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        numberedPagesMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!numberedPagesMenu.contains(e.target) && !numberedPagesBtn.contains(e.target)) {
+          numberedPagesMenu.classList.remove('open');
+        }
+      });
+    }
+
+    // Module cards toggle
+    document.querySelectorAll('.module-card').forEach(card => {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', () => {
+        card.classList.toggle('is-on');
+      });
+    });
+
+    // Marker row tokens (Edit/Arm/Plan)
+    document.querySelectorAll('.marker-row .role-token').forEach(token => {
+      token.style.cursor = 'pointer';
+      token.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const row = token.closest('.marker-row');
+        const isActive = token.classList.toggle('is-active');
+        if (isActive) {
+          token.textContent = 'Active';
+        } else {
+          const idx = Array.from(row.parentElement.children).indexOf(row);
+          const labels = ['Edit', 'Arm', 'Plan'];
+          token.textContent = labels[idx] || 'Toggle';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

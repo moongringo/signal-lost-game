@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUD: MENU V5 — GAME OVER</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Black+Ops+One&display=swap');
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    overflow: hidden;
+    background: #0a0a0a;
+    font-family: 'Orbitron', sans-serif;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+  }
+
+  /* ---- Camera shake on load ---- */
+  @keyframes shake {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    10%  { transform: translate(-8px, 6px) rotate(-1deg); }
+    20%  { transform: translate(6px, -4px) rotate(1deg); }
+    30%  { transform: translate(-4px, 8px) rotate(-0.5deg); }
+    40%  { transform: translate(8px, -6px) rotate(0.5deg); }
+    50%  { transform: translate(-6px, 4px) rotate(-1deg); }
+    60%  { transform: translate(4px, -8px) rotate(1deg); }
+    70%  { transform: translate(-8px, 6px) rotate(-0.5deg); }
+    80%  { transform: translate(6px, -4px) rotate(0.5deg); }
+    90%  { transform: translate(-4px, 8px) rotate(-1deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+  }
+
+  .shake {
+    animation: shake 0.6s ease-out;
+  }
+
+  /* ---- Color filters ---- */
+  .filter-failure {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(180, 20, 20, 0.25) 0%, rgba(80, 0, 0, 0.6) 100%);
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .filter-success {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.15) 0%, rgba(120, 90, 0, 0.5) 100%);
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  /* ---- Scanlines ---- */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.15) 0px,
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* ---- Vignette ---- */
+  .vignette {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.8) 100%);
+    pointer-events: none;
+    z-index: 6;
+  }
+
+  /* ---- Particle canvas ---- */
+  #particles {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* ---- Main container ---- */
+  .gameover-container {
+    position: relative;
+    z-index: 20;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    opacity: 0;
+    animation: fadeIn 0.8s ease-out 0.3s forwards;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+
+  /* ---- Icon ---- */
+  .icon-wrap {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 10px;
+    animation: iconFloat 3s ease-in-out infinite;
+  }
+
+  @keyframes iconFloat {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-12px); }
+  }
+
+  .icon-wrap svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 20px currentColor);
+  }
+
+  /* ---- Title ---- */
+  .title {
+    font-family: 'Black Ops One', cursive;
+    font-size: 4.5rem;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    line-height: 1;
+    animation: titlePulse 2s ease-in-out infinite;
+  }
+
+  @keyframes titlePulse {
+    0%, 100% { text-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
+    50%      { text-shadow: 0 0 30px currentColor, 0 0 60px currentColor, 0 0 90px currentColor; }
+  }
+
+  .failure-text { color: #ff2a2a; }
+  .success-text { color: #ffd700; }
+
+  /* ---- Subtitle ---- */
+  .subtitle {
+    font-size: 1rem;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-top: -8px;
+  }
+  .failure-sub { color: #ff6b6b; }
+  .success-sub { color: #ffec8b; }
+
+  /* ---- Stats grid ---- */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 48px;
+    margin: 24px 0;
+    text-align: left;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .failure-stat .stat-label { color: #ff9999; }
+  .success-stat .stat-label { color: #ffe066; }
+
+  .stat-value {
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+  }
+  .failure-stat .stat-value { color: #ffffff; text-shadow: 0 0 10px rgba(255,42,42,0.5); }
+  .success-stat .stat-value { color: #ffffff; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+
+  /* ---- Divider ---- */
+  .divider {
+    width: 200px;
+    height: 2px;
+    margin: 8px auto;
+    opacity: 0.4;
+  }
+  .failure-div { background: linear-gradient(90deg, transparent, #ff2a2a, transparent); }
+  .success-div { background: linear-gradient(90deg, transparent, #ffd700, transparent); }
+
+  /* ---- Continue button ---- */
+  .continue-btn {
+    margin-top: 16px;
+    padding: 16px 56px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    border: 2px solid;
+    background: transparent;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .continue-btn.visible {
+    opacity: 1;
+    animation: btnFadeIn 1s ease-out forwards;
+  }
+
+  @keyframes btnFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .continue-btn.failure-btn {
+    color: #ff2a2a;
+    border-color: #ff2a2a;
+    text-shadow: 0 0 10px rgba(255,42,42,0.4);
+  }
+  .continue-btn.failure-btn:hover {
+    background: rgba(255,42,42,0.15);
+    box-shadow: 0 0 30px rgba(255,42,42,0.4), inset 0 0 20px rgba(255,42,42,0.1);
+    transform: scale(1.05);
+  }
+
+  .continue-btn.success-btn {
+    color: #ffd700;
+    border-color: #ffd700;
+    text-shadow: 0 0 10px rgba(255,215,0,0.4);
+  }
+  .continue-btn.success-btn:hover {
+    background: rgba(255,215,0,0.15);
+    box-shadow: 0 0 30px rgba(255,215,0,0.4), inset 0 0 20px rgba(255,215,0,0.1);
+    transform: scale(1.05);
+  }
+
+  /* ---- HUD label ---- */
+  .hud-label {
+    position: fixed;
+    top: 16px;
+    left: 20px;
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.5;
+    z-index: 30;
+  }
+  .hud-failure { color: #ff6b6b; }
+  .hud-success { color: #ffec8b; }
+
+  /* ---- Glitch text effect ---- */
+  @keyframes glitch {
+    0%   { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 2px); }
+    20%  { clip-path: inset(50% 0 30% 0); transform: translate(3px, -2px); }
+    40%  { clip-path: inset(10% 0 80% 0); transform: translate(-2px, 3px); }
+    60%  { clip-path: inset(70% 0 10% 0); transform: translate(2px, -3px); }
+    80%  { clip-path: inset(30% 0 40% 0); transform: translate(-3px, 1px); }
+    100% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+  }
+
+  .glitch-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .glitch-active .glitch-layer {
+    opacity: 0.7;
+    animation: glitch 0.3s ease-out;
+  }
+
+  /* ---- Responsive ---- */
+  @media (max-width: 600px) {
+    .title { font-size: 2.8rem; }
+    .stats-grid { gap: 12px 24px; }
+    .stat-value { font-size: 1.2rem; }
+    .icon-wrap { width: 90px; height: 90px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Toggle this class on body for failure vs success: shake on load -->
+<script>
+  document.body.classList.add('shake');
+  setTimeout(() => document.body.classList.remove('shake'), 600);
+</script>
+
+<!-- PARTICLES -->
+<canvas id="particles"></canvas>
+
+<!-- COLOR FILTER: change class to filter-success for victory -->
+<div id="colorFilter" class="filter-failure"></div>
+
+<!-- VIGNETTE + SCANLINES -->
+<div class="vignette"></div>
+<div class="scanlines"></div>
+
+<!-- HUD LABEL -->
+<div id="hudLabel" class="hud-label hud-failure">MENU V5 — GAME OVER</div>
+
+<!-- MAIN CONTENT -->
+<div class="gameover-container" id="gameoverContainer">
+
+  <!-- ICON: skull for failure, trophy for success -->
+  <div class="icon-wrap" id="iconWrap">
+    <!-- SKULL SVG (failure) -->
+    <svg id="skullIcon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 8C30 8 14 24 14 44C14 56 20 66 28 72V86C28 89 31 92 34 92H40V84H44V92H56V84H60V92H66C69 92 72 89 72 86V72C80 66 86 56 86 44C86 24 70 8 50 8Z" fill="#1a1a1a" stroke="#ff2a2a" stroke-width="2.5"/>
+      <circle cx="36" cy="42" r="8" fill="#ff2a2a" opacity="0.9"/>
+      <circle cx="64" cy="42" r="8" fill="#ff2a2a" opacity="0.9"/>
+      <path d="M42 58L50 66L58 58" stroke="#ff2a2a" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M50 66V76" stroke="#ff2a2a" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M44 76H56" stroke="#ff2a2a" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- Cracks -->
+      <path d="M20 30L28 38" stroke="#ff2a2a" stroke-width="1.5" opacity="0.6"/>
+      <path d="M80 26L72 34" stroke="#ff2a2a" stroke-width="1.5" opacity="0.6"/>
+      <path d="M76 60L68 56" stroke="#ff2a2a" stroke-width="1.5" opacity="0.6"/>
+    </svg>
+
+    <!-- TROPHY SVG (success) -->
+    <svg id="trophyIcon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:none;">
+      <path d="M28 18H72V24C72 38 62 50 50 50C38 50 28 38 28 24V18Z" fill="#1a1a1a" stroke="#ffd700" stroke-width="2.5"/>
+      <path d="M28 22H20C16 22 14 26 14 30C14 38 20 44 28 44" stroke="#ffd700" stroke-width="2.5" fill="none"/>
+      <path d="M72 22H80C84 22 86 26 86 30C86 38 80 44 72 44" stroke="#ffd700" stroke-width="2.5" fill="none"/>
+      <rect x="42" y="50" width="16" height="8" fill="#1a1a1a" stroke="#ffd700" stroke-width="2"/>
+      <path d="M36 58H64L58 74H42L36 58Z" fill="#1a1a1a" stroke="#ffd700" stroke-width="2.5"/>
+      <rect x="32" y="74" width="36" height="6" rx="2" fill="#1a1a1a" stroke="#ffd700" stroke-width="2"/>
+      <!-- Stars -->
+      <path d="M50 10L52 16H58L53 20L55 26L50 22L45 26L47 20L42 16H48L50 10Z" fill="#ffd700" opacity="0.9"/>
+      <path d="M22 12L23 15H26L24 17L25 20L22 18L19 20L20 17L18 15H21L22 12Z" fill="#ffd700" opacity="0.6"/>
+      <path d="M78 12L79 15H82L80 17L81 20L78 18L75 20L76 17L74 15H77L78 12Z" fill="#ffd700" opacity="0.6"/>
+    </svg>
+  </div>
+
+  <!-- TITLE -->
+  <div style="position:relative;">
+    <h1 id="mainTitle" class="title failure-text">MISSION FAILED</h1>
+    <div id="glitchLayer" class="glitch-layer title failure-text">MISSION FAILED</div>
+  </div>
+
+  <p id="subTitle" class="subtitle failure-sub">OPERATION TERMINATED</p>
+
+  <div id="statsDivider" class="divider failure-div"></div>
+
+  <!-- STATS -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-item failure-stat">
+      <span class="stat-label">Time Survived</span>
+      <span class="stat-value" id="statTime">04:32:18</span>
+    </div>
+    <div class="stat-item failure-stat">
+      <span class="stat-label">Kills</span>
+      <span class="stat-value" id="statKills">147</span>
+    </div>
+    <div class="stat-item failure-stat">
+      <span class="stat-label">Damage Dealt</span>
+      <span class="stat-value" id="statDamage">28,450</span>
+    </div>
+    <div class="stat-item failure-stat">
+      <span class="stat-label">Objectives</span>
+      <span class="stat-value" id="statObjectives">3 / 7</span>
+    </div>
+  </div>
+
+  <div id="btnDivider" class="divider failure-div"></div>
+
+  <!-- CONTINUE BUTTON -->
+  <button id="continueBtn" class="continue-btn failure-btn">CONTINUE</button>
+
+</div>
+
+<script>
+/* ================================================================
+   CONFIG: Toggle between FAILURE and SUCCESS
+   ================================================================ */
+const IS_SUCCESS = false; // <-- set to true for victory screen
+
+/* ================================================================
+   APPLY THEME
+   ================================================================ */
+function applyTheme(success) {
+  const filter = document.getElementById('colorFilter');
+  const hud = document.getElementById('hudLabel');
+  const skull = document.getElementById('skullIcon');
+  const trophy = document.getElementById('trophyIcon');
+  const title = document.getElementById('mainTitle');
+  const glitch = document.getElementById('glitchLayer');
+  const sub = document.getElementById('subTitle');
+  const stats = document.querySelectorAll('.stat-item');
+  const dividers = document.querySelectorAll('.divider');
+  const btn = document.getElementById('continueBtn');
+
+  if (success) {
+    filter.className = 'filter-success';
+    hud.className = 'hud-label hud-success';
+    skull.style.display = 'none';
+    trophy.style.display = 'block';
+    title.textContent = 'MISSION COMPLETE';
+    title.className = 'title success-text';
+    glitch.textContent = 'MISSION COMPLETE';
+    glitch.className = 'glitch-layer title success-text';
+    sub.textContent = 'OPERATION SUCCESSFUL';
+    sub.className = 'subtitle success-sub';
+    stats.forEach(s => s.className = s.className.replace('failure-stat', 'success-stat'));
+    dividers.forEach(d => d.className = d.className.replace('failure-div', 'success-div'));
+    btn.className = 'continue-btn success-btn';
+    document.getElementById('statObjectives').textContent = '7 / 7';
+  } else {
+    // failure is default HTML; nothing to change
+  }
+}
+applyTheme(IS_SUCCESS);
+
+/* ================================================================
+   GLITCH EFFECT
+   ================================================================ */
+function triggerGlitch() {
+  const wrap = document.getElementById('gameoverContainer');
+  wrap.classList.add('glitch-active');
+  setTimeout(() => wrap.classList.remove('glitch-active'), 300);
+}
+setTimeout(triggerGlitch, 400);
+setTimeout(triggerGlitch, 900);
+
+/* ================================================================
+   CONTINUE BUTTON FADE-IN AFTER 3 SECONDS
+   ================================================================ */
+setTimeout(() => {
+  document.getElementById('continueBtn').classList.add('visible');
+}, 3000);
+
+/* ================================================================
+   PARTICLE SYSTEM
+   ================================================================ */
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const PARTICLE_COUNT = 80;
+const particles = [];
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.vx = (Math.random() - 0.5) * 0.6;
+    this.vy = (Math.random() - 0.5) * 0.6;
+    this.size = Math.random() * 2.5 + 0.5;
+    this.alpha = Math.random() * 0.5 + 0.2;
+    this.life = Math.random() * 200 + 100;
+    this.maxLife = this.life;
+    // failure = red tones, success = gold tones
+    if (IS_SUCCESS) {
+      this.r = 255;
+      this.g = 200 + Math.random() * 55;
+      this.b = 50 + Math.random() * 100;
+    } else {
+      this.r = 200 + Math.random() * 55;
+      this.g = 20 + Math.random() * 40;
+      this.b = 20 + Math.random() * 40;
+    }
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.life--;
+    if (this.life <= 0 || this.x < 0 || this.x > W || this.y < 0 || this.y > H) {
+      this.reset();
+    }
+  }
+  draw() {
+    const a = this.alpha * (this.life / this.maxLife);
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${this.r},${this.g},${this.b},${a})`;
+    ctx.fill();
+  }
+}
+
+for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
+
+function animateParticles() {
+  ctx.clearRect(0, 0, W, H);
+  particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+/* ================================================================
+   STAT COUNTER ANIMATION
+   ================================================================ */
+function animateValue(id, end, duration, prefix = '', suffix = '') {
+  const el = document.getElementById(id);
+  const start = 0;
+  const startTime = performance.now();
+  function update(now) {
+    const t = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    const val = Math.floor(start + (end - start) * ease);
+    el.textContent = prefix + val.toLocaleString() + suffix;
+    if (t < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+setTimeout(() => {
+  animateValue('statKills', 147, 1500);
+  animateValue('statDamage', 28450, 1800);
+}, 500);
+
+/* ================================================================
+   BUTTON CLICK
+   ================================================================ */
+document.getElementById('continueBtn').addEventListener('click', () => {
+  // Replace with actual navigation
+  console.log('CONTINUE clicked');
+});
+</script>
+</body>
+</html>

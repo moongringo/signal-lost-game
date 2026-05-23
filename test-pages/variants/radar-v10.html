@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RADAR V10</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  canvas { display: block; }
+  #hud {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    color: #0f0;
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 6px #0f0;
+    pointer-events: none;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="radar"></canvas>
+<div id="hud">RADAR V10</div>
+<script>
+const canvas = document.getElementById('radar');
+const ctx = canvas.getContext('2d');
+
+let W, H, CX, CY;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  CX = W / 2;
+  CY = H / 2;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const PLAYER = { x: 0, y: 0, color: '#0f0', label: 'YOU', size: 4 };
+const RANGE = 600;
+
+function randPos() {
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 80 + Math.random() * (RANGE - 80);
+  return { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist };
+}
+
+const enemies = Array.from({ length: 6 }, () => ({
+  ...randPos(),
+  color: '#f00',
+  label: 'ENEMY',
+  size: 3,
+  speed: 0.3 + Math.random() * 0.5,
+  angle: Math.random() * Math.PI * 2
+}));
+
+const objectives = Array.from({ length: 3 }, () => ({
+  ...randPos(),
+  color: '#0ff',
+  label: 'OBJ',
+  size: 3
+}));
+
+function worldToScreen(x, y) {
+  const scale = Math.min(W, H) / (RANGE * 2.2);
+  return {
+    x: CX + x * scale,
+    y: CY + y * scale,
+    scale
+  };
+}
+
+function drawDot(e) {
+  const p = worldToScreen(e.x, e.y);
+  const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, e.size * 4);
+  glow.addColorStop(0, e.color);
+  glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, e.size * 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = e.color;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, e.size, 0, Math.PI * 2);
+  ctx.fill();
+
+  const dist = Math.hypot(e.x, e.y).toFixed(0);
+  ctx.font = '10px "Courier New", monospace';
+  ctx.fillStyle = e.color;
+  ctx.textAlign = 'center';
+  ctx.fillText(`${e.label} ${dist}m`, p.x, p.y - e.size * 4 - 4);
+}
+
+function drawReticle() {
+  const size = 18;
+  ctx.strokeStyle = '#0f0';
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = '#0f0';
+  ctx.shadowBlur = 10;
+
+  ctx.beginPath();
+  ctx.moveTo(CX - size, CY);
+  ctx.lineTo(CX + size, CY);
+  ctx.moveTo(CX, CY - size);
+  ctx.lineTo(CX, CY + size);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(CX, CY, size * 0.6, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+}
+
+function drawPIP() {
+  const pipW = 180;
+  const pipH = 180;
+  const pipX = W - pipW - 16;
+  const pipY = H - pipH - 16;
+  const zoom = 3;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(pipX, pipY, pipW, pipH);
+  ctx.clip();
+
+  ctx.fillStyle = '#020';
+  ctx.fillRect(pipX, pipY, pipW, pipH);
+
+  const baseScale = Math.min(W, H) / (RANGE * 2.2);
+  const scale = baseScale * zoom;
+
+  function worldToPip(x, y) {
+    return {
+      x: pipX + pipW / 2 + x * scale,
+      y: pipY + pipH / 2 + y * scale
+    };
+  }
+
+  function drawPipDot(e) {
+    const p = worldToPip(e.x, e.y);
+    if (p.x < pipX || p.x > pipX + pipW || p.y < pipY || p.y > pipY + pipH) return;
+    ctx.fillStyle = e.color;
+    ctx.shadowColor = e.color;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, e.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  drawPipDot(PLAYER);
+  enemies.forEach(drawPipDot);
+  objectives.forEach(drawPipDot);
+
+  ctx.strokeStyle = '#0f0';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(pipX, pipY, pipW, pipH);
+
+  ctx.strokeStyle = 'rgba(0,255,0,0.4)';
+  ctx.beginPath();
+  ctx.moveTo(pipX + pipW / 2 - 8, pipY + pipH / 2);
+  ctx.lineTo(pipX + pipW / 2 + 8, pipY + pipH / 2);
+  ctx.moveTo(pipX + pipW / 2, pipY + pipH / 2 - 8);
+  ctx.lineTo(pipX + pipW / 2, pipY + pipH / 2 + 8);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function update() {
+  enemies.forEach(e => {
+    e.x += Math.cos(e.angle) * e.speed;
+    e.y += Math.sin(e.angle) * e.speed;
+    const d = Math.hypot(e.x, e.y);
+    if (d > RANGE - 20 || d < 60) e.angle += Math.PI;
+    e.angle += (Math.random() - 0.5) * 0.05;
+  });
+}
+
+function draw() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = 'rgba(0, 255, 0, 0.03)';
+  ctx.fillRect(0, 0, W, H);
+
+  drawDot(PLAYER);
+  enemies.forEach(drawDot);
+  objectives.forEach(drawDot);
+
+  drawReticle();
+  drawPIP();
+
+  ctx.strokeStyle = 'rgba(0, 255, 0, 0.15)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(4, 4, W - 8, H - 8);
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

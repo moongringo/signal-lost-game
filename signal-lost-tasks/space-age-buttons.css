@@ -1,0 +1,246 @@
+/* ============================================================
+   Signal Lost — Space Age Shine Buttons
+   Glossy 3D pill buttons inspired by 1960s enamel + chrome
+   ============================================================ */
+
+.sa-btn {
+  --sa-cream: #FAF8F5;
+  --sa-gold: #C9A96E;
+  --sa-gold-light: #E8D5A3;
+  --sa-coral: #E85D4E;
+  --sa-coral-light: #F4A89E;
+  --sa-teal: #4A9B9B;
+  --sa-teal-light: #8EC9C9;
+  --sa-charcoal: #2A2A2A;
+  --sa-shadow: rgba(0, 0, 0, 0.35);
+  --sa-shine: rgba(255, 255, 255, 0.4);
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 2.25rem;
+  border: none;
+  border-radius: 999px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--sa-cream);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
+  isolation: isolate;
+
+  /* 3D base shadow */
+  box-shadow:
+    0 4px 0 0 rgba(0, 0, 0, 0.3),
+    0 6px 12px rgba(0, 0, 0, 0.4),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.sa-btn::before {
+  /* Metallic chrome/gold border frame */
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  padding: 3px;
+  background: linear-gradient(
+    180deg,
+    var(--sa-gold-light) 0%,
+    var(--sa-gold) 30%,
+    #8B7355 50%,
+    var(--sa-gold) 70%,
+    var(--sa-gold-light) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.sa-btn::after {
+  /* Glossy highlight overlay */
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.1) 35%,
+    transparent 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ====== VARIANTS ====== */
+
+/* Coral with sunburst stripes */
+.sa-btn--coral {
+  background:
+    repeating-conic-gradient(
+      from 0deg at 50% 50%,
+      var(--sa-coral) 0deg 10deg,
+      var(--sa-coral-light) 10deg 20deg
+    );
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 0 8px rgba(232, 93, 78, 0.4);
+}
+
+/* Teal with wave pattern */
+.sa-btn--teal {
+  background:
+    repeating-radial-gradient(
+      ellipse at 50% 50%,
+      var(--sa-teal) 0px,
+      var(--sa-teal) 8px,
+      var(--sa-teal-light) 8px,
+      var(--sa-teal-light) 16px
+    );
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 0 8px rgba(74, 155, 155, 0.4);
+}
+
+/* Charcoal with geometric grid */
+.sa-btn--charcoal {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      var(--sa-charcoal) 0px,
+      var(--sa-charcoal) 6px,
+      #3D3D3D 6px,
+      #3D3D3D 12px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0px,
+      transparent 6px,
+      rgba(201, 169, 110, 0.15) 6px,
+      rgba(201, 169, 110, 0.15) 12px
+    );
+  background-blend-mode: overlay;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.6),
+    0 0 6px rgba(201, 169, 110, 0.3);
+}
+
+/* Paisley / Mod Floral */
+.sa-btn--paisley {
+  background:
+    radial-gradient(
+      ellipse at 30% 40%,
+      rgba(232, 93, 78, 0.25) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 70% 60%,
+      rgba(74, 155, 155, 0.25) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 50% 20%,
+      rgba(201, 169, 110, 0.2) 0%,
+      transparent 40%
+    ),
+    linear-gradient(
+      135deg,
+      #1a2a3a 0%,
+      #0f1f2f 50%,
+      #1a2a3a 100%
+    );
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.6),
+    0 0 10px rgba(201, 169, 110, 0.3);
+}
+
+/* ====== SIZES ====== */
+
+.sa-btn--sm {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.75rem;
+  gap: 0.35rem;
+}
+
+.sa-btn--sm::before { padding: 2px; }
+.sa-btn--sm::after { inset: 2px; }
+
+.sa-btn--lg {
+  padding: 1.125rem 3rem;
+  font-size: 1.125rem;
+  gap: 0.625rem;
+}
+
+/* ====== STATES ====== */
+
+.sa-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 0 0 rgba(0, 0, 0, 0.3),
+    0 10px 20px rgba(0, 0, 0, 0.45),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(201, 169, 110, 0.15);
+}
+
+.sa-btn:active {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 0 rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.sa-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+  transform: none !important;
+  box-shadow:
+    0 4px 0 0 rgba(0, 0, 0, 0.3),
+    0 6px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ====== GROUP ====== */
+
+.sa-btn-group {
+  display: inline-flex;
+  gap: 0;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+.sa-btn-group .sa-btn {
+  border-radius: 0;
+}
+
+.sa-btn-group .sa-btn:first-child {
+  border-radius: 999px 0 0 999px;
+}
+
+.sa-btn-group .sa-btn:first-child::before,
+.sa-btn-group .sa-btn:first-child::after {
+  border-radius: 999px 0 0 999px;
+}
+
+.sa-btn-group .sa-btn:last-child {
+  border-radius: 0 999px 999px 0;
+}
+
+.sa-btn-group .sa-btn:last-child::before,
+.sa-btn-group .sa-btn:last-child::after {
+  border-radius: 0 999px 999px 0;
+}
+
+.sa-btn-group .sa-btn:not(:first-child) {
+  margin-left: -3px;
+}

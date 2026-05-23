@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signal Lost — Design Sandbox</title>
+      <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="space-age-buttons.css">
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --bg-light: #111827;
+      --glass: rgba(17, 24, 39, 0.75);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --cyan: #00d4ff;
+      --cyan-glow: rgba(0, 212, 255, 0.3);
+      --orange: #ff6b35;
+      --orange-glow: rgba(255, 107, 53, 0.3);
+      --red: #ff0040;
+      --red-glow: rgba(255, 0, 64, 0.3);
+      --green: #00ff88;
+      --text: #e5e7eb;
+      --text-dim: #6b7280;
+      --radius: 12px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background grid */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .bg-scanline {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+        180deg,
+        transparent 50%,
+        rgba(0, 212, 255, 0.02) 50%
+      );
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 1;
+      animation: scanline 8s linear infinite;
+    }
+
+    @keyframes scanline {
+      0% { transform: translateY(-100vh); }
+      100% { transform: translateY(100vh); }
+    }
+
+    /* Glass Panel Base */
+    .glass {
+      background: var(--glass);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .glass-cyan {
+      border-color: rgba(0, 212, 255, 0.2);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 20px var(--cyan-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .glass-orange {
+      border-color: rgba(255, 107, 53, 0.2);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 20px var(--orange-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .glass-red {
+      border-color: rgba(255, 0, 64, 0.2);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 20px var(--red-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    /* Layout */
+    .sandbox {
+      position: relative;
+      z-index: 2;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--cyan), var(--orange));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--text-dim);
+      font-size: 1rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* Grid Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .panel {
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .panel-title::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: var(--cyan);
+    }
+
+    .panel-title.orange::before { background: var(--orange); }
+    .panel-title.red::before { background: var(--red); }
+
+    /* Health Bar */
+    .health-system {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .bar-container {
+      position: relative;
+    }
+
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .bar-track {
+      height: 8px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+      position: relative;
+    }
+
+    .bar-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .hp-fill { background: linear-gradient(90deg, var(--red), var(--orange)); width: 65%; }
+    .sta-fill { background: linear-gradient(90deg, var(--cyan), #00ff88); width: 40%; }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(255, 107, 53, 0.15);
+      color: var(--orange);
+      border: 1px solid rgba(255, 107, 53, 0.3);
+    }
+
+    .status-pill::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--orange);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Cooldown Ring */
+    .cooldown-ring {
+      width: 80px;
+      height: 80px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cooldown-ring svg {
+      position: absolute;
+      inset: 0;
+      transform: rotate(-90deg);
+    }
+
+    .cooldown-ring .track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.1);
+      stroke-width: 6;
+    }
+
+    .cooldown-ring .progress {
+      fill: none;
+      stroke: var(--cyan);
+      stroke-width: 6;
+      stroke-linecap: round;
+      stroke-dasharray: 220;
+      stroke-dashoffset: 55;
+      transition: stroke-dashoffset 0.3s ease;
+      filter: drop-shadow(0 0 6px var(--cyan-glow));
+    }
+
+    .cooldown-ring .icon {
+      font-size: 1.5rem;
+      z-index: 1;
+    }
+
+    .cooldown-label {
+      position: absolute;
+      bottom: -20px;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Ability Grid */
+    .ability-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+
+    .ability-slot {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius);
+      border: 1px solid var(--glass-border);
+      background: rgba(0, 0, 0, 0.3);
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .ability-slot:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 0 15px var(--cyan-glow);
+      transform: translateY(-2px);
+    }
+
+    .ability-slot .key {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      background: rgba(0, 0, 0, 0.5);
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    /* Threat Indicator */
+    .threat-indicator {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem;
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--glass-border);
+      margin-bottom: 0.5rem;
+    }
+
+    .threat-indicator:hover {
+      border-color: var(--red);
+      background: rgba(255, 0, 64, 0.05);
+    }
+
+    .threat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      background: rgba(255, 0, 64, 0.15);
+      border: 2px solid var(--red);
+      animation: threat-pulse 2s infinite;
+    }
+
+    @keyframes threat-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 var(--red-glow); }
+      50% { box-shadow: 0 0 0 10px transparent; }
+    }
+
+    .threat-info {
+      flex: 1;
+    }
+
+    .threat-name {
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .threat-dist {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .threat-dir {
+      font-size: 0.75rem;
+      color: var(--red);
+      font-weight: 600;
+    }
+
+    /* Killfeed */
+    .killfeed {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .killfeed-entry {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.3);
+      border-left: 3px solid var(--orange);
+      animation: slideIn 0.3s ease;
+      font-size: 0.8rem;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .killfeed-time {
+      color: var(--text-dim);
+      font-size: 0.7rem;
+      font-family: monospace;
+    }
+
+    .killfeed-killer { color: var(--cyan); font-weight: 600; }
+    .killfeed-victim { color: var(--red); font-weight: 600; }
+    .killfeed-weapon { color: var(--text-dim); font-size: 0.75rem; }
+
+    /* Map Container */
+    .map-container {
+      height: 300px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .map-overlay {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      z-index: 1000;
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Squad List */
+    .squad-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .squad-member {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--glass-border);
+      transition: all 0.2s ease;
+    }
+
+    .squad-member:hover {
+      border-color: var(--cyan);
+      background: rgba(0, 212, 255, 0.05);
+    }
+
+    .member-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--cyan), var(--orange));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.875rem;
+    }
+
+    .member-info {
+      flex: 1;
+    }
+
+    .member-name {
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .member-role {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .member-hp {
+      width: 60px;
+      height: 4px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .member-hp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--red), var(--orange), var(--green));
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+
+    /* Animations */
+    .glow-text {
+      text-shadow: 0 0 10px var(--cyan-glow), 0 0 20px var(--cyan-glow);
+    }
+
+    .scanning-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      animation: scan 3s linear infinite;
+      opacity: 0.5;
+    }
+
+    @keyframes scan {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(300px); }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .sandbox { padding: 1rem; }
+      .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 1.75rem; }
+      .ability-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="design-sandbox" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Design Sandbox</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <div class="bg-grid"></div>
+  <div class="bg-scanline"></div>
+
+  <div class="sandbox">
+    <header>
+      <h1>Signal Lost</h1>
+      <p class="subtitle">Design Sandbox — Tactical UI Components</p>
+    </header>
+
+    <div class="grid">
+      <!-- Vitals Panel -->
+      <div class="panel glass glass-cyan">
+        <div class="panel-title">Vitals</div>
+        <div class="health-system">
+          <div class="status-pill">Injured</div>
+          <div class="bar-container">
+            <div class="bar-label">
+              <span>Health</span>
+              <span>65/100</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill hp-fill"></div>
+            </div>
+          </div>
+          <div class="bar-container">
+            <div class="bar-label">
+              <span>Stamina</span>
+              <span>40/100</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill sta-fill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ability Cooldowns -->
+      <div class="panel glass">
+        <div class="panel-title orange">Abilities</div>
+        <div style="display: flex; gap: 1.5rem; justify-content: center;">
+          <div class="cooldown-ring">
+            <svg viewBox="0 0 80 80">
+              <circle class="track" cx="40" cy="40" r="35"/>
+              <circle class="progress" cx="40" cy="40" r="35"/>
+            </svg>
+            <span class="icon">🛡️</span>
+            <span class="cooldown-label">Shield</span>
+          </div>
+          <div class="cooldown-ring">
+            <svg viewBox="0 0 80 80">
+              <circle class="track" cx="40" cy="40" r="35"/>
+              <circle class="progress" cx="40" cy="40" r="35" style="stroke: var(--orange); stroke-dashoffset: 110; filter: drop-shadow(0 0 6px var(--orange-glow));"/>
+            </svg>
+            <span class="icon">⚡</span>
+            <span class="cooldown-label">EMP</span>
+          </div>
+          <div class="cooldown-ring">
+            <svg viewBox="0 0 80 80">
+              <circle class="track" cx="40" cy="40" r="35"/>
+              <circle class="progress" cx="40" cy="40" r="35" style="stroke: var(--red); stroke-dashoffset: 165; filter: drop-shadow(0 0 6px var(--red-glow));"/>
+            </svg>
+            <span class="icon">💉</span>
+            <span class="cooldown-label">Stim</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Threat Radar -->
+      <div class="panel glass glass-red">
+        <div class="panel-title red">Threat Radar</div>
+        <div class="threat-indicator">
+          <div class="threat-icon">🛸</div>
+          <div class="threat-info">
+            <div class="threat-name">Patrol Drone</div>
+            <div class="threat-dist">142m away</div>
+          </div>
+          <div class="threat-dir">NW</div>
+        </div>
+        <div class="threat-indicator">
+          <div class="threat-icon">🔴</div>
+          <div class="threat-info">
+            <div class="threat-name">Sniper Nest</div>
+            <div class="threat-dist">89m away</div>
+          </div>
+          <div class="threat-dir">E</div>
+        </div>
+        <div class="threat-indicator">
+          <div class="threat-icon">💣</div>
+          <div class="threat-info">
+            <div class="threat-name">Proximity Mine</div>
+            <div class="threat-dist">34m away</div>
+          </div>
+          <div class="threat-dir">S</div>
+        </div>
+      </div>
+
+      <!-- Killfeed -->
+      <div class="panel glass">
+        <div class="panel-title">Combat Log</div>
+        <div class="killfeed">
+          <div class="killfeed-entry">
+            <span class="killfeed-time">18:42</span>
+            <span class="killfeed-killer">Alpha-1</span>
+            <span>→</span>
+            <span class="killfeed-victim">Bravo-3</span>
+            <span class="killfeed-weapon">[DMR]</span>
+          </div>
+          <div class="killfeed-entry">
+            <span class="killfeed-time">18:38</span>
+            <span class="killfeed-killer">Alpha-2</span>
+            <span>→</span>
+            <span class="killfeed-victim">Bravo-1</span>
+            <span class="killfeed-weapon">[SMG]</span>
+          </div>
+          <div class="killfeed-entry">
+            <span class="killfeed-time">18:35</span>
+            <span class="killfeed-killer">Drone</span>
+            <span>→</span>
+            <span class="killfeed-victim">Alpha-4</span>
+            <span class="killfeed-weapon">[Spot]</span>
+          </div>
+          <div class="killfeed-entry">
+            <span class="killfeed-time">18:31</span>
+            <span class="killfeed-killer">Alpha-1</span>
+            <span>→</span>
+            <span class="killfeed-victim">Bravo-2</span>
+            <span class="killfeed-weapon">[Sniped]</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tactical Map -->
+      <div class="panel glass glass-cyan" style="grid-column: span 2;">
+        <div class="panel-title">Tactical Map</div>
+        <div class="map-container" id="sandboxMap">
+          <div class="map-overlay glass">Oslo — Sector 7</div>
+          <div class="scanning-line"></div>
+        </div>
+      </div>
+
+      <!-- Squad Status -->
+      <div class="panel glass">
+        <div class="panel-title orange">Squad Status</div>
+        <div class="squad-list">
+          <div class="squad-member">
+            <div class="member-avatar">A1</div>
+            <div class="member-info">
+              <div class="member-name">Alpha-1</div>
+              <div class="member-role">Squad Leader</div>
+            </div>
+            <div class="member-hp"><div class="member-hp-fill" style="width: 65%;"></div></div>
+          </div>
+          <div class="squad-member">
+            <div class="member-avatar">A2</div>
+            <div class="member-info">
+              <div class="member-name">Alpha-2</div>
+              <div class="member-role">Medic</div>
+            </div>
+            <div class="member-hp"><div class="member-hp-fill" style="width: 82%;"></div></div>
+          </div>
+          <div class="squad-member">
+            <div class="member-avatar">A3</div>
+            <div class="member-info">
+              <div class="member-name">Alpha-3</div>
+              <div class="member-role">Scout</div>
+            </div>
+            <div class="member-hp"><div class="member-hp-fill" style="width: 45%;"></div></div>
+          </div>
+          <div class="squad-member">
+            <div class="member-avatar">A4</div>
+            <div class="member-info">
+              <div class="member-name">Alpha-4</div>
+              <div class="member-role">Heavy</div>
+            </div>
+            <div class="member-hp"><div class="member-hp-fill" style="width: 91%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="panel glass">
+        <div class="panel-title">Quick Actions</div>
+        <div class="ability-grid">
+          <div class="ability-slot">
+            <span style="font-size: 1.5rem;">📡</span>
+            <span class="key">Q</span>
+          </div>
+          <div class="ability-slot">
+            <span style="font-size: 1.5rem;">🎯</span>
+            <span class="key">W</span>
+          </div>
+          <div class="ability-slot">
+            <span style="font-size: 1.5rem;">💊</span>
+            <span class="key">E</span>
+          </div>
+          <div class="ability-slot">
+            <span style="font-size: 1.5rem;">🔦</span>
+            <span class="key">R</span>
+          </div>
+          <div class="ability-slot">
+            <span style="font-size: 1.5rem;">🚁</span>
+            <span class="key">T</span>
+          </div>
+          <div class="ability-slot">
+            <span style="font-size: 1.5rem;">📻</span>
+            <span class="key">Y</span>
+          </div>
+          <div class="ability-slot">
+            <span style="font-size: 1.5rem;">🧨</span>
+            <span class="key">U</span>
+          </div>
+          <div class="ability-slot">
+            <span style="font-size: 1.5rem;">🛡️</span>
+            <span class="key">I</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ammo / Equipment -->
+      <div class="panel glass">
+        <div class="panel-title">Equipment</div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+          <div style="text-align: center; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: var(--radius);">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔫</div>
+            <div style="font-size: 0.875rem; font-weight: 600;">AK-74</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim);">24 / 120</div>
+            <div class="bar-track" style="margin-top: 0.5rem; height: 4px;">
+              <div class="bar-fill" style="width: 60%; background: var(--orange);"></div>
+            </div>
+          </div>
+          <div style="text-align: center; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: var(--radius);">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔪</div>
+            <div style="font-size: 0.875rem; font-weight: 600;">Combat Knife</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim);">Melee</div>
+          </div>
+          <div style="text-align: center; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: var(--radius);">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎒</div>
+            <div style="font-size: 0.875rem; font-weight: 600;">Medkits</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim);">x3</div>
+          </div>
+          <div style="text-align: center; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: var(--radius);">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🛡️</div>
+            <div style="font-size: 0.875rem; font-weight: 600;">Armor</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim);">Level 2</div>
+            <div class="bar-track" style="margin-top: 0.5rem; height: 4px;">
+              <div class="bar-fill" style="width: 80%; background: var(--cyan);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Match Timer -->
+      <div class="panel glass" style="text-align: center;">
+        <div class="panel-title orange">Mission Timer</div>
+        <div style="font-size: 3rem; font-weight: 800; font-family: monospace; letter-spacing: 0.05em; color: var(--cyan); text-shadow: 0 0 20px var(--cyan-glow);">
+          14:32
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em;">
+          Time Remaining
+        </div>
+        <div style="margin-top: 1rem; display: flex; justify-content: center; gap: 2rem; font-size: 0.875rem;">
+          <div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--green);">4</div>
+            <div style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Alive</div>
+          </div>
+          <div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--red);">2</div>
+            <div style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">KIA</div>
+          </div>
+          <div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--orange);">12</div>
+            <div style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Score</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Space Age Shine Buttons -->
+      <div class="panel glass" style="grid-column: span 2;">
+        <div class="panel-title">Space Age Shine Buttons</div>
+        <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; padding: 1rem;">
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+            <button class="sa-btn sa-btn--coral">Deploy</button>
+            <button class="sa-btn sa-btn--teal">Extract</button>
+            <button class="sa-btn sa-btn--charcoal">Intel</button>
+            <button class="sa-btn sa-btn--paisley">Mission</button>
+          </div>
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+            <button class="sa-btn sa-btn--coral sa-btn--sm">Scan</button>
+            <button class="sa-btn sa-btn--teal sa-btn--sm">Jam</button>
+            <button class="sa-btn sa-btn--charcoal sa-btn--lg">Initiate Protocol</button>
+          </div>
+          <div class="sa-btn-group">
+            <button class="sa-btn sa-btn--coral">Alpha</button>
+            <button class="sa-btn sa-btn--teal">Bravo</button>
+            <button class="sa-btn sa-btn--charcoal">Charlie</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mission Setup — Mod Paisley Background -->
+      <div class="panel glass" style="grid-column: span 2; padding: 0; overflow: hidden;">
+        <div style="background:
+          radial-gradient(ellipse at 20% 30%, rgba(232, 93, 78, 0.15) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 70%, rgba(74, 155, 155, 0.15) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 50%, rgba(201, 169, 110, 0.08) 0%, transparent 60%),
+          linear-gradient(135deg, #0f1f2f 0%, #1a2a3a 50%, #0a1a2a 100%);
+          padding: 2rem;
+          min-height: 280px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 1.5rem;
+          position: relative;">
+          <!-- Paisley decorative overlay -->
+          <div style="position: absolute; inset: 0; opacity: 0.06;
+            background-image: url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'%3E%3Cpath d=\'M50 10 Q60 30 50 50 Q40 70 50 90 Q60 70 50 50 Q40 30 50 10\' fill=\'none\' stroke=\'%23C9A96E\' stroke-width=\'1\'/%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'8\' fill=\'none\' stroke=\'%23E85D4E\' stroke-width=\'0.5\'/%3E%3C/svg%3E');
+            background-size: 80px 80px;"></div>
+          <div style="position: relative; z-index: 1; text-align: center;">
+            <div style="font-size: 0.75rem; color: var(--sa-gold); text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 0.5rem;">Operation</div>
+            <h2 style="font-size: 2rem; font-weight: 800; color: var(--sa-cream); text-shadow: 0 2px 10px rgba(0,0,0,0.5); margin-bottom: 0.25rem;">Phantom Harvest</h2>
+            <p style="font-size: 0.875rem; color: var(--sa-teal-light); opacity: 0.8;">Oslo Zone 7 — Night Extraction</p>
+          </div>
+          <div style="position: relative; z-index: 1; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+            <button class="sa-btn sa-btn--coral">Start Mission</button>
+            <button class="sa-btn sa-btn--teal">Loadout</button>
+            <button class="sa-btn sa-btn--charcoal sa-btn--sm">Briefing</button>
+          </div>
+          <div style="position: relative; z-index: 1; display: flex; gap: 2rem; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em;">
+            <span>🎯 High Value Target</span>
+            <span>⏱ 45 Min Window</span>
+            <span>👥 4 Squad Max</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer style="text-align: center; margin-top: 3rem; padding: 2rem; color: var(--text-dim); font-size: 0.875rem;">
+      <p>Signal Lost — Design Sandbox v1.0</p>
+      <p style="margin-top: 0.5rem; font-size: 0.75rem;">Glassmorphism · Neon Accents · Tactical HUD · Mobile-First</p>
+    </footer>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    // Initialize tactical map
+    const map = L.map('sandboxMap').setView([59.9139, 10.7522], 14);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(map);
+
+    // Add tactical markers
+    const threats = [
+      { pos: [59.9145, 10.7530], type: 'drone', icon: '🛸', color: '#ff6b35' },
+      { pos: [59.9135, 10.7515], type: 'sniper', icon: '🔴', color: '#ff0040' },
+      { pos: [59.9140, 10.7540], type: 'mine', icon: '💣', color: '#ff0040' },
+      { pos: [59.9128, 10.7528], type: 'loot', icon: '🎒', color: '#00ff88' },
+    ];
+
+    threats.forEach(t => {
+      const el = document.createElement('div');
+      el.innerHTML = t.icon;
+      el.style.fontSize = '1.5rem';
+      el.style.textShadow = `0 0 10px ${t.color}`;
+      
+      L.marker(t.pos, {
+        icon: L.divIcon({
+          className: 'tactical-marker',
+          html: el.outerHTML,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15]
+        })
+      }).addTo(map).bindPopup(`<b>${t.type.toUpperCase()}</b><br>Threat detected`);
+    });
+
+    // Pulse animation for threat zones
+    L.circle([59.9145, 10.7530], {
+      radius: 100,
+      color: '#ff6b35',
+      fillColor: '#ff6b35',
+      fillOpacity: 0.1,
+      weight: 1,
+      dashArray: '5, 10'
+    }).addTo(map);
+
+    // Add player position
+    L.circleMarker([59.9139, 10.7522], {
+      radius: 8,
+      fillColor: '#00d4ff',
+      color: '#00d4ff',
+      fillOpacity: 0.8,
+      weight: 2
+    }).addTo(map).bindPopup('YOU');
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Signal Lost v2 — Tactical Chat Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* --- Full screen layout --- */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    background: radial-gradient(ellipse at 50% 0%, #0d1a10 0%, #0a0a0f 70%);
+    position: relative;
+  }
+
+  /* --- Top bar --- */
+  #top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid #1a2a1a;
+    background: rgba(0,0,0,0.6);
+    flex-shrink: 0;
+    z-index: 5;
+  }
+  #top-bar .game-title {
+    font-size: 12px;
+    color: #00ff88;
+    letter-spacing: 2px;
+    font-weight: bold;
+  }
+  #top-bar .game-title small {
+    color: #446644;
+    font-weight: normal;
+    letter-spacing: 1px;
+  }
+  #top-bar .status {
+    font-size: 9px;
+    color: #556655;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #top-bar .status .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00ff88;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* --- Game map area (placeholder) --- */
+  #map-area {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #map-area .map-placeholder {
+    width: 100%;
+    height: 100%;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(0,255,136,0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 60%, rgba(0,255,136,0.02) 0%, transparent 50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  #map-area .map-placeholder .grid {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  #map-area .map-placeholder .center-text {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    color: #223322;
+    font-size: 16px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+  #map-area .map-placeholder .center-text small {
+    display: block;
+    font-size: 10px;
+    color: #1a2a1a;
+    margin-top: 4px;
+  }
+
+  /* --- Player dots on minimap --- */
+  .map-dots {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+  }
+  .map-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.5s ease;
+  }
+  .map-dot.ally { background: #00ff88; box-shadow: 0 0 6px rgba(0,255,136,0.5); }
+  .map-dot.enemy { background: #ff3344; box-shadow: 0 0 6px rgba(255,51,68,0.5); }
+  .map-dot.objective { background: #4488ff; box-shadow: 0 0 6px rgba(68,136,255,0.5); }
+
+  /* --- Tactical overlay indicators --- */
+  .tac-indicator {
+    position: absolute;
+    z-index: 4;
+    font-size: 9px;
+    color: #889988;
+    letter-spacing: 1px;
+    transform: translate(-50%, 100%);
+    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+    pointer-events: none;
+  }
+
+  /* --- Chat overlay (bottom) --- */
+  #chat-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    background: linear-gradient(transparent, rgba(0,0,0,0.85) 20%);
+    padding-top: 40px;
+    pointer-events: none;
+  }
+  #chat-container {
+    pointer-events: auto;
+    padding: 0 10px 8px;
+  }
+
+  /* Chat messages */
+  #chat-messages {
+    max-height: 140px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #1a2a1a transparent;
+    margin-bottom: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  #chat-messages::-webkit-scrollbar { width: 3px; }
+  #chat-messages::-webkit-scrollbar-thumb { background: #1a2a1a; border-radius: 2px; }
+
+  .chat-msg {
+    font-size: 10px;
+    line-height: 1.4;
+    padding: 4px 8px;
+    border-radius: 3px;
+    background: rgba(0,0,0,0.4);
+    animation: fadeIn 0.3s ease;
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .chat-msg .sender {
+    color: #00ff88;
+    white-space: nowrap;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  .chat-msg .sender.enemy { color: #ff3344; }
+  .chat-msg .sender.system { color: #ffaa00; }
+  .chat-msg .text {
+    color: #b0b0b0;
+    word-break: break-word;
+  }
+  .chat-msg .timestamp {
+    color: #445544;
+    font-size: 8px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .chat-msg.system-msg .text { color: #ffaa00; font-style: italic; }
+
+  /* --- Chat input --- */
+  #chat-input-area {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid #1a2a1a;
+    border-radius: 4px;
+    padding: 4px 6px;
+    backdrop-filter: blur(4px);
+  }
+  #chat-input-area:focus-within {
+    border-color: #00ff88;
+    box-shadow: 0 0 8px rgba(0,255,136,0.1);
+  }
+  #chat-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 6px 4px;
+    outline: none;
+    min-width: 0;
+  }
+  #chat-input::placeholder {
+    color: #334433;
+  }
+  #chat-send {
+    background: rgba(0,255,136,0.1);
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  #chat-send:active {
+    background: rgba(0,255,136,0.3);
+  }
+
+  /* --- Tab bar (role selection) --- */
+  #tab-bar {
+    display: flex;
+    border-bottom: 1px solid #1a2a1a;
+    background: rgba(0,0,0,0.4);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 9px;
+    color: #556655;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+  }
+  .tab.active {
+    color: #00ff88;
+    border-bottom-color: #00ff88;
+    background: rgba(0,255,136,0.05);
+  }
+  .tab:active {
+    background: rgba(0,255,136,0.1);
+  }
+
+  /* --- Command wheel (quick chat) --- */
+  #command-wheel {
+    display: none;
+    position: absolute;
+    bottom: 80px;
+    left: 10px;
+    right: 10px;
+    z-index: 20;
+    background: rgba(0,0,0,0.9);
+    border: 1px solid #1a2a1a;
+    border-radius: 6px;
+    padding: 10px;
+  }
+  #command-wheel.open { display: block; }
+  .cmd-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .cmd-btn {
+    background: rgba(0,255,136,0.05);
+    border: 1px solid #1a2a1a;
+    color: #889988;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    padding: 10px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .cmd-btn:active {
+    background: rgba(0,255,136,0.15);
+    border-color: #00ff88;
+    color: #00ff88;
+  }
+  #cmd-close {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    background: transparent;
+    border: none;
+    color: #446644;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    padding: 6px;
+    cursor: pointer;
+  }
+
+  /* --- Responsive --- */
+  @media (min-width: 600px) {
+    .tab { font-size: 11px; padding: 10px 12px; }
+    #chat-messages { max-height: 200px; }
+    .chat-msg { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Top bar -->
+  <div id="top-bar">
+    <div class="game-title">
+      SIGNAL LOST <small>TACTICAL CHAT</small>
+    </div>
+    <div class="status">
+      <span class="dot"></span>
+      ONLINE · <span id="player-count">6</span> OPERATIVES
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div id="tab-bar">
+    <div class="tab active" data-tab="all">ALL</div>
+    <div class="tab" data-tab="team">TEAM</div>
+    <div class="tab" data-tab="squad">SQUAD</div>
+    <div class="tab" data-tab="system">SYSTEM</div>
+  </div>
+
+  <!-- Map area -->
+  <div id="map-area">
+    <div class="map-placeholder">
+      <div class="grid"></div>
+      <div class="map-dots" id="map-dots"></div>
+      <div class="center-text">
+        TACTICAL MAP
+        <small>GAME VIEWPORT</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Command wheel -->
+  <div id="command-wheel">
+    <div class="cmd-grid">
+      <button class="cmd-btn" data-cmd="enemy spotted">ENEMY SPOTTED</button>
+      <button class="cmd-btn" data-cmd="need backup">NEED BACKUP</button>
+      <button class="cmd-btn" data-cmd="moving to objective">MOVING TO OBJ</button>
+      <button class="cmd-btn" data-cmd="cover me">COVER ME</button>
+      <button class="cmd-btn" data-cmd="extraction ready">EXTRACTION READY</button>
+      <button class="cmd-btn" data-cmd="enemy down">ENEMY DOWN</button>
+      <button class="cmd-btn" data-cmd="watch your flank">WATCH FLANK</button>
+      <button class="cmd-btn" data-cmd="regroup">REGROUP</button>
+    </div>
+    <button id="cmd-close">CLOSE</button>
+  </div>
+
+  <!-- Chat overlay -->
+  <div id="chat-overlay">
+    <div id="chat-container">
+      <div id="chat-messages"></div>
+      <div id="chat-input-area">
+        <input type="text" id="chat-input" placeholder="TYPE MESSAGE..." maxlength="120" enterkeyhint="send">
+        <button id="cmd-toggle" style="background:transparent;border:1px solid #334433;color:#556655;font-family:monospace;font-size:10px;padding:6px 8px;border-radius:3px;cursor:pointer;flex-shrink:0;">CMD</button>
+        <button id="chat-send">SEND</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- Chat System ---
+const chatMessages = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send');
+const cmdToggle = document.getElementById('cmd-toggle');
+const cmdWheel = document.getElementById('command-wheel');
+const cmdClose = document.getElementById('cmd-close');
+const tabs = document.querySelectorAll('.tab');
+
+// Player names (randomized)
+const playerNames = [
+  'GHOST', 'VIPER', 'RAVEN', 'SHADOW', 'PHANTOM',
+  'BLADE', 'FANG', 'HAWK', 'WOLF', 'STRIKE',
+  'ECHO', 'NOVA', 'RANGER', 'SENTRY', 'COBRA'
+];
+
+let currentPlayer = 'GHOST';
+let currentTab = 'all';
+let messageHistory = [];
+let playerPositions = [];
+
+// System messages
+const systemMessages = [
+  { text: 'Radio check. All channels clear.', sender: 'SYSTEM', delay: 1000 },
+  { text: 'Primary objective updated: Secure LZ Alpha.', sender: 'SYSTEM', delay: 4000 },
+  { text: 'Enemy patrol spotted sector 7.', sender: 'VIPER', delay: 7000 },
+  { text: 'Moving to provide overwatch.', sender: 'RAVEN', delay: 10000 },
+  { text: 'Stay sharp. We have hostiles inbound.', sender: 'SHADOW', delay: 13000 },
+  { text: 'Objective B captured. Good work team.', sender: 'SYSTEM', delay: 16000 },
+  { text: 'Contact! 3 tangos at my 2 o\'clock.', sender: 'VIPER', delay: 19000 },
+  { text: 'Copy that. En route for support.', sender: 'PHANTOM', delay: 21000 },
+  { text: 'Ammo status: half. Could use a resupply.', sender: 'RAVEN', delay: 24000 },
+  { text: 'Extraction inbound. Secure the perimeter.', sender: 'SYSTEM', delay: 28000 },
+  { text: 'Roger that. Setting up defensive positions.', sender: 'BLADE', delay: 30000 },
+  { text: 'Enemy sniper on the roof. Taking fire!', sender: 'VIPER', delay: 33000 },
+  { text: 'Smoke deployed. Covering your advance.', sender: 'ECHO', delay: 36000 },
+  { text: 'Nice shot. That\'s one less tango.', sender: 'GHOST', delay: 39000 },
+  { text: 'All hostiles neutralized. Area secure.', sender: 'SYSTEM', delay: 42000 },
+];
+
+function addMessage(text, sender, type = 'normal') {
+  const msg = {
+    id: Date.now() + Math.random(),
+    text,
+    sender,
+    type,
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    time: Date.now()
+  };
+  messageHistory.push(msg);
+  renderMessages();
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function renderMessages() {
+  const filtered = currentTab === 'all'
+    ? messageHistory.slice(-50)
+    : messageHistory.filter(m => {
+        if (currentTab === 'team') return m.sender !== 'SYSTEM' && m.sender !== currentPlayer;
+        if (currentTab === 'squad') return m.sender === currentPlayer || m.sender === 'SYSTEM';
+        if (currentTab === 'system') return m.sender === 'SYSTEM';
+        return true;
+      }).slice(-50);
+
+  chatMessages.innerHTML = filtered.map(m => {
+    const senderClass = m.sender === 'ENEMY' ? 'enemy' : m.sender === 'SYSTEM' ? 'system' : '';
+    const msgClass = m.type === 'system' ? 'system-msg' : '';
+    return `<div class="chat-msg ${msgClass}">
+      <span class="sender ${senderClass}">${m.sender}</span>
+      <span class="text">${m.text}</span>
+      <span class="timestamp">${m.timestamp}</span>
+    </div>`;
+  }).join('');
+}
+
+// Send message
+function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  addMessage(text, currentPlayer);
+  chatInput.value = '';
+  chatInput.focus();
+
+  // Random replies from other players
+  const replies = [
+    'Copy that.', 'Roger.', 'Affirmative.', 'On it.',
+    'Hold position.', 'Moving now.', 'Stay frosty.', 'Wilco.'
+  ];
+  if (Math.random() > 0.4) {
+    const replyPlayer = playerNames.filter(n => n !== currentPlayer)[Math.floor(Math.random() * (playerNames.length - 1))];
+    setTimeout(() => {
+      addMessage(replies[Math.floor(Math.random() * replies.length)], replyPlayer);
+    }, 1500 + Math.random() * 2000);
+  }
+}
+
+chatSend.addEventListener('click', sendMessage);
+chatInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+// System messages (inject with delay)
+systemMessages.forEach((msg, i) => {
+  setTimeout(() => {
+    if (msg.sender === 'SYSTEM') {
+      addMessage(msg.text, 'SYSTEM', 'system');
+    } else {
+      addMessage(msg.text, msg.sender);
+    }
+  }, msg.delay);
+});
+
+// --- Command Wheel ---
+cmdToggle.addEventListener('click', () => {
+  cmdWheel.classList.toggle('open');
+});
+
+cmdClose.addEventListener('click', () => {
+  cmdWheel.classList.remove('open');
+});
+
+document.querySelectorAll('.cmd-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const cmd = btn.dataset.cmd;
+    addMessage(cmd.toUpperCase(), currentPlayer);
+    cmdWheel.classList.remove('open');
+  });
+});
+
+// --- Tab switching ---
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentTab = tab.dataset.tab;
+    renderMessages();
+  });
+});
+
+// --- Map dots (player positions) ---
+const mapDots = document.getElementById('map-dots');
+const mapArea = document.getElementById('map-area');
+
+function updateMapDots() {
+  // 6 allies
+  const allies = [
+    { x: 20, y: 30, name: 'GHOST' },
+    { x: 35, y: 55, name: 'VIPER' },
+    { x: 60, y: 25, name: 'RAVEN' },
+    { x: 45, y: 70, name: 'SHADOW' },
+    { x: 75, y: 45, name: 'PHANTOM' },
+    { x: 15, y: 65, name: 'BLADE' },
+  ];
+  // 3 enemies
+  const enemies = [
+    { x: 80, y: 75 },
+    { x: 55, y: 80 },
+    { x: 25, y: 15 },
+  ];
+  // 2 objectives
+  const objectives = [
+    { x: 50, y: 50, label: 'A' },
+    { x: 70, y: 20, label: 'B' },
+  ];
+
+  let html = '';
+
+  // Connection lines (allies to nearest objective)
+  allies.forEach(ally => {
+    const nearest = objectives.reduce((best, obj) => {
+      const dx = ally.x - obj.x;
+      const dy = ally.y - obj.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      return d < best.d ? { obj, d } : best;
+    }, { obj: null, d: Infinity });
+
+    if (nearest.obj) {
+      html += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;">
+        <line x1="${ally.x}%" y1="${ally.y}%" x2="${nearest.obj.x}%" y2="${nearest.obj.y}%"
+          stroke="#4488ff" stroke-width="1" opacity="0.2" stroke-dasharray="4,4"/>
+      </svg>`;
+    }
+  });
+
+  // Objectives
+  objectives.forEach(obj => {
+    html += `<div class="map-dot objective" style="left:${obj.x}%;top:${obj.y}%;"></div>`;
+    html += `<div class="tac-indicator" style="left:${obj.x}%;top:${obj.y + 1.5}%;color:#4488ff;">OBJ-${obj.label}</div>`;
+  });
+
+  // Enemies
+  enemies.forEach(enemy => {
+    html += `<div class="map-dot enemy" style="left:${enemy.x}%;top:${enemy.y}%;"></div>`;
+  });
+
+  // Allies
+  allies.forEach(ally => {
+    html += `<div class="map-dot ally" style="left:${ally.x}%;top:${ally.y}%;"></div>`;
+    html += `<div class="tac-indicator" style="left:${ally.x}%;top:${ally.y - 1.5}%;">${ally.name}</div>`;
+  });
+
+  mapDots.innerHTML = html;
+}
+
+updateMapDots();
+
+// Animate map dots slightly
+setInterval(() => {
+  const dots = document.querySelectorAll('.map-dot.ally');
+  dots.forEach((dot, i) => {
+    const currentLeft = parseFloat(dot.style.left);
+    const currentTop = parseFloat(dot.style.top);
+    dot.style.left = (currentLeft + (Math.random() - 0.5) * 0.3) + '%';
+    dot.style.top = (currentTop + (Math.random() - 0.5) * 0.3) + '%';
+  });
+}, 2000);
+
+// --- Random ambient messages from enemies ---
+const enemyChatter = [
+  'Contact east!', 'They\'re pushing!', 'Flanking left!',
+  'Need support!', 'I\'m hit!', 'Frag out!'
+];
+
+setInterval(() => {
+  if (Math.random() > 0.7) {
+    const enemyName = 'ENEMY';
+    addMessage(enemyChatter[Math.floor(Math.random() * enemyChatter.length)], enemyName);
+  }
+}, 8000);
+
+// --- Player count fluctuates ---
+setInterval(() => {
+  const count = 4 + Math.floor(Math.random() * 4);
+  document.getElementById('player-count').textContent = count;
+}, 15000);
+
+// --- Initial messages ---
+addMessage('Welcome to Signal Lost Tactical Chat.', 'SYSTEM', 'system');
+addMessage('All channels active. Good hunting.', 'SYSTEM', 'system');
+</script>
+</body>
+</html>

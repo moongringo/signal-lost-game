@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>R&D Scroll Animation Library</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg2: #12121a;
+      --text: #ffffff;
+      --text2: #a0a0b0;
+      --accent: #00f0ff;
+      --accent2: #ff0055;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+    
+    .container { max-width: 1200px; margin: 0 auto; padding: 4rem 2rem; }
+    
+    h1 { font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 900; margin-bottom: 1rem; letter-spacing: -0.03em; }
+    h2 { font-size: 1.5rem; font-weight: 700; margin: 3rem 0 1.5rem; color: var(--accent); }
+    p { color: var(--text2); line-height: 1.7; margin-bottom: 2rem; }
+    
+    .spacer { height: 60vh; display: flex; align-items: center; justify-content: center; }
+    .spacer span { color: var(--text2); font-family: 'JetBrains Mono', monospace; }
+    
+    /* ========== SCROLL ANIMATIONS ========== */
+    
+    /* 1. Fade In Up */
+    .fade-in-up {
+      opacity: 0;
+      transform: translateY(60px);
+      transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+    }
+    .fade-in-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* 2. Fade In Scale */
+    .fade-in-scale {
+      opacity: 0;
+      transform: scale(0.9);
+      transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-spring);
+    }
+    .fade-in-scale.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+    
+    /* 3. Slide In Left */
+    .slide-in-left {
+      opacity: 0;
+      transform: translateX(-100px);
+      transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+    }
+    .slide-in-left.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    
+    /* 4. Slide In Right */
+    .slide-in-right {
+      opacity: 0;
+      transform: translateX(100px);
+      transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+    }
+    .slide-in-right.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    
+    /* 5. Rotate In */
+    .rotate-in {
+      opacity: 0;
+      transform: rotate(-10deg) scale(0.8);
+      transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-spring);
+    }
+    .rotate-in.visible {
+      opacity: 1;
+      transform: rotate(0) scale(1);
+    }
+    
+    /* 6. Blur In */
+    .blur-in {
+      opacity: 0;
+      filter: blur(20px);
+      transition: opacity 0.8s var(--ease-out), filter 0.8s var(--ease-out);
+    }
+    .blur-in.visible {
+      opacity: 1;
+      filter: blur(0);
+    }
+    
+    /* 7. Stagger Children */
+    .stagger-parent .stagger-child {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
+    }
+    .stagger-parent.visible .stagger-child {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .stagger-parent.visible .stagger-child:nth-child(1) { transition-delay: 0s; }
+    .stagger-parent.visible .stagger-child:nth-child(2) { transition-delay: 0.1s; }
+    .stagger-parent.visible .stagger-child:nth-child(3) { transition-delay: 0.2s; }
+    .stagger-parent.visible .stagger-child:nth-child(4) { transition-delay: 0.3s; }
+    .stagger-parent.visible .stagger-child:nth-child(5) { transition-delay: 0.4s; }
+    
+    /* 8. Parallax Layer */
+    .parallax-layer {
+      will-change: transform;
+    }
+    
+    /* 9. Text Reveal (line by line) */
+    .text-reveal {
+      overflow: hidden;
+    }
+    .text-reveal .line {
+      display: block;
+      transform: translateY(100%);
+      transition: transform 0.8s var(--ease-out);
+    }
+    .text-reveal.visible .line {
+      transform: translateY(0);
+    }
+    .text-reveal.visible .line:nth-child(1) { transition-delay: 0s; }
+    .text-reveal.visible .line:nth-child(2) { transition-delay: 0.15s; }
+    .text-reveal.visible .line:nth-child(3) { transition-delay: 0.3s; }
+    
+    /* 10. Clip Reveal */
+    .clip-reveal {
+      clip-path: inset(0 100% 0 0);
+      transition: clip-path 1s var(--ease-out);
+    }
+    .clip-reveal.visible {
+      clip-path: inset(0 0% 0 0);
+    }
+    
+    /* Demo Cards */
+    .demo-card {
+      background: var(--bg2);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    .demo-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+    .demo-card p { font-size: 0.9rem; margin-bottom: 0; }
+    
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    
+    /* Progress Bar */
+    .progress-bar {
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 2rem 0;
+    }
+    .progress-bar .fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      width: 0%;
+      transition: width 1.5s var(--ease-out);
+    }
+    .progress-bar.visible .fill {
+      width: 100%;
+    }
+    
+    /* Number Counter */
+    .counter {
+      font-size: 4rem;
+      font-weight: 900;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    /* Image Reveal */
+    .img-reveal {
+      position: relative;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+    .img-reveal::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--accent);
+      transform: translateY(0);
+      transition: transform 1s var(--ease-out);
+    }
+    .img-reveal.visible::after {
+      transform: translateY(100%);
+    }
+    .img-reveal img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      transform: scale(1.2);
+      transition: transform 1.2s var(--ease-out);
+    }
+    .img-reveal.visible img {
+      transform: scale(1);
+    }
+    
+    /* Horizontal Scroll Section */
+    .horizontal-scroll {
+      display: flex;
+      gap: 2rem;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding: 2rem 0;
+      scrollbar-width: none;
+    }
+    .horizontal-scroll::-webkit-scrollbar { display: none; }
+    .horizontal-scroll .demo-card {
+      min-width: 300px;
+      scroll-snap-align: center;
+      flex-shrink: 0;
+    }
+  </style>
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="./design-flow.css" />
+</head><body data-flow-page="scroll-animations" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>R&D Scroll Animation Library</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./design-flow-setup.html">Setup</a>
+        <a href="./design-flow-roles.html">Roles</a>
+        <a href="./design-flow-control.html">Control</a>
+
+        <a href="./design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="./login.html">Login</a>
+              <a href="./server-browser.html">Server Browser</a>
+              <a href="./map-selection.html">Map Selection</a>
+              <a href="./role-selection.html">Role Selection</a>
+              <a href="./matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="./player-profile.html">Player Profile</a>
+              <a href="./career-stats.html">Career Stats</a>
+              <a href="./match-result.html">Match Result</a>
+              <a href="./post-match-report.html">Post-Match Report</a>
+              <a href="./kill-cam.html">Kill Cam</a>
+              <a href="./death-recap.html">Death Recap</a>
+              <a href="./spectator-mode.html">Spectator Mode</a>
+              <a href="./replay-viewer.html">Replay Viewer</a>
+              <a href="./tournament-bracket.html">Tournament</a>
+              <a href="./emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="./store.html">Store</a>
+              <a href="./friends.html">Friends</a>
+              <a href="./squad.html">Squad</a>
+              <a href="./clan-wars.html">Clan Wars</a>
+              <a href="./patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="./token-dashboard.html">Token Dashboard</a>
+              <a href="./daily-challenges.html">Daily Challenges</a>
+              <a href="./inventory.html">Inventory</a>
+              <a href="./loadout-builder.html">Loadout Builder</a>
+              <a href="./battle-pass.html">Battle Pass</a>
+              <a href="./loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="./R&D-INDEX.html">R&D Index</a>
+              <a href="./ai-battle-arena.html">AI Battle Arena</a>
+              <a href="./admin-dashboard.html">Admin Dashboard</a>
+              <a href="./leaderboard.html">Leaderboard</a>
+              <a href="./settings.html">Settings</a>
+              <a href="./design-system.html">Design System</a>
+              <a href="./design-flow-setup.html">Setup Page</a>
+              <a href="./design-flow-roles.html">Roles Page</a>
+              <a href="./design-flow-control.html">Control Page</a>
+              <a href="./action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="./mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="./mobile-radar.html">Mobile Radar</a>
+              <a href="./gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="numberedPagesBtn">🔢 All Pages (1-50+) ▾</button>
+          <div class="page-menu" id="numberedPagesMenu">
+            <div class="page-menu-group"><div class="page-menu-title">Auth & Flow (1-5)</div><a href="./login.html">1 — Login</a><a href="./server-browser.html">2 — Server Browser</a><a href="./map-selection.html">3 — Map Selection</a><a href="./role-selection.html">4 — Role Selection</a><a href="./matchmaking.html">5 — Matchmaking</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Game Screens (6-15)</div><a href="./player-profile.html">6 — Player Profile</a><a href="./career-stats.html">7 — Career Stats</a><a href="./match-result.html">8 — Match Result</a><a href="./post-match-report.html">9 — Post-Match Report</a><a href="./kill-cam.html">10 — Kill Cam</a><a href="./death-recap.html">11 — Death Recap</a><a href="./spectator-mode.html">12 — Spectator Mode</a><a href="./replay-viewer.html">13 — Replay Viewer</a><a href="./tournament-bracket.html">14 — Tournament</a><a href="./emote-wheel.html">15 — Emote Wheel</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Live & Social (16-20)</div><a href="./store.html">16 — Store</a><a href="./friends.html">17 — Friends</a><a href="./squad.html">18 — Squad</a><a href="./clan-wars.html">19 — Clan Wars</a><a href="./patch-notes.html">20 — Patch Notes</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Management (21-26)</div><a href="./token-dashboard.html">21 — Token Dashboard</a><a href="./daily-challenges.html">22 — Daily Challenges</a><a href="./inventory.html">23 — Inventory</a><a href="./loadout-builder.html">24 — Loadout Builder</a><a href="./battle-pass.html">25 — Battle Pass</a><a href="./loot-crate.html">26 — Loot Crate</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Tools & Systems (27-36)</div><a href="./R&D-INDEX.html">27 — R&D Index</a><a href="./ai-battle-arena.html">28 — AI Battle Arena</a><a href="./admin-dashboard.html">29 — Admin Dashboard</a><a href="./leaderboard.html">30 — Leaderboard</a><a href="./settings.html">31 — Settings</a><a href="./design-system.html">32 — Design System</a><a href="./design-flow-setup.html">33 — Setup Page</a><a href="./design-flow-roles.html">34 — Roles Page</a><a href="./design-flow-control.html">35 — Control Page</a><a href="./action-center.html">36 — Action Center</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Mobile (37-39)</div><a href="./mobile-ui-kit.html">37 — Mobile UI Kit</a><a href="./mobile-radar.html">38 — Mobile Radar</a><a href="./gps-tracker.html">39 — GPS Tracker</a></div>
+          </div>
+        </div>
+
+        <a href="./design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <div class="container">
+    <h1>Scroll Animation Library</h1>
+    <p>10 production-ready scroll-triggered animations. Based on patterns from top 200 Awwwards winners. Scroll down to see each effect in action.</p>
+    
+    <div class="spacer"><span>↓ Scroll to trigger animations ↓</span></div>
+    
+    <h2>1. Fade In Up</h2>
+    <div class="fade-in-up">
+      <div class="demo-card">
+        <h3>Element fades in while moving up</h3>
+        <p>Most common scroll animation. Used by Apple, Stripe, and 90% of modern sites. Smooth opacity + translateY transition.</p>
+      </div>
+    </div>
+    
+    <div class="spacer"><span>Keep scrolling...</span></div>
+    
+    <h2>2. Fade In Scale</h2>
+    <div class="fade-in-scale">
+      <div class="demo-card">
+        <h3>Element scales up from 90%</h3>
+        <p>Spring physics for natural feel. Great for cards, images, and feature highlights.</p>
+      </div>
+    </div>
+    
+    <h2>3. Slide In From Sides</h2>
+    <div class="grid-2">
+      <div class="slide-in-left">
+        <div class="demo-card">
+          <h3>Slide from left</h3>
+          <p>Content enters from the left side. Perfect for alternating layouts.</p>
+        </div>
+      </div>
+      <div class="slide-in-right">
+        <div class="demo-card">
+          <h3>Slide from right</h3>
+          <p>Content enters from the right side. Creates dynamic flow.</p>
+        </div>
+      </div>
+    </div>
+    
+    <h2>4. Rotate In</h2>
+    <div class="rotate-in">
+      <div class="demo-card">
+        <h3>Element rotates and scales in</h3>
+        <p>Subtle rotation with spring scale. Eye-catching for hero elements and CTAs.</p>
+      </div>
+    </div>
+    
+    <h2>5. Blur In</h2>
+    <div class="blur-in">
+      <div class="demo-card">
+        <h3>Element blurs into focus</h3>
+        <p>Cinematic reveal effect. Content sharpens as it enters viewport. High impact.</p>
+      </div>
+    </div>
+    
+    <h2>6. Stagger Children</h2>
+    <div class="stagger-parent">
+      <div class="stagger-child demo-card"><h3>Item 1</h3><p>First item with 0s delay</p></div>
+      <div class="stagger-child demo-card"><h3>Item 2</h3><p>Second item with 0.1s delay</p></div>
+      <div class="stagger-child demo-card"><h3>Item 3</h3><p>Third item with 0.2s delay</p></div>
+      <div class="stagger-child demo-card"><h3>Item 4</h3><p>Fourth item with 0.3s delay</p></div>
+      <div class="stagger-child demo-card"><h3>Item 5</h3><p>Fifth item with 0.4s delay</p></div>
+    </div>
+    
+    <h2>7. Text Reveal (Line by Line)</h2>
+    <div class="text-reveal">
+      <span class="line" style="font-size: 2rem; font-weight: 700;">First line reveals</span>
+      <span class="line" style="font-size: 2rem; font-weight: 700; color: var(--accent);">Second line follows</span>
+      <span class="line" style="font-size: 2rem; font-weight: 700;">Third line completes</span>
+    </div>
+    
+    <h2>8. Clip Reveal</h2>
+    <div class="clip-reveal">
+      <div class="demo-card">
+        <h3>Content revealed through clip-path</h3>
+        <p>Wipe effect from left to right. Common in portfolio sites and galleries.</p>
+      </div>
+    </div>
+    
+    <h2>9. Progress Bar Fill</h2>
+    <div class="progress-bar">
+      <div class="fill"></div>
+    </div>
+    <p>Progress bar animates width on scroll. Great for skill sections and loading states.</p>
+    
+    <h2>10. Image Reveal</h2>
+    <div class="img-reveal">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200'%3E%3Crect fill='%2312121a' width='400' height='200'/%3E%3Ctext fill='%2300f0ff' font-family='monospace' font-size='20' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EWebGL Shader Preview%3C/text%3E%3C/svg%3E" alt="Preview">
+    </div>
+    <p>Image reveal with overlay wipe and scale animation. Popular for galleries and portfolios.</p>
+    
+    <div class="spacer"><span>✨ All animations triggered by Intersection Observer ✨</span></div>
+    
+    <h2>Horizontal Scroll Snap</h2>
+    <div class="horizontal-scroll">
+      <div class="demo-card"><h3>Card 1</h3><p>Swipe or scroll horizontally</p></div>
+      <div class="demo-card"><h3>Card 2</h3><p>Scroll snap centers each card</p></div>
+      <div class="demo-card"><h3>Card 3</h3><p>Great for mobile galleries</p></div>
+      <div class="demo-card"><h3>Card 4</h3><p>Used by 70% of award sites</p></div>
+      <div class="demo-card"><h3>Card 5</h3><p>Touch-friendly navigation</p></div>
+    </div>
+    
+    <h2>Counter Animation</h2>
+    <div class="counter" data-target="10000">0</div>
+    <p>Number counts up when visible. Perfect for stats, metrics, and achievements.</p>
+  </div>
+  
+  <script>
+    // Intersection Observer for scroll animations
+    const observerOptions = {
+      root: null,
+      rootMargin: '0px 0px -100px 0px',
+      threshold: 0.1
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          
+          // Counter animation
+          if (entry.target.classList.contains('counter') && !entry.target.classList.contains('counted')) {
+            entry.target.classList.add('counted');
+            const target = parseInt(entry.target.dataset.target);
+            let current = 0;
+            const increment = target / 60;
+            const timer = setInterval(() => {
+              current += increment;
+              if (current >= target) {
+                current = target;
+                clearInterval(timer);
+              }
+              entry.target.textContent = Math.floor(current).toLocaleString();
+            }, 16);
+          }
+        }
+      });
+    }, observerOptions);
+    
+    // Observe all animated elements
+    document.querySelectorAll('.fade-in-up, .fade-in-scale, .slide-in-left, .slide-in-right, .rotate-in, .blur-in, .stagger-parent, .text-reveal, .clip-reveal, .progress-bar, .img-reveal, .counter').forEach(el => {
+      observer.observe(el);
+    });
+    
+    // Parallax effect
+    document.querySelectorAll('.parallax-layer').forEach(layer => {
+      const speed = layer.dataset.speed || 0.5;
+      window.addEventListener('scroll', () => {
+        const rect = layer.getBoundingClientRect();
+        const scrolled = window.innerHeight - rect.top;
+        if (scrolled > 0 && rect.bottom > 0) {
+          layer.style.transform = `translateY(${scrolled * speed * 0.1}px)`;
+        }
+      });
+    });
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+    </div>
+  </main>
+  <script src="design-system.js"></script>
+  <script src="./design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+    // Numbered pages menu toggle
+    const numberedPagesBtn = document.getElementById('numberedPagesBtn');
+    const numberedPagesMenu = document.getElementById('numberedPagesMenu');
+    if (numberedPagesBtn && numberedPagesMenu) {
+      numberedPagesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        numberedPagesMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!numberedPagesMenu.contains(e.target) && !numberedPagesBtn.contains(e.target)) {
+          numberedPagesMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

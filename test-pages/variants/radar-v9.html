@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radar V9 — Bearing Overlay</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #050a0f;
+      color: #a0c4d4;
+      font-family: 'Courier New', Courier, monospace;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 60px;
+    }
+
+    /* HUD Title */
+    .hud-title {
+      position: absolute;
+      top: 12px;
+      left: 24px;
+      font-size: 14px;
+      letter-spacing: 4px;
+      color: #4a8aaa;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .hud-title::before {
+      content: '◆ ';
+      color: #4a8aaa;
+    }
+
+    /* Status indicator */
+    .status {
+      position: absolute;
+      top: 12px;
+      right: 24px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: #3a7a5a;
+      text-transform: uppercase;
+    }
+
+    .status::after {
+      content: '';
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #3a7a5a;
+      border-radius: 50%;
+      margin-left: 8px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Main bearing bar container */
+    .bearing-container {
+      width: 92%;
+      max-width: 1100px;
+      position: relative;
+    }
+
+    /* Top label row */
+    .bearing-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #3a5a6a;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+      padding: 0 2px;
+    }
+
+    /* The bearing bar */
+    .bearing-bar {
+      width: 100%;
+      height: 48px;
+      background: linear-gradient(180deg, #0a1520 0%, #0d1b2a 50%, #0a1520 100%);
+      border: 1px solid #1a3a4a;
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Grid lines inside bar */
+    .bearing-bar::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background:
+        repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent calc(10% - 1px),
+          rgba(26, 58, 74, 0.4) calc(10% - 1px),
+          rgba(26, 58, 74, 0.4) 10%
+        );
+      pointer-events: none;
+    }
+
+    /* Center reference line */
+    .center-line {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: rgba(74, 138, 170, 0.5);
+      transform: translateX(-50%);
+    }
+
+    .center-triangle {
+      position: absolute;
+      left: 50%;
+      top: -10px;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid #4a8aaa;
+    }
+
+    /* Ticks */
+    .tick {
+      position: absolute;
+      bottom: 0;
+      width: 2px;
+      transform: translateX(-50%);
+    }
+
+    .tick.enemy {
+      background: linear-gradient(180deg, #ff3333 0%, #cc0000 100%);
+      box-shadow: 0 0 4px rgba(255, 51, 51, 0.6);
+    }
+
+    .tick.ally {
+      background: linear-gradient(180deg, #33ff66 0%, #00cc44 100%);
+      box-shadow: 0 0 4px rgba(51, 255, 102, 0.5);
+    }
+
+    /* Distance determines tick height */
+    .tick.d-near { height: 75%; }
+    .tick.d-mid  { height: 50%; }
+    .tick.d-far  { height: 25%; }
+
+    /* Numeric readout panel */
+    .readout-panel {
+      margin-top: 32px;
+      width: 92%;
+      max-width: 1100px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .readout-card {
+      background: rgba(10, 20, 30, 0.8);
+      border: 1px solid #1a3a4a;
+      border-radius: 2px;
+      padding: 12px 16px;
+      position: relative;
+    }
+
+    .readout-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+      background: #1a3a4a;
+    }
+
+    .readout-card.enemy::before { background: #cc0000; }
+    .readout-card.ally::before { background: #00cc44; }
+
+    .readout-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #3a5a6a;
+      margin-bottom: 6px;
+    }
+
+    .readout-value {
+      font-size: 18px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .readout-value.enemy { color: #ff4444; }
+    .readout-value.ally { color: #33ff66; }
+
+    .readout-sub {
+      font-size: 10px;
+      color: #4a6a7a;
+      margin-top: 4px;
+    }
+
+    /* Bottom data stream */
+    .data-stream {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      right: 24px;
+      font-size: 10px;
+      color: #2a4a5a;
+      letter-spacing: 1px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .data-stream span {
+      animation: scroll 20s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* Scan line effect */
+    .scan-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 2px;
+      height: 100%;
+      background: linear-gradient(180deg, transparent, rgba(74, 138, 170, 0.3), transparent);
+      animation: scan 4s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes scan {
+      0% { left: 0; }
+      100% { left: 100%; }
+    }
+
+    /* Legend */
+    .legend {
+      position: absolute;
+      bottom: 56px;
+      right: 24px;
+      display: flex;
+      gap: 20px;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 1px;
+    }
+
+    .legend-dot.enemy { background: #cc0000; box-shadow: 0 0 4px rgba(255, 51, 51, 0.5); }
+    .legend-dot.ally { background: #00cc44; box-shadow: 0 0 4px rgba(51, 255, 102, 0.4); }
+  </style>
+</head>
+<body>
+
+  <div class="hud-title">RADAR V9</div>
+  <div class="status">LIVE</div>
+
+  <div class="bearing-container">
+    <div class="bearing-labels">
+      <span>270° W</span>
+      <span>315° NW</span>
+      <span>0° N</span>
+      <span>45° NE</span>
+      <span>90° E</span>
+    </div>
+    <div class="bearing-bar" id="bearingBar">
+      <div class="center-line"></div>
+      <div class="center-triangle"></div>
+      <div class="scan-line"></div>
+      <!-- Ticks injected by JS -->
+    </div>
+  </div>
+
+  <div class="readout-panel" id="readoutPanel">
+    <!-- Readout cards injected by JS -->
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot enemy"></div>
+      <span>HOSTILE</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot ally"></div>
+      <span>FRIENDLY</span>
+    </div>
+  </div>
+
+  <div class="data-stream">
+    <span id="dataStream">
+      AZM:042 DIST:12.4km SIG:STRONG // AZM:187 DIST:8.2km SIG:WEAK // AZM:315 DIST:22.1km SIG:MODERATE // AZM:089 DIST:5.7km SIG:STRONG // AZM:234 DIST:31.0km SIG:WEAK // AZM:001 DIST:2.3km SIG:STRONG // AZM:156 DIST:14.8km SIG:MODERATE // AZM:042 DIST:12.4km SIG:STRONG // AZM:187 DIST:8.2km SIG:WEAK // AZM:315 DIST:22.1km SIG:MODERATE // AZM:089 DIST:5.7km SIG:STRONG // AZM:234 DIST:31.0km SIG:WEAK //
+    </span>
+  </div>
+
+  <script>
+    (function() {
+      const bar = document.getElementById('bearingBar');
+      const panel = document.getElementById('readoutPanel');
+
+      // Simulated contacts: [azimuth (0-360), type, distance km]
+      const contacts = [
+        { azm: 42,  type: 'enemy', dist: 12.4 },
+        { azm: 187, type: 'enemy', dist: 8.2 },
+        { azm: 315, type: 'ally',  dist: 22.1 },
+        { azm: 89,  type: 'enemy', dist: 5.7 },
+        { azm: 234, type: 'ally',  dist: 31.0 },
+        { azm: 1,   type: 'enemy', dist: 2.3 },
+        { azm: 156, type: 'ally',  dist: 14.8 },
+        { azm: 275, type: 'enemy', dist: 18.5 },
+        { azm: 58,  type: 'ally',  dist: 9.6 },
+        { azm: 340, type: 'enemy', dist: 7.1 },
+        { azm: 125, type: 'ally',  dist: 26.3 },
+        { azm: 203, type: 'enemy', dist: 11.2 },
+      ];
+
+      // Convert azimuth (0=N, CW) to bar position (0%=W/270, 50%=N/0, 100%=E/90)
+      // Map 270->0%, 0->50%, 90->100%
+      function azmToPercent(azm) {
+        // Normalize to 270-90 range (180 degree span centered on North)
+        let rel = azm - 270;
+        if (rel < 0) rel += 360;
+        return (rel / 180) * 100;
+      }
+
+      function distClass(d) {
+        if (d <= 10) return 'd-near';
+        if (d <= 20) return 'd-mid';
+        return 'd-far';
+      }
+
+      contacts.forEach((c, i) => {
+        const tick = document.createElement('div');
+        tick.className = `tick ${c.type} ${distClass(c.dist)}`;
+        tick.style.left = azmToPercent(c.azm) + '%';
+        bar.appendChild(tick);
+
+        const card = document.createElement('div');
+        card.className = `readout-card ${c.type}`;
+        card.innerHTML = `
+          <div class="readout-label">Contact ${String(i + 1).padStart(2, '0')} — ${c.type === 'enemy' ? 'HOSTILE' : 'FRIENDLY'}</div>
+          <div class="readout-value ${c.type}">${c.azm.toString().padStart(3, '0')}°</div>
+          <div class="readout-sub">DIST ${c.dist.toFixed(1)} km // SIG ${c.dist < 10 ? 'STRONG' : c.dist < 20 ? 'MODERATE' : 'WEAK'}</div>
+        `;
+        panel.appendChild(card);
+      });
+    })();
+  </script>
+
+</body>
+</html>

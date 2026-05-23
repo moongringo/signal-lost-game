@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Loading V4 — Hex Grid</title>
+<style>
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    width:100%; height:100%;
+    background:#0b0f0b;
+    overflow:hidden;
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color:#a8d5a2;
+    user-select:none;
+  }
+
+  /* ---------- HUD ---------- */
+  .hud {
+    position:absolute; top:12px; left:16px;
+    font-size:11px; letter-spacing:2px; color:#5a7a55;
+    text-transform:uppercase; pointer-events:none;
+  }
+  .hud::before {
+    content:''; display:inline-block; width:6px; height:6px;
+    background:#3a5a35; border-radius:50%; margin-right:8px;
+    vertical-align:middle; animation:hudBlink 1.2s infinite;
+  }
+  @keyframes hudBlink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+  /* ---------- Canvas ---------- */
+  #hexCanvas {
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    display:block;
+  }
+
+  /* ---------- Center overlay (logo sits inside canvas, but we keep a tiny safety overlay for crisp text) ---------- */
+  .center-logo {
+    position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    text-align:center; pointer-events:none; z-index:2;
+  }
+  .center-logo h1 {
+    font-size:clamp(22px,3.5vw,44px);
+    letter-spacing:6px; color:#d4f5d0;
+    text-shadow:0 0 18px rgba(100,255,100,.35), 0 0 6px rgba(0,0,0,.8);
+  }
+  .center-logo .sub {
+    font-size:clamp(10px,1.2vw,14px); letter-spacing:3px;
+    color:#7aaf75; margin-top:4px;
+  }
+
+  /* ---------- Bottom info ---------- */
+  .bottom-info {
+    position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
+    text-align:center; z-index:2; width:90%; max-width:520px;
+  }
+  .status {
+    font-size:12px; letter-spacing:2px; color:#8abf85;
+    margin-bottom:6px; min-height:18px;
+  }
+  .tip {
+    font-size:11px; letter-spacing:1px; color:#5a7a55;
+    min-height:16px; transition:opacity .4s;
+  }
+  .tip.fade { opacity:0; }
+
+  /* ---------- Skip button ---------- */
+  .skip-btn {
+    position:absolute; bottom:18px; right:18px; z-index:3;
+    background:rgba(20,40,20,.55); border:1px solid #3a5a35;
+    color:#8abf85; font-size:11px; letter-spacing:2px;
+    padding:6px 16px; cursor:pointer; border-radius:3px;
+    transition:background .2s, border-color .2s;
+  }
+  .skip-btn:hover { background:rgba(40,80,40,.7); border-color:#6abf65; color:#d4f5d0; }
+  .skip-btn:active { transform:scale(.97); }
+
+  /* ---------- Scanline overlay ---------- */
+  .scanlines {
+    position:absolute; inset:0; pointer-events:none; z-index:4;
+    background: repeating-linear-gradient(
+      0deg, rgba(0,0,0,.18) 0px, rgba(0,0,0,.18) 1px, transparent 1px, transparent 3px
+    );
+    mix-blend-mode: multiply;
+  }
+</style>
+</head>
+<body>
+
+<div class="hud">Loading V4</div>
+
+<canvas id="hexCanvas"></canvas>
+
+<div class="center-logo">
+  <h1>SIGNAL LOST</h1>
+  <div class="sub">RECONNECTING…</div>
+</div>
+
+<div class="bottom-info">
+  <div class="status" id="status">Initializing uplink…</div>
+  <div class="tip" id="tip">Tip: Stay near high ground for better reception.</div>
+</div>
+
+<button class="skip-btn" id="skipBtn">SKIP</button>
+
+<div class="scanlines"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------- Config ---------- */
+  const DURATION   = 5000;          // ms
+  const TIP_CYCLE  = 4000;          // ms
+  const HEX_SIZE   = 28;            // radius
+  const HEX_GAP    = 4;             // px between hexes
+  const BG_COLOR   = '#0b0f0b';
+  const HEX_OFF    = '#162216';
+  const HEX_ON     = '#4caf50';
+  const HEX_GLOW   = 'rgba(76,175,80,0.22)';
+  const RIPPLE_SPEED = 180;         // px / s
+
+  /* ---------- DOM ---------- */
+  const canvas   = document.getElementById('hexCanvas');
+  const ctx      = canvas.getContext('2d');
+  const statusEl = document.getElementById('status');
+  const tipEl    = document.getElementById('tip');
+  const skipBtn  = document.getElementById('skipBtn');
+
+  /* ---------- State ---------- */
+  let startTime = performance.now();
+  let progress  = 0;   // 0..1
+  let finished  = false;
+  let w = 0, h = 0;
+  let hexes = [];      // {x,y,row,col,dist}
+  let ripples = [];    // {x,y,birth}
+  let tipIndex = 0;
+  let lastTipSwitch = 0;
+
+  const tips = [
+    "Tip: Stay near high ground for better reception.",
+    "Tip: Batteries drain faster in cold zones.",
+    "Tip: Use landmarks to triangulate your position.",
+    "Tip: Static means you're close to a signal source.",
+    "Tip: Save often. The wilderness doesn't forgive.",
+    "Tip: Night falls fast—carry a light source."
+  ];
+
+  const statuses = [
+    { t:0.00, text:"Initializing uplink…" },
+    { t:0.20, text:"Scanning frequencies…" },
+    { t:0.40, text:"Resolving grid nodes…" },
+    { t:0.60, text:"Boosting signal gain…" },
+    { t:0.80, text:"Finalizing handshake…" },
+    { t:0.95, text:"Signal acquired." }
+  ];
+
+  /* ---------- Resize ---------- */
+  function resize(){
+    w = canvas.width  = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    buildGrid();
+  }
+  window.addEventListener('resize', resize);
+
+  /* ---------- Hex math ---------- */
+  function buildGrid(){
+    hexes = [];
+    const size = HEX_SIZE;
+    const wHex = Math.sqrt(3) * size;          // flat-topped width
+    const hHex = 2 * size;                     // flat-topped height
+    const xStep = wHex + HEX_GAP;
+    const yStep = hHex * 0.75 + HEX_GAP;
+
+    const cols = Math.ceil(w / xStep) + 2;
+    const rows = Math.ceil(h / yStep) + 2;
+
+    const cx = w/2, cy = h/2;
+
+    for(let r = -1; r < rows; r++){
+      for(let c = -1; c < cols; c++){
+        const xOffset = (r % 2 === 0) ? 0 : xStep/2;
+        const x = c * xStep + xOffset - xStep;
+        const y = r * yStep + yStep/2 - yStep;
+        const dist = Math.hypot(x - cx, y - cy);
+        hexes.push({x, y, row:r, col:c, dist});
+      }
+    }
+    // Sort by distance from center so fill radiates outward naturally
+    hexes.sort((a,b)=>a.dist - b.dist);
+  }
+
+  function drawHex(x, y, r, fill, stroke, glow){
+    ctx.beginPath();
+    for(let i=0;i<6;i++){
+      const angle = Math.PI/3 * i; // flat-topped
+      const px = x + r * Math.cos(angle);
+      const py = y + r * Math.sin(angle);
+      if(i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    if(glow){
+      ctx.save();
+      ctx.shadowColor = glow;
+      ctx.shadowBlur  = 18;
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if(stroke){
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  /* ---------- Animation loop ---------- */
+  function loop(now){
+    if(finished) return;
+
+    /* progress */
+    const elapsed = now - startTime;
+    progress = Math.min(1, elapsed / DURATION);
+
+    /* status text */
+    let st = statuses[0].text;
+    for(let i=statuses.length-1;i>=0;i--){
+      if(progress >= statuses[i].t){ st = statuses[i].text; break; }
+    }
+    statusEl.textContent = st;
+
+    /* tip cycling */
+    if(now - lastTipSwitch > TIP_CYCLE){
+      tipEl.classList.add('fade');
+      setTimeout(()=>{
+        tipIndex = (tipIndex + 1) % tips.length;
+        tipEl.textContent = tips[tipIndex];
+        tipEl.classList.remove('fade');
+      }, 400);
+      lastTipSwitch = now;
+    }
+
+    /* clear */
+    ctx.fillStyle = BG_COLOR;
+    ctx.fillRect(0,0,w,h);
+
+    /* determine how many hexes are lit */
+    const litCount = Math.floor(progress * hexes.length);
+
+    /* draw hexes */
+    for(let i=0;i<hexes.length;i++){
+      const hx = hexes[i];
+      const on = i < litCount;
+      const fill = on ? HEX_ON : HEX_OFF;
+      const stroke = on ? '#6abf65' : '#1e2e1e';
+      drawHex(hx.x, hx.y, HEX_SIZE, fill, stroke, on ? HEX_GLOW : null);
+    }
+
+    /* trigger ripple on newly-lit center-ish hexes */
+    // Every ~5% progress, spawn a ripple from a random lit hex near center
+    const prevProgress = Math.max(0, (elapsed - 16) / DURATION);
+    const prevLit = Math.floor(prevProgress * hexes.length);
+    if(litCount > prevLit && litCount > 0){
+      // chance to spawn ripple
+      if(Math.random() < 0.35){
+        // pick a lit hex within first 40% of sorted list (near center)
+        const idx = Math.floor(Math.random() * Math.min(litCount, Math.floor(hexes.length*0.4)));
+        const hx = hexes[idx];
+        ripples.push({x:hx.x, y:hx.y, birth:now});
+      }
+    }
+
+    /* draw ripples */
+    for(let i=ripples.length-1;i>=0;i--){
+      const rp = ripples[i];
+      const age = (now - rp.birth) / 1000;
+      const radius = age * RIPPLE_SPEED;
+      const alpha = Math.max(0, 0.45 - age * 0.6);
+      if(alpha <= 0){ ripples.splice(i,1); continue; }
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(rp.x, rp.y, radius, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(100,255,100,${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /* center pulse ring (subtle) */
+    const pulseAge = (now % 2000) / 2000; // 2s loop
+    const pulseR = 40 + pulseAge * 120;
+    const pulseA = Math.max(0, 0.25 - pulseAge * 0.25);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, pulseR, 0, Math.PI*2);
+    ctx.strokeStyle = `rgba(100,255,100,${pulseA})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    /* progress bar (thin line bottom) */
+    ctx.fillStyle = '#1a2a1a';
+    ctx.fillRect(0, h-3, w, 3);
+    ctx.fillStyle = '#4caf50';
+    ctx.fillRect(0, h-3, w * progress, 3);
+
+    /* finish */
+    if(progress >= 1){
+      finished = true;
+      statusEl.textContent = "SIGNAL ACQUIRED — READY";
+      statusEl.style.color = "#d4f5d0";
+    } else {
+      requestAnimationFrame(loop);
+    }
+  }
+
+  /* ---------- Skip ---------- */
+  skipBtn.addEventListener('click', ()=>{
+    if(finished) return;
+    finished = true;
+    progress = 1;
+    // force full draw once
+    requestAnimationFrame(()=>{
+      ctx.fillStyle = BG_COLOR;
+      ctx.fillRect(0,0,w,h);
+      for(const hx of hexes){
+        drawHex(hx.x, hx.y, HEX_SIZE, HEX_ON, '#6abf65', HEX_GLOW);
+      }
+      ctx.fillStyle = '#4caf50';
+      ctx.fillRect(0, h-3, w, 3);
+      statusEl.textContent = "SIGNAL ACQUIRED — READY";
+      statusEl.style.color = "#d4f5d0";
+    });
+  });
+
+  /* ---------- Boot ---------- */
+  resize();
+  lastTipSwitch = performance.now();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

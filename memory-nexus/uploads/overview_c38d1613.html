@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#102c35" />
+    <title>Signal Lost Overview</title>
+    <link rel="stylesheet" href="./overview.css?v=23" />
+  <link rel="stylesheet" href="../../design-flow.css" />
+</head><body data-flow-page="overview_c38d1613" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Overview</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../../design-flow-setup.html">Setup</a>
+        <a href="../../design-flow-roles.html">Roles</a>
+        <a href="../../design-flow-control.html">Control</a>
+
+        <a href="../../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../../login.html">Login</a>
+              <a href="../../server-browser.html">Server Browser</a>
+              <a href="../../map-selection.html">Map Selection</a>
+              <a href="../../role-selection.html">Role Selection</a>
+              <a href="../../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../../player-profile.html">Player Profile</a>
+              <a href="../../career-stats.html">Career Stats</a>
+              <a href="../../match-result.html">Match Result</a>
+              <a href="../../post-match-report.html">Post-Match Report</a>
+              <a href="../../kill-cam.html">Kill Cam</a>
+              <a href="../../death-recap.html">Death Recap</a>
+              <a href="../../spectator-mode.html">Spectator Mode</a>
+              <a href="../../replay-viewer.html">Replay Viewer</a>
+              <a href="../../tournament-bracket.html">Tournament</a>
+              <a href="../../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../../store.html">Store</a>
+              <a href="../../friends.html">Friends</a>
+              <a href="../../squad.html">Squad</a>
+              <a href="../../clan-wars.html">Clan Wars</a>
+              <a href="../../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../../token-dashboard.html">Token Dashboard</a>
+              <a href="../../daily-challenges.html">Daily Challenges</a>
+              <a href="../../inventory.html">Inventory</a>
+              <a href="../../loadout-builder.html">Loadout Builder</a>
+              <a href="../../battle-pass.html">Battle Pass</a>
+              <a href="../../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../../R&D-INDEX.html">R&D Index</a>
+              <a href="../../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../../leaderboard.html">Leaderboard</a>
+              <a href="../../settings.html">Settings</a>
+              <a href="../../design-system.html">Design System</a>
+              <a href="../../design-flow-setup.html">Setup Page</a>
+              <a href="../../design-flow-roles.html">Roles Page</a>
+              <a href="../../design-flow-control.html">Control Page</a>
+              <a href="../../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../../mobile-radar.html">Mobile Radar</a>
+              <a href="../../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+    <header class="overview-hero">
+      <nav class="overview-nav" aria-label="Overview navigation">
+        <a href="./index.html">Live Game</a>
+        <a href="#status">Status</a>
+        <a href="#research">R&amp;D</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#rwl">RWL Trail</a>
+      </nav>
+      <section class="hero-grid">
+        <div>
+          <p class="eyebrow">Signal Lost / Project Overview</p>
+          <h1>Multiplayer GPS adventure prototype</h1>
+          <p class="hero-copy">
+            A living build board for the playable game, the R&amp;D trail, and the next multiplayer backend moves.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-link" href="./index.html">Open Game</a>
+            <a class="secondary-link" href="#research">View R&amp;D Inputs</a>
+          </div>
+        </div>
+        <div class="signal-atlas" aria-label="Signal Lost system map">
+          <img src="./icons/icon.svg" alt="" />
+          <span class="scan-ring one"></span>
+          <span class="scan-ring two"></span>
+          <span class="scan-route route-a"></span>
+          <span class="scan-route route-b"></span>
+          <b class="node setup">Setup</b>
+          <b class="node roles">Roles</b>
+          <b class="node control">Control</b>
+          <b class="node field">Field</b>
+        </div>
+      </section>
+    </header>
+
+    <main>
+      <section id="status" class="status-grid">
+        <article class="metric">
+          <span>Prototype State</span>
+          <strong>Playable Local Build</strong>
+        </article>
+        <article class="metric">
+          <span>Current Loop</span>
+          <strong>Presence + Ops</strong>
+        </article>
+        <article class="metric">
+          <span>Latest Slice</span>
+          <strong id="latestRwlMetric">RWL-019</strong>
+        </article>
+        <article class="metric">
+          <span>Server</span>
+          <strong id="serverMetric">v35 / 5186</strong>
+        </article>
+      </section>
+
+      <section class="queue-status" aria-live="polite">
+        <span id="queueStatusPill">Static overview</span>
+        <strong id="queueStatusText">Task queue sync will refresh this page when TASK_QUEUE.md is available.</strong>
+      </section>
+
+      <section class="build-pulse">
+        <div>
+          <p class="eyebrow">Build Pulse</p>
+          <h2>What changed in the latest run</h2>
+        </div>
+        <div class="pulse-grid">
+          <article>
+            <span>Heartbeat Backend</span>
+            <strong>Player presence is now server-backed.</strong>
+            <small>Real agents update last-seen, position, signal, and stamina through a focused heartbeat endpoint.</small>
+          </article>
+          <article>
+            <span>Organizer Ops</span>
+            <strong>Moderation has roster context.</strong>
+            <small>Hosts can see active/sim/inactive status before clearing or removing players.</small>
+          </article>
+          <article>
+            <span>Session Health</span>
+            <strong>Active games can report live agent counts.</strong>
+            <small>Restart the v35 server to expose new active-player summaries on port 5186.</small>
+          </article>
+        </div>
+      </section>
+
+      <section class="board-grid">
+        <article class="board-column done">
+          <p class="eyebrow">Done</p>
+          <h2>Playable Systems</h2>
+          <ul>
+            <li>Mission Setup, Role Assignment, and Mission Control flow.</li>
+            <li>Shared local session server with sync, export, import, and active games.</li>
+            <li>Local organizer/player identity, lobby host labels, and shared player heartbeats.</li>
+            <li>Organizer moderation with lock/unlock, roster review, confirmation-gated removal, and inactive cleanup.</li>
+            <li>Organizer event trail for roster, mission, objective, identity, visibility, and moderation actions.</li>
+            <li>Real map layer in Mission Control with offline tactical fallback.</li>
+            <li>Custom marker creation, editing, task states, artifacts, and marker type behavior.</li>
+            <li>Role-specific dashboards, field kit, AI Watch threats, team chat, and voice relay toggle.</li>
+            <li>Role readiness checks that adapt to enabled mission packs.</li>
+          </ul>
+        </article>
+
+        <article class="board-column active">
+          <p class="eyebrow">Ongoing</p>
+          <h2>Current Build Focus</h2>
+          <ul>
+            <li>Turn session sync into focused backend records for players, chat, objectives, and GPS updates.</li>
+            <li>Make overview status track the current RWL loop instead of becoming stale between sessions.</li>
+            <li>Keep browser cache versions explicit during rapid prototype builds.</li>
+            <li>Preserve offline fallback while making online multiplayer behavior feel authoritative.</li>
+          </ul>
+        </article>
+
+        <article class="board-column next">
+          <p class="eyebrow">Upcoming</p>
+          <h2>Roadmap Queue</h2>
+          <ul id="upcomingQueueList">
+            <li>Real backend collections for players, chat, objectives, and live coordinates.</li>
+            <li>Authenticated organizer identity and player profiles.</li>
+            <li>Multi-device join testing with heartbeat-driven inactive cleanup.</li>
+            <li>Overview automation: generate this status page from the task queue and memory.</li>
+            <li>Richer game-master tools for pausing hazards, editing objectives live, and resolving disputes.</li>
+          </ul>
+        </article>
+      </section>
+
+      <section id="research" class="research-panel">
+        <div class="section-heading">
+          <p class="eyebrow">R&amp;D Inputs</p>
+          <h2>Working Suggestions</h2>
+          <span>No formal meeting log is stored in the repo yet; these are captured build-session recommendations.</span>
+        </div>
+        <div class="research-grid">
+          <article>
+            <b>Map Legibility</b>
+            <strong>Use real map tiles online.</strong>
+            <span>Setup needs streets, districts, parks, and labels before tactical overlays. The abstract fallback should only appear offline.</span>
+          </article>
+          <article>
+            <b>Organizer Authoring</b>
+            <strong>Make custom games reusable.</strong>
+            <span>Next authoring step is mission templates: save marker sets, roles, modules, duration, and city as a reusable scenario.</span>
+          </article>
+          <article>
+            <b>Field Safety</b>
+            <strong>Hazards need readable consequences.</strong>
+            <span>Danger markers should show jamming radius, cooldown, and recovery guidance before players enter a live game.</span>
+          </article>
+          <article>
+            <b>Role Design</b>
+            <strong>Roles should own different risks.</strong>
+            <span>Decoder owns packet truth, Navigator owns route truth, Medic owns stamina risk, and Courier owns physical delivery.</span>
+          </article>
+          <article>
+            <b>Replay Loop</b>
+            <strong>Add mission recap scoring.</strong>
+            <span>Show restored signal, hazards survived, artifacts found, and time remaining so teams want a second run.</span>
+          </article>
+          <article>
+            <b>Prototype Tech</b>
+            <strong>Move toward authoritative sessions.</strong>
+            <span>The local server is useful now; the next backend should own player state, objectives, chat, and GPS updates.</span>
+          </article>
+          <article>
+            <b>Presence Model</b>
+            <strong>Heartbeats unlock real ops tools.</strong>
+            <span>Once every device sends heartbeat updates, host moderation can become time-based instead of guess-based.</span>
+          </article>
+          <article>
+            <b>Control Room</b>
+            <strong>The overview page should become generated.</strong>
+            <span>Task queue, memory, and RWL completions can feed a live project status board instead of hand-maintained notes.</span>
+          </article>
+          <article>
+            <b>Authentication Path</b>
+            <strong>Start with organizer claims.</strong>
+            <span>The local host profile can map to a real organizer account before adding full public player accounts.</span>
+          </article>
+        </div>
+      </section>
+
+      <section id="roadmap" class="timeline-panel">
+        <div class="section-heading">
+          <p class="eyebrow">Build Timeline</p>
+          <h2>Next Milestones</h2>
+        </div>
+        <ol class="timeline">
+          <li><span>01</span><strong>Player Records</strong><em>Split agents into backend-owned player records with heartbeat updates.</em></li>
+          <li><span>02</span><strong>Live Coordinates</strong><em>Move GPS updates out of whole-session sync and into player streams.</em></li>
+          <li><span>03</span><strong>Organizer Auth</strong><em>Attach host tools to a real organizer identity and permissions model.</em></li>
+          <li><span>04</span><strong>Generated Overview</strong><em>Feed this page from task queue, memory, and R&amp;D notes.</em></li>
+        </ol>
+      </section>
+
+      <section id="rwl" class="rwl-panel">
+        <div class="section-heading">
+          <p class="eyebrow">Recent RWL Trail</p>
+          <h2>Latest completed loops</h2>
+          <span id="rwlCountText">Static trail</span>
+        </div>
+        <div id="rwlGrid" class="rwl-grid">
+          <article><b>RWL-018</b><strong>Backend player heartbeats</strong><span>Shared active presence and inactive cleanup groundwork.</span></article>
+          <article><b>RWL-017</b><strong>Organizer event trail</strong><span>Mission, roster, moderation, identity, visibility, and objective actions.</span></article>
+          <article><b>RWL-016</b><strong>Squad moderation</strong><span>Roster controls, lobby lock/unlock, and inactive-agent cleanup.</span></article>
+          <article><b>RWL-015</b><strong>Identity groundwork</strong><span>Persistent host/player profile and lobby host labels.</span></article>
+          <article><b>RWL-014</b><strong>Session health</strong><span>Revision, sync age, stale lobby, active/stale server counts.</span></article>
+          <article><b>RWL-013</b><strong>Accessibility pass</strong><span>Skip link, focus states, map labeling, and reduced motion.</span></article>
+        </div>
+      </section>
+    </main>
+    <script src="./overview.js?v=23"></script>
+  
+    </div>
+  </main>
+  <script src="../../design-system.js"></script>
+  <script src="../../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

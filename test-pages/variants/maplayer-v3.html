@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MapLayer V3 — NVG</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  #canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    filter: grayscale(100%) sepia(100%) hue-rotate(70deg) saturate(400%) contrast(1.2);
+  }
+  #overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,0.15) 0px,
+        rgba(0,0,0,0.15) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+    z-index: 2;
+  }
+  #noise {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    opacity: 0.08;
+    z-index: 3;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+  }
+  #hud {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .hud-label {
+    position: absolute;
+    color: #0f0;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 4px #0f0;
+  }
+  .hud-title {
+    top: 16px; left: 16px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .hud-coords {
+    bottom: 16px; left: 16px;
+  }
+  .hud-zoom {
+    bottom: 16px; right: 16px;
+  }
+  #crosshair {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 5;
+  }
+  .range-ring {
+    position: absolute;
+    border: 1px solid rgba(0,255,0,0.35);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .range-label {
+    position: absolute;
+    color: rgba(0,255,0,0.7);
+    font-size: 10px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="overlay"></div>
+<div id="noise"></div>
+<div id="hud">
+  <div class="hud-label hud-title">MAPLAYER V3 — NVG</div>
+  <div class="hud-label hud-coords" id="coords">LAT 34.0522 N  LON 118.2437 W</div>
+  <div class="hud-label hud-zoom" id="zoom">ZOOM 1.0x</div>
+</div>
+<div id="crosshair"></div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const crosshair = document.getElementById('crosshair');
+  const coordsEl = document.getElementById('coords');
+  const zoomEl = document.getElementById('zoom');
+
+  let W, H, CX, CY;
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    CX = W / 2;
+    CY = H / 2;
+    buildCrosshair();
+    buildRangeRings();
+  }
+  window.addEventListener('resize', resize);
+
+  // Terrain generation
+  const terrainPoints = [];
+  function generateTerrain() {
+    terrainPoints.length = 0;
+    const rows = 80;
+    const cols = 120;
+    for (let y = 0; y <= rows; y++) {
+      const row = [];
+      for (let x = 0; x <= cols; x++) {
+        const nx = x / cols;
+        const ny = y / rows;
+        const h =
+          Math.sin(nx * 6 + ny * 4) * 0.3 +
+          Math.sin(nx * 12 - ny * 8) * 0.15 +
+          Math.sin(nx * 3 + ny * 10) * 0.2 +
+          (Math.random() - 0.5) * 0.05;
+        row.push({ x: nx * W, y: ny * H, h: h });
+      }
+      terrainPoints.push(row);
+    }
+  }
+
+  function drawTerrain() {
+    ctx.save();
+    for (let y = 0; y < terrainPoints.length - 1; y++) {
+      for (let x = 0; x < terrainPoints[y].length - 1; x++) {
+        const p = terrainPoints[y][x];
+        const brightness = 20 + (p.h + 0.5) * 40;
+        ctx.fillStyle = `rgb(${brightness * 0.4}, ${brightness}, ${brightness * 0.4})`;
+        ctx.fillRect(p.x, p.y, W / 120 + 1, H / 80 + 1);
+      }
+    }
+    ctx.restore();
+  }
+
+  // Buildings
+  const buildings = [];
+  function generateBuildings() {
+    buildings.length = 0;
+    const count = 18;
+    for (let i = 0; i < count; i++) {
+      buildings.push({
+        x: Math.random() * 0.8 + 0.1,
+        y: Math.random() * 0.8 + 0.1,
+        w: Math.random() * 0.08 + 0.03,
+        h: Math.random() * 0.08 + 0.03,
+        rot: (Math.random() - 0.5) * 0.3
+      });
+    }
+  }
+  function drawBuildings() {
+    ctx.save();
+    ctx.strokeStyle = '#0a3a0a';
+    ctx.lineWidth = 2;
+    buildings.forEach(b => {
+      const bx = b.x * W;
+      const by = b.y * H;
+      const bw = b.w * W;
+      const bh = b.h * H;
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate(b.rot);
+      ctx.fillStyle = '#051a05';
+      ctx.fillRect(-bw/2, -bh/2, bw, bh);
+      ctx.strokeRect(-bw/2, -bh/2, bw, bh);
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+
+  // Players
+  const players = [];
+  function generatePlayers() {
+    players.length = 0;
+    const count = 6;
+    for (let i = 0; i < count; i++) {
+      players.push({
+        x: Math.random() * 0.8 + 0.1,
+        y: Math.random() * 0.8 + 0.1,
+        vx: (Math.random() - 0.5) * 0.0005,
+        vy: (Math.random() - 0.5) * 0.0005
+      });
+    }
+  }
+  function drawPlayers() {
+    players.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0.05 || p.x > 0.95) p.vx *= -1;
+      if (p.y < 0.05 || p.y > 0.95) p.vy *= -1;
+
+      const px = p.x * W;
+      const py = p.y * H;
+
+      ctx.save();
+      ctx.shadowColor = '#aaffaa';
+      ctx.shadowBlur = 24;
+      ctx.fillStyle = '#e0ffe0';
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Glow ring
+      ctx.save();
+      ctx.strokeStyle = 'rgba(200,255,200,0.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(px, py, 14, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  // Enemies
+  const enemies = [];
+  function generateEnemies() {
+    enemies.length = 0;
+    const count = 4;
+    for (let i = 0; i < count; i++) {
+      enemies.push({
+        x: Math.random() * 0.8 + 0.1,
+        y: Math.random() * 0.8 + 0.1,
+        vx: (Math.random() - 0.5) * 0.0004,
+        vy: (Math.random() - 0.5) * 0.0004
+      });
+    }
+  }
+  function drawEnemies() {
+    enemies.forEach(e => {
+      e.x += e.vx;
+      e.y += e.vy;
+      if (e.x < 0.05 || e.x > 0.95) e.vx *= -1;
+      if (e.y < 0.05 || e.y > 0.95) e.vy *= -1;
+
+      const ex = e.x * W;
+      const ey = e.y * H;
+
+      ctx.save();
+      ctx.shadowColor = '#ff3333';
+      ctx.shadowBlur = 28;
+      ctx.fillStyle = '#ff4444';
+      ctx.beginPath();
+      ctx.arc(ex, ey, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Thermal bloom
+      ctx.save();
+      const grad = ctx.createRadialGradient(ex, ey, 2, ex, ey, 22);
+      grad.addColorStop(0, 'rgba(255,60,60,0.35)');
+      grad.addColorStop(1, 'rgba(255,60,60,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  // Crosshair
+  function buildCrosshair() {
+    const size = 120;
+    const half = size / 2;
+    crosshair.innerHTML = '';
+    crosshair.style.width = size + 'px';
+    crosshair.style.height = size + 'px';
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', size);
+    svg.setAttribute('height', size);
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    svg.style.display = 'block';
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('stroke', '#0f0');
+    g.setAttribute('stroke-width', '1.5');
+    g.setAttribute('fill', 'none');
+
+    // Outer circle
+    const outer = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    outer.setAttribute('cx', half);
+    outer.setAttribute('cy', half);
+    outer.setAttribute('r', half - 4);
+    g.appendChild(outer);
+
+    // Inner circle
+    const inner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    inner.setAttribute('cx', half);
+    inner.setAttribute('cy', half);
+    inner.setAttribute('r', 12);
+    g.appendChild(inner);
+
+    // Center dot
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', half);
+    dot.setAttribute('cy', half);
+    dot.setAttribute('r', 2);
+    dot.setAttribute('fill', '#0f0');
+    g.appendChild(dot);
+
+    // Cross lines
+    const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line1.setAttribute('x1', half);
+    line1.setAttribute('y1', 8);
+    line1.setAttribute('x2', half);
+    line1.setAttribute('y2', half - 14);
+    g.appendChild(line1);
+
+    const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line2.setAttribute('x1', half);
+    line2.setAttribute('y1', size - 8);
+    line2.setAttribute('x2', half);
+    line2.setAttribute('y2', half + 14);
+    g.appendChild(line2);
+
+    const line3 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line3.setAttribute('x1', 8);
+    line3.setAttribute('y1', half);
+    line3.setAttribute('x2', half - 14);
+    line3.setAttribute('y2', half);
+    g.appendChild(line3);
+
+    const line4 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line4.setAttribute('x1', size - 8);
+    line4.setAttribute('y1', half);
+    line4.setAttribute('x2', half + 14);
+    line4.setAttribute('y2', half);
+    g.appendChild(line4);
+
+    // Tick marks
+    for (let i = 0; i < 360; i += 30) {
+      const rad = i * Math.PI / 180;
+      const r1 = half - 4;
+      const r2 = half - 10;
+      const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      tick.setAttribute('x1', half + Math.cos(rad) * r1);
+      tick.setAttribute('y1', half + Math.sin(rad) * r1);
+      tick.setAttribute('x2', half + Math.cos(rad) * r2);
+      tick.setAttribute('y2', half + Math.sin(rad) * r2);
+      g.appendChild(tick);
+    }
+
+    svg.appendChild(g);
+    crosshair.appendChild(svg);
+
+    // Range text
+    const rangeText = document.createElement('div');
+    rangeText.style.position = 'absolute';
+    rangeText.style.top = (half + 18) + 'px';
+    rangeText.style.left = '50%';
+    rangeText.style.transform = 'translateX(-50%)';
+    rangeText.style.color = '#0f0';
+    rangeText.style.fontSize = '10px';
+    rangeText.style.letterSpacing = '1px';
+    rangeText.style.textShadow = '0 0 4px #0f0';
+    rangeText.textContent = 'RNG 0m';
+    rangeText.id = 'rangeText';
+    crosshair.appendChild(rangeText);
+  }
+
+  // Range rings on map
+  function buildRangeRings() {
+    // Remove old rings
+    document.querySelectorAll('.range-ring, .range-label').forEach(el => el.remove());
+
+    const rings = [100, 200, 300];
+    rings.forEach((r, i) => {
+      const ring = document.createElement('div');
+      ring.className = 'range-ring';
+      const size = (i + 1) * 120;
+      ring.style.width = size + 'px';
+      ring.style.height = size + 'px';
+      ring.style.top = '50%';
+      ring.style.left = '50%';
+      document.body.appendChild(ring);
+
+      const label = document.createElement('div');
+      label.className = 'range-label';
+      label.textContent = r + 'm';
+      label.style.top = `calc(50% - ${size / 2}px)`;
+      label.style.left = '50%';
+      document.body.appendChild(label);
+    });
+  }
+
+  // Distance markers (static grid)
+  function drawDistanceMarkers() {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,255,0,0.12)';
+    ctx.lineWidth = 1;
+    const step = 80;
+    for (let x = step; x < W; x += step) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+    for (let y = step; y < H; y += step) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Compass heading
+  function drawCompass() {
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.strokeStyle = 'rgba(0,255,0,0.3)';
+    ctx.lineWidth = 1;
+    const radius = Math.min(W, H) * 0.42;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(0,255,0,0.5)';
+    ctx.font = '10px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    dirs.forEach((d, i) => {
+      const ang = (i * 45 - 90) * Math.PI / 180;
+      const x = Math.cos(ang) * (radius + 14);
+      const y = Math.sin(ang) * (radius + 14);
+      ctx.fillText(d, x, y);
+    });
+    ctx.restore();
+  }
+
+  // Update HUD
+  let tick = 0;
+  function updateHUD() {
+    tick++;
+    const lat = 34.0522 + Math.sin(tick * 0.002) * 0.001;
+    const lon = 118.2437 + Math.cos(tick * 0.002) * 0.001;
+    coordsEl.textContent = `LAT ${lat.toFixed(4)} N  LON ${lon.toFixed(4)} W`;
+    zoomEl.textContent = `ZOOM ${(1.0 + Math.sin(tick * 0.005) * 0.05).toFixed(2)}x`;
+
+    const rangeText = document.getElementById('rangeText');
+    if (rangeText) {
+      const rng = Math.floor(Math.abs(Math.sin(tick * 0.01) * 350));
+      rangeText.textContent = `RNG ${rng}m`;
+    }
+  }
+
+  // Main loop
+  function loop() {
+    ctx.clearRect(0, 0, W, H);
+    drawTerrain();
+    drawBuildings();
+    drawDistanceMarkers();
+    drawCompass();
+    drawPlayers();
+    drawEnemies();
+    updateHUD();
+    requestAnimationFrame(loop);
+  }
+
+  // Init
+  resize();
+  generateTerrain();
+  generateBuildings();
+  generatePlayers();
+  generateEnemies();
+  loop();
+})();
+</script>
+</body>
+</html>

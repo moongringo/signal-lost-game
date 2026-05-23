@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOADING V1</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #000;
+    color: #0f0;
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    line-height: 1.4;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+  }
+
+  /* CRT scan lines */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.15) 0px,
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* CRT flicker glow */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0,255,0,0.03) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 11;
+    animation: flicker 0.15s infinite;
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.97; }
+  }
+
+  #terminal {
+    width: 90%;
+    max-width: 700px;
+    padding: 20px;
+    position: relative;
+    z-index: 5;
+  }
+
+  .line {
+    white-space: pre-wrap;
+    overflow: hidden;
+    min-height: 1.4em;
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 10px;
+    height: 1.1em;
+    background: #0f0;
+    vertical-align: text-bottom;
+    animation: blink 0.7s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .progress-bar {
+    display: inline-block;
+  }
+
+  .hud {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    font-size: 16px;
+    color: #0f0;
+    opacity: 0.6;
+    z-index: 20;
+    letter-spacing: 2px;
+  }
+
+  .final {
+    margin-top: 20px;
+    font-size: 28px;
+    letter-spacing: 3px;
+    text-align: center;
+    text-shadow: 0 0 8px #0f0, 0 0 16px #0f0;
+  }
+
+  .hidden {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="hud">LOADING V1</div>
+
+<div id="terminal"></div>
+
+<script>
+  const terminal = document.getElementById('terminal');
+
+  const bootSequence = [
+    { text: 'INITIALIZING...', hasProgress: true },
+    { text: 'LOADING KERNEL...', hasProgress: true },
+    { text: 'MOUNTING FILESYSTEM...', hasProgress: true },
+    { text: 'ESTABLISHING COMMS...', hasProgress: true },
+    { text: 'LOADING TACTICAL MODULES...', hasProgress: true },
+  ];
+
+  function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+  }
+
+  function createLine() {
+    const div = document.createElement('div');
+    div.className = 'line';
+    terminal.appendChild(div);
+    return div;
+  }
+
+  function renderProgress(percent) {
+    const total = 20;
+    const filled = Math.floor((percent / 100) * total);
+    const empty = total - filled;
+    const bar = '[' + '='.repeat(Math.max(0, filled - 1)) + (filled > 0 ? '>' : '') + ' '.repeat(Math.max(0, empty)) + ']';
+    return bar + ' ' + String(percent).padStart(3, ' ') + '%';
+  }
+
+  async function typeText(element, text, speed = 35) {
+    for (let i = 0; i < text.length; i++) {
+      element.textContent += text[i];
+      await sleep(speed + Math.random() * 20);
+    }
+  }
+
+  async function runBoot() {
+    for (const step of bootSequence) {
+      const line = createLine();
+      const textSpan = document.createElement('span');
+      line.appendChild(textSpan);
+
+      // Type the label
+      await typeText(textSpan, step.text, 30);
+
+      if (step.hasProgress) {
+        const progressSpan = document.createElement('span');
+        progressSpan.className = 'progress-bar';
+        line.appendChild(progressSpan);
+
+        // Animate progress 0 -> 100
+        for (let p = 0; p <= 100; p += Math.floor(Math.random() * 8) + 2) {
+          progressSpan.textContent = ' ' + renderProgress(Math.min(p, 100));
+          await sleep(40 + Math.random() * 60);
+        }
+        progressSpan.textContent = ' ' + renderProgress(100);
+      }
+
+      await sleep(150);
+    }
+
+    // Final message
+    await sleep(400);
+    const finalLine = createLine();
+    finalLine.className = 'line final';
+    await typeText(finalLine, 'SIGNAL LOST v2 — MISSION READY', 60);
+
+    // Blinking cursor on a new line
+    const cursorLine = createLine();
+    cursorLine.innerHTML = '<span class="cursor"></span>';
+  }
+
+  runBoot();
+</script>
+
+</body>
+</html>

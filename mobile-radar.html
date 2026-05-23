@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Signal Lost — Mobile Radar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="design-system.css" />
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --cream-soft: #fff8dc;
+      --peach: #ffc0a0;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --display-font: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+      --body-font: 'Inter', 'Bookman Old Style', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { background: var(--cream); font-family: var(--body-font); -webkit-font-smoothing: antialiased; }
+    body { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--cream); color: var(--ink); }
+
+    .phone-frame {
+      max-width: 430px;
+      margin: 2rem auto;
+      border: 12px solid #333;
+      border-radius: 40px;
+      overflow: hidden;
+      background: var(--cream);
+      box-shadow: 0 24px 48px rgba(0,0,0,0.3);
+    }
+
+    .mobile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: rgba(255, 248, 220, 0.15);
+      backdrop-filter: blur(20px) saturate(150%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .mobile-header .brand { display: flex; align-items: center; gap: 0.5rem; }
+    .mobile-header .brand-icon {
+      width: 36px; height: 36px; background: linear-gradient(135deg, var(--teal), var(--blue));
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      color: var(--cream); font-family: var(--mono-font); font-weight: 700; font-size: 0.85rem;
+    }
+    .mobile-header .brand-text { font-family: var(--display-font); font-weight: 700; font-size: 1rem; }
+
+    /* Radar Screen — Matches Mission Control design */
+    .radar-screen {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255, 217, 101, 0.4) 0 2%, transparent 3%),
+        repeating-radial-gradient(circle at 50% 50%, transparent 0 13%, rgba(255, 217, 101, 0.34) 13.4% 13.9%, transparent 14.3% 26%),
+        linear-gradient(145deg, rgba(0, 140, 148, 0.94), rgba(24, 54, 75, 0.96)),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 28px),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 28px);
+      border-radius: 50%;
+      margin: 1rem auto;
+      max-width: 350px;
+      overflow: hidden;
+      border: 10px solid rgba(255, 248, 220, 0.86);
+      box-shadow: inset 0 0 0 2px rgba(36, 20, 20, 0.18), inset 0 0 38px rgba(255, 248, 220, 0.18), 0 12px 0 rgba(113, 48, 17, 0.12);
+    }
+
+    .radar-screen::before,
+    .radar-screen::after {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      content: "";
+      background: rgba(255, 240, 199, 0.46);
+      transform: translate(-50%, -50%);
+    }
+
+    .radar-screen::before { width: 1px; height: 90%; }
+    .radar-screen::after { width: 90%; height: 1px; }
+
+    .scan-line {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 2;
+      width: 46%;
+      height: 46%;
+      transform-origin: 0 0;
+      clip-path: polygon(0 0, 100% 28%, 100% 78%);
+      background:
+        radial-gradient(circle at 0 0, rgba(255, 240, 199, 0.95), rgba(255, 217, 101, 0.46) 38%, rgba(255, 217, 101, 0.12) 68%, transparent 100%);
+      filter: blur(0.35px);
+      opacity: 0.9;
+      animation: sweep 4.8s linear infinite;
+    }
+
+    @keyframes sweep {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Bearings */
+    .bearing {
+      position: absolute;
+      z-index: 3;
+      color: rgba(255, 240, 199, 0.76);
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .bearing.n { top: 8px; left: 50%; transform: translateX(-50%); }
+    .bearing.e { right: 8px; top: 50%; transform: translateY(-50%); }
+    .bearing.s { bottom: 8px; left: 50%; transform: translateX(-50%); }
+    .bearing.w { left: 8px; top: 50%; transform: translateY(-50%); }
+
+    /* Radar Targets */
+    .radar-target {
+      position: absolute;
+      z-index: 4;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      animation: targetPulse 2s ease-in-out infinite;
+    }
+
+    .radar-target::after {
+      content: attr(data-label);
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--mono-font);
+      font-size: 0.6rem;
+      white-space: nowrap;
+      color: var(--cream);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .radar-target.friendly {
+      background: var(--gold);
+      box-shadow: 0 0 0 4px rgba(255, 217, 101, 0.3), 0 0 12px rgba(255, 217, 101, 0.6);
+    }
+
+    .radar-target.enemy {
+      background: var(--pink);
+      box-shadow: 0 0 0 4px rgba(232, 38, 99, 0.3), 0 0 12px rgba(232, 38, 99, 0.6);
+    }
+
+    .radar-target.threat {
+      background: var(--orange);
+      box-shadow: 0 0 0 4px rgba(255, 139, 31, 0.3), 0 0 12px rgba(255, 139, 31, 0.6);
+    }
+
+    @keyframes targetPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.7; }
+    }
+
+    /* Center Player */
+    .player-dot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 16px;
+      height: 16px;
+      background: var(--teal);
+      border: 3px solid var(--cream);
+      border-radius: 50%;
+      z-index: 5;
+      box-shadow: 0 0 12px rgba(0, 140, 148, 0.6);
+    }
+
+    /* Target List */
+    .target-list {
+      padding: 1rem;
+    }
+
+    .target-list h3 {
+      font-family: var(--display-font);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .target-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 12px;
+      margin-bottom: 0.5rem;
+      transition: all 0.3s var(--ease-out);
+      border-left: 3px solid transparent;
+    }
+
+    .target-item:hover {
+      background: rgba(255, 255, 255, 0.6);
+      transform: translateX(4px);
+    }
+
+    .target-item.friendly { border-left-color: var(--gold); }
+    .target-item.enemy { border-left-color: var(--pink); }
+    .target-item.threat { border-left-color: var(--orange); }
+
+    .target-item .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .target-item .info {
+      flex: 1;
+    }
+
+    .target-item .info .name {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .target-item .info .distance {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .target-item .direction {
+      font-family: var(--mono-font);
+      font-size: 0.8rem;
+      color: var(--teal);
+      font-weight: 600;
+    }
+
+    /* Range Rings */
+    .range-rings {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .range-ring {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(255, 217, 101, 0.2);
+      border-radius: 50%;
+    }
+
+    .range-ring.r1 { width: 33%; height: 33%; }
+    .range-ring.r2 { width: 66%; height: 66%; }
+    .range-ring.r3 { width: 99%; height: 99%; }
+
+    /* Controls */
+    .radar-controls {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem;
+    }
+
+    .radar-btn {
+      flex: 1;
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.4);
+      border: 2px solid transparent;
+      border-radius: 12px;
+      font-family: var(--body-font);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+      touch-action: manipulation;
+    }
+
+    .radar-btn:active { transform: scale(0.95); }
+    .radar-btn:hover { background: rgba(255, 255, 255, 0.6); border-color: var(--peach); }
+    .radar-btn.active { background: var(--teal); color: var(--cream); border-color: var(--teal); }
+
+    /* Metrics */
+    .radar-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+      padding: 0 1rem 1rem;
+    }
+
+    .metric-item {
+      text-align: center;
+      padding: 0.5rem;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+    }
+
+    .metric-item .value {
+      font-family: var(--mono-font);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--teal);
+    }
+
+    .metric-item .label {
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .demo-label {
+      text-align: center;
+      padding: 1rem;
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+  </style>
+  <link rel="stylesheet" href="./design-flow.css" />
+</head><body data-flow-page="mobile-radar" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Mobile Radar</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./design-flow-setup.html">Setup</a>
+        <a href="./design-flow-roles.html">Roles</a>
+        <a href="./design-flow-control.html">Control</a>
+
+        <a href="./design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="./login.html">Login</a>
+              <a href="./server-browser.html">Server Browser</a>
+              <a href="./map-selection.html">Map Selection</a>
+              <a href="./role-selection.html">Role Selection</a>
+              <a href="./matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="./player-profile.html">Player Profile</a>
+              <a href="./career-stats.html">Career Stats</a>
+              <a href="./match-result.html">Match Result</a>
+              <a href="./post-match-report.html">Post-Match Report</a>
+              <a href="./kill-cam.html">Kill Cam</a>
+              <a href="./death-recap.html">Death Recap</a>
+              <a href="./spectator-mode.html">Spectator Mode</a>
+              <a href="./replay-viewer.html">Replay Viewer</a>
+              <a href="./tournament-bracket.html">Tournament</a>
+              <a href="./emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="./store.html">Store</a>
+              <a href="./friends.html">Friends</a>
+              <a href="./squad.html">Squad</a>
+              <a href="./clan-wars.html">Clan Wars</a>
+              <a href="./patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="./token-dashboard.html">Token Dashboard</a>
+              <a href="./daily-challenges.html">Daily Challenges</a>
+              <a href="./inventory.html">Inventory</a>
+              <a href="./loadout-builder.html">Loadout Builder</a>
+              <a href="./battle-pass.html">Battle Pass</a>
+              <a href="./loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="./R&D-INDEX.html">R&D Index</a>
+              <a href="./ai-battle-arena.html">AI Battle Arena</a>
+              <a href="./admin-dashboard.html">Admin Dashboard</a>
+              <a href="./leaderboard.html">Leaderboard</a>
+              <a href="./settings.html">Settings</a>
+              <a href="./design-system.html">Design System</a>
+              <a href="./design-flow-setup.html">Setup Page</a>
+              <a href="./design-flow-roles.html">Roles Page</a>
+              <a href="./design-flow-control.html">Control Page</a>
+              <a href="./action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="./mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="./mobile-radar.html" aria-current="page">Mobile Radar</a>
+              <a href="./gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="numberedPagesBtn">🔢 All Pages (1-50+) ▾</button>
+          <div class="page-menu" id="numberedPagesMenu">
+            <div class="page-menu-group"><div class="page-menu-title">Auth & Flow (1-5)</div><a href="./login.html">1 — Login</a><a href="./server-browser.html">2 — Server Browser</a><a href="./map-selection.html">3 — Map Selection</a><a href="./role-selection.html">4 — Role Selection</a><a href="./matchmaking.html">5 — Matchmaking</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Game Screens (6-15)</div><a href="./player-profile.html">6 — Player Profile</a><a href="./career-stats.html">7 — Career Stats</a><a href="./match-result.html">8 — Match Result</a><a href="./post-match-report.html">9 — Post-Match Report</a><a href="./kill-cam.html">10 — Kill Cam</a><a href="./death-recap.html">11 — Death Recap</a><a href="./spectator-mode.html">12 — Spectator Mode</a><a href="./replay-viewer.html">13 — Replay Viewer</a><a href="./tournament-bracket.html">14 — Tournament</a><a href="./emote-wheel.html">15 — Emote Wheel</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Live & Social (16-20)</div><a href="./store.html">16 — Store</a><a href="./friends.html">17 — Friends</a><a href="./squad.html">18 — Squad</a><a href="./clan-wars.html">19 — Clan Wars</a><a href="./patch-notes.html">20 — Patch Notes</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Management (21-26)</div><a href="./token-dashboard.html">21 — Token Dashboard</a><a href="./daily-challenges.html">22 — Daily Challenges</a><a href="./inventory.html">23 — Inventory</a><a href="./loadout-builder.html">24 — Loadout Builder</a><a href="./battle-pass.html">25 — Battle Pass</a><a href="./loot-crate.html">26 — Loot Crate</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Tools & Systems (27-36)</div><a href="./R&D-INDEX.html">27 — R&D Index</a><a href="./ai-battle-arena.html">28 — AI Battle Arena</a><a href="./admin-dashboard.html">29 — Admin Dashboard</a><a href="./leaderboard.html">30 — Leaderboard</a><a href="./settings.html">31 — Settings</a><a href="./design-system.html">32 — Design System</a><a href="./design-flow-setup.html">33 — Setup Page</a><a href="./design-flow-roles.html">34 — Roles Page</a><a href="./design-flow-control.html">35 — Control Page</a><a href="./action-center.html">36 — Action Center</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Mobile (37-39)</div><a href="./mobile-ui-kit.html">37 — Mobile UI Kit</a><a href="./mobile-radar.html" aria-current="page">38 — Mobile Radar</a><a href="./gps-tracker.html">39 — GPS Tracker</a></div>
+          </div>
+        </div>
+
+        <a href="./design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <div class="phone-frame">
+    <header class="mobile-header">
+      <div class="brand">
+        <div class="brand-icon">SL</div>
+        <div class="brand-text">Radar</div>
+      </div>
+      <div style="font-family: var(--mono-font); font-size: 0.75rem; color: var(--teal);">LIVE</div>
+    </header>
+
+    <!-- Radar Screen -->
+    <div class="radar-screen">
+      <div class="range-rings">
+        <div class="range-ring r1"></div>
+        <div class="range-ring r2"></div>
+        <div class="range-ring r3"></div>
+      </div>
+      <span class="bearing n">N</span>
+      <span class="bearing e">E</span>
+      <span class="bearing s">S</span>
+      <span class="bearing w">W</span>
+      <div class="scan-line"></div>
+      <div class="player-dot"></div>
+      <div class="radar-target friendly" data-label="Alpha" style="top: 30%; left: 40%;"></div>
+      <div class="radar-target friendly" data-label="Bravo" style="top: 60%; right: 25%;"></div>
+      <div class="radar-target enemy" data-label="Threat" style="top: 25%; right: 30%;"></div>
+      <div class="radar-target threat" data-label="Drone" style="bottom: 35%; left: 30%;"></div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="radar-metrics">
+      <div class="metric-item">
+        <div class="value">360°</div>
+        <div class="label">Scan</div>
+      </div>
+      <div class="metric-item">
+        <div class="value">500m</div>
+        <div class="label">Range</div>
+      </div>
+      <div class="metric-item">
+        <div class="value">60Hz</div>
+        <div class="label">Refresh</div>
+      </div>
+      <div class="metric-item">
+        <div class="value">4</div>
+        <div class="label">Targets</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="radar-controls">
+      <button class="radar-btn active">360° Scan</button>
+      <button class="radar-btn">Front 180°</button>
+      <button class="radar-btn">Zoom In</button>
+    </div>
+
+    <!-- Target List -->
+    <div class="target-list">
+      <h3>🎯 Target Tracking</h3>
+      <div class="target-item friendly">
+        <div class="dot" style="background: var(--gold);"></div>
+        <div class="info">
+          <div class="name">Alpha Squad</div>
+          <div class="distance">180m • Moving NE</div>
+        </div>
+        <div class="direction">NE 42°</div>
+      </div>
+      <div class="target-item friendly">
+        <div class="dot" style="background: var(--gold);"></div>
+        <div class="info">
+          <div class="name">Bravo Squad</div>
+          <div class="distance">320m • Stationary</div>
+        </div>
+        <div class="direction">SE 128°</div>
+      </div>
+      <div class="target-item enemy">
+        <div class="dot" style="background: var(--pink);"></div>
+        <div class="info">
+          <div class="name">Hostile Patrol</div>
+          <div class="distance">210m • Closing</div>
+        </div>
+        <div class="direction">NW 315°</div>
+      </div>
+      <div class="target-item threat">
+        <div class="dot" style="background: var(--orange);"></div>
+        <div class="info">
+          <div class="name">Patrol Drone</div>
+          <div class="distance">150m • Orbiting</div>
+        </div>
+        <div class="direction">SW 225°</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-label">Mobile Radar — 430px viewport</div>
+
+  <script>
+    // Animate targets
+    const targets = document.querySelectorAll('.radar-target');
+    setInterval(() => {
+      targets.forEach(target => {
+        const currentTop = parseFloat(target.style.top) || 30;
+        const currentLeft = parseFloat(target.style.left) || 40;
+        const currentRight = target.style.right ? parseFloat(target.style.right) : null;
+        const currentBottom = target.style.bottom ? parseFloat(target.style.bottom) : null;
+
+        if (currentRight === null && currentBottom === null) {
+          target.style.top = (currentTop + (Math.random() - 0.5) * 3) + '%';
+          target.style.left = (currentLeft + (Math.random() - 0.5) * 3) + '%';
+        } else if (currentRight !== null) {
+          target.style.top = (currentTop + (Math.random() - 0.5) * 3) + '%';
+          target.style.right = (currentRight + (Math.random() - 0.5) * 3) + '%';
+        } else {
+          target.style.bottom = (currentBottom + (Math.random() - 0.5) * 3) + '%';
+          target.style.left = (currentLeft + (Math.random() - 0.5) * 3) + '%';
+        }
+      });
+    }, 3000);
+
+    // Button toggle
+    document.querySelectorAll('.radar-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.radar-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+    </div>
+  </main>
+  <script src="design-system.js"></script>
+  <script src="./design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+    // Numbered pages menu toggle
+    const numberedPagesBtn = document.getElementById('numberedPagesBtn');
+    const numberedPagesMenu = document.getElementById('numberedPagesMenu');
+    if (numberedPagesBtn && numberedPagesMenu) {
+      numberedPagesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        numberedPagesMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!numberedPagesMenu.contains(e.target) && !numberedPagesBtn.contains(e.target)) {
+          numberedPagesMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

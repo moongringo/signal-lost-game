@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Radar V4 — Night Ops</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    color: #0f0;
+  }
+  canvas { display: block; }
+  #hud {
+    position: fixed;
+    top: 10px; left: 10px;
+    font-size: 14px;
+    text-shadow: 0 0 5px #0f0;
+    pointer-events: none;
+    z-index: 10;
+  }
+  #hud h1 { font-size: 16px; margin-bottom: 4px; }
+  #hud .coord { color: #888; font-size: 12px; }
+  #nvg-btn {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    padding: 10px 20px;
+    background: #111;
+    border: 1px solid #0f0;
+    color: #0f0;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    z-index: 10;
+    transition: background 0.2s;
+  }
+  #nvg-btn:hover { background: #0f0; color: #000; }
+  #nvg-btn.active { background: #0f0; color: #000; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <h1>WEATHER V4 — NIGHT OPS</h1>
+  <div class="coord" id="coords">POS: 0, 0</div>
+  <div class="coord" id="enemy-count">HOSTILES: 0</div>
+</div>
+<button id="nvg-btn">NVG</button>
+<canvas id="radar"></canvas>
+
+<script>
+const canvas = document.getElementById('radar');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Camera
+const camera = { x: 0, y: 0 };
+
+// NVG state
+let nvgOn = false;
+const nvgBtn = document.getElementById('nvg-btn');
+nvgBtn.addEventListener('click', () => {
+  nvgOn = !nvgOn;
+  nvgBtn.classList.toggle('active', nvgOn);
+});
+
+// Stars
+const stars = [];
+for (let i = 0; i < 300; i++) {
+  stars.push({
+    x: Math.random() * 2000 - 1000,
+    y: Math.random() * 2000 - 1000,
+    brightness: Math.random() * 0.8 + 0.2,
+    twinkleSpeed: Math.random() * 0.05 + 0.01
+  });
+}
+
+// Terrain / buildings (dark silhouettes)
+const buildings = [];
+for (let i = 0; i < 80; i++) {
+  const bx = Math.random() * 2000 - 1000;
+  const by = Math.random() * 2000 - 1000;
+  const bw = 30 + Math.random() * 80;
+  const bh = 30 + Math.random() * 80;
+  buildings.push({ x: bx, y: by, w: bw, h: bh });
+}
+
+// Players (friendly dots with glow)
+const players = [];
+for (let i = 0; i < 5; i++) {
+  players.push({
+    x: Math.random() * 1000 - 500,
+    y: Math.random() * 1000 - 500,
+    color: '#0ff',
+    glow: '#0ff'
+  });
+}
+
+// Enemies (only visible within 15 units)
+const enemies = [];
+for (let i = 0; i < 20; i++) {
+  enemies.push({
+    x: Math.random() * 2000 - 1000,
+    y: Math.random() * 2000 - 1000,
+    visible: false
+  });
+}
+
+// Mouse for flashlight direction
+let mouseX = W / 2;
+let mouseY = H / 2;
+window.addEventListener('mousemove', e => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+// Keyboard controls
+const keys = {};
+window.addEventListener('keydown', e => keys[e.key] = true);
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+function update() {
+  // Move camera with WASD
+  const speed = 3;
+  if (keys['w'] || keys['W']) camera.y -= speed;
+  if (keys['s'] || keys['S']) camera.y += speed;
+  if (keys['a'] || keys['A']) camera.x -= speed;
+  if (keys['d'] || keys['D']) camera.x += speed;
+
+  // Update enemy visibility
+  let visibleCount = 0;
+  enemies.forEach(e => {
+    const dx = e.x - camera.x;
+    const dy = e.y - camera.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    e.visible = dist < 150; // 15 units scaled
+    if (e.visible) visibleCount++;
+  });
+
+  document.getElementById('coords').textContent = `POS: ${Math.round(camera.x)}, ${Math.round(camera.y)}`;
+  document.getElementById('enemy-count').textContent = `HOSTILES: ${visibleCount}`;
+}
+
+function draw() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  const cx = W / 2;
+  const cy = H / 2;
+
+  // NVG green tint overlay
+  if (nvgOn) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 255, 0, 0.08)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  // Stars
+  const time = Date.now() * 0.001;
+  stars.forEach(s => {
+    const sx = cx + (s.x - camera.x * 0.1) % W;
+    const sy = cy + (s.y - camera.y * 0.1) % H;
+    const twinkle = Math.sin(time * s.twinkleSpeed * 100) * 0.3 + 0.7;
+    ctx.fillStyle = `rgba(255, 255, 255, ${s.brightness * twinkle})`;
+    ctx.fillRect(sx, sy, 1.5, 1.5);
+  });
+
+  // Moonlight faint terrain outline
+  ctx.save();
+  ctx.strokeStyle = nvgOn ? 'rgba(0, 255, 0, 0.15)' : 'rgba(180, 180, 200, 0.08)';
+  ctx.lineWidth = 1;
+  for (let i = -10; i <= 10; i++) {
+    const gx = cx + (i * 100 - camera.x % 100);
+    ctx.beginPath();
+    ctx.moveTo(gx, 0);
+    ctx.lineTo(gx, H);
+    ctx.stroke();
+  }
+  for (let i = -10; i <= 10; i++) {
+    const gy = cy + (i * 100 - camera.y % 100);
+    ctx.beginPath();
+    ctx.moveTo(0, gy);
+    ctx.lineTo(W, gy);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Buildings (dark silhouettes)
+  buildings.forEach(b => {
+    const bx = cx + b.x - camera.x;
+    const by = cy + b.y - camera.y;
+    if (bx > -b.w && bx < W + b.w && by > -b.h && by < H + b.h) {
+      ctx.fillStyle = nvgOn ? 'rgba(0, 60, 0, 0.9)' : 'rgba(20, 20, 25, 0.95)';
+      ctx.fillRect(bx, by, b.w, b.h);
+      // Faint outline
+      ctx.strokeStyle = nvgOn ? 'rgba(0, 255, 0, 0.2)' : 'rgba(100, 100, 120, 0.1)';
+      ctx.strokeRect(bx, by, b.w, b.h);
+    }
+  });
+
+  // Flashlight / spotlight cone
+  const angle = Math.atan2(mouseY - cy, mouseX - cx);
+  const coneLength = 250;
+  const coneWidth = Math.PI / 6;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  // Outer cone (very faint)
+  const gradOuter = ctx.createRadialGradient(cx, cy, 10, cx, cy, coneLength);
+  gradOuter.addColorStop(0, nvgOn ? 'rgba(0, 255, 0, 0.15)' : 'rgba(200, 200, 220, 0.08)');
+  gradOuter.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = gradOuter;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, coneLength, angle - coneWidth, angle + coneWidth);
+  ctx.closePath();
+  ctx.fill();
+
+  // Inner bright cone
+  const gradInner = ctx.createRadialGradient(cx, cy, 5, cx, cy, coneLength * 0.6);
+  gradInner.addColorStop(0, nvgOn ? 'rgba(0, 255, 0, 0.25)' : 'rgba(220, 220, 240, 0.12)');
+  gradInner.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = gradInner;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, coneLength * 0.6, angle - coneWidth * 0.5, angle + coneWidth * 0.5);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+
+  // Players (glowing dots)
+  players.forEach(p => {
+    const px = cx + p.x - camera.x;
+    const py = cy + p.y - camera.y;
+    if (px > -20 && px < W + 20 && py > -20 && py < H + 20) {
+      // Glow
+      ctx.save();
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = nvgOn ? '#0f0' : p.glow;
+      ctx.fillStyle = nvgOn ? '#0f0' : p.color;
+      ctx.beginPath();
+      ctx.arc(px, py, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  });
+
+  // Enemies (emerge from darkness within 15 units / 150px)
+  enemies.forEach(e => {
+    if (!e.visible) return;
+    const ex = cx + e.x - camera.x;
+    const ey = cy + e.y - camera.y;
+    if (ex > -20 && ex < W + 20 && ey > -20 && ey < H + 20) {
+      ctx.save();
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = nvgOn ? '#ff0' : '#f00';
+      ctx.fillStyle = nvgOn ? '#ff0' : '#f00';
+      ctx.beginPath();
+      ctx.arc(ex, ey, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  });
+
+  // Vignette (darkness at edges)
+  const vigGrad = ctx.createRadialGradient(cx, cy, 100, cx, cy, Math.max(W, H) * 0.7);
+  vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  vigGrad.addColorStop(1, 'rgba(0,0,0,0.85)');
+  ctx.fillStyle = vigGrad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>

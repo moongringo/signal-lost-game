@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Headset HUD Chat V5</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+  /* Battlefield background */
+  .battlefield {
+    position: fixed; inset: 0;
+    background:
+      /* Sky */
+      linear-gradient(to bottom, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%);
+    z-index: 0;
+  }
+
+  /* Distant terrain hills */
+  .battlefield::before {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 45%;
+    background:
+      radial-gradient(ellipse 120% 60% at 20% 100%, #1e3a2e 0%, transparent 70%),
+      radial-gradient(ellipse 100% 50% at 70% 100%, #2a2a1e 0%, transparent 70%),
+      radial-gradient(ellipse 140% 70% at 50% 100%, #1a2a1a 0%, transparent 70%);
+    opacity: 0.9;
+  }
+
+  /* Building silhouettes */
+  .buildings {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 35%;
+    background:
+      /* Left cluster */
+      linear-gradient(to top, #0d0d0d 0%, #0d0d0d 100%) 5% 100% / 8% 60% no-repeat,
+      linear-gradient(to top, #0d0d0d 0%, #0d0d0d 100%) 12% 100% / 6% 45% no-repeat,
+      linear-gradient(to top, #0d0d0d 0%, #0d0d0d 100%) 18% 100% / 10% 70% no-repeat,
+      linear-gradient(to top, #0d0d0d 0%, #0d0d0d 100%) 28% 100% / 5% 35% no-repeat,
+      /* Center */
+      linear-gradient(to top, #0d0d0d 0%, #0d0d0d 100%) 42% 100% / 12% 80% no-repeat,
+      linear-gradient(to top, #0d0d0d 0%, #0d0d0d 100%) 52% 100% / 7% 55% no-repeat,
+      linear-gradient(to top, #0d0d0d 0%, #0d0d0d 100%) 58% 100% / 9% 65% no-repeat,
+      /* Right cluster */
+      linear-gradient(to top, #0d0d0d 0%, #0d0d0d 100%) 72% 100% / 6% 40% no-repeat,
+      linear-gradient(to top, #0d0d0d 0%, #0d0d0d 100%) 78% 100% / 11% 75% no-repeat,
+      linear-gradient(to top, #0d0d0d 0%, #0d0d0d 100%) 88% 100% / 8% 50% no-repeat,
+      linear-gradient(to top, #0d0d0d 0%, #0d0d0d 100%) 95% 100% / 6% 30% no-repeat;
+    filter: blur(1px);
+    opacity: 0.85;
+  }
+
+  /* Smoke / haze overlay */
+  .haze {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 40% at 30% 60%, rgba(80,60,40,0.15) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 30% at 70% 50%, rgba(60,50,30,0.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Scanlines / HUD grain */
+  .scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 3px
+    );
+    pointer-events: none; z-index: 10;
+  }
+
+  /* HUD corner brackets */
+  .hud-corner {
+    position: fixed; width: 40px; height: 40px; z-index: 11;
+    border-color: rgba(0, 255, 136, 0.6); pointer-events: none;
+  }
+  .hud-corner.tl { top: 12px; left: 12px; border-top: 2px solid; border-left: 2px solid; }
+  .hud-corner.tr { top: 12px; right: 12px; border-top: 2px solid; border-right: 2px solid; }
+  .hud-corner.bl { bottom: 12px; left: 12px; border-bottom: 2px solid; border-left: 2px solid; }
+  .hud-corner.br { bottom: 12px; right: 12px; border-bottom: 2px solid; border-right: 2px solid; }
+
+  /* HUD top bar */
+  .hud-top {
+    position: fixed; top: 0; left: 0; right: 0; height: 36px;
+    background: rgba(0, 20, 10, 0.7);
+    border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; z-index: 12;
+  }
+  .hud-top .hud-title {
+    color: #00ff88; font-size: 14px; font-weight: 700;
+    letter-spacing: 3px; text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(0,255,136,0.5);
+  }
+  .hud-top .hud-status {
+    color: #00ff88; font-size: 11px; letter-spacing: 2px; opacity: 0.8;
+  }
+
+  /* Crosshair center */
+  .crosshair {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 24px; height: 24px; z-index: 9; pointer-events: none;
+  }
+  .crosshair::before, .crosshair::after {
+    content: ''; position: absolute; background: rgba(0,255,136,0.5);
+  }
+  .crosshair::before { top: 11px; left: 0; width: 24px; height: 2px; }
+  .crosshair::after { top: 0; left: 11px; width: 2px; height: 24px; }
+  .crosshair .dot {
+    position: absolute; top: 10px; left: 10px; width: 4px; height: 4px;
+    background: rgba(0,255,136,0.8); border-radius: 50%;
+  }
+
+  /* Chat container at bottom */
+  .chat-container {
+    position: fixed; bottom: 60px; left: 20px; right: 20px;
+    max-height: 55vh; overflow-y: auto;
+    z-index: 20;
+    padding-right: 8px;
+  }
+  .chat-container::-webkit-scrollbar { width: 4px; }
+  .chat-container::-webkit-scrollbar-track { background: transparent; }
+  .chat-container::-webkit-scrollbar-thumb { background: rgba(0,255,136,0.3); border-radius: 2px; }
+
+  /* Chat message */
+  .msg {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 8px;
+    background: rgba(0, 20, 10, 0.55);
+    border-left: 3px solid rgba(0, 255, 136, 0.5);
+    padding: 8px 12px;
+    border-radius: 0 6px 6px 0;
+    backdrop-filter: blur(4px);
+    animation: msgSlideIn 0.3s ease-out;
+  }
+  @keyframes msgSlideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Speaker icon */
+  .speaker {
+    flex-shrink: 0; width: 18px; height: 18px; margin-top: 2px;
+    position: relative;
+  }
+  .speaker svg { width: 100%; height: 100%; display: block; }
+
+  /* Voice activity bars */
+  .voice-bars {
+    display: flex; align-items: flex-end; gap: 2px;
+    height: 14px; margin-left: 4px;
+  }
+  .voice-bars .bar {
+    width: 3px; background: #00ff88; border-radius: 1px;
+    animation: voicePulse 0.6s ease-in-out infinite alternate;
+  }
+  .voice-bars .bar:nth-child(1) { height: 40%; animation-delay: 0.0s; }
+  .voice-bars .bar:nth-child(2) { height: 70%; animation-delay: 0.1s; }
+  .voice-bars .bar:nth-child(3) { height: 50%; animation-delay: 0.2s; }
+  .voice-bars .bar:nth-child(4) { height: 90%; animation-delay: 0.15s; }
+  .voice-bars .bar:nth-child(5) { height: 60%; animation-delay: 0.05s; }
+  @keyframes voicePulse {
+    0% { transform: scaleY(0.4); opacity: 0.5; }
+    100% { transform: scaleY(1); opacity: 1; }
+  }
+
+  /* Message content */
+  .msg-body { flex: 1; min-width: 0; }
+  .msg-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 2px;
+  }
+  .msg-name {
+    color: #00ff88; font-size: 12px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  .msg-time {
+    color: rgba(0,255,136,0.5); font-size: 10px; font-family: monospace;
+  }
+  .msg-text {
+    color: rgba(220, 255, 240, 0.9); font-size: 13px; line-height: 1.4;
+  }
+
+  /* Role colors for names */
+  .msg-name.cmd { color: #ffaa00; }
+  .msg-name.med { color: #ff5555; }
+  .msg-name.sniper { color: #aa66ff; }
+  .msg-name.recon { color: #55ccff; }
+
+  /* Command wheel (bottom center) */
+  .cmd-wheel {
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px; z-index: 21;
+    background: rgba(0, 20, 10, 0.7);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 20px;
+    padding: 6px 14px;
+    backdrop-filter: blur(6px);
+  }
+  .cmd-wheel button {
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    color: #00ff88; font-size: 11px; font-weight: 600;
+    padding: 5px 12px; border-radius: 14px; cursor: pointer;
+    letter-spacing: 0.5px; transition: all 0.15s;
+  }
+  .cmd-wheel button:hover {
+    background: rgba(0, 255, 136, 0.25);
+    border-color: rgba(0, 255, 136, 0.6);
+    box-shadow: 0 0 8px rgba(0,255,136,0.2);
+  }
+
+  /* HUD bottom info bar */
+  .hud-bottom {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 28px;
+    background: rgba(0, 20, 10, 0.6);
+    border-top: 1px solid rgba(0, 255, 136, 0.2);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; z-index: 12;
+  }
+  .hud-bottom span {
+    color: rgba(0,255,136,0.6); font-size: 10px; letter-spacing: 1px;
+    font-family: monospace;
+  }
+
+  /* Flicker effect for realism */
+  @keyframes hudFlicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.97; }
+  }
+  .hud-flicker { animation: hudFlicker 4s infinite; }
+
+  /* Compass strip */
+  .compass {
+    position: fixed; top: 40px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 18px; z-index: 11;
+    background: rgba(0, 20, 10, 0.5);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 4px; padding: 4px 16px;
+  }
+  .compass span {
+    color: rgba(0,255,136,0.5); font-size: 11px; font-weight: 700;
+    font-family: monospace;
+  }
+  .compass span.active {
+    color: #00ff88; font-size: 13px; text-shadow: 0 0 6px rgba(0,255,136,0.5);
+  }
+</style>
+</head>
+<body>
+
+<div class="battlefield">
+  <div class="buildings"></div>
+  <div class="haze"></div>
+</div>
+
+<div class="scanlines"></div>
+
+<div class="hud-corner tl"></div>
+<div class="hud-corner tr"></div>
+<div class="hud-corner bl"></div>
+<div class="hud-corner br"></div>
+
+<div class="hud-top hud-flicker">
+  <div class="hud-title">CHAT V5</div>
+  <div class="hud-status">COMMS ACTIVE ● SQUAD LINKED</div>
+</div>
+
+<div class="compass">
+  <span>NW</span><span>W</span><span>SW</span><span class="active">S</span><span>SE</span><span>E</span><span>NE</span><span>N</span>
+</div>
+
+<div class="crosshair"><div class="dot"></div></div>
+
+<div class="chat-container" id="chatBox">
+
+  <div class="msg">
+    <div class="speaker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+      </svg>
+    </div>
+    <div class="voice-bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-header">
+        <span class="msg-name cmd">Command</span>
+        <span class="msg-time">14:32:07</span>
+      </div>
+      <div class="msg-text">All units, be advised: hostile armor spotted grid echo-seven. Maintain visual and report movement.</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="speaker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#55ccff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
+    </div>
+    <div class="voice-bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-header">
+        <span class="msg-name recon">Recon-1</span>
+        <span class="msg-time">14:32:14</span>
+      </div>
+      <div class="msg-text">Copy that, Command. Two MBTs moving northeast along the ridgeline. Range approximately 800 meters.</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="speaker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#aa66ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
+    </div>
+    <div class="voice-bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-header">
+        <span class="msg-name sniper">Sniper-3</span>
+        <span class="msg-time">14:32:21</span>
+      </div>
+      <div class="msg-text">I have eyes on. Request permission to engage high-value targets once they enter the kill zone.</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="speaker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
+    </div>
+    <div class="voice-bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-header">
+        <span class="msg-name cmd">Command</span>
+        <span class="msg-time">14:32:29</span>
+      </div>
+      <div class="msg-text">Negative, Sniper-3. Hold fire. We need them to commit before we spring the ambush. Recon, keep us updated.</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="speaker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#ff5555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
+    </div>
+    <div class="voice-bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-header">
+        <span class="msg-name med">Medic-2</span>
+        <span class="msg-time">14:32:41</span>
+      </div>
+      <div class="msg-text">Bravo team took shrapnel from mortar fire. Two wounded, non-critical. Treating now. Need evac in ten mikes.</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="speaker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#55ccff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
+    </div>
+    <div class="voice-bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-header">
+        <span class="msg-name recon">Recon-1</span>
+        <span class="msg-time">14:32:55</span>
+      </div>
+      <div class="msg-text">Armor is slowing down. Looks like they're setting up a defensive line at the crossroads. Infantry dismounting.</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="speaker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#aa66ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
+    </div>
+    <div class="voice-bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-header">
+        <span class="msg-name sniper">Sniper-3</span>
+        <span class="msg-time">14:33:08</span>
+      </div>
+      <div class="msg-text">Confirmed. I count twelve dismounts, possibly more behind the lead vehicle. They're spreading out.</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="speaker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+      </svg>
+    </div>
+    <div class="voice-bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-header">
+        <span class="msg-name cmd">Command</span>
+        <span class="msg-time">14:33:18</span>
+      </div>
+      <div class="msg-text">All call signs, weapons free on my mark. Stand by... Mark! Engage, engage, engage!</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="speaker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#ff5555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
+    </div>
+    <div class="voice-bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-header">
+        <span class="msg-name med">Medic-2</span>
+        <span class="msg-time">14:33:31</span>
+      </div>
+      <div class="msg-text">Copy, engaging. Stay sharp out there. If you go down, call for me immediately. Moving to secondary position.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="cmd-wheel">
+  <button>ATTACK</button>
+  <button>DEFEND</button>
+  <button>MOVE</button>
+  <button>REGROUP</button>
+  <button>REQUEST</button>
+</div>
+
+<div class="hud-bottom">
+  <span>SIG: 98%</span>
+  <span>BAT: 72%</span>
+  <span>NET: ENCRYPTED</span>
+  <span>FREQ: 247.55 MHz</span>
+</div>
+
+<script>
+  // Auto-scroll chat to bottom on load
+  const chatBox = document.getElementById('chatBox');
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  // Randomize voice bar animation delays for organic feel
+  document.querySelectorAll('.voice-bars').forEach((bars, idx) => {
+    bars.querySelectorAll('.bar').forEach((bar, bidx) => {
+      bar.style.animationDelay = ((idx * 0.13) + (bidx * 0.07)) + 's';
+    });
+  });
+</script>
+
+</body>
+</html>

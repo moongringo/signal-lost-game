@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signal Lost — System Limits</title>
+  <link rel="stylesheet" href="./design-flow.css?v=3">
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --cream-soft: #fff8dc;
+      --peach: #ffc0a0;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --panel-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.35), 0 12px 40px rgba(113, 48, 17, 0.15), 0 2px 0 rgba(0, 0, 0, 0.06);
+    }
+
+    body {
+      margin: 0;
+      background: var(--cream);
+      color: var(--ink);
+      font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+    }
+
+    canvas#patternCanvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.25;
+      pointer-events: none;
+    }
+
+    .flow-shell {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    .flow-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .eyebrow {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      font-weight: 900;
+      color: var(--ink);
+      margin: 0;
+      letter-spacing: -1px;
+    }
+
+    .limits-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .limit-card {
+      background: rgba(255, 255, 255, 0.5);
+      border: 2px solid rgba(255, 250, 224, 0.8);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: var(--panel-shadow);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .limit-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 48px rgba(113, 48, 17, 0.2);
+    }
+
+    .limit-card.critical {
+      border-color: var(--pink);
+      background: rgba(232, 38, 99, 0.06);
+    }
+
+    .limit-card.warning {
+      border-color: var(--orange);
+      background: rgba(255, 139, 31, 0.06);
+    }
+
+    .limit-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .limit-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .limit-status {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 8px;
+      text-transform: uppercase;
+    }
+
+    .status-ok { background: rgba(0, 140, 148, 0.15); color: var(--teal); }
+    .status-warn { background: rgba(255, 139, 31, 0.15); color: var(--orange); }
+    .status-crit { background: rgba(232, 38, 99, 0.15); color: var(--pink); }
+
+    .limit-value {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: var(--teal);
+      font-family: 'SF Mono', monospace;
+      letter-spacing: -1px;
+    }
+
+    .limit-bar {
+      height: 12px;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+
+    .limit-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.6s ease;
+    }
+
+    .fill-ok { background: var(--teal); }
+    .fill-warn { background: var(--orange); }
+    .fill-crit { background: var(--pink); }
+
+    .limit-detail {
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .countdown-section {
+      background: var(--ink);
+      border-radius: 20px;
+      padding: 32px;
+      text-align: center;
+      color: var(--cream);
+      margin-bottom: 32px;
+    }
+
+    .countdown-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--gold);
+      margin-bottom: 16px;
+    }
+
+    .countdown-value {
+      font-size: 3rem;
+      font-weight: 900;
+      font-family: 'SF Mono', monospace;
+      color: var(--cream);
+      letter-spacing: 4px;
+    }
+
+    .countdown-sub {
+      font-size: 0.85rem;
+      color: rgba(255, 240, 199, 0.6);
+      margin-top: 8px;
+    }
+
+    .history-section {
+      background: rgba(255, 255, 255, 0.5);
+      border: 2px solid rgba(255, 250, 224, 0.8);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: var(--panel-shadow);
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .history-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .history-chart {
+      height: 200px;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      padding: 20px 0;
+      border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .chart-bar {
+      flex: 1;
+      background: var(--teal);
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+      transition: height 0.5s ease;
+      opacity: 0.7;
+    }
+
+    .chart-bar:hover {
+      opacity: 1;
+    }
+
+    .chart-bar.high { background: var(--orange); }
+    .chart-bar.crit { background: var(--pink); }
+
+    .chart-labels {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 8px;
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .flow-nav {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    .flow-nav a {
+      padding: 10px 20px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 2px solid var(--ink);
+      color: var(--ink);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+    }
+
+    .flow-nav a:hover {
+      background: var(--gold);
+    }
+
+    .flow-nav a[aria-current] {
+      background: var(--ink);
+      color: var(--cream);
+    }
+
+    @media (max-width: 768px) {
+      .limits-grid { grid-template-columns: 1fr; }
+      .countdown-value { font-size: 2rem; }
+      h1 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+
+  <main class="flow-shell">
+    <header class="flow-header">
+      <p class="eyebrow">Signal Lost / System</p>
+      <h1>Limits & Usage</h1>
+    </header>
+
+    <nav class="flow-nav" aria-label="Navigation">
+      <a href="./index.html">Setup</a>
+      <a href="./roles.html">Roles</a>
+      <a href="./control.html">Control</a>
+      <a href="./leaderboard.html">Status</a>
+      <a href="./dashboard.html">Dashboard</a>
+      <a href="./mobile.html">Mobile</a>
+      <a href="./action-center.html">Action Center</a>
+      <a href="./limits.html" aria-current="page">Limits</a>
+    </nav>
+
+    <!-- Countdown to Reset -->
+    <div class="countdown-section">
+      <div class="countdown-title">Next Token Reset In</div>
+      <div class="countdown-value" id="resetTimer">04:32:18</div>
+      <div class="countdown-sub">Resets daily at 00:00 UTC</div>
+    </div>
+
+    <!-- Limit Cards -->
+    <div class="limits-grid">
+      <div class="limit-card">
+        <div class="limit-header">
+          <span class="limit-label">Token Usage</span>
+          <span class="limit-status status-ok">Healthy</span>
+        </div>
+        <div class="limit-value" id="tokenUsage">87%</div>
+        <div class="limit-bar">
+          <div class="limit-fill fill-ok" id="tokenBar" style="width: 87%"></div>
+        </div>
+        <div class="limit-detail">
+          <span>113k / 131k used</span>
+          <span>18k remaining</span>
+        </div>
+      </div>
+
+      <div class="limit-card">
+        <div class="limit-header">
+          <span class="limit-label">API Calls</span>
+          <span class="limit-status status-ok">Healthy</span>
+        </div>
+        <div class="limit-value" id="apiUsage">42%</div>
+        <div class="limit-bar">
+          <div class="limit-fill fill-ok" id="apiBar" style="width: 42%"></div>
+        </div>
+        <div class="limit-detail">
+          <span>420 / 1000 calls</span>
+          <span>580 remaining</span>
+        </div>
+      </div>
+
+      <div class="limit-card warning">
+        <div class="limit-header">
+          <span class="limit-label">Map Tiles</span>
+          <span class="limit-status status-warn">Caution</span>
+        </div>
+        <div class="limit-value" id="tileUsage">78%</div>
+        <div class="limit-bar">
+          <div class="limit-fill fill-warn" id="tileBar" style="width: 78%"></div>
+        </div>
+        <div class="limit-detail">
+          <span>780 / 1000 tiles</span>
+          <span>220 remaining</span>
+        </div>
+      </div>
+
+      <div class="limit-card">
+        <div class="limit-header">
+          <span class="limit-label">Storage</span>
+          <span class="limit-status status-ok">Healthy</span>
+        </div>
+        <div class="limit-value" id="storageUsage">23%</div>
+        <div class="limit-bar">
+          <div class="limit-fill fill-ok" id="storageBar" style="width: 23%"></div>
+        </div>
+        <div class="limit-detail">
+          <span>2.3 / 10 MB</span>
+          <span>7.7 MB free</span>
+        </div>
+      </div>
+
+      <div class="limit-card critical">
+        <div class="limit-header">
+          <span class="limit-label">Session Time</span>
+          <span class="limit-status status-crit">Critical</span>
+        </div>
+        <div class="limit-value" id="sessionUsage">94%</div>
+        <div class="limit-bar">
+          <div class="limit-fill fill-crit" id="sessionBar" style="width: 94%"></div>
+        </div>
+        <div class="limit-detail">
+          <span>56m / 60m elapsed</span>
+          <span>4m remaining</span>
+        </div>
+      </div>
+
+      <div class="limit-card">
+        <div class="limit-header">
+          <span class="limit-label">Concurrent Users</span>
+          <span class="limit-status status-ok">Healthy</span>
+        </div>
+        <div class="limit-value" id="userUsage">15%</div>
+        <div class="limit-bar">
+          <div class="limit-fill fill-ok" id="userBar" style="width: 15%"></div>
+        </div>
+        <div class="limit-detail">
+          <span>3 / 20 users</span>
+          <span>17 slots open</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usage History -->
+    <div class="history-section">
+      <div class="history-header">
+        <span class="history-title">Hourly Token Burn</span>
+        <span style="font-size: 0.8rem; color: var(--muted);">Last 12 hours</span>
+      </div>
+      <div class="history-chart" id="historyChart">
+        <div class="chart-bar" style="height: 30%"></div>
+        <div class="chart-bar" style="height: 45%"></div>
+        <div class="chart-bar" style="height: 25%"></div>
+        <div class="chart-bar" style="height: 60%"></div>
+        <div class="chart-bar" style="height: 40%"></div>
+        <div class="chart-bar" style="height: 80%"></div>
+        <div class="chart-bar high" style="height: 92%"></div>
+        <div class="chart-bar high" style="height: 85%"></div>
+        <div class="chart-bar crit" style="height: 100%"></div>
+        <div class="chart-bar high" style="height: 75%"></div>
+        <div class="chart-bar" style="height: 55%"></div>
+        <div class="chart-bar" style="height: 40%"></div>
+      </div>
+      <div class="chart-labels">
+        <span>00:00</span>
+        <span>03:00</span>
+        <span>06:00</span>
+        <span>09:00</span>
+        <span>12:00</span>
+        <span>15:00</span>
+        <span>18:00</span>
+        <span>21:00</span>
+        <span>Now</span>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Psychedelic wave background (light variant)
+    const canvas = document.getElementById('patternCanvas');
+    const ctx = canvas.getContext('2d');
+    let time = 0;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawPattern() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      time += 0.008;
+
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(0, 140, 148, ${0.06 + i * 0.02})`;
+        ctx.lineWidth = 2;
+        for (let x = 0; x < canvas.width; x += 8) {
+          const y = canvas.height / 2 + Math.sin(x * 0.003 + time + i * 0.5) * 60 + Math.sin(x * 0.007 + time * 1.2 + i) * 30;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      requestAnimationFrame(drawPattern);
+    }
+    drawPattern();
+
+    // Countdown timer
+    function updateTimer() {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      const diff = midnight - now;
+
+      const hours = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+
+      document.getElementById('resetTimer').textContent =
+        `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+    updateTimer();
+    setInterval(updateTimer, 1000);
+
+    // Simulate live data updates
+    setInterval(() => {
+      const tokenEl = document.getElementById('tokenUsage');
+      const current = parseInt(tokenEl.textContent);
+      const newVal = Math.max(0, Math.min(100, current + (Math.random() - 0.5) * 4));
+      tokenEl.textContent = Math.round(newVal) + '%';
+      document.getElementById('tokenBar').style.width = newVal + '%';
+
+      if (newVal > 90) {
+        tokenEl.parentElement.classList.add('critical');
+        tokenEl.parentElement.querySelector('.limit-status').textContent = 'Critical';
+        tokenEl.parentElement.querySelector('.limit-status').className = 'limit-status status-crit';
+      } else if (newVal > 70) {
+        tokenEl.parentElement.classList.add('warning');
+        tokenEl.parentElement.querySelector('.limit-status').textContent = 'Caution';
+        tokenEl.parentElement.querySelector('.limit-status').className = 'limit-status status-warn';
+      }
+    }, 5000);
+  </script>
+</body>
+</html>

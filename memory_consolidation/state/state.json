@@ -1,0 +1,29 @@
+{
+  "diary": {
+    "count": 14,
+    "last_ts": "2026-05-10T03:52:26.430740",
+    "last_day": 2,
+    "last_sessions": 1,
+    "last_messages": 1,
+    "last_filename": "day2-2026-05-03-cathedral_and_clean_desk.md",
+    "last_latency_s": 10.5,
+    "last_skip": "no_sessions_today"
+  },
+  "compact": {
+    "count": 14,
+    "last_ts": "2026-05-10T03:54:56.921946",
+    "last_invoke": 5,
+    "last_sessions": 54,
+    "last_messages": 11852,
+    "last_latency_s": 4.9,
+    "last_model": "k2p6",
+    "last_skip": "stm_hash_unchanged"
+  },
+  "stm": {
+    "count": 2,
+    "last_ts": "2026-05-03T15:45:06.287349",
+    "last_sessions": 20,
+    "last_messages": 1687,
+    "last_chars": 8030
+  }
+}

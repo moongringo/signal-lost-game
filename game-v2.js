@@ -23,6 +23,80 @@ const countries = {
   france: "France", japan: "Japan", australia: "Australia"
 };
 
+/* ========================== MAP CATALOG (Phase 7 Task 7) ========================== */
+
+const mapCatalog = {
+  downtown: {
+    id: 'downtown',
+    name: 'Downtown Grid',
+    city: 'New York',
+    center: [40.7128, -74.0060],
+    theme: 'Urban warfare',
+    biomeMix: { urban: 0.70, open: 0.20, industrial: 0.10 },
+    signatureObjective: 'DataUpload',
+    difficulty: 3,
+    avgTime: 45,
+    description: 'Dense urban corridors and skyscraper canyons. Data upload zones favor high-rise rooftops.'
+  },
+  redwood: {
+    id: 'redwood',
+    name: 'Redwood Canopy',
+    city: 'San Francisco',
+    center: [37.7749, -122.4194],
+    theme: 'Forest stealth',
+    biomeMix: { forest: 0.60, open: 0.30, water: 0.10 },
+    signatureObjective: 'Recon',
+    difficulty: 2,
+    avgTime: 40,
+    description: 'Thick forest cover limits sightlines. Recon objectives reward staying undetected.'
+  },
+  rustbelt: {
+    id: 'rustbelt',
+    name: 'Rust Belt',
+    city: 'Detroit',
+    center: [42.3314, -83.0458],
+    theme: 'Industrial decay',
+    biomeMix: { industrial: 0.50, urban: 0.30, open: 0.20 },
+    signatureObjective: 'Sabotage',
+    difficulty: 3,
+    avgTime: 50,
+    description: 'Abandoned factories and rusted infrastructure. Sabotage targets are deep inside industrial zones.'
+  },
+  coastal: {
+    id: 'coastal',
+    name: 'Coastal Watch',
+    city: 'Miami',
+    center: [25.7617, -80.1918],
+    theme: 'Open terrain + water',
+    biomeMix: { open: 0.50, water: 0.30, urban: 0.20 },
+    signatureObjective: 'Escort',
+    difficulty: 2,
+    avgTime: 35,
+    description: 'Shoreline routes with open sightlines. Escort objectives follow the coast.'
+  },
+  mesa: {
+    id: 'mesa',
+    name: 'Mesa Ridge',
+    city: 'Phoenix',
+    center: [33.4484, -112.0740],
+    theme: 'High ground dominance',
+    biomeMix: { high_ground: 0.60, open: 0.30, urban: 0.10 },
+    signatureObjective: 'Triangulation',
+    difficulty: 4,
+    avgTime: 55,
+    description: 'Elevated ridges and arid canyons. Triangulation points sit on exposed peaks.'
+  }
+};
+
+function getMapBiomeWeights(mapId) {
+  const map = mapCatalog[mapId];
+  if (!map || !map.biomeMix) return null;
+  const mix = map.biomeMix;
+  const entries = Object.entries(mix);
+  const total = entries.reduce((s, [,v]) => s + v, 0);
+  return entries.map(([type, weight]) => ({ type, weight: weight / total }));
+}
+
 const roleCatalog = {
   Drone: ["Scan routes", "Mark safe corridor", "Ping AI scout"],
   Mechanic: ["Boost GPS mesh", "Repair relay", "Stabilize signal"],
@@ -37,7 +111,13 @@ const moduleCatalog = [
   ["ciphers",   "Cipher Tasks",  "Decode encrypted packets to reveal location data.", true],
   ["treasure",  "Treasure Hunt", "Recover GPS shards and physical clue rewards.", true],
   ["waypoints", "Waypoints",     "Route teams through relays before extraction.", true],
-  ["voice",     "Voice Relay",   "Read new comms aloud when the browser allows it.", false]
+  ["voice",     "Voice Relay",   "Read new comms aloud when the browser allows it.", false],
+  ["hvt",       "HVT Elimination",     "Track and eliminate a moving high-value target.", true],
+  ["intercept", "Data Intercept",      "Stand in the zone while signal fluctuates.", true],
+  ["relay",     "Relay Activation",    "Activate 3 relays in order within 90s.", true],
+  ["escort",    "VIP Escort",          "Guide the VIP through safe waypoints to extraction.", true],
+  ["sabotage",  "Sabotage",            "Plant a charge on the target and clear the area before detonation.", true],
+  ["recon",     "Recon Scan",          "Scan all recon points without being detected by threats.", true]
 ];
 
 const missionPacks = {
@@ -47,7 +127,40 @@ const missionPacks = {
               ["Claim cache marker", "Treasure", 20, "Secure the field cache and carry its key phrase forward."]],
   waypoints: [["Restore north uplink", "Waypoint", 30, "Stand inside the relay zone until the uplink stabilizes."],
               ["Trace safe corridor", "Waypoint", 32, "Move through the corridor to open the extraction vector."]],
-  extraction:[["Extract final signal", "Extraction", 35, "Bring the decoded route, shard, and relay lock to final extraction."]]
+  extraction:[["Extract final signal", "Extraction", 35, "Bring the decoded route, shard, and relay lock to final extraction."]],
+  dataUpload:[["Upload field data A", "DataUpload", 28, "Stand in the upload zone for 5 continuous seconds."],
+              ["Upload field data B", "DataUpload", 28, "Stand in the upload zone for 5 continuous seconds."]],
+  triangulation:[["Triangulate signal X", "Triangulation", 35, "Visit 3 signal points in sequence to triangulate."],
+                 ["Triangulate signal Y", "Triangulation", 35, "Visit 3 signal points in sequence to triangulate."]],
+  recovery:  [["Recover asset package", "AssetRecovery", 30, "Pick up the package and carry it to extraction without detection."]],
+  hvt:       [["Neutralize Ghost Signal", "HVT", 15, "Track and eliminate the moving high-value target before it escapes."]],
+  intercept: [["Intercept Enemy Broadcast", "DataIntercept", 40, "Stand in the zone for 15s while signal fluctuates. Don't lose progress."]],
+  relay:     [["Activate Emergency Relays", "RelayActivation", 20, "Activate all 3 relays in order within 90 seconds."]],
+  escort:    [["Extract VIP Dr. Chen", "Escort", 25, "Guide the VIP through safe waypoints to the extraction zone."]],
+  sabotage:  [["Destroy Comms Array", "Sabotage", 20, "Plant a charge on the target and clear the area before detonation."]],
+  recon:     [["Sweep Sector 7", "Recon", 30, "Scan all 3 recon points without being detected by threats."]]
+};
+
+const gearCatalog = {
+  medkit:  { name: 'Field Medkit',     desc: 'Restore +30 stamina instantly',       icon: '🩹', type: 'gear', stats: { damage: 10, range: 5, rate: 20, weight: 30 } },
+  flare:   { name: 'Signal Flare',     desc: 'Mark a location for 30s (all squad)', icon: '🔦', type: 'gear', stats: { damage: 5, range: 80, rate: 10, weight: 20 } },
+  decoy:   { name: 'Decoy Beacon',     desc: 'Fake signal, distracts threats 20s',  icon: '📡', type: 'gear', stats: { damage: 0, range: 60, rate: 5, weight: 15 } },
+};
+const consumableCatalog = {
+  extra_battery:  { name: 'Extra Battery',    desc: 'GPS lasts 25% longer',          icon: '🔋' },
+  signal_booster: { name: 'Signal Booster',   desc: 'TEMP +20% signal, 45s',          icon: '📶' },
+  smoke_grenade:  { name: 'Smoke Grenade',    desc: 'Obscure area on radar, 15s',    icon: '💨' },
+  motion_sensor:  { name: 'Motion Sensor',    desc: 'Alerts when threat within 60m',  icon: '📳' },
+  emp_charge:     { name: 'EMP Charge',       desc: 'Disable nearest threat, 8s',     icon: '⚡' },
+};
+const roleStartingBonuses = {
+  Drone: { text: 'Starts with 1 free Scout Drone deployed', icon: '🛸' },
+  Mechanic: { text: 'Global +15% signal boost for 60s', icon: '📶' },
+  Medic: { text: 'Starts with free Medkit auto-applied', icon: '🩹' },
+  Decoder: { text: 'Starts with 1 objective pre-decoded', icon: '🔐' },
+  Navigator: { text: 'Starts with 3 waypoints revealed on map', icon: '📍' },
+  Courier: { text: 'Starts with 20% objective progress on next target', icon: '⚡' },
+  'Mission Control': { text: 'All agents initially revealed on radar', icon: '📡' },
 };
 
 const roleColors = {
@@ -70,6 +183,41 @@ const roleEmojis = {
   'Mission Control': '\u{1F3AE}'
 };
 
+const roleDescriptions = {
+  Drone: 'Recon specialist. Scans terrain, marks safe paths, and pings nearby threats.',
+  Mechanic: 'Signal engineer. Boosts GPS mesh, repairs relays, and stabilizes comms.',
+  Medic: 'Field support. Locates agents, restores squad stamina, and shields low-signal allies.',
+  Decoder: 'Intel breaker. Decodes ciphers, reveals clues, and validates intercepted signals.',
+  Navigator: 'Pathfinder. Sets waypoints, measures proximity, and guides the squad to targets.',
+  Courier: 'Objective runner. Carries shards, delivers objectives, and triggers checkpoints.',
+  'Mission Control': 'Command overview. Tracks all agents, deploys objectives, and monitors signal strength.'
+};
+
+// Per-ability cooldowns in milliseconds (balanced: impactful but not OP)
+const abilityCooldowns = {
+  'Drone:Scan routes': 12000,
+  'Drone:Mark safe corridor': 15000,
+  'Drone:Ping AI scout': 8000,
+  'Mechanic:Boost GPS mesh': 20000,
+  'Mechanic:Repair relay': 15000,
+  'Mechanic:Stabilize signal': 12000,
+  'Medic:Find nearest agent': 8000,
+  'Medic:Call regroup': 25000,
+  'Medic:Protect low-signal players': 18000,
+  'Decoder:Decode cipher': 15000,
+  'Decoder:Reveal clue': 10000,
+  'Decoder:Validate intercepted signal': 12000,
+  'Navigator:Set waypoint': 10000,
+  'Navigator:Measure proximity': 8000,
+  'Navigator:Guide squad': 12000,
+  'Courier:Carry key shard': 10000,
+  'Courier:Deliver objective': 15000,
+  'Courier:Trigger checkpoint': 12000,
+  'Mission Control:Track all agents': 8000,
+  'Mission Control:Deploy objectives': 20000,
+  'Mission Control:Monitor signal strength': 10000
+};
+
 const customMarkerTypeBehaviors = {
   Clue:       { label: "Decode clue",      detail: "Reveals story text or a code word.",      radiusOffset: 0,  objective: true },
   Cache:      { label: "Recover cache",    detail: "Rewards signal and stamina.",             radiusOffset: 8,  objective: true },
@@ -82,8 +230,41 @@ const themePalettes = {
   classic: "Classic Signal",
   sunset:  "Tangerine Static",
   signal:  "Signal Candy",
-  night:   "Night Static"
+  night:   "Night Static",
+  // Phase 12.10 Era Themes
+  retro:   "Retro Pulse",
+  cyber:   "Cyber Grid",
+  stealth: "Stealth Ops"
 };
+
+const defaultKeybinds = {
+  abilityQ: 'q',
+  abilityW: 'w',
+  abilityE: 'e',
+  trapToggle: 't',
+  ultimate: 'u',
+  waypointPing: 'p',
+  commandWheel: 'c',
+  stealth: 's',
+  radarToggle: 'r',
+  panelsToggle: 'Tab',
+};
+
+const keybindLabels = {
+  abilityQ: 'Ability 1',
+  abilityW: 'Ability 2',
+  abilityE: 'Ability 3',
+  trapToggle: 'Trap Selector',
+  ultimate: 'Ultimate',
+  waypointPing: 'Waypoint Ping',
+  commandWheel: 'Command Wheel',
+  stealth: 'Stealth Toggle',
+  radarToggle: 'Radar Toggle',
+  panelsToggle: 'Panels Toggle',
+};
+
+const graphicsQualityOptions = ['Low', 'Medium', 'High'];
+const languageOptions = ['English'];
 
 const themePatternPalettes = {
   sunset: {
@@ -113,10 +294,11 @@ const state = {
 
   city: "oslo",
   country: "norway",
+  currentMap: "downtown",
   duration: 60,
   maxPlayers: 6,
   isPublic: false,
-  enabledModules: {},
+  enabledModules: { dataUpload: true, triangulation: true, recovery: true, escort: true, sabotage: true, recon: true },
   customMarkers: [],
 
   status: "Lobby",
@@ -133,11 +315,51 @@ const state = {
   scores: { North: 0, South: 0 },
 
   cooldowns: {},
+  activeEffects: [],
   extracting: false,
   extractCountdown: 0,
   extractionIntervalId: null,
 
   themePalette: "classic",
+
+  // === PHASE 12.1 RADAR ===
+  designFlags: {
+    radar3DView: false,
+    radarHealthRings: true,
+    radarMovementTrails: true,
+    radarTerrainContours: false,
+    radarMinimalMode: false,
+    phase12Loadout: true,
+    // Phase 12.5 Results
+    resultsStatsBreakdown: true,
+    resultsReplayButton: true,
+    resultsProgressionPreview: true,
+    resultsIndividualStats: true,
+    resultsMVPBadge: true,
+    // Phase 12.7 Menu Screens
+    menuAnimatedBg: true,
+    menuShortcutBar: true,
+    menuAnimatedLogo: true,
+    // Phase 12.8 Minigames
+    trainingRangeEnabled: true,
+    scanningPuzzleEnabled: true,
+    // Phase 12.9 Data Screens
+    agentDossier: true,
+    missionHistory: true,
+    careerStats: true,
+    // Phase 12.10 Era Themes
+    eraRetroTheme: true,
+    eraCyberTheme: true,
+    eraStealthTheme: true,
+    // Phase 13 Puzzle Minigames
+    cipherPuzzleEnabled: true,
+    signalInterceptEnabled: true,
+    triangulationGridEnabled: true,
+    relaySequenceEnabled: true,
+  },
+  radarViewMode: '2d', // '2d' | 'isometric' | 'minimal'
+  radarTrails: new Map(), // agentId → [{x,y,time}, ...]
+
   mapZoom: 1,
   panelsOpen: true,
   joinCode: "",
@@ -152,7 +374,9 @@ const state = {
   playerHeading: 0, // compass heading in degrees (0 = North, clockwise)
 
   // 3.1 Ping System
-  pings: [], // { id, lat, lng, dist, createdAt, sender }
+  pings: [], // { id, lat, lng, dist, createdAt, sender, type }
+  pingCooldownUntil: 0, // timestamp ms
+  pingHistory: [], // { type, lat, lng, sender, time } last 20 pings
 
   // 3.2 Custom Waypoints
   waypoints: [], // { id, lat, lng, title, color }
@@ -174,6 +398,1388 @@ const state = {
   // Custom location (click-to-set on setup map)
   customLocation: null,       // { lat, lng, label } or null
   locMapMode: false,          // true = clicking map sets location instead of marker coords
+
+  // Spectator mode
+  isSpectator: false,
+  spectatorCount: 0,
+
+  // Friend System
+  friends: [], // { name, callsign, addedAt, online?, lastSeen? }
+
+  // Premium Currency (Phase 8 Task 7)
+  credits: 0,  // premium currency (💎)
+  tokens: 0,  // earned in-game currency (🪙)
+
+  // Clan / Guild System (Phase 8 Task 1)
+  clan: null, // { id, name, tag, emblem, role: 'leader'|'officer'|'member', joinedAt }
+  clanInvites: [], // { clanId, clanName, from, expiresAt }
+  clanCache: {}, // clanId -> { name, tag, emblem, members: [], xp, level }
+  clanChat: [], // { sender, text, timestamp }
+  clanChatUnread: 0,
+
+  // Match History & Stats Tracking (Phase 5 Task 7)
+  matchHistory: [],
+  sessionStats: { missions: 0, wins: 0, avgScore: 0, favoriteRole: null, winRate: 0 },
+
+  // Settings (Phase 5 Task 7)
+  settings: {
+    graphics: 'high',           // low | medium | high
+    masterVolume: 80,           // 0-100
+    sensitivity: 5,             // 1-10
+    language: 'en',             // en | no | fr | ja
+    keybinds: {
+      commandWheel: 'c',
+      waypointPing: 'p',
+      trapSelector: 't',
+      ultimate: 'u',
+      ability1: 'q',
+      ability2: 'w',
+      ability3: 'e',
+      revive: 'r',
+      ready: 'Space',
+    }
+  },
+
+  // Audio (Phase 5 Task 4)
+  audio: {
+    musicEnabled: true,
+    sfxEnabled: true,
+    masterVolume: 0.7,
+    musicVolume: 0.5,
+    currentTrack: 'ambient' // 'ambient' | 'tension' | 'combat'
+  },
+
+  // Loadout system
+  loadouts: {},
+  loadoutPresets: {},
+  activePreset: 1,
+  loadoutLocked: false,
+
+  // Dynamic Events
+  dynamicEvents: {
+    lastEventTime: 0,
+    activeEvent: null,
+    eventData: {},
+    supplyDropLooted: false,
+    flareMarkerId: null,
+    jammerSurgeUntil: 0,
+    extraThreatIds: [],
+    extractionShifted: false,
+    extractionShiftDeadline: 0,
+  },
+
+  // Weather System
+  weather: {
+    type: 'clear',
+    startedAt: 0,
+    nextChangeAt: 0,
+    effects: {},
+  },
+
+  // Difficulty Scaling System (Phase 7 Task 3)
+  difficulty: 1,           // 1-5, effective difficulty level
+  difficultyOverride: 0,   // 0 = auto, 1-5 = manual override
+  difficultyAdaptive: 0,   // fractional adaptive offset (-0.5 to +0.5)
+  _adaptiveCheckedAt: 0,   // timestamp of last adaptive check
+  _difficultyAnnounced: false,
+
+  // Proximity Trap System
+  traps: [], // { id, type, lat, lng, ownerId, triggered, triggeredAt, placedAt }
+  trapCharges: {}, // ownerId -> remaining charges
+  selectedTrapType: 'mine', // default trap type
+  trapSelectorOpen: false,
+
+  // GPS Degradation & Interference (Phase 7 Task 5)
+  gpsDegradation: {
+    accuracyOffset: 0,      // meters of extra inaccuracy
+    status: 'good',         // 'good' | 'degraded' | 'jammed'
+    lastPositions: [],      // ghost trail: [{lat, lng, timestamp}]
+    recoveryStart: 0,       // timestamp when recovery began
+    prevStatus: 'good',
+  },
+
+  // Supply Cache Drops (Phase 4 Task 5)
+  supplyCaches: [], // { id, lat, lng, type, collected, spawnedAt, despawnAt, dropProgress }
+
+  // Role Progression (stored in localStorage separately; loaded at init)
+  roleXP: {},
+  roleTier: {},
+
+  // Mission counters for role-specific XP
+  dronesDeployed: 0,
+  squadBoosts: 0,
+  revivesPerformed: 0,
+  objectivesDecoded: 0,
+  waypointsGuided: 0,
+  deliveries: 0,
+
+  // Daily Missions (Phase 6 Task 5)
+  dailyMissions: [], // { id, type, target, current, completed, rewarded, description, rewardXP }
+  dailyMissionsDate: '', // YYYY-MM-DD
+
+  // === PHASE 12.2 CHAT ===
+  // In-Game Chat Overhaul: 4 tabs + badges + 12 quick commands
+  chatActiveTab: 'all',     // 'all' | 'team' | 'squad' | 'system'
+  chatTabs: ['all','team','squad','system'],
+  chatTabBadges: {all:0, team:0, squad:0, system:0},
+  chatMuted: [],            // array of sender names (case-insensitive)
+  chatSound: true,          // boolean — play sound on new message
+  chatTimestamps: true,     // boolean — show HH:MM timestamps
+  chatAutoFollow: true,     // boolean — auto-scroll only if near bottom
+
+  // Quick-Chat Presets (Phase 12.2 CHAT): 12 commands across 3 categories
+  quickChat: [
+    // Combat (4)
+    { key: 'F1',  label: 'ENEMY SPOTTED',   icon: '⚠️', category: 'combat' },
+    { key: 'F2',  label: 'NEED BACKUP',     icon: '🆘', category: 'combat' },
+    { key: 'F3',  label: 'ENEMY DOWN',      icon: '💀', category: 'combat' },
+    { key: 'F4',  label: 'SUPPRESSING',     icon: '🔫', category: 'combat' },
+    // Movement (4)
+    { key: 'F5',  label: 'MOVING TO OBJ',   icon: '🎯', category: 'movement' },
+    { key: 'F6',  label: 'COVER ME',        icon: '🛡️', category: 'movement' },
+    { key: 'F7',  label: 'REGROUP',         icon: '👥', category: 'movement' },
+    { key: 'F8',  label: 'FALL BACK',       icon: '🏃', category: 'movement' },
+    // Status (4)
+    { key: 'F9',  label: 'AMMO LOW',        icon: '🔋', category: 'status' },
+    { key: 'F10', label: 'RELOADING',       icon: '🔧', category: 'status' },
+    { key: 'F11', label: "I'M HIT",         icon: '🩸', category: 'status' },
+    { key: 'F12', label: 'REVIVE ME',       icon: '🙏', category: 'status' }
+  ],
+  // === END PHASE 12.2 CHAT ===
+
+  // Minimap Zoom & HUD Customization (Phase 6 Task 7)
+  minimapZoom: 1.0, // 0.5 - 2.0
+  hudLayout: {}, // panelId -> { left, top, right, bottom }
+  hudPanelsVisible: {
+    abilityHotbar: true,
+    trapSelector: true,
+    droneBar: true,
+    droneHUD: true,
+    activeBuffs: true,
+    mapLegend: true,
+    compassRose: true,
+    missionRadar: true,
+    threatVignette: true,
+    progressionHUD: true,
+    weatherHUD: true,
+    terrainHUD: true,
+    supplyCacheHUD: true,
+    jammerSurgeBanner: true,
+    gpsDegradationHUD: true,
+  },
+
+  // Terrain System (Phase 4 Task 3)
+  terrainZones: [], // { lat, lng, type, radius }
+
+  // Procedural Map Generation (Phase 7 Task 9)
+  missionSeed: 0,               // seeded for reproducible noise
+  proceduralHeightmap: null,    // 32x32 heightmap from Perlin noise
+  proceduralInterestMap: null,  // 32x32 interest map for objective clusters
+
+  // Downed & Revive System (Phase 4 Task 2)
+  downedAgents: {}, // agentId -> { downedAt, lat, lng, revivedBy, eliminated, reason, reviveChannel }
+
+  // Settings Menu & Key Rebinding (Phase 5 Task 7)
+  settingsOpen: false,
+  settingsRebinding: null, // action name being rebound or null
+
+  // Report & Kick System (Phase 6 Task 8)
+  reportKick: {
+    reports: [],       // { reporterId, targetId, reason, timestamp }
+    votes: {},         // targetId -> { voters: [], startedAt, reason, initiatorId }
+    kicked: [],        // agentIds that have been kicked
+    reportCooldowns: {}, // reporterId -> timestamp of last report
+    voteCooldowns: {},   // voterId -> timestamp of last vote
+    myLastReport: 0,
+    myLastVote: 0,
+    activeVoteTarget: null,
+  },
+
+  // Signal Triangulation Minigame (Phase 7 Task 4)
+  triangulation: {
+    active: false,           // is a scan in progress
+    scanningObjectiveId: null,
+    scanStartTime: 0,        // timestamp when scan started
+    scanDuration: 3000,      // 3s hold to get bearing
+    bearings: [],            // { lat, lng, angle, objectiveId, timestamp }
+    heatmapCanvas: null,     // overlay canvas ref
+    scanButtonVisible: false,
+    nearestTriObjective: null,
+  },
+
+  // Tournament Brackets (Phase 8 Task 3)
+  tournaments: {
+    active: [], // { id, name, format, maxTeams, startTime, status, registered, bracket }
+    myRegistrations: [], // tournamentIds
+    currentMatch: null, // { opponent, round, scheduledAt }
+  },
+
+  // Battle Pass System (Phase 8 Task 6)
+  battlePass: {
+    season: 1,
+    seasonName: 'Signal Surge',
+    seasonEnd: 0, // timestamp
+    tier: 1,      // current tier 1-100
+    xp: 0,        // XP within current tier
+    premium: false,
+    claimed: [],  // tier numbers claimed
+  },
+
+  // Cosmetic Shop / Currency (Phase 8 Task 5 & 7)
+  credits: 0,
+  tokens: 0,
+  inventory: {}, // itemKey -> { acquiredAt, equipped }
+  shopRotation: [],
+  shopRotationDate: '',
+
+  // Voice Chat (Phase 8 Task 4)
+  voiceChat: {
+    enabled: false,
+    muted: false,
+    pushToTalk: true,
+    pttKey: 'v',
+    peers: {}, // playerId -> RTCPeerConnection
+    localStream: null,
+    speaking: {}, // playerId -> boolean
+    volumes: {},  // playerId -> 0-1
+  },
+
+  // Tutorial & Onboarding System (Phase 5 Task 3)
+  tutorial: {
+    completed: false,
+    step: 0,
+    inProgress: false,
+    trainingMode: false
+  },
+
+  // Custom Maps (Phase 7 Task 10)
+  customMaps: [], // { id, name, author, createdAt, updatedAt, center, weather, objectives, threats, supplyCaches, extraction, terrainZones, ratings }
+
+  // Global Leaderboards (Phase 8 Task 2)
+  leaderboards: {
+    overall: [], // { rank, name, callsign, xp, role }
+    role: {},    // roleName -> []
+    clan: [],    // { rank, clanName, tag, emblem, xp }
+    weekly: [],  // { rank, name, wins, score }
+    lastFetch: 0,
+    myRanks: {}, // category -> rank
+  },
+
+  // Asset Lazy-Loading & Memory Pool (Phase 8 Task 9)
+  assets: {
+    loaded: new Set(),
+    loading: new Map(), // url -> Promise
+    cache: new Map(),   // url -> Blob|Image|AudioBuffer
+  },
+  memoryPool: {
+    domElements: [],    // recycled divs/spans
+    particles: [],      // pre-allocated particle objects
+    markers: [],        // recycled Leaflet marker instances
+    maxPoolSize: 200,
+  },
+
+  // Achievement tracking (Phase 5 Task 8)
+  achievements: {},
+
+  // Friends list (Phase 6 Task 9)
+  friends: [],
+};
+
+/* ========================== PARTICLE SYSTEM ========================== */
+
+const ParticleSystem = {
+  particles: [],
+  canvas: null,
+  ctx: null,
+  animationId: null,
+  running: false,
+
+  // Phase 8 Task 10 — adaptive particle multiplier
+  _multiplier: 1,
+  _frameCounter: 0,
+
+  rolePresets: {
+    Drone:       { colors: ['#58a6ff','#79c0ff'], speed: 0.08, spread: 360,  lifetime: 1200, size: [2,5],   count: 6,  gravity: -0.003, char: '' },
+    Mechanic:    { colors: ['#f0883e','#ffa657'], speed: 0.12, spread: 360,  lifetime: 1000, size: [3,6],   count: 8,  gravity: -0.01,  char: '' },
+    Medic:       { colors: ['#3fb950','#56d364'], speed: 0.06, spread: 30,   lifetime: 1500, size: [3,5],   count: 5,  gravity: -0.008, char: '+' },
+    Decoder:     { colors: ['#d2a8ff','#c084fc'], speed: 0.09, spread: 60,   lifetime: 1300, size: [4,7],   count: 7,  gravity: 0,      char: '' },
+    Navigator:   { colors: ['#79c0ff','#58a6ff'], speed: 0.05, spread: 45,   lifetime: 1100, size: [2,4],   count: 4,  gravity: -0.005, char: '' },
+    Courier:     { colors: ['#ffa657','#ff8b1f'], speed: 0.15, spread: 20,   lifetime: 800,  size: [2,4],   count: 5,  gravity: 0,      char: '' },
+    'Mission Control': { colors: ['#ffd965','#f5c542'], speed: 0.04, spread: 360, lifetime: 1400, size: [1,3],   count: 4,  gravity: 0,      char: '' }
+  },
+
+  _chars: ['0x7F','0xA3','0xDE','0xAD','0xC0','0xDE','0xDA','0x7A'],
+
+  // Phase 6 Task 10 — Particle Effect Presets Per Zone
+  zonePresets: {
+    rain:     { colors: ['#8aa3bf','#6b8fa8'], count: 3, speed: 8,   life: 600,  type: 'streak' },
+    fog:      { colors: ['#c8d0d8','#b0b8c0'], count: 1, speed: 0.5, life: 3000, type: 'drift' },
+    wind:     { colors: ['#a0b0a0','#c0d0c0'], count: 2, speed: 4,   life: 1200, type: 'leaf' },
+    desert:   { colors: ['#c2b280','#d4c4a0'], count: 2, speed: 2,   life: 2000, type: 'dust' },
+    arctic:   { colors: ['#e0e8f0','#f0f4f8'], count: 2, speed: 1,   life: 2500, type: 'snow' },
+    jungle:   { colors: ['#6b8f3e','#8fb050'], count: 1, speed: 1.5, life: 2000, type: 'leaf' },
+    urban:    { colors: ['#ffaa00','#ffdd44'], count: 1, speed: 0.3, life: 800,  type: 'spark' }
+  },
+
+  init(canvasId) {
+    this.canvas = document.getElementById(canvasId);
+    if (!this.canvas) return;
+    this.ctx = this.canvas.getContext('2d');
+    this.particles = [];
+    this.running = true;
+    this._loop();
+  },
+
+  _loop() {
+    if (!this.running) return;
+    // Phase 8 Task 10 — frame skip for power saving
+    this._frameCounter++;
+    const skip = state.frameSkip || 0;
+    if (skip > 0 && (this._frameCounter % (skip + 1)) !== 0) {
+      this.animationId = requestAnimationFrame(() => this._loop());
+      return;
+    }
+    PerfMonitor.tick(performance.now());
+    this._update();
+    this._render();
+    this.animationId = requestAnimationFrame(() => this._loop());
+  },
+
+  _update() {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.life -= 16;
+      if (p.life <= 0) { this.particles.splice(i, 1); continue; }
+      // Store trail position
+      if (!p.trail) p.trail = [];
+      p.trail.push({ x: p.x, y: p.y, alpha: p.alpha });
+      if (p.trail.length > 8) p.trail.shift();
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += (p.gravity || 0);
+      const lifeRatio = Math.max(0, p.life / p.maxLife);
+      p.alpha = lifeRatio;
+      // Scale down over lifetime
+      p.currentSize = p.size * (0.4 + lifeRatio * 0.6);
+      // Color cycling: shift through role palette
+      if (p.colors && p.colors.length > 1) {
+        const cycle = (1 - lifeRatio) * (p.colors.length - 1);
+        const idx = Math.floor(cycle);
+        const nextIdx = Math.min(idx + 1, p.colors.length - 1);
+        const blend = cycle - idx;
+        p.color = this._blendColors(p.colors[idx], p.colors[nextIdx], blend);
+      }
+      if (p.char) { p.vx *= 0.97; p.vy *= 0.97; } // decelerate Decoder chars
+    }
+  },
+
+  _blendColors(c1, c2, t) {
+    const hex = (s) => [parseInt(s.slice(1,3),16), parseInt(s.slice(3,5),16), parseInt(s.slice(5,7),16)];
+    const [r1,g1,b1] = hex(c1);
+    const [r2,g2,b2] = hex(c2);
+    const r = Math.round(r1 + (r2-r1)*t);
+    const g = Math.round(g1 + (g2-g1)*t);
+    const b = Math.round(b1 + (b2-b1)*t);
+    return `rgb(${r},${g},${b})`;
+  },
+
+  _render() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.canvas.width = this.canvas.width; // clear
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const p of this.particles) {
+      ctx.globalAlpha = p.alpha;
+      // Draw trail
+      if (p.trail && p.trail.length > 1) {
+        ctx.beginPath();
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = p.currentSize * 0.6;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < p.trail.length - 1; i++) {
+          const t1 = p.trail[i];
+          const t2 = p.trail[i + 1];
+          ctx.globalAlpha = t1.alpha * (i / p.trail.length) * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(t1.x, t1.y);
+          ctx.lineTo(t2.x, t2.y);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = p.alpha;
+      }
+      // Glow
+      ctx.shadowBlur = p.currentSize * 3;
+      ctx.shadowColor = p.color;
+      ctx.fillStyle = p.color;
+      if (p.char) {
+        ctx.font = `${p.currentSize * 1.2}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.char, p.x, p.y);
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.currentSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+  },
+
+  _screenPos(lat, lng) {
+    const mapEl = document.getElementById('missionMap');
+    if (!mapEl || !window.MapModule || !window.MapModule.map) return null;
+    const point = window.MapModule.map.latLngToContainerPoint([lat, lng]);
+    // Offset particle canvas relative to map container
+    const rect = mapEl.getBoundingClientRect();
+    return { x: point.x - rect.left, y: point.y - rect.top };
+  },
+
+  emitRole(lat, lng, roleName, agentId) {
+    const preset = this.rolePresets[roleName] || this.rolePresets.Drone;
+    const pos = this._screenPos(lat, lng);
+    if (!pos) return;
+    // Apply cosmetic trail color if agent has one selected
+    let cosmeticColors = preset.colors;
+    if (agentId && state.selectedCosmetics && state.selectedCosmetics[agentId]) {
+      const cosKey = state.selectedCosmetics[agentId].trail;
+      const cos = cosmeticCatalog[cosKey];
+      if (cos && cos.color) {
+        cosmeticColors = [cos.color, preset.colors[1] || cos.color];
+      }
+    }
+    // Phase 8 Task 10 — apply performance profile particle multiplier
+    const particleMult = (typeof ParticleSystem !== 'undefined' && ParticleSystem._multiplier) || 1;
+    const count = Math.max(1, Math.round(preset.count * particleMult));
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.random() - 0.5) * preset.spread * Math.PI / 180;
+      const speed = preset.speed * (0.5 + Math.random());
+      const color = cosmeticColors[Math.floor(Math.random() * cosmeticColors.length)];
+      const size = preset.size[0] + Math.random() * (preset.size[1] - preset.size[0]);
+      const char = preset.char || (preset === this.rolePresets.Decoder ? this._chars[Math.floor(Math.random() * this._chars.length)] : '');
+      // Burst impulse: stronger initial velocity
+      const burstMult = 1.0 + Math.random() * 0.8;
+      this.particles.push({
+        x: pos.x, y: pos.y,
+        vx: Math.cos(angle) * speed * 60 * burstMult,
+        vy: Math.sin(angle) * speed * 60 * burstMult,
+        life: preset.lifetime, maxLife: preset.lifetime,
+        size, currentSize: size, color, alpha: 1,
+        gravity: preset.gravity,
+        char,
+        colors: cosmeticColors,
+        trail: []
+      });
+    }
+  },
+
+  // === Role-Specific Ability Animations (Feature C) ===
+
+  /** Drone scan pulse: expanding blue ring that fades */
+  drawScanPulse(lat, lng) {
+    const pos = this._screenPos(lat, lng);
+    if (!pos) return;
+    // Create expanding ring particles
+    for (let i = 0; i < 16; i++) {
+      const angle = (i / 16) * Math.PI * 2;
+      this.particles.push({
+        x: pos.x, y: pos.y,
+        vx: Math.cos(angle) * 0.3,
+        vy: Math.sin(angle) * 0.3,
+        life: 1200, maxLife: 1200,
+        size: 3, currentSize: 3,
+        color: '#58a6ff',
+        alpha: 1,
+        gravity: 0,
+        char: '',
+        colors: ['#58a6ff', '#79c0ff'],
+        trail: [],
+        _scanPulse: true,
+        _ringRadius: 0
+      });
+    }
+  },
+
+  /** Medic heal beam: green line from medic to target, fades over 500ms */
+  emitHealBeam(fromLat, fromLng, toLat, toLng) {
+    const from = this._screenPos(fromLat, fromLng);
+    const to = this._screenPos(toLat, toLng);
+    if (!from || !to) return;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const step = 4;
+    const count = Math.ceil(dist / step);
+    for (let i = 0; i <= count; i++) {
+      const t = i / count;
+      const lifeOffset = (1 - t) * 300;
+      this.particles.push({
+        x: from.x + dx * t + (Math.random() - 0.5) * 3,
+        y: from.y + dy * t + (Math.random() - 0.5) * 3,
+        vx: (Math.random() - 0.5) * 0.1,
+        vy: (Math.random() - 0.5) * 0.1,
+        life: 500 - lifeOffset, maxLife: 500,
+        size: 2 + Math.random() * 3, currentSize: 3,
+        color: ['#3fb950', '#56d364'][Math.floor(Math.random() * 2)],
+        alpha: 1,
+        gravity: -0.005,
+        char: '',
+        colors: ['#3fb950', '#56d364'],
+        trail: []
+      });
+    }
+  },
+
+  /** Mechanic repair: orange spark burst */
+  emitMechanicSparks(lat, lng) {
+    const pos = this._screenPos(lat, lng);
+    if (!pos) return;
+    for (let i = 0; i < 12; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.08 + Math.random() * 0.12;
+      this.particles.push({
+        x: pos.x + (Math.random() - 0.5) * 5,
+        y: pos.y + (Math.random() - 0.5) * 5,
+        vx: Math.cos(angle) * speed * 60,
+        vy: Math.sin(angle) * speed * 60 + 0.2,
+        life: 800 + Math.random() * 400, maxLife: 1200,
+        size: 2 + Math.random() * 4, currentSize: 4,
+        color: ['#f0883e', '#ffa657', '#ff8b1f'][Math.floor(Math.random() * 3)],
+        alpha: 1,
+        gravity: 0.008,
+        char: '',
+        colors: ['#f0883e', '#ffa657'],
+        trail: []
+      });
+    }
+  },
+
+  /** Decoder hex scramble: hex characters that resolve then fade */
+  emitDecoderHex(lat, lng) {
+    const pos = this._screenPos(lat, lng);
+    if (!pos) return;
+    const hexChars = '0123456789ABCDEF';
+    for (let i = 0; i < 10; i++) {
+      const char = hexChars[Math.floor(Math.random() * 16)];
+      const angle = (i / 10) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+      const speed = 0.05 + Math.random() * 0.08;
+      this.particles.push({
+        x: pos.x, y: pos.y,
+        vx: Math.cos(angle) * speed * 60,
+        vy: Math.sin(angle) * speed * 60,
+        life: 1000 + Math.random() * 500, maxLife: 1500,
+        size: 3 + Math.random() * 4, currentSize: 5,
+        color: '#d2a8ff',
+        alpha: 1,
+        gravity: -0.002,
+        char: char,
+        colors: ['#d2a8ff', '#c084fc'],
+        trail: []
+      });
+    }
+  },
+
+  /** Navigator compass arrow: teal arrow pointing to nearest objective */
+  emitCompassArrow(lat, lng, targetLat, targetLng) {
+    const from = this._screenPos(lat, lng);
+    if (!from) return;
+    const angle = Math.atan2(targetLng - lng, targetLat - lat);
+    for (let i = 0; i < 8; i++) {
+      const spread = (i % 3 - 1) * 0.15;
+      this.particles.push({
+        x: from.x, y: from.y,
+        vx: Math.cos(angle + spread) * 0.2 * 60,
+        vy: Math.sin(angle + spread) * 0.2 * 60,
+        life: 800 + i * 50, maxLife: 1200,
+        size: 2 + Math.random() * 2, currentSize: 3,
+        color: '#79c0ff',
+        alpha: 0.9,
+        gravity: 0,
+        char: '',
+        colors: ['#79c0ff', '#58a6ff'],
+        trail: []
+      });
+    }
+  },
+
+  /** Mission Control: gold grid flash overlay */
+  emitMCFlash() {
+    // Create a grid of gold dots across the screen
+    const canvas = this.canvas;
+    if (!canvas) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    for (let x = 0; x < w; x += 40) {
+      for (let y = 0; y < h; y += 40) {
+        const dx = x + (Math.random() - 0.5) * 10;
+        const dy = y + (Math.random() - 0.5) * 10;
+        this.particles.push({
+          x: dx, y: dy,
+          vx: (Math.random() - 0.5) * 0.05,
+          vy: (Math.random() - 0.5) * 0.05,
+          life: 600 + Math.random() * 400, maxLife: 1000,
+          size: 1 + Math.random() * 2, currentSize: 2,
+          color: '#ffd965',
+          alpha: 1,
+          gravity: 0,
+          char: '',
+          colors: ['#ffd965', '#f5c542'],
+          trail: []
+        });
+      }
+    }
+  },
+
+  // Phase 6 Task 10 — spawn preset particles by zone/weather type
+  spawnPreset(presetName, lat, lng, count) {
+    count = count || 1;
+    const preset = this.zonePresets[presetName];
+    if (!preset) return;
+    const pos = this._screenPos(lat, lng);
+    if (!pos) return;
+    for (let i = 0; i < count * preset.count; i++) {
+      const color = preset.colors[Math.floor(Math.random() * preset.colors.length)];
+      const size = preset.type === 'streak' ? 1.5 : (preset.type === 'snow' ? 2.5 : (preset.type === 'dust' ? 1 : 2));
+      const life = preset.life * (0.7 + Math.random() * 0.6);
+      let vx = 0, vy = 0;
+      if (preset.type === 'streak') { vx = (Math.random() - 0.5) * 0.2; vy = preset.speed; }
+      else if (preset.type === 'drift') { vx = (Math.random() - 0.5) * preset.speed; vy = (Math.random() - 0.5) * preset.speed * 0.3; }
+      else if (preset.type === 'leaf') { vx = (Math.random() - 0.5) * preset.speed; vy = preset.speed * 0.3 + Math.random() * 0.5; }
+      else if (preset.type === 'dust') { vx = (Math.random() - 0.5) * preset.speed; vy = (Math.random() - 0.5) * preset.speed * 0.2; }
+      else if (preset.type === 'snow') { vx = (Math.random() - 0.5) * 0.3; vy = preset.speed + Math.random() * 0.3; }
+      else if (preset.type === 'spark') { vx = (Math.random() - 0.5) * preset.speed; vy = -preset.speed - Math.random() * 0.2; }
+      this.particles.push({
+        x: pos.x + (Math.random() - 0.5) * 40,
+        y: pos.y + (Math.random() - 0.5) * 40,
+        vx: vx * 60, vy: vy * 60,
+        life: life, maxLife: life,
+        size: size, currentSize: size,
+        color: color, alpha: 0.8,
+        gravity: 0,
+        char: '',
+        colors: [color],
+        trail: []
+      });
+    }
+  },
+
+  burst(lat, lng, colors, count) {
+    const pos = this._screenPos(lat, lng);
+    if (!pos) return;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.05 + Math.random() * 0.1;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const size = 2 + Math.random() * 3;
+      this.particles.push({
+        x: pos.x, y: pos.y,
+        vx: Math.cos(angle) * speed * 60,
+        vy: Math.sin(angle) * speed * 60,
+        life: 600 + Math.random() * 400, maxLife: 1000,
+        size: size, currentSize: size,
+        color: color, alpha: 1,
+        gravity: 0.005,
+        char: '',
+        colors: [color],
+        trail: []
+      });
+    }
+  },
+
+  destroy() {
+    this.running = false;
+    this.particles = [];
+    if (this.animationId) { cancelAnimationFrame(this.animationId); this.animationId = null; }
+  }
+};
+
+/* ========================== FOG OF WAR ========================== */
+
+const FogOfWar = {
+  canvas: null,
+  ctx: null,
+  enabled: true,
+  initialized: false,
+  revealRadius: 80, // agents
+  playerRadius: 120, // player
+  fadeTime: 30000, // 30s fade back
+  lastPositions: new Map(), // id -> {lat, lng}
+  _animationId: null,
+  _running: false,
+
+  init(canvasId) {
+    this.canvas = document.getElementById(canvasId);
+    if (!this.canvas) return;
+    this.ctx = this.canvas.getContext('2d');
+    this.enabled = true;
+    this.initialized = true;
+    this._running = true;
+    this._resize();
+    this._render();
+  },
+
+  _resize() {
+    const mapEl = document.getElementById('missionMap');
+    if (!mapEl) return;
+    const rect = mapEl.getBoundingClientRect();
+    this.canvas.width = rect.width;
+    this.canvas.height = rect.height;
+    this.canvas.style.cssText = `position:absolute;top:0;left:0;width:${rect.width}px;height:${rect.height}px;pointer-events:none`;
+  },
+
+  _metersToPixels(lat, lng, radiusMeters) {
+    // Approximate: 1 degree lat ~ 111320m, 1 degree lng ~ 111320*cos(lat)
+    const mapEl = document.getElementById('missionMap');
+    if (!mapEl || !window.MapModule || !window.MapModule.map) return radiusMeters * 2;
+    const center = window.MapModule.map.getCenter();
+    if (!center) return radiusMeters * 2;
+    const latRad = center.lat * Math.PI / 180;
+    const mPerDegLat = 111320;
+    const mPerDegLng = 111320 * Math.cos(latRad);
+    const point1 = window.MapModule.map.latLngToContainerPoint([lat, lng]);
+    const point2 = window.MapModule.map.latLngToContainerPoint([lat + radiusMeters / mPerDegLat, lng]);
+    return Math.abs(point2.y - point1.y);
+  },
+
+  update() {
+    if (!this.enabled || !this.initialized) return;
+    // Check if agents moved significantly
+    const agents = state.agents || [];
+    let moved = false;
+    for (const a of agents) {
+      const prev = this.lastPositions.get(a.id);
+      if (!prev || Math.abs(prev.lat - a.lat) > 0.00005 || Math.abs(prev.lng - a.lng) > 0.00005) {
+        this.lastPositions.set(a.id, { lat: a.lat, lng: a.lng });
+        moved = true;
+      }
+    }
+    if (moved) {
+      this._render();
+    }
+  },
+
+  _render() {
+    const ctx = this.ctx;
+    const canvas = this.canvas;
+    if (!ctx || !canvas) return;
+
+    // Resize if map changed size (skip resize when radar is fullscreen — sized to viewport)
+    const mapEl = document.getElementById('missionMap');
+    if (mapEl && !(RadarModule && RadarModule.fullscreen)) {
+      const rect = mapEl.getBoundingClientRect();
+      if (canvas.width !== rect.width || canvas.height !== rect.height) {
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
+      }
+    }
+
+    // Clear and draw dark overlay
+    // Don't draw fog dark fill when radar is fullscreen — radar provides its own dark bg
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!RadarModule || !RadarModule.fullscreen) {
+      ctx.fillStyle = '#111820';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Reveal circles around each allied agent using destination-out compositing
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+
+    const agents = state.agents || [];
+    for (const a of agents) {
+      const radius = a.id === state.localAgentId ? this.playerRadius : this.revealRadius;
+      const pxRadius = this._metersToPixels(a.lat, a.lng, radius);
+      const point = window.MapModule && window.MapModule.map
+        ? window.MapModule.map.latLngToContainerPoint([a.lat, a.lng])
+        : null;
+      if (!point) continue;
+      const rect = mapEl.getBoundingClientRect();
+      const cx = point.x - rect.left;
+      const cy = point.y - rect.top;
+
+      // Gradient reveal for smooth edges
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, pxRadius);
+      grad.addColorStop(0, 'rgba(0,0,0,1)');
+      grad.addColorStop(0.7, 'rgba(0,0,0,1)');
+      grad.addColorStop(0.9, 'rgba(0,0,0,0.6)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, pxRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  },
+
+  toggle() {
+    this.enabled = !this.enabled;
+    if (!this.enabled) {
+      // Clear fog canvas completely
+      if (this.ctx && this.canvas) {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      }
+    } else {
+      this._render();
+    }
+    return this.enabled;
+  },
+
+  destroy() {
+    this._running = false;
+    if (this._animationId) { cancelAnimationFrame(this._animationId); this._animationId = null; }
+    if (this.ctx && this.canvas) {
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    this.initialized = false;
+  }
+};
+
+/* ========================== SCREEN JUICE ========================== */
+
+const ScreenJuice = {
+  // Camera shake
+  shakeX: 0, shakeY: 0, shakeDecay: 0,
+  // Hit markers
+  hitMarkers: [], // {x, y, life, maxLife}
+  // Vignette element
+  vignetteEl: null,
+  vignetteActive: false,
+  vignetteTimeout: null,
+  // Screen flash overlay
+  flashEl: null,
+  flashTimeout: null,
+  // Kill feed
+  killFeed: [],
+  killFeedContainer: null,
+  // Critical health pulse
+  criticalPulseEl: null,
+
+  /** Trigger camera shake */
+  shake(intensity = 4, duration = 200) {
+    this.shakeDecay = intensity / (duration / 16);
+    this.shakeX = (Math.random() - 0.5) * intensity * 2;
+    this.shakeY = (Math.random() - 0.5) * intensity * 2;
+  },
+
+  /** Show a hit marker at screen position */
+  showHitMarker(x, y) {
+    this.hitMarkers.push({ x, y, life: 300, maxLife: 300 });
+  },
+
+  /** Flash red damage vignette */
+  flashVignette(intensity = 0.5) {
+    if (!this.vignetteEl) {
+      this.vignetteEl = document.getElementById('threatVignette');
+      if (!this.vignetteEl) return;
+    }
+    this.vignetteEl.style.background = `radial-gradient(ellipse at center, transparent 40%, rgba(200,30,30,${intensity}) 100%)`;
+    this.vignetteEl.style.opacity = '1';
+    this.vignetteActive = true;
+    clearTimeout(this.vignetteTimeout);
+    this.vignetteTimeout = setTimeout(() => {
+      this.vignetteEl.style.opacity = '0';
+      this.vignetteActive = false;
+    }, 300);
+  },
+
+  /** Screen flash on player damage (white/red overlay that fades 200ms) */
+  flashScreen(color = '#ff4444') {
+    if (!this.flashEl) {
+      this.flashEl = MemoryPool.acquire('div');
+      this.flashEl.style.cssText = 'position:fixed;inset:0;z-index:999;pointer-events:none;opacity:0;transition:opacity 0.2s ease';
+      document.body.appendChild(this.flashEl);
+    }
+    this.flashEl.style.background = color;
+    this.flashEl.style.opacity = '0.35';
+    clearTimeout(this.flashTimeout);
+    this.flashTimeout = setTimeout(() => {
+      if (this.flashEl) this.flashEl.style.opacity = '0';
+    }, 200);
+  },
+
+  /** Critical health pulse: screen border pulses red when stamina < 25% */
+  updateCriticalPulse(staminaPct) {
+    if (staminaPct > 25) {
+      if (this.criticalPulseEl) { this.criticalPulseEl.remove(); this.criticalPulseEl = null; }
+      return;
+    }
+    if (!this.criticalPulseEl) {
+      this.criticalPulseEl = MemoryPool.acquire('div');
+      this.criticalPulseEl.style.cssText = 'position:fixed;inset:0;z-index:998;pointer-events:none;box-shadow:inset 0 0 0 0 rgba(239,68,68,0);transition:box-shadow 0.4s ease';
+      document.body.appendChild(this.criticalPulseEl);
+    }
+    const pulse = 0.3 + Math.sin(Date.now() / 300) * 0.2;
+    this.criticalPulseEl.style.boxShadow = `inset 0 0 40px 8px rgba(239,68,68,${pulse})`;
+    requestAnimationFrame(() => this.updateCriticalPulse(staminaPct));
+  },
+
+  /** Kill feed: slide-in/slide-out DOM elements for kills and objective completions */
+  addKillFeed(text, color = '#ffd965') {
+    if (!this.killFeedContainer) {
+      this.killFeedContainer = MemoryPool.acquire('div');
+      this.killFeedContainer.style.cssText = 'position:fixed;top:56px;right:10px;z-index:100;display:flex;flex-direction:column;gap:4px;align-items:flex-end;pointer-events:none;max-width:260px';
+      document.body.appendChild(this.killFeedContainer);
+    }
+    const el = MemoryPool.acquire('div');
+    el.style.cssText = `background:rgba(11,15,20,0.92);border:1px solid ${color};border-left:3px solid ${color};border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;color:${color};backdrop-filter:blur(4px);animation:killFeedIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;white-space:nowrap`;
+    el.textContent = text;
+    this.killFeedContainer.appendChild(el);
+    setTimeout(() => {
+      el.style.animation = 'killFeedOut 0.35s ease-in forwards';
+      setTimeout(() => {
+        if (el.parentNode) el.parentNode.removeChild(el);
+        MemoryPool.release('div', el);
+      }, 350);
+    }, 3500);
+  },
+
+  /** Ability ready glow: pulse ability icons when cooldown finishes */
+  flashAbilityReady(slotEl) {
+    if (!slotEl) return;
+    slotEl.classList.add('ability-ready');
+    setTimeout(() => slotEl.classList.remove('ability-ready'), 1200);
+  },
+
+  /** Apply camera shake transform to an element */
+  applyShake() {
+    if (Math.abs(this.shakeX) < 0.5 && Math.abs(this.shakeY) < 0.5) {
+      this.shakeX = 0; this.shakeY = 0;
+      return null; // no shake
+    }
+    const out = { x: Math.round(this.shakeX), y: Math.round(this.shakeY) };
+    this.shakeX -= Math.sign(this.shakeX) * this.shakeDecay;
+    this.shakeY -= Math.sign(this.shakeY) * this.shakeDecay;
+    return out;
+  },
+
+  /** Get hit markers to draw on radar canvas */
+  getHitMarkers() {
+    const out = [];
+    for (let i = this.hitMarkers.length - 1; i >= 0; i--) {
+      const m = this.hitMarkers[i];
+      m.life -= 16;
+      if (m.life <= 0) { this.hitMarkers.splice(i, 1); continue; }
+      out.push({ x: m.x, y: m.y, alpha: m.life / m.maxLife });
+    }
+    return out;
+  },
+
+  /** Call this from the radar render loop to draw hit markers */
+  drawOnRadar(ctx) {
+    const markers = this.getHitMarkers();
+    const cx = ctx.canvas.width / 2;
+    const cy = ctx.canvas.height / 2;
+    for (const m of markers) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.globalAlpha = m.alpha;
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 2;
+      const s = 10;
+      // V-shape hit marker
+      ctx.beginPath();
+      ctx.moveTo(m.x - s, m.y - s);
+      ctx.lineTo(m.x, m.y);
+      ctx.lineTo(m.x - s, m.y + s);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(m.x + s, m.y - s);
+      ctx.lineTo(m.x, m.y);
+      ctx.lineTo(m.x + s, m.y + s);
+      ctx.stroke();
+      ctx.restore();
+    }
+  },
+
+  /** Apply shake to mission map element */
+  applyShakeToMap() {
+    const offset = this.applyShake();
+    if (!offset) {
+      const mapEl = document.getElementById('missionMap');
+      if (mapEl) mapEl.style.transform = '';
+      return;
+    }
+    const mapEl = document.getElementById('missionMap');
+    if (mapEl) mapEl.style.transform = `translate(${offset.x}px, ${offset.y}px)`;
+  }
+};
+
+/* ========================== SIGNAL TRIANGULATION MINIGAME (P7-T4) ========================== */
+
+const TriangulationMinigame = {
+  SCAN_DURATION: 3000, // ms
+  BEARING_ERROR_NOISY: 15, // degrees
+  MIN_POINT_SPACING: 80, // meters — too close = noisy
+  MAX_POINT_DISTANCE: 600, // meters — too far = noisy
+
+  init() {
+    this._bindScanButton();
+    this._createHeatmapCanvas();
+  },
+
+  _bindScanButton() {
+    const btn = document.getElementById('triScanBtn');
+    if (!btn) return;
+    // Mouse / touch hold
+    const startScan = (e) => {
+      e.preventDefault();
+      if (!state.triangulation.nearestTriObjective) return;
+      if (state.triangulation.active) return;
+      const o = state.triangulation.nearestTriObjective;
+      const point = o.triPoints?.[o.triIndex || 0];
+      if (!point || point.visited) return;
+      state.triangulation.active = true;
+      state.triangulation.scanningObjectiveId = o.id;
+      state.triangulation.scanStartTime = Date.now();
+      btn.classList.add('scanning');
+      this._scanLoop();
+    };
+    const endScan = () => {
+      if (!state.triangulation.active) return;
+      state.triangulation.active = false;
+      state.triangulation.scanningObjectiveId = null;
+      btn.classList.remove('scanning');
+      const fill = btn.querySelector('.scan-progress-fill');
+      if (fill) fill.style.width = '0%';
+    };
+    btn.addEventListener('mousedown', startScan);
+    btn.addEventListener('touchstart', startScan, { passive: false });
+    btn.addEventListener('mouseup', endScan);
+    btn.addEventListener('mouseleave', endScan);
+    btn.addEventListener('touchend', endScan);
+  },
+
+  _scanLoop() {
+    if (!state.triangulation.active) return;
+    const elapsed = Date.now() - state.triangulation.scanStartTime;
+    const pct = Math.min(100, (elapsed / this.SCAN_DURATION) * 100);
+    const btn = document.getElementById('triScanBtn');
+    const fill = btn?.querySelector('.scan-progress-fill');
+    if (fill) fill.style.width = `${pct}%`;
+    if (elapsed >= this.SCAN_DURATION) {
+      this._completeScan();
+      return;
+    }
+    requestAnimationFrame(() => this._scanLoop());
+  },
+
+  _completeScan() {
+    const o = state.objectives.find(ox => ox.id === state.triangulation.scanningObjectiveId);
+    if (!o || o.type !== 'Triangulation') {
+      this._resetScan();
+      return;
+    }
+    const idx = o.triIndex || 0;
+    const point = o.triPoints?.[idx];
+    if (!point || point.visited) {
+      this._resetScan();
+      return;
+    }
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local) {
+      this._resetScan();
+      return;
+    }
+    // Compute true bearing from player to hidden objective center
+    const centerLat = o.lat;
+    const centerLng = o.lng;
+    const trueBearing = this._bearing(local.lat, local.lng, centerLat, centerLng);
+    // Check vantage quality: distance from player to hidden center
+    const distToCenter = haversine(local, { lat: centerLat, lng: centerLng });
+    const isNoisy = distToCenter < this.MIN_POINT_SPACING || distToCenter > this.MAX_POINT_DISTANCE;
+    const error = isNoisy ? (Math.random() * 2 - 1) * this.BEARING_ERROR_NOISY : 0;
+    const bearing = (trueBearing + error + 360) % 360;
+    state.triangulation.bearings.push({
+      lat: local.lat, lng: local.lng,
+      angle: bearing, objectiveId: o.id,
+      timestamp: Date.now(), noisy: isNoisy
+    });
+    point.visited = true;
+    o.triIndex = idx + 1;
+    o.progress = Math.round((o.triIndex / o.triPoints.length) * 100);
+    SoundFX.play(880, 0.06, 'sine', 0.08);
+    addChat('System', `Bearing ${o.triIndex}/${o.triPoints.length} locked${isNoisy ? ' (noisy signal)' : ''}.`);
+    // After 2 bearings, show heatmap
+    const objBearings = state.triangulation.bearings.filter(b => b.objectiveId === o.id);
+    if (objBearings.length >= 2) {
+      this._showHeatmap(o);
+    }
+    // After 3 bearings, reveal objective
+    if (o.triIndex >= o.triPoints.length) {
+      o.found = true; o.progress = 100;
+      ObjectiveAutoFocus.focusNext();
+      this._clearHeatmap();
+      if (local.team && state.scores[local.team] !== undefined) {
+        state.scores[local.team] += 35;
+        addChat('Score', `${local.team} +35pts for ${o.title}.`);
+        SoundFX.scoreEvent();
+        EventLog.add('score', '⭐', `<strong>+35 pts</strong> ${escapeHtml(o.title)}`);
+      } else {
+        addChat('Mission Control', `${o.title} triangulated.`);
+        SoundFX.beaconCollected();
+        EventLog.add('objective', '🔺', `<strong>Triangulated</strong> ${escapeHtml(o.title)}`);
+      }
+    }
+    this._resetScan();
+    renderMissionMap();
+    renderHUD();
+    renderObjectivesList();
+  },
+
+  _resetScan() {
+    state.triangulation.active = false;
+    state.triangulation.scanningObjectiveId = null;
+    const btn = document.getElementById('triScanBtn');
+    if (btn) btn.classList.remove('scanning');
+    const fill = btn?.querySelector('.scan-progress-fill');
+    if (fill) fill.style.width = '0%';
+  },
+
+  _bearing(lat1, lng1, lat2, lng2) {
+    const toRad = x => x * Math.PI / 180;
+    const dLng = toRad(lng2 - lng1);
+    const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+    const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  },
+
+  _createHeatmapCanvas() {
+    let canvas = document.getElementById('triHeatmapCanvas');
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      canvas.id = 'triHeatmapCanvas';
+      canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:450;';
+      const mapEl = document.getElementById('missionMap');
+      if (mapEl) mapEl.appendChild(canvas);
+    }
+    state.triangulation.heatmapCanvas = canvas;
+  },
+
+  _showHeatmap(o) {
+    const canvas = state.triangulation.heatmapCanvas;
+    if (!canvas) return;
+    const mapEl = document.getElementById('missionMap');
+    if (!mapEl) return;
+    const rect = mapEl.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const m = window.MapModule && window.MapModule.ensureMissionMap ? window.MapModule.ensureMissionMap() : null;
+    if (!m) return;
+    // Draw bearing lines from scan positions
+    const objBearings = state.triangulation.bearings.filter(b => b.objectiveId === o.id);
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.strokeStyle = '#ffd965';
+    ctx.lineWidth = 2;
+    for (const b of objBearings) {
+      const start = m.latLngToContainerPoint([b.lat, b.lng]);
+      const rad = b.angle * Math.PI / 180;
+      const len = Math.max(rect.width, rect.height) * 1.5;
+      const end = { x: start.x + Math.sin(rad) * len, y: start.y - Math.cos(rad) * len };
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+    }
+    // Draw wedge-shaped heatmap overlay where bearings intersect
+    if (objBearings.length >= 2) {
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = '#ff8b1f';
+      // Approximate intersection by walking along each bearing and scoring
+      const best = this._estimateIntersection(objBearings);
+      if (best) {
+        const center = m.latLngToContainerPoint([best.lat, best.lng]);
+        const radiusPx = Math.min(120, rect.width * 0.15);
+        const grad = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, radiusPx);
+        grad.addColorStop(0, 'rgba(255,139,31,0.5)');
+        grad.addColorStop(0.5, 'rgba(255,139,31,0.2)');
+        grad.addColorStop(1, 'rgba(255,139,31,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, radiusPx, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  },
+
+  _estimateIntersection(bearings) {
+    if (bearings.length < 2) return null;
+    // Simple: average the endpoints of short segments along each bearing
+    const points = [];
+    const m = window.MapModule && window.MapModule.ensureMissionMap ? window.MapModule.ensureMissionMap() : null;
+    if (!m) return null;
+    for (let i = 0; i < bearings.length; i++) {
+      for (let j = i + 1; j < bearings.length; j++) {
+        const p = this._lineIntersection(bearings[i], bearings[j]);
+        if (p) points.push(p);
+      }
+    }
+    if (!points.length) return null;
+    const avgLat = points.reduce((s, p) => s + p.lat, 0) / points.length;
+    const avgLng = points.reduce((s, p) => s + p.lng, 0) / points.length;
+    return { lat: avgLat, lng: avgLng };
+  },
+
+  _lineIntersection(b1, b2) {
+    // Convert bearing lines to parametric form and solve
+    const toRad = x => x * Math.PI / 180;
+    const m = window.MapModule && window.MapModule.ensureMissionMap ? window.MapModule.ensureMissionMap() : null;
+    if (!m) return null;
+    const p1 = m.latLngToContainerPoint([b1.lat, b1.lng]);
+    const p2 = m.latLngToContainerPoint([b2.lat, b2.lng]);
+    const r1 = { x: Math.sin(toRad(b1.angle)), y: -Math.cos(toRad(b1.angle)) };
+    const r2 = { x: Math.sin(toRad(b2.angle)), y: -Math.cos(toRad(b2.angle)) };
+    const denom = r1.x * r2.y - r2.x * r1.y;
+    if (Math.abs(denom) < 1e-6) return null; // parallel
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const t = (dx * r2.y - dy * r2.x) / denom;
+    const ix = p1.x + r1.x * t;
+    const iy = p1.y + r1.y * t;
+    // Convert back to lat/lng approximately
+    const center = m.getCenter();
+    const mPerDegLat = 111320;
+    const mPerDegLng = 111320 * Math.cos(center.lat * Math.PI / 180);
+    const lat = center.lat + (iy - m.latLngToContainerPoint([center.lat, center.lng]).y) * (mPerDegLat / 111320) * 0.000009; // rough
+    const lng = center.lng + (ix - m.latLngToContainerPoint([center.lat, center.lng]).x) * (mPerDegLng / 111320) * 0.000009;
+    // Actually use proper conversion via map containerPointToLatLng
+    try {
+      const ll = m.containerPointToLatLng([ix, iy]);
+      return { lat: ll.lat, lng: ll.lng };
+    } catch (e) { return null; }
+  },
+
+  _clearHeatmap() {
+    const canvas = state.triangulation.heatmapCanvas;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  },
+
+  // Called from simulateWorld to update nearest triangulation objective
+  tick() {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local) return;
+    let nearest = null;
+    let nearestDist = Infinity;
+    for (const o of state.objectives) {
+      if (o.type !== 'Triangulation' || o.found) continue;
+      const idx = o.triIndex || 0;
+      const point = o.triPoints?.[idx];
+      if (!point || point.visited) continue;
+      const d = haversine(local, point);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = o;
+      }
+    }
+    const wasVisible = state.triangulation.scanButtonVisible;
+    const nowVisible = nearest !== null && nearestDist <= 80;
+    state.triangulation.nearestTriObjective = nearest;
+    state.triangulation.scanButtonVisible = nowVisible;
+    if (wasVisible !== nowVisible) {
+      const btn = document.getElementById('triScanBtn');
+      if (btn) btn.classList.toggle('hidden', !nowVisible);
+      const compass = document.getElementById('triBearingCompass');
+      if (compass) compass.classList.toggle('hidden', !nowVisible);
+    }
+    // Update bearing compass widget
+    if (nowVisible && nearest) {
+      const idx = nearest.triIndex || 0;
+      const point = nearest.triPoints?.[idx];
+      if (point) {
+        const bearing = this._bearing(local.lat, local.lng, point.lat, point.lng);
+        this._updateCompassWidget(bearing);
+      }
+    }
+  },
+
+  _updateCompassWidget(bearingDeg) {
+    const el = document.getElementById('triBearingArrow');
+    if (!el) return;
+    el.style.transform = `rotate(${bearingDeg}deg)`;
+    const label = document.getElementById('triBearingLabel');
+    if (label) label.textContent = `${Math.round(bearingDeg)}°`;
+  },
+
+  renderOnMap() {
+    // Re-draw heatmap if bearings exist for active triangulation objectives
+    for (const o of state.objectives) {
+      if (o.type !== 'Triangulation' || o.found) continue;
+      const objBearings = state.triangulation.bearings.filter(b => b.objectiveId === o.id);
+      if (objBearings.length >= 2) {
+        this._showHeatmap(o);
+        return; // only show one heatmap at a time
+      }
+    }
+    this._clearHeatmap();
+  },
+
+  reset() {
+    state.triangulation.active = false;
+    state.triangulation.scanningObjectiveId = null;
+    state.triangulation.scanStartTime = 0;
+    state.triangulation.bearings = [];
+    state.triangulation.scanButtonVisible = false;
+    state.triangulation.nearestTriObjective = null;
+    this._clearHeatmap();
+    const btn = document.getElementById('triScanBtn');
+    if (btn) btn.classList.add('hidden');
+    const compass = document.getElementById('triBearingCompass');
+    if (compass) compass.classList.add('hidden');
+  }
+};
+
+/* ========================== DAMAGE NUMBERS ========================== */
+
+const DamageNumbers = {
+  items: [],
+  _container: null,
+
+  show(text, color = '#ff4444') {
+    if (!this._container) {
+      this._container = MemoryPool.acquire('div');
+      this._container.id = 'damageNumbersContainer';
+      this._container.style.cssText = 'position:fixed;inset:0;z-index:100;pointer-events:none;overflow:hidden';
+      document.body.appendChild(this._container);
+    }
+    const el = MemoryPool.acquire('div');
+    el.textContent = text;
+    el.style.cssText = `position:absolute;left:50%;top:50%;color:${color};font:bold 22px system-ui;text-shadow:0 0 8px ${color},0 0 16px rgba(0,0,0,0.8);transform:translate(-50%,-50%);opacity:1;transition:none`;
+    el.dataset.born = Date.now();
+    this._container.appendChild(el);
+    this.items.push({ el, born: Date.now() });
+    // Float up & fade
+    requestAnimationFrame(() => {
+      el.style.transition = 'transform 1.2s ease-out, opacity 1.2s ease-out';
+      el.style.transform = 'translate(-50%,-160%)';
+      el.style.opacity = '0';
+    });
+    setTimeout(() => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+      MemoryPool.release('div', el);
+    }, 1400);
+    // Clean old items periodically
+    if (this.items.length > 10) this._clean();
+  },
+
+  /** Also call on ability cast */
+  showAbility(text, roleName) {
+    const colors = { Drone:'#58a6ff', Mechanic:'#f0883e', Medic:'#3fb950', Decoder:'#d2a8ff', Navigator:'#79c0ff', Courier:'#ffa657', 'Mission Control':'#ffd965' };
+    this.show(text, colors[roleName] || '#00bcd4');
+  },
+
+  _clean() {
+    const now = Date.now();
+    this.items = this.items.filter(i => now - i.born < 2000);
+  }
 };
 
 let timerId = null;
@@ -183,17 +1789,597 @@ let replayMap = null; // separate Leaflet instance for replay screen
 
 /* ========================== MULTIPLAYER NETWORK (Socket.IO) ========================== */
 
+/* ========================== FRIEND SYSTEM (Phase 6 Task 9) ========================== */
+
+const FriendSystem = {
+  STORAGE_KEY: 'slv2_friends',
+  _friends: [],
+
+  init() {
+    this._load();
+  },
+
+  _load() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (raw) this._friends = JSON.parse(raw);
+    } catch {
+      this._friends = [];
+    }
+  },
+
+  _save() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this._friends));
+    } catch { /* ignore quota errors */ }
+  },
+
+  addFriend(name, callsign) {
+    const cleanName = (name || '').trim();
+    const cleanCallsign = (callsign || '').trim();
+    if (!cleanName) return false;
+    if (this._friends.find(f => f.name === cleanName)) return false;
+    this._friends.push({
+      name: cleanName,
+      callsign: cleanCallsign || cleanName,
+      online: false,
+      addedAt: Date.now()
+    });
+    this._save();
+    this.render();
+    return true;
+  },
+
+  removeFriend(name) {
+    const before = this._friends.length;
+    this._friends = this._friends.filter(f => f.name !== name);
+    if (this._friends.length !== before) {
+      this._save();
+      this.render();
+      return true;
+    }
+    return false;
+  },
+
+  setOnline(name, online) {
+    const f = this._friends.find(x => x.name === name);
+    if (f) {
+      f.online = online;
+      f.lastSeen = Date.now();
+      this.render();
+    }
+  },
+
+  getFriends() {
+    return this._friends.slice();
+  },
+
+  render() {
+    const list = document.getElementById('friendList');
+    if (!list) return;
+    if (!this._friends.length) {
+      list.innerHTML = '<li class="friend-empty">No agents added yet.</li>';
+      return;
+    }
+    list.innerHTML = this._friends.map(f => {
+      const statusDot = f.online
+        ? '<span class="friend-status online" title="Online">🟢</span>'
+        : '<span class="friend-status offline" title="Offline">⚫</span>';
+      return `<li class="friend-item" data-name="${escapeHtml(f.name)}">
+        ${statusDot}
+        <span class="friend-name">${escapeHtml(f.name)}</span>
+        <span class="friend-callsign">${escapeHtml(f.callsign)}</span>
+        <button class="friend-remove compact-button" data-name="${escapeHtml(f.name)}" title="Remove">×</button>
+      </li>`;
+    }).join('');
+
+    // Wire remove buttons
+    list.querySelectorAll('.friend-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const name = btn.dataset.name;
+        if (name && confirm(`Remove ${name} from friends?`)) {
+          this.removeFriend(name);
+        }
+      });
+    });
+  }
+};
+
+/* ========================== CLAN SYSTEM (Phase 8 Task 1) ========================== */
+
+const ClanSystem = {
+  STORAGE_KEY: 'slv2_clan',
+  INVITES_KEY: 'slv2_clan_invites',
+  CHAT_KEY: 'slv2_clan_chat',
+  MAX_CLAN_NAME: 24,
+  MAX_CLAN_TAG: 5,
+  MAX_MEMBERS: 50,
+
+  EMBLEMS: [
+    { id: 'shield',  name: 'Iron Shield',  svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>' },
+    { id: 'raven',   name: 'Shadow Raven', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8 2 5 5 5 9c0 2 1 4 3 5v2H6v2h2v2h2v-2h2v2h2v-2h2v2h2v-2h-2v-2c2-1 3-3 3-5 0-4-3-7-7-7z"/></svg>' },
+    { id: 'wolf',    name: 'Night Wolf',   svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l-2 4H6l1 3-3 2 2 2-1 3 3-1 1 3 3-2 3 2 1-3 3 1-1-3 2-2-3-2 1-3h-4l-2-4z"/></svg>' },
+    { id: 'tower',   name: 'Signal Tower', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l-1 4H7l2 2-3 8h4l-1 4h6l-1-4h4l-3-8 2-2h-4l-1-4z"/></svg>' },
+    { id: 'eye',     name: 'All-Seeing',   svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>' },
+    { id: 'skull',   name: 'Ghost Skull',  svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A6.98 6.98 0 0 0 19 9a7 7 0 0 0-7-7zM9 9a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>' },
+    { id: 'bolt',    name: 'Storm Bolt',   svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 2L4 14h5v8l7-12h-5l5-8h-5z"/></svg>' },
+    { id: 'dagger',  name: 'Silent Dagger',svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.5 2L11 8l-3-3L2 22l13-6-3-3 6-3.5L14.5 2z"/></svg>' },
+    { id: 'anchor',  name: 'Deep Anchor',  svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3 3 0 0 0-3 3 3 3 0 0 0 2 2.83V11H7v2h4v3.17A6.001 6.001 0 0 1 6 12H3a9 9 0 0 0 18 0h-3a6.001 6.001 0 0 1-5 4.17V13h4v-2h-4V7.83A3 3 0 0 0 15 5a3 3 0 0 0-3-3z"/></svg>' },
+    { id: 'compass', name: 'True Compass', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5.5-2.5l7.51-3.22-3.22-7.51-7.51 3.22 3.22 7.51z"/></svg>' },
+    { id: 'crown',   name: 'Crown',        svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>' },
+    { id: 'flame',   name: 'Phoenix Flame',svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67z"/></svg>' },
+    { id: 'leaf',    name: 'Shadow Leaf',  svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8z"/></svg>' },
+    { id: 'star',    name: 'North Star',   svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>' },
+    { id: 'cross',   name: 'Medi-Cross',   svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5v2h14V3zm0 4H5v2h14V7zm0 4H5v2h14v-2zm0 4H5v2h14v-2zM3 3h2v18H3V3z"/></svg>' },
+    { id: 'gear',    name: 'Iron Gear',    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84a.484.484 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.488.488 0 0 0-.59.22L3.16 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.27.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 15.6 12 3.6 3.6 0 0 1 12 15.6z"/></svg>' },
+  ],
+
+  init() {
+    this._loadLocalClan();
+    this._loadInvites();
+    this._loadChat();
+  },
+
+  /* ---- Create / Join / Leave ---- */
+
+  create(name, tag, emblem) {
+    const cleanName = (name || '').trim();
+    const cleanTag = (tag || '').trim().toUpperCase();
+    if (!cleanName || cleanName.length > this.MAX_CLAN_NAME) { addChat('System', 'Clan name must be 1-24 characters.'); return false; }
+    if (!cleanTag || cleanTag.length > this.MAX_CLAN_TAG) { addChat('System', 'Clan tag must be 1-5 characters.'); return false; }
+    if (!emblem) { addChat('System', 'Select an emblem.'); return false; }
+
+    const clanId = 'clan-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+    state.clan = {
+      id: clanId,
+      name: cleanName,
+      tag: cleanTag,
+      emblem,
+      role: 'leader',
+      joinedAt: Date.now()
+    };
+    this._saveLocalClan();
+    this._addToCache(clanId, { name: cleanName, tag: cleanTag, emblem, members: [{ name: state.localProfile.name, callsign: state.localProfile.callsign, role: 'leader', online: true }], xp: 0, level: 1 });
+    addChat('System', `Clan "${cleanName}" [${cleanTag}] created!`);
+    ScreenJuice.addKillFeed(`Clan created: [${cleanTag}] ${cleanName}`, '#ffd965');
+    this.renderClanPanel();
+    this.renderLobbyWidget();
+    // Emit to server if connected
+    if (SignalNet.socket) SignalNet.socket.emit('clan-create', { clanId, name: cleanName, tag: cleanTag, emblem });
+    return true;
+  },
+
+  join(clanId) {
+    if (!clanId) return false;
+    const cached = state.clanCache[clanId];
+    if (!cached) { addChat('System', 'Clan not found.'); return false; }
+    if (cached.members && cached.members.length >= this.MAX_MEMBERS) { addChat('System', 'Clan is full.'); return false; }
+    state.clan = {
+      id: clanId,
+      name: cached.name,
+      tag: cached.tag,
+      emblem: cached.emblem,
+      role: 'member',
+      joinedAt: Date.now()
+    };
+    this._saveLocalClan();
+    addChat('System', `Joined [${cached.tag}] ${cached.name}`);
+    ScreenJuice.addKillFeed(`Joined clan [${cached.tag}]`, '#4caf50');
+    this.renderClanPanel();
+    this.renderLobbyWidget();
+    if (SignalNet.socket) SignalNet.socket.emit('clan-join', { clanId });
+    return true;
+  },
+
+  leave() {
+    if (!state.clan) return false;
+    const tag = state.clan.tag;
+    if (SignalNet.socket) SignalNet.socket.emit('clan-leave', { clanId: state.clan.id });
+    state.clan = null;
+    this._saveLocalClan();
+    addChat('System', 'You left the clan.');
+    ScreenJuice.addKillFeed('Left clan', '#a0aec0');
+    this.renderClanPanel();
+    this.renderLobbyWidget();
+    return true;
+  },
+
+  /* ---- Invite / Kick ---- */
+
+  invite(playerName) {
+    if (!state.clan) { addChat('System', 'You are not in a clan.'); return false; }
+    if (state.clan.role !== 'leader' && state.clan.role !== 'officer') { addChat('System', 'Only leaders and officers can invite.'); return false; }
+    const clean = (playerName || '').trim();
+    if (!clean) return false;
+    const invite = { clanId: state.clan.id, clanName: state.clan.name, from: state.localProfile.name, expiresAt: Date.now() + 86400000 };
+    state.clanInvites.push(invite);
+    if (SignalNet.socket) SignalNet.socket.emit('clan-invite', { clanId: state.clan.id, playerName: clean, invite });
+    addChat('System', `Invited ${clean} to [${state.clan.tag}].`);
+    return true;
+  },
+
+  kick(playerName) {
+    if (!state.clan) return false;
+    if (state.clan.role !== 'leader' && state.clan.role !== 'officer') { addChat('System', 'Only leaders and officers can kick.'); return false; }
+    const clean = (playerName || '').trim();
+    if (!clean) return false;
+    const cached = state.clanCache[state.clan.id];
+    if (cached && cached.members) {
+      cached.members = cached.members.filter(m => m.name !== clean);
+    }
+    if (SignalNet.socket) SignalNet.socket.emit('clan-kick', { clanId: state.clan.id, playerName: clean });
+    addChat('System', `Kicked ${clean} from the clan.`);
+    this.renderClanPanel();
+    return true;
+  },
+
+  promote(playerName, newRole) {
+    if (!state.clan || state.clan.role !== 'leader') { addChat('System', 'Only the leader can promote.'); return false; }
+    const cached = state.clanCache[state.clan.id];
+    if (cached && cached.members) {
+      const m = cached.members.find(x => x.name === playerName);
+      if (m) m.role = newRole;
+    }
+    if (SignalNet.socket) SignalNet.socket.emit('clan-promote', { clanId: state.clan.id, playerName, newRole });
+    addChat('System', `${playerName} promoted to ${newRole}.`);
+    this.renderClanPanel();
+    return true;
+  },
+
+  /* ---- Clan Chat ---- */
+
+  sendChat(text) {
+    if (!state.clan) return false;
+    const msg = { sender: state.localProfile.name, text: (text || '').trim(), timestamp: Date.now() };
+    if (!msg.text) return false;
+    state.clanChat.push(msg);
+    if (state.clanChat.length > 200) state.clanChat = state.clanChat.slice(-200);
+    this._saveChat();
+    this.renderClanChat();
+    if (SignalNet.socket) SignalNet.socket.emit('clan-chat', { clanId: state.clan.id, msg });
+    return true;
+  },
+
+  onClanChat(msg) {
+    if (!msg || !msg.sender) return;
+    state.clanChat.push(msg);
+    if (state.clanChat.length > 200) state.clanChat = state.clanChat.slice(-200);
+    this._saveChat();
+    this.renderClanChat();
+    if (state.screen !== 'clan') {
+      state.clanChatUnread = (state.clanChatUnread || 0) + 1;
+      this._updateClanBadge();
+    }
+  },
+
+  /* ---- Clan XP ---- */
+
+  addClanXP(amount) {
+    if (!state.clan) return;
+    const cached = state.clanCache[state.clan.id];
+    if (cached) {
+      cached.xp = (cached.xp || 0) + amount;
+      const newLevel = this._levelFromXP(cached.xp);
+      if (newLevel > (cached.level || 1)) {
+        cached.level = newLevel;
+        ScreenJuice.addKillFeed(`Clan leveled up to ${newLevel}!`, '#ffd965');
+      }
+    }
+    if (SignalNet.socket) SignalNet.socket.emit('clan-xp', { clanId: state.clan.id, amount });
+  },
+
+  _levelFromXP(xp) {
+    let level = 1;
+    let needed = 1000;
+    let total = 0;
+    while (total + needed <= xp) {
+      total += needed;
+      level++;
+      needed = Math.floor(needed * 1.2);
+    }
+    return Math.min(level, 100);
+  },
+
+  /* ---- Cache / Browse ---- */
+
+  _addToCache(clanId, data) {
+    state.clanCache[clanId] = { ...(state.clanCache[clanId] || {}), ...data };
+  },
+
+  browseClans() {
+    // Return mock browseable clans + any cached
+    const mock = [
+      { id: 'clan-mock-1', name: 'Signal Corps', tag: 'SIG', emblem: 'tower', members: Array(12).fill({}), xp: 5400, level: 5 },
+      { id: 'clan-mock-2', name: 'Ghost Recon', tag: 'GHOST', emblem: 'skull', members: Array(8).fill({}), xp: 3200, level: 3 },
+      { id: 'clan-mock-3', name: 'Iron Wolves', tag: 'WOLF', emblem: 'wolf', members: Array(22).fill({}), xp: 8900, level: 8 },
+    ];
+    mock.forEach(c => this._addToCache(c.id, c));
+    return mock;
+  },
+
+  /* ---- UI: Clan Panel (clanScreen) ---- */
+
+  renderClanPanel() {
+    const main = document.getElementById('clanMain');
+    if (!main) return;
+    if (!state.clan) {
+      main.innerHTML = this._renderNoClan();
+      this._wireNoClan();
+      return;
+    }
+    main.innerHTML = this._renderClanDashboard();
+    this._wireDashboard();
+    this.renderClanChat();
+  },
+
+  _renderNoClan() {
+    const browse = this.browseClans();
+    return `
+      <div class="clan-section">
+        <h2>Create a Clan</h2>
+        <div class="clan-create-form">
+          <input id="clanCreateName" type="text" placeholder="Clan name" maxlength="${this.MAX_CLAN_NAME}">
+          <input id="clanCreateTag" type="text" placeholder="TAG" maxlength="${this.MAX_CLAN_TAG}">
+          <div class="clan-emblem-grid" id="clanEmblemGrid"></div>
+          <button id="clanCreateBtn" class="primary-button">Create Clan</button>
+        </div>
+      </div>
+      <div class="clan-section">
+        <h2>Browse Clans</h2>
+        <div class="clan-browse-list">
+          ${browse.map(c => `
+            <div class="clan-browse-item" data-clan-id="${escapeHtml(c.id)}">
+              <span class="clan-browse-emblem">${this._svgForEmblem(c.emblem)}</span>
+              <span class="clan-browse-info">
+                <span class="clan-browse-name">${escapeHtml(c.name)} <span class="clan-browse-tag">[${escapeHtml(c.tag)}]</span></span>
+                <span class="clan-browse-meta">Lvl ${c.level} • ${(c.members || []).length}/${this.MAX_MEMBERS} members • ${(c.xp || 0).toLocaleString()} XP</span>
+              </span>
+              <button class="compact-button clan-join-btn" data-clan-id="${escapeHtml(c.id)}">Join</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  _renderClanDashboard() {
+    const c = state.clan;
+    const cached = state.clanCache[c.id] || {};
+    const members = cached.members || [];
+    const isOfficerPlus = c.role === 'leader' || c.role === 'officer';
+    const canPromote = c.role === 'leader';
+    return `
+      <div class="clan-section">
+        <div class="clan-header-info">
+          <span class="clan-dash-emblem">${this._svgForEmblem(c.emblem)}</span>
+          <div class="clan-dash-title">
+            <h2>${escapeHtml(c.name)} <span class="clan-dash-tag">[${escapeHtml(c.tag)}]</span></h2>
+            <span class="clan-dash-meta">Level ${cached.level || 1} • ${(cached.xp || 0).toLocaleString()} XP • ${members.length} members</span>
+          </div>
+          <span class="clan-dash-role">${c.role.toUpperCase()}</span>
+        </div>
+      </div>
+      <div class="clan-section">
+        <h3>Members</h3>
+        <ul class="clan-member-list">
+          ${members.map(m => `
+            <li class="clan-member-item">
+              <span class="clan-member-status ${m.online ? 'online' : 'offline'}">${m.online ? '🟢' : '⚫'}</span>
+              <span class="clan-member-name">${escapeHtml(m.name)} <small>${escapeHtml(m.callsign || '')}</small></span>
+              <span class="clan-member-role">${(m.role || 'member').toUpperCase()}</span>
+              ${canPromote && m.name !== state.localProfile.name ? `<button class="compact-button clan-promote-btn" data-name="${escapeHtml(m.name)}">Promote</button>` : ''}
+              ${isOfficerPlus && m.name !== state.localProfile.name ? `<button class="compact-button danger-button clan-kick-btn" data-name="${escapeHtml(m.name)}">Kick</button>` : ''}
+            </li>
+          `).join('')}
+        </ul>
+        ${isOfficerPlus ? `
+          <div class="clan-invite-row">
+            <input id="clanInviteInput" type="text" placeholder="Player name to invite" maxlength="22">
+            <button id="clanInviteBtn" class="compact-button">Invite</button>
+          </div>
+        ` : ''}
+      </div>
+      <div class="clan-section">
+        <h3>Clan Chat</h3>
+        <div id="clanChatLog" class="clan-chat-log"></div>
+        <form id="clanChatForm" class="clan-chat-form">
+          <input id="clanChatInput" type="text" placeholder="Message clan…" maxlength="140" autocomplete="off">
+          <button type="submit" class="compact-button">Send</button>
+        </form>
+      </div>
+      <div class="clan-section">
+        <button id="clanLeaveBtn" class="danger-button">Leave Clan</button>
+      </div>
+    `;
+  },
+
+  renderClanChat() {
+    const el = document.getElementById('clanChatLog');
+    if (!el) return;
+    const msgs = (state.clanChat || []).slice(-50);
+    el.innerHTML = msgs.map(m => {
+      const ts = new Date(m.timestamp);
+      const hh = String(ts.getHours()).padStart(2, '0');
+      const mm = String(ts.getMinutes()).padStart(2, '0');
+      return `<div class="clan-chat-msg"><span class="clan-chat-ts">${hh}:${mm}</span> <strong>${escapeHtml(m.sender)}</strong>: ${escapeHtml(m.text)}</div>`;
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  },
+
+  renderEmblemPicker() {
+    const grid = document.getElementById('clanEmblemGrid');
+    if (!grid) return;
+    grid.innerHTML = this.EMBLEMS.map(e => `
+      <div class="clan-emblem-option" data-emblem="${escapeHtml(e.id)}" title="${escapeHtml(e.name)}">
+        ${e.svg}
+      </div>
+    `).join('');
+    grid.querySelectorAll('.clan-emblem-option').forEach(el => {
+      el.addEventListener('click', () => {
+        grid.querySelectorAll('.clan-emblem-option').forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+        grid.dataset.selected = el.dataset.emblem;
+      });
+    });
+  },
+
+  _svgForEmblem(emblemId) {
+    const e = this.EMBLEMS.find(x => x.id === emblemId);
+    return e ? e.svg : '';
+  },
+
+  _wireNoClan() {
+    this.renderEmblemPicker();
+    const createBtn = document.getElementById('clanCreateBtn');
+    if (createBtn) {
+      createBtn.addEventListener('click', () => {
+        const name = document.getElementById('clanCreateName').value;
+        const tag = document.getElementById('clanCreateTag').value;
+        const grid = document.getElementById('clanEmblemGrid');
+        const emblem = grid ? grid.dataset.selected : '';
+        this.create(name, tag, emblem);
+      });
+    }
+    document.querySelectorAll('.clan-join-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.join(btn.dataset.clanId));
+    });
+  },
+
+  _wireDashboard() {
+    const leaveBtn = document.getElementById('clanLeaveBtn');
+    if (leaveBtn) leaveBtn.addEventListener('click', () => { if (confirm('Leave your clan?')) this.leave(); });
+
+    const inviteBtn = document.getElementById('clanInviteBtn');
+    if (inviteBtn) inviteBtn.addEventListener('click', () => {
+      const input = document.getElementById('clanInviteInput');
+      if (input) this.invite(input.value);
+    });
+
+    document.querySelectorAll('.clan-kick-btn').forEach(btn => {
+      btn.addEventListener('click', () => { if (confirm(`Kick ${btn.dataset.name}?`)) this.kick(btn.dataset.name); });
+    });
+
+    document.querySelectorAll('.clan-promote-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const name = btn.dataset.name;
+        const newRole = prompt(`Promote ${name} to: officer or member?`, 'officer');
+        if (newRole === 'officer' || newRole === 'member') this.promote(name, newRole);
+      });
+    });
+
+    const form = document.getElementById('clanChatForm');
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('clanChatInput');
+        if (input && this.sendChat(input.value)) input.value = '';
+      });
+    }
+  },
+
+  _updateClanBadge() {
+    const badge = document.getElementById('clanChatBadge');
+    if (!badge) return;
+    const unread = state.clanChatUnread || 0;
+    badge.textContent = unread > 99 ? '99+' : String(unread);
+    badge.classList.toggle('hidden', unread === 0);
+  },
+
+  /* ---- Lobby Widget ---- */
+
+  renderLobbyWidget() {
+    const container = document.getElementById('clanLobbyWidget');
+    if (!container) return;
+    if (!state.clan) {
+      container.innerHTML = `
+        <div class="clan-lobby-widget">
+          <span>⚔️ No Clan</span>
+          <button id="goToClan" class="compact-button">Find Clan</button>
+        </div>
+      `;
+    } else {
+      const cached = state.clanCache[state.clan.id] || {};
+      container.innerHTML = `
+        <div class="clan-lobby-widget">
+          <span class="clan-lw-emblem">${this._svgForEmblem(state.clan.emblem)}</span>
+          <span class="clan-lw-name">[${escapeHtml(state.clan.tag)}] ${escapeHtml(state.clan.name)}</span>
+          <span class="clan-lw-meta">Lvl ${cached.level || 1} • ${(cached.xp || 0).toLocaleString()} XP</span>
+          <button id="goToClan" class="compact-button">Clan</button>
+        </div>
+      `;
+    }
+    const btn = container.querySelector('#goToClan');
+    if (btn) btn.addEventListener('click', () => { setScreen('clan'); this.renderClanPanel(); });
+  },
+
+  /* ---- Persistence ---- */
+
+  _loadLocalClan() {
+    try {
+      const saved = localStorage.getItem(this.STORAGE_KEY);
+      if (saved) state.clan = JSON.parse(saved);
+    } catch (e) { state.clan = null; }
+  },
+
+  _saveLocalClan() {
+    try {
+      if (state.clan) localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state.clan));
+      else localStorage.removeItem(this.STORAGE_KEY);
+    } catch (e) {}
+  },
+
+  _loadInvites() {
+    try {
+      const saved = localStorage.getItem(this.INVITES_KEY);
+      if (saved) state.clanInvites = JSON.parse(saved);
+    } catch (e) { state.clanInvites = []; }
+  },
+
+  _saveInvites() {
+    try { localStorage.setItem(this.INVITES_KEY, JSON.stringify(state.clanInvites)); } catch (e) {}
+  },
+
+  _loadChat() {
+    try {
+      const saved = localStorage.getItem(this.CHAT_KEY);
+      if (saved) state.clanChat = JSON.parse(saved);
+    } catch (e) { state.clanChat = []; }
+  },
+
+  _saveChat() {
+    try { localStorage.setItem(this.CHAT_KEY, JSON.stringify(state.clanChat.slice(-100))); } catch (e) {}
+  }
+};
+
 const SignalNet = {
   socket: null,
   connected: false,
   gameCode: null,
   isHost: false,
   _pendingJoin: false,
+  _pendingSpectate: false,
+
+  // Reconnection & Latency (Phase 6 Task 1)
+  reconnecting: false,
+  reconnectAttempt: 0,
+  reconnectTimer: null,
+  reconnectDelay: 1000,
+  maxReconnectDelay: 30000,
+  maxReconnectAttempts: 20,
+  latencyMs: 0,
+  latencyInterval: null,
+  lastPingSent: 0,
+  _savedGameState: null,
+  _reconnectOverlay: null,
 
   init() {
     if (this.socket) return;
     try {
-      this.socket = io(window.location.origin, { transports: ['websocket', 'polling'] });
+      this.socket = io(window.location.origin, {
+        transports: ['websocket', 'polling'],
+        reconnection: false
+      });
     } catch (e) {
       console.warn('[SignalNet] Socket.IO not available — running offline');
       return;
@@ -202,11 +2388,39 @@ const SignalNet = {
     this.socket.on('connect', () => {
       this.connected = true;
       console.log('[SignalNet] Connected —', this.socket.id);
+      // Save socket ID for potential reconnect-after-refresh
+      try { localStorage.setItem('slv2_lastSocketId', this.socket.id); } catch {}
+      if (this.reconnecting) {
+        this._onReconnect();
+      } else {
+        this._hideReconnectOverlay();
+        this._startDisconnectTimer();
+      }
     });
 
-    this.socket.on('disconnect', () => {
+    this.socket.on('disconnect', (reason) => {
       this.connected = false;
-      console.log('[SignalNet] Disconnected');
+      console.log('[SignalNet] Disconnected —', reason);
+      if (this.latencyInterval) { clearInterval(this.latencyInterval); this.latencyInterval = null; }
+      this._saveGameState();
+      if (reason !== 'io client disconnect') {
+        this._startReconnect(reason || 'Connection lost');
+      }
+    });
+
+    this.socket.on('connect_error', (err) => {
+      console.warn('[SignalNet] Connect error —', err.message);
+      this.connected = false;
+      if (!this.reconnecting) this._startReconnect('error');
+    });
+
+    this.socket.on('pong-latency', () => {
+      this.latencyMs = Math.round(performance.now() - this.lastPingSent);
+      this._updateLatencyHUD();
+    });
+
+    this.socket.on('game-state-sync', (snapshot) => {
+      this._applyGameStateSync(snapshot);
     });
 
     this.socket.on('game-created', ({ code, players, settings }) => {
@@ -240,6 +2454,7 @@ const SignalNet = {
     });
 
     this.socket.on('players-update', (players) => {
+      const prevIds = new Set(state.agents.map(a => a.id));
       state.agents = Object.values(players).filter(p => !p.bot).map(p => ({
         id: p.id, name: p.name, callsign: p.callsign || '',
         role: p.role || 'Unknown', team: p.team || 'North',
@@ -256,17 +2471,43 @@ const SignalNet = {
             role: b.role, team: b.team, bot: true,
             lat: b.lat || 59.9139, lng: b.lng || 10.7522,
             signal: b.signal || 70, stamina: b.stamina || 80,
+            personality: b.personality || 'Balanced',
             lastSeen: Date.now()
           });
         }
       });
+      // Detect joins/leaves for lobby chat system messages
+      const newIds = new Set(Object.values(players).filter(p => !p.bot).map(p => p.id));
+      for (const p of Object.values(players).filter(p => !p.bot)) {
+        if (!prevIds.has(p.id) && p.id !== this.socket.id) {
+          LobbyChat.addSystem(`${p.name} (${p.callsign || 'AGENT'}) linked up.`);
+        }
+      }
+      for (const id of prevIds) {
+        if (!newIds.has(id) && id !== this.socket.id) {
+          const left = state.agents.find(a => a.id === id);
+          if (left) LobbyChat.addSystem(`${left.name} (${left.callsign || 'AGENT'}) dropped link.`);
+        }
+      }
     });
 
-    this.socket.on('chat', ({ sender, callsign, role, text }) => {
-      addChat(sender, text);
+    this.socket.on('chat', ({ sender, callsign, role, text, team }) => {
+      const displayName = callsign ? `${sender} (${callsign})` : sender;
+      // Team chat: only show if same team or sender is System/spectator
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      const localTeam = local?.team || 'North';
+      if (team && team !== localTeam && sender !== 'System') {
+        // Drop team-only messages from other teams
+        return;
+      }
+      if (state.status === 'Live') {
+        addChat(displayName, text);
+      } else {
+        LobbyChat.addMessage(displayName, text);
+      }
     });
 
-    this.socket.on('mission-launched', ({ players, duration }) => {
+    this.socket.on('mission-launched', ({ players, duration, authoritative }) => {
       state.remaining = duration * 60;
       state.status = 'Live';
       state.agents = Object.values(players).map(p => ({
@@ -281,35 +2522,280 @@ const SignalNet = {
         state.localRole = localPlayer.role;
         state.localAgentId = localPlayer.id;
       }
-      if (!state.objectives?.length) {
+      // Apply authoritative server state if provided (server-side game state sync)
+      if (authoritative) {
+        if (authoritative.threats) state.threats = authoritative.threats;
+        if (authoritative.objectives) state.objectives = authoritative.objectives;
+        if (authoritative.scores) state.scores = authoritative.scores;
+        if (authoritative.weather) state.weather = authoritative.weather;
+        if (authoritative.terrain) state.terrainZones = authoritative.terrain;
+        if (authoritative.dynamicEvents) state.dynamicEvents = { ...state.dynamicEvents, ...authoritative.dynamicEvents };
+        if (authoritative.supplyCaches) state.supplyCaches = authoritative.supplyCaches;
+        if (authoritative.traps) state.traps = authoritative.traps;
+        if (authoritative.downedAgents) state.downedAgents = authoritative.downedAgents;
+      } else if (!state.objectives?.length) {
         generateObjectives();
         generateThreats();
       }
-      setScreen('mission');
-      startMissionClock();
+      if (state.isSpectator) {
+        setScreen('spectator');
+        initSpectator();
+      } else {
+        setScreen('mission');
+        startMissionClock();
+      }
+    });
+
+    this.socket.on('spectate-joined', ({ code, players, settings, authoritative }) => {
+      state.code = code;
+      this.gameCode = code;
+      state.isSpectator = true;
+      state.status = 'Live';
+      state._pendingSpectate = false;
+      state.agents = Object.values(players).map(p => ({
+        id: p.id, name: p.name, callsign: p.callsign || '',
+        role: p.role || 'Unknown', team: p.team || 'North',
+        lat: p.lat || 59.9139, lng: p.lng || 10.7522,
+        signal: p.signal || 78, stamina: p.stamina || 85,
+        bot: p.bot || false, lastSeen: Date.now()
+      }));
+      if (authoritative) {
+        if (authoritative.threats) state.threats = authoritative.threats;
+        if (authoritative.objectives) state.objectives = authoritative.objectives;
+        if (authoritative.scores) state.scores = authoritative.scores;
+        if (authoritative.weather) state.weather = authoritative.weather;
+        if (authoritative.terrain) state.terrainZones = authoritative.terrain;
+        if (authoritative.dynamicEvents) state.dynamicEvents = { ...state.dynamicEvents, ...authoritative.dynamicEvents };
+        if (authoritative.supplyCaches) state.supplyCaches = authoritative.supplyCaches;
+        if (authoritative.traps) state.traps = authoritative.traps;
+        if (authoritative.downedAgents) state.downedAgents = authoritative.downedAgents;
+      } else if (!state.objectives?.length) {
+        generateObjectives();
+        generateThreats();
+      }
+      setScreen('spectator');
+      initSpectator();
+    });
+
+    this.socket.on('spectator-count', (count) => {
+      state.spectatorCount = count;
+      updateSpectatorIndicator();
+    });
+
+    // Player moved (position sync from other players ~every 2.5s)
+    this.socket.on('player-moved', ({ id, lat, lng, heading }) => {
+      const agent = state.agents.find(a => a.id === id);
+      if (!agent) return;
+      agent.lat = lat ?? agent.lat;
+      agent.lng = lng ?? agent.lng;
+      if (heading !== undefined) agent.heading = heading;
+      agent.lastSeen = Date.now();
+      // Re-render map if agent is on screen
+      if (state.screen === 'mission') renderMissionMap();
+    });
+
+    // Objective state sync from other players / host
+    this.socket.on('objective-sync', ({ id, found, progress, decodedBy, playerId }) => {
+      const obj = state.objectives.find(o => o.id === id);
+      if (!obj) return;
+      if (found !== undefined) {
+        // Only mark found if not already found (preserve local progress)
+        if (found && !obj.found) {
+          obj.found = true;
+          obj.progress = 100;
+          addChat('System', `${decodedBy || 'An agent'} completed ${obj.title}.`);
+          SoundFX.beaconCollected();
+          EventLog.add('objective', '✅', `<strong>Completed</strong> ${escapeHtml(obj.title)} by ${escapeHtml(decodedBy || 'agent')}`);
+        }
+      }
+      if (progress !== undefined && !obj.found) {
+        obj.progress = Math.max(obj.progress || 0, progress);
+      }
+      if (state.screen === 'mission') { renderMissionMap(); renderHUD(); }
+    });
+
+    // Extraction state sync
+    this.socket.on('extraction-sync', ({ state: extState, by, playerId }) => {
+      if (extState === 'started') {
+        if (!state.extracting) {
+          state.extracting = true;
+          state.extractCountdown = 15;
+          showExtractionOverlay();
+          addChat('System', `${by || 'An agent'} started extraction sequence.`);
+          EventLog.add('system', '✈️', `<strong>Extraction started</strong> by ${escapeHtml(by || 'agent')}`);
+        }
+      } else if (extState === 'completed') {
+        state.extracting = false;
+        state.extractCountdown = 0;
+        $('#extractionOverlay')?.classList.add('hidden');
+        state.status = 'Complete';
+        state.missionEndTime = Date.now();
+        SoundFX.missionComplete();
+        setScreen('results');
+        renderResults();
+        addChat('System', 'Extraction successful. Mission complete.');
+        EventLog.add('system', '🏆', `<strong>Mission Complete!</strong> Extraction successful`);
+      }
+      if (state.screen === 'mission') renderHUD();
+    });
+
+    // Authoritative server state sync (Phase 5 Task 1)
+    this.socket.on('auth-state', (auth) => {
+      if (state.status !== 'Live') return;
+      if (auth.threats) state.threats = auth.threats;
+      if (auth.objectives) state.objectives = auth.objectives;
+      if (auth.scores) state.scores = auth.scores;
+      if (auth.weather) state.weather = auth.weather;
+      if (auth.dynamicEvents) state.dynamicEvents = { ...state.dynamicEvents, ...auth.dynamicEvents };
+      if (auth.supplyCaches) state.supplyCaches = auth.supplyCaches;
+      if (auth.traps) state.traps = auth.traps;
+      if (auth.downedAgents) state.downedAgents = auth.downedAgents;
+      // Don't overwrite local agent position — that's client-authoritative
+    });
+
+    // Mission ended by server (timeout or host force-end)
+    this.socket.on('mission-ended', ({ reason, scores, objectives, elapsed }) => {
+      if (scores) state.scores = scores;
+      if (objectives) state.objectives = objectives;
+      state.remaining = Math.max(0, state.duration * 60 - Math.floor((elapsed || 0) / 1000));
+      stopMissionClock();
+      state.status = 'Complete';
+      state.missionEndTime = Date.now();
+      SoundFX.missionComplete();
+      setScreen('results');
+      renderResults();
+      addChat('System', `Mission ended — ${reason || 'complete'}.`);
+      EventLog.add('system', '🏁', `<strong>Mission Ended</strong> ${escapeHtml(reason || 'complete')}`);
+    });
+
+    // Score sync
+    this.socket.on('score-sync', ({ team, delta, total }) => {
+      if (team && state.scores[team] !== undefined) {
+        state.scores[team] = total !== undefined ? total : (state.scores[team] + (delta || 0));
+        if (delta) {
+          addChat('Score', `${team} ${delta >= 0 ? '+' : ''}${delta}pts`);
+          EventLog.add('score', '⭐', `<strong>${delta >= 0 ? '+' : ''}${delta} pts</strong> ${escapeHtml(team)}`);
+        }
+      }
+      if (state.screen === 'mission') renderHUD();
+    });
+
+    this.socket.on('spectator-snapshot', (snapshot) => {
+      if (!state.isSpectator) return;
+      if (snapshot.agents) {
+        snapshot.agents.forEach(sa => {
+          const existing = state.agents.find(a => a.id === sa.id);
+          if (existing) {
+            existing.lat = sa.lat; existing.lng = sa.lng;
+            existing.signal = sa.signal; existing.stamina = sa.stamina;
+          }
+        });
+      }
+      if (snapshot.threats) state.threats = snapshot.threats;
+      if (snapshot.objectives) state.objectives = snapshot.objectives;
+      if (snapshot.remaining !== undefined) state.remaining = snapshot.remaining;
+      if (snapshot.extracting !== undefined) state.extracting = snapshot.extracting;
+      if (snapshot.extractCountdown !== undefined) state.extractCountdown = snapshot.extractCountdown;
+      renderSpectatorMap();
+      renderSpectatorPanels();
+      renderSpectatorHUD();
+    });
+
+    // Friend System (Phase 6 Task 9)
+    this.socket.on('friend-invite-received', ({ fromName, fromCallsign, code }) => {
+      const display = fromCallsign ? `${fromName} (${fromCallsign})` : fromName;
+      LobbyChat.addSystem(`📨 Friend invite from ${display} — Mission ${code}`);
+      // Auto-fill join code if user accepts (they can click join)
+      const joinInput = document.getElementById('joinCode');
+      if (joinInput && !joinInput.value) {
+        joinInput.value = code;
+      }
+    });
+
+    this.socket.on('friend-status-response', (statusMap) => {
+      // statusMap: { name: boolean }
+      if (statusMap && typeof statusMap === 'object') {
+        Object.entries(statusMap).forEach(([name, online]) => {
+          FriendSystem.setOnline(name, online);
+        });
+      }
     });
 
     this.socket.on('error-msg', (msg) => {
       addChat('System', msg);
       console.warn('[SignalNet]', msg);
     });
+
+    // Reconnection & Recovery listeners (Phase 5 Task 10)
+    this.socket.on('reconnect-success', ({ code, players, settings, state: gameState, authoritative }) => {
+      state.code = code;
+      this.gameCode = code;
+      state.agents = Object.values(players).filter(p => !p.bot).map(p => ({
+        id: p.id, name: p.name, callsign: p.callsign || '',
+        role: p.role || 'Unknown', team: p.team || 'North',
+        lat: p.lat || 59.9139, lng: p.lng || 10.7522,
+        signal: p.signal || 85, stamina: p.stamina || 90
+      }));
+      if (settings) state.settings = { ...state.settings, ...settings };
+      if (authoritative) {
+        state.threats = authoritative.threats || state.threats;
+        state.objectives = authoritative.objectives || state.objectives;
+        state.scores = authoritative.scores || state.scores;
+      }
+      if (gameState === 'mission') {
+        state.status = 'Live';
+        setScreen('mission');
+        startMissionClock(authoritative);
+      } else {
+        state.status = 'Lobby';
+        setScreen('lobby');
+      }
+      addChat('System', 'Reconnected successfully!');
+      EventLog.add('system', '🔌', '<strong>Reconnected</strong> Session restored');
+      this._hideReconnectOverlay();
+      // Clear old socket ID so we don't offer reconnect again
+      try { localStorage.removeItem('slv2_lastSocketId'); } catch {}
+    });
+
+    this.socket.on('player-disconnected', ({ id, name, reconnectWindow }) => {
+      addChat('System', `⚠️ ${name || 'A player'} disconnected. Reconnect window: ${(reconnectWindow || 60000) / 1000}s`);
+    });
+
+    this.socket.on('kicked', ({ reason }) => {
+      alert(`You were kicked from the mission. Reason: ${reason || 'No reason given'}`);
+      setScreen('lobby');
+      state.status = 'Lobby';
+    });
+  },
+
+  reconnect(oldSocketId) {
+    if (!this.socket) this.init();
+    this.socket.emit('reconnect-request', { oldSocketId, profile: state.localProfile });
   },
 
   hostGame(name, callsign) {
     this.init();
+    if (!this.socket) {
+      this.connected = false;
+      return;
+    }
     this._pendingJoin = true;
     this.socket.emit('host-game', { name, callsign });
   },
 
   joinGame(code, name, callsign) {
     this.init();
+    if (!this.socket) {
+      this.connected = false;
+      return;
+    }
     this._pendingJoin = true;
     this.socket.emit('join-game', { code, profile: { name, callsign } });
   },
 
-  sendChat(text) {
+  sendChat(text, teamOnly) {
     if (!this.connected || !this.gameCode) return;
-    this.socket.emit('chat-message', text);
+    this.socket.emit('chat-message', { text, teamOnly: !!teamOnly });
   },
 
   updatePosition(lat, lng, heading) {
@@ -318,8 +2804,207 @@ const SignalNet = {
   },
 
   launchMission() {
-    if (!this.connected || !this.isHost) return;
+    if (!this.connected || !this.isHost) {
+      console.log('[SignalNet] No server — launching locally');
+      return;
+    }
     this.socket.emit('launch-mission');
+  },
+
+  spectateGame(code) {
+    this.init();
+    if (!this.socket) {
+      this.connected = false;
+      return;
+    }
+    this._pendingSpectate = true;
+    this.socket.emit('spectate-game', { code });
+  },
+
+  sendSpectatorSnapshot(snapshot) {
+    if (!this.connected || !this.isHost) return;
+    this.socket.emit('mission-state-snapshot', snapshot);
+  },
+
+  // === Reconnection & Latency (Phase 6 Task 1) ===
+
+  _saveGameState() {
+    if (state.status === 'Live' || state.status === 'Lobby') {
+      this._savedGameState = {
+        screen: state.screen,
+        status: state.status,
+        code: state.code,
+        isHost: state.isHost,
+        localProfile: { ...state.localProfile },
+        localRole: state.localRole,
+        localAgentId: state.localAgentId,
+        objectives: JSON.parse(JSON.stringify(state.objectives)),
+        threats: JSON.parse(JSON.stringify(state.threats)),
+        agents: JSON.parse(JSON.stringify(state.agents)),
+        scores: { ...state.scores },
+        remaining: state.remaining,
+        extracting: state.extracting,
+        extractCountdown: state.extractCountdown,
+        isSpectator: state.isSpectator,
+        weather: JSON.parse(JSON.stringify(state.weather)),
+        dynamicEvents: JSON.parse(JSON.stringify(state.dynamicEvents)),
+        downedAgents: JSON.parse(JSON.stringify(state.downedAgents)),
+        supplyCaches: JSON.parse(JSON.stringify(state.supplyCaches)),
+        terrainZones: JSON.parse(JSON.stringify(state.terrainZones)),
+        traps: JSON.parse(JSON.stringify(state.traps)),
+        pings: JSON.parse(JSON.stringify(state.pings)),
+        waypoints: JSON.parse(JSON.stringify(state.waypoints)),
+        playerPath: JSON.parse(JSON.stringify(state.playerPath)),
+        missionStartTime: state.missionStartTime,
+        timestamp: Date.now()
+      };
+    }
+  },
+
+  _startDisconnectTimer() {
+    if (this.latencyInterval) { clearInterval(this.latencyInterval); this.latencyInterval = null; }
+    this.latencyInterval = setInterval(() => {
+      if (!this.connected || !this.socket) return;
+      this.lastPingSent = performance.now();
+      this.socket.emit('ping-latency', Date.now());
+    }, 5000);
+  },
+
+  _startReconnect(reason) {
+    if (this.reconnecting) return;
+    this.reconnecting = true;
+    this.reconnectAttempt = 0;
+    this._showReconnectOverlay(reason);
+    this._attemptReconnect();
+  },
+
+  _attemptReconnect() {
+    if (this.connected) {
+      this._onReconnect();
+      return;
+    }
+    if (this.reconnectAttempt >= this.maxReconnectAttempts) {
+      this._showReconnectOverlay('failed');
+      addChat('System', 'Connection lost. Please refresh the page to reconnect.');
+      return;
+    }
+    this.reconnectAttempt++;
+    const delay = Math.min(this.reconnectDelay * Math.pow(1.5, this.reconnectAttempt - 1), this.maxReconnectDelay);
+    this._updateReconnectOverlay(`Reconnecting… attempt ${this.reconnectAttempt}/${this.maxReconnectAttempts} (${Math.round(delay / 1000)}s)`);
+    this.reconnectTimer = setTimeout(() => {
+      if (this.socket && !this.connected) {
+        this.socket.connect();
+      }
+      this._attemptReconnect();
+    }, delay);
+  },
+
+  _onReconnect() {
+    this.reconnecting = false;
+    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    this._hideReconnectOverlay();
+    addChat('System', 'Reconnected to server.');
+    // Re-join or re-host the game
+    if (this._savedGameState) {
+      const s = this._savedGameState;
+      if (s.isHost && s.code) {
+        this.socket.emit('host-game', { name: s.localProfile.name, callsign: s.localProfile.callsign });
+      } else if (s.code) {
+        this.socket.emit('join-game', { code: s.code, profile: s.localProfile });
+      }
+      // Request full state sync from server/host
+      this.socket.emit('request-state-sync', { code: s.code });
+    }
+    this._startDisconnectTimer();
+    ScreenJuice.addKillFeed('Reconnected', '#4caf50');
+  },
+
+  _applyGameStateSync(snapshot) {
+    if (!snapshot) return;
+    if (snapshot.agents) state.agents = snapshot.agents;
+    if (snapshot.objectives) state.objectives = snapshot.objectives;
+    if (snapshot.threats) state.threats = snapshot.threats;
+    if (snapshot.scores) state.scores = snapshot.scores;
+    if (snapshot.remaining !== undefined) state.remaining = snapshot.remaining;
+    if (snapshot.extracting !== undefined) state.extracting = snapshot.extracting;
+    if (snapshot.extractCountdown !== undefined) state.extractCountdown = snapshot.extractCountdown;
+    if (snapshot.weather) state.weather = snapshot.weather;
+    if (snapshot.downedAgents) state.downedAgents = snapshot.downedAgents;
+    if (snapshot.supplyCaches) state.supplyCaches = snapshot.supplyCaches;
+    if (snapshot.terrainZones) state.terrainZones = snapshot.terrainZones;
+    if (snapshot.traps) state.traps = snapshot.traps;
+    if (snapshot.pings) state.pings = snapshot.pings;
+    if (snapshot.waypoints) state.waypoints = snapshot.waypoints;
+    addChat('System', 'Game state synced.');
+    // Re-render map if in mission
+    if (state.screen === 'mission') {
+      renderMissionMap();
+      renderHUD();
+    }
+  },
+
+  _showReconnectOverlay(status) {
+    if (!this._reconnectOverlay) {
+      this._reconnectOverlay = MemoryPool.acquire('div');
+      this._reconnectOverlay.id = 'reconnectOverlay';
+      this._reconnectOverlay.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);opacity:0;transition:opacity 0.3s ease;pointer-events:auto;';
+      this._reconnectOverlay.innerHTML = `
+        <div style="text-align:center;max-width:320px;padding:24px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);">
+          <div style="font-size:36px;margin-bottom:12px;">📡</div>
+          <div id="reconnectStatus" style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;">Connection lost</div>
+          <div id="reconnectDetail" style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">Attempting to reconnect…</div>
+          <button id="reconnectRefreshBtn" class="primary-button" style="display:none;">Refresh Page</button>
+        </div>`;
+      document.body.appendChild(this._reconnectOverlay);
+      const refreshBtn = document.getElementById('reconnectRefreshBtn');
+      if (refreshBtn) refreshBtn.addEventListener('click', () => location.reload());
+    }
+    this._reconnectOverlay.style.opacity = '1';
+    this._updateReconnectOverlay(status);
+  },
+
+  _updateReconnectOverlay(text) {
+    const detail = document.getElementById('reconnectDetail');
+    const status = document.getElementById('reconnectStatus');
+    const refreshBtn = document.getElementById('reconnectRefreshBtn');
+    if (detail) detail.textContent = text;
+    if (status) {
+      if (text === 'failed') {
+        status.textContent = 'Unable to reconnect';
+        status.style.color = 'var(--danger)';
+        if (detail) detail.textContent = 'The server may be unreachable. Refresh to try again.';
+        if (refreshBtn) refreshBtn.style.display = 'inline-block';
+      } else {
+        status.textContent = 'Connection lost';
+        status.style.color = 'var(--text)';
+        if (refreshBtn) refreshBtn.style.display = 'none';
+      }
+    }
+  },
+
+  _hideReconnectOverlay() {
+    if (this._reconnectOverlay) {
+      this._reconnectOverlay.style.opacity = '0';
+      setTimeout(() => {
+        if (this._reconnectOverlay && this._reconnectOverlay.parentNode) {
+          this._reconnectOverlay.parentNode.removeChild(this._reconnectOverlay);
+        }
+        this._reconnectOverlay = null;
+      }, 350);
+    }
+  },
+
+  _updateLatencyHUD() {
+    const el = document.getElementById('latencyBadge');
+    if (!el) return;
+    const ms = this.latencyMs;
+    let color = '#4caf50';
+    if (ms > 150) color = '#ff9800';
+    if (ms > 300) color = '#e45b4d';
+    el.textContent = `${ms}ms`;
+    el.style.color = color;
+    el.style.borderColor = color;
+    el.style.background = color + '18';
   }
 };
 
@@ -340,6 +3025,7 @@ const LobbyChat = {
       if (!text) return;
       const sender = `${state.localProfile.name} (${state.localProfile.callsign})`;
       this.addMessage(sender, text);
+      SignalNet.sendChat(text);
       input.value = '';
       input.focus();
       // Play subtle send sound
@@ -428,120 +3114,6 @@ const LobbyChat = {
   }
 };
 
-/* ========================== PING SYSTEM MODULE (3.1) ========================== */
-
-const PingSystem = {
-  PING_DURATION: 5000, // 5 seconds
-  mapLayers: [], // array of { id, marker, circle, label }
-
-  // Called when user clicks on the mission map
-  placePing(lat, lng) {
-    const m = MapModule.ensureMissionMap();
-    if (!m || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-
-    const local = state.agents.find(a => a.id === state.localAgentId);
-    const sender = local ? `${local.name} (${local.callsign})` : 'Unknown';
-    const dist = local && Number.isFinite(local.lat) ? haversine(local, { lat, lng }) : null;
-
-    const id = `ping_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
-    const ping = { id, lat, lng, dist, createdAt: Date.now(), sender };
-    state.pings.push(ping);
-
-    this._renderOne(ping, m);
-    this._addChat(ping, dist);
-    this._playSound();
-
-    // Auto-remove after 5s
-    setTimeout(() => this.remove(id), this.PING_DURATION);
-    return ping;
-  },
-
-  remove(id) {
-    const idx = state.pings.findIndex(p => p.id === id);
-    if (idx === -1) return;
-    state.pings.splice(idx, 1);
-    this._removeLayer(id);
-  },
-
-  _renderOne(ping, m) {
-    // Purple pulsing ping marker
-    const iconHtml = `<div class="sl-ping-marker"><div class="sl-ping-ring"></div><div class="sl-ping-dot"></div></div>`;
-    const marker = L.marker([ping.lat, ping.lng], {
-      icon: L.divIcon({ className: 'sl-map-icon', html: iconHtml, iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -14] })
-    }).addTo(m);
-
-    const distStr = Number.isFinite(ping.dist) ? formatDistance(ping.dist) : '--';
-    marker.bindPopup(`<div class="sl-popup"><strong style="color:#7c3aed">📍 Ping</strong><br>${escapeHtml(ping.sender)}<br><span class="sl-coords">${distStr} · ${ping.lat.toFixed(5)}, ${ping.lng.toFixed(5)}</span></div>`);
-
-    // Distance label tooltip (always visible while ping is active)
-    const labelHtml = `<div class="sl-ping-label">${distStr}</div>`;
-    const label = L.marker([ping.lat, ping.lng], {
-      icon: L.divIcon({ className: 'sl-map-icon', html: labelHtml, iconSize: [80, 20], iconAnchor: [40, 36] }),
-      interactive: false,
-      zIndexOffset: 500
-    }).addTo(m);
-
-    // Expanding ring circle
-    const circle = L.circle([ping.lat, ping.lng], {
-      color: '#7c3aed', fillColor: '#7c3aed', fillOpacity: 0.08, weight: 2, radius: 20, dashArray: '4,4', interactive: false
-    }).addTo(m);
-
-    // Animate circle expansion
-    let ringRadius = 20;
-    let ringDir = 1;
-    circle._pingInterval = setInterval(() => {
-      if (!circle._map) { clearInterval(circle._pingInterval); return; }
-      ringRadius += 2 * ringDir;
-      if (ringRadius > 60) { ringRadius = 20; }
-      circle.setRadius(ringRadius);
-      const fade = 1 - (ringRadius - 20) / 40;
-      circle.setStyle({ opacity: Math.max(0.2, fade), fillOpacity: Math.max(0.02, fade * 0.08) });
-    }, 80);
-
-    this.mapLayers.push({ id: ping.id, marker, label, circle });
-  },
-
-  _removeLayer(id) {
-    const idx = this.mapLayers.findIndex(l => l.id === id);
-    if (idx === -1) return;
-    const layer = this.mapLayers[idx];
-    const m = MapModule.ensureMissionMap();
-    if (m) {
-      if (layer.marker) { try { m.removeLayer(layer.marker); } catch(e) {} }
-      if (layer.label) { try { m.removeLayer(layer.label); } catch(e) {} }
-      if (layer.circle) {
-        if (layer.circle._pingInterval) clearInterval(layer.circle._pingInterval);
-        try { m.removeLayer(layer.circle); } catch(e) {}
-      }
-    }
-    this.mapLayers.splice(idx, 1);
-  },
-
-  // Re-render all active pings (e.g. after map clear)
-  renderOnMap() {
-    const m = MapModule.ensureMissionMap();
-    if (!m) return;
-    // Remove expired pings from state first
-    const now = Date.now();
-    state.pings = state.pings.filter(p => now - p.createdAt < this.PING_DURATION);
-    // Clear existing layers
-    this.mapLayers.forEach(l => this._removeLayer(l.id));
-    this.mapLayers = [];
-    // Re-render
-    state.pings.forEach(p => this._renderOne(p, m));
-  },
-
-  _addChat(ping, dist) {
-    const distStr = Number.isFinite(dist) ? formatDistance(dist) : '--';
-    addChat('Ping', `${ping.sender} pinged ${distStr} away.`);
-  },
-
-  _playSound() {
-    SoundFX.play(880, 0.08, 'sine', 0.12);
-    setTimeout(() => SoundFX.play(1100, 0.06, 'sine', 0.08), 120);
-  }
-};
-
 /* ========================== BATTERY-AWARE GPS MODULE (5.3) ========================== */
 
 const BatteryAwareGPS = {
@@ -584,14 +3156,23 @@ const BatteryAwareGPS = {
     this._updateUI();
   },
 
-  // Determine current polling interval based on battery + user override
+  // Determine current polling interval based on battery + weather + user override
   getInterval() {
-    if (state.batterySaver) return this.INTERVAL_CRITICAL;
-    if (state.batteryCharging) return this.INTERVAL_NORMAL;
-    if (state.batteryLevel === null) return this.INTERVAL_NORMAL;
-    if (state.batteryLevel <= this.CRITICAL_BATTERY) return this.INTERVAL_CRITICAL;
-    if (state.batteryLevel <= this.LOW_BATTERY) return this.INTERVAL_LOW;
-    return this.INTERVAL_NORMAL;
+    let interval = this.INTERVAL_NORMAL;
+    if (state.batterySaver) interval = this.INTERVAL_CRITICAL;
+    else if (state.batteryCharging) interval = this.INTERVAL_NORMAL;
+    else if (state.batteryLevel === null) interval = this.INTERVAL_NORMAL;
+    else if (state.batteryLevel <= this.CRITICAL_BATTERY) interval = this.INTERVAL_CRITICAL;
+    else if (state.batteryLevel <= this.LOW_BATTERY) interval = this.INTERVAL_LOW;
+    // Critical power forces critical polling (Phase 7 Task 6)
+    if (PowerBudget.isCritical && PowerBudget.isCritical()) {
+      interval = this.INTERVAL_CRITICAL;
+    }
+    // Storm weather halves GPS update rate (doubles interval)
+    if (state.gpsDegradation && state.gpsDegradation._stormSlowActive) {
+      interval = Math.min(this.INTERVAL_CRITICAL, interval * 2);
+    }
+    return interval;
   },
 
   getModeLabel() {
@@ -677,6 +3258,691 @@ const BatteryAwareGPS = {
   }
 };
 
+/* ========================== POWER BUDGET MODULE (P7 T6) ========================== */
+
+const PowerBudget = {
+  // Base drain: 0.5% per minute
+  BASE_DRAIN_PER_MIN: 0.5,
+  // Tool usage costs
+  COSTS: {
+    radarPulse: 3,
+    droneDeploy: 5,
+    stealthPer10s: 2,
+    signalBoost: 4,
+    decoyTrap: 6,
+    ultimate: 15,
+    gpsPerMin: 1
+  },
+
+  initMission() {
+    state.powerBudget = 100;
+    state.powerWarn25 = false;
+    state.powerWarn15 = false;
+    state._lastPowerDrainTick = Date.now();
+    state._mechanicTransferCooldowns = {};
+  },
+
+  // Deduct power for a specific action. Returns true if enough power, false otherwise.
+  tryUse(costKey, amountOverride) {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local) return true;
+    const cost = amountOverride !== undefined ? amountOverride : (this.COSTS[costKey] || 0);
+    if (cost <= 0) return true;
+    if (state.powerBudget < cost) {
+      addChat('System', `⚠️ Not enough power for ${costKey} (need ${cost}%, have ${Math.round(state.powerBudget)}%).`);
+      return false;
+    }
+    state.powerBudget = clamp(state.powerBudget - cost, 0, 100);
+    return true;
+  },
+
+  // Add power from external sources
+  addPower(amount, sourceLabel) {
+    const before = state.powerBudget;
+    state.powerBudget = clamp(state.powerBudget + amount, 0, 100);
+    const gained = Math.round(state.powerBudget - before);
+    if (gained > 0 && sourceLabel) {
+      addChat('System', `🔋 ${sourceLabel}: +${gained}% power`);
+    }
+    return gained;
+  },
+
+  // Check if critical power state (< 15%)
+  isCritical() {
+    return state.powerBudget < 15;
+  },
+
+  // Check if low power state (< 25%)
+  isLow() {
+    return state.powerBudget < 25;
+  },
+
+  tick() {
+    if (state.status !== 'Live') return;
+    const now = Date.now();
+    const elapsedMin = (now - (state._lastPowerDrainTick || now)) / 60000;
+    if (elapsedMin > 0) {
+      // Base drain 0.5%/min
+      let drain = this.BASE_DRAIN_PER_MIN * elapsedMin;
+      // GPS active drain 1%/min (in addition to adaptive polling)
+      drain += this.COSTS.gpsPerMin * elapsedMin;
+      // Stealth active drain: 2% per 10s active
+      if (state.stealth) {
+        const local = state.agents.find(a => a.id === state.localAgentId);
+        const stealthSec = local && local._stealthSince ? (now - local._stealthSince) / 1000 : 0;
+        // Only charge for time since last tick; we approximate by scaling with elapsedMin
+        drain += (this.COSTS.stealthPer10s / 10) * 60 * elapsedMin;
+      }
+      state.powerBudget = clamp(state.powerBudget - drain, 0, 100);
+      state._lastPowerDrainTick = now;
+    }
+
+    // Warnings
+    if (!state.powerWarn25 && state.powerBudget < 25) {
+      state.powerWarn25 = true;
+      addChat('System', '🔋 Low power warning — conserve energy.');
+      EventLog.add('system', '🔋', '<strong>Low Power</strong> Conserve energy');
+    }
+    if (!state.powerWarn15 && state.powerBudget < 15) {
+      state.powerWarn15 = true;
+      addChat('System', '🪫 Critical power! GPS throttled, radar reduced, stealth disabled.');
+      EventLog.add('system', '🪫', '<strong>Critical Power</strong> Systems degraded');
+      // Force exit stealth
+      if (state.stealth) StealthMode.setActive(false);
+    }
+
+    // Critical state effects applied elsewhere (GPS interval, radar range, CSS dim)
+    this._applyCriticalEffects();
+  },
+
+  _applyCriticalEffects() {
+    const critical = this.isCritical();
+    const gameContainer = document.getElementById('gameContainer') || document.body;
+    if (critical) {
+      gameContainer.classList.add('power-critical-dim');
+    } else {
+      gameContainer.classList.remove('power-critical-dim');
+    }
+  },
+
+  // Mechanic bot power transfer
+  tryTransferPower(fromAgent, toAgent) {
+    if (!fromAgent || !toAgent) return false;
+    const now = Date.now();
+    const cdKey = fromAgent.id;
+    const last = (state._mechanicTransferCooldowns || {})[cdKey] || 0;
+    if (now - last < 30000) return false;
+    if ((fromAgent.powerBudget || 100) < 10) return false;
+    fromAgent.powerBudget = clamp((fromAgent.powerBudget || 100) - 10, 0, 100);
+    toAgent.powerBudget = clamp((toAgent.powerBudget || 100) + 10, 0, 100);
+    if (!state._mechanicTransferCooldowns) state._mechanicTransferCooldowns = {};
+    state._mechanicTransferCooldowns[cdKey] = now;
+    addChat('System', `🔋 ${fromAgent.name} transferred 10% power to ${toAgent.name}.`);
+    return true;
+  },
+
+  // Extraction zone charging: +5%/s while in zone
+  tickExtractionCharge() {
+    if (state.status !== 'Live') return;
+    const extractionObj = state.objectives.find(o => o.type === 'Extraction');
+    if (!extractionObj) return;
+    state.agents.forEach(a => {
+      if (haversine(a, extractionObj) <= 80) {
+        a.powerBudget = clamp((a.powerBudget || 100) + 5, 0, 100);
+      }
+    });
+  }
+};
+
+/* ========================== GPS DEGRADATION & INTERFERENCE (P7 T5) ========================== */
+
+const GPSDegradation = {
+  // Distance thresholds (meters)
+  THREAT_PROXIMITY: 150,
+  JAMMER_RADIUS: 200,
+
+  // Max accuracy degradation (meters)
+  MAX_THREAT_JITTER: 50,
+  MAX_TERRAIN_JITTER: 30,
+  MAX_WEATHER_JITTER: 25,
+  MAX_JAMMER_JITTER: 100,
+
+  // Recovery lerp duration (ms)
+  RECOVERY_MS: 3000,
+
+  // Jammer GPS update delay (ms)
+  JAMMER_DELAY_MIN: 3000,
+  JAMMER_DELAY_MAX: 5000,
+
+  // Cached Leaflet markers for ghost trail
+  _ghostMarkers: [],
+  _degradeRing: null,
+  _jammerDelayUntil: 0,
+
+  /**
+   * Compute total GPS accuracy offset and status for the local agent.
+   * Called from simulateWorld every tick.
+   */
+  tick() {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local || !Number.isFinite(local.lat) || !Number.isFinite(local.lng)) return;
+
+    let offset = 0;
+    let inJammer = false;
+
+    // 1. Threat Proximity degradation
+    const activeThreats = state.threats.filter(t => t.mode !== 'retreat');
+    activeThreats.forEach(t => {
+      const d = haversine(local, t);
+      if (d < this.THREAT_PROXIMITY) {
+        const factor = 1 - (d / this.THREAT_PROXIMITY);
+        offset += 20 + factor * (this.MAX_THREAT_JITTER - 20);
+      }
+    });
+
+    // 2. Terrain Blockage (urban / industrial biomes)
+    const biome = TerrainSystem.getTerrainAt(local.lat, local.lng);
+    if (biome === 'urban' || biome === 'industrial') {
+      offset += 10 + Math.random() * (this.MAX_TERRAIN_JITTER - 10);
+    }
+
+    // 3. Weather Impact (storm)
+    if (state.weather && state.weather.type === 'storm') {
+      offset += 15 + Math.random() * (this.MAX_WEATHER_JITTER - 15);
+    }
+
+    // 4. Jammer Zones (Signal Jammer threats)
+    state.threats.forEach(t => {
+      if (t.name && t.name.includes('Signal Jammer')) {
+        const d = haversine(local, t);
+        if (d < this.JAMMER_RADIUS) {
+          const factor = 1 - (d / this.JAMMER_RADIUS);
+          offset += 50 + factor * (this.MAX_JAMMER_JITTER - 50);
+          inJammer = true;
+        }
+      }
+    });
+
+    // 5. Storm weather halves GPS update rate (handled in BatteryAwareGPS)
+    // Flag is set here so BatteryAwareGPS.getInterval() can read it
+    state.gpsDegradation._stormSlowActive = (state.weather && state.weather.type === 'storm');
+
+    // Determine status
+    let status = 'good';
+    if (inJammer) status = 'jammed';
+    else if (offset >= 15) status = 'degraded';
+
+    const gd = state.gpsDegradation;
+    const now = Date.now();
+
+    // Recovery: if offset dropped significantly, start recovery lerp
+    if (offset < gd.accuracyOffset && gd.status !== 'good') {
+      if (!gd.recoveryStart) gd.recoveryStart = now;
+      const elapsed = now - gd.recoveryStart;
+      const t = Math.min(1, elapsed / this.RECOVERY_MS);
+      gd.accuracyOffset = gd.accuracyOffset * (1 - t) + offset * t;
+      if (t >= 1) {
+        gd.accuracyOffset = offset;
+        gd.recoveryStart = 0;
+      }
+    } else {
+      gd.accuracyOffset = offset;
+      gd.recoveryStart = 0;
+    }
+
+    if (gd.prevStatus !== status) {
+      gd.prevStatus = status;
+      if (status === 'jammed') {
+        addChat('System', '📡 GPS JAMMED — Position uncertain');
+        ScreenJuice.addKillFeed('GPS JAMMED', '#ef4444');
+      } else if (status === 'degraded' && gd.status !== 'degraded') {
+        addChat('System', '📡 GPS Degraded — Interference detected');
+      }
+    }
+    gd.status = status;
+
+    // Update ghost trail (last 3 known positions)
+    if (status === 'jammed') {
+      gd.lastPositions.push({ lat: local.lat, lng: local.lng, timestamp: now });
+      if (gd.lastPositions.length > 3) gd.lastPositions.shift();
+    } else {
+      gd.lastPositions = [];
+    }
+
+    // Set jammer delay when entering jammer zone
+    if (inJammer) {
+      this._jammerDelayUntil = now + this.JAMMER_DELAY_MIN + Math.random() * (this.JAMMER_DELAY_MAX - this.JAMMER_DELAY_MIN);
+    } else if (this._jammerDelayUntil && now > this._jammerDelayUntil) {
+      this._jammerDelayUntil = 0;
+    }
+  },
+
+  /**
+   * Apply jitter to a raw GPS coordinate before it reaches the game state.
+   * Returns [lat, lng] with jitter applied.
+   * When jammer delay is active, returns the last known position to simulate
+   * GPS updates being delayed.
+   */
+  applyJitter(lat, lng) {
+    const gd = state.gpsDegradation;
+    // Jammer delay: return stale position
+    if (this._jammerDelayUntil && Date.now() < this._jammerDelayUntil) {
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      if (local && Number.isFinite(local.lat) && Number.isFinite(local.lng)) {
+        return [local.lat, local.lng];
+      }
+    }
+    if (!gd || gd.accuracyOffset <= 0) return [lat, lng];
+    // Convert meters offset to degrees (approx)
+    const mPerDegLat = 111320;
+    const mPerDegLng = 111320 * Math.cos(lat * Math.PI / 180);
+    const jitterLat = (Math.random() - 0.5) * 2 * (gd.accuracyOffset / mPerDegLat);
+    const jitterLng = (Math.random() - 0.5) * 2 * (gd.accuracyOffset / mPerDegLng);
+    return [lat + jitterLat, lng + jitterLng];
+  },
+
+  /** Render ghost-trail dots and accuracy ring on the mission map */
+  renderOnMap() {
+    const m = MapModule.ensureMissionMap();
+    if (!m) return;
+    const gd = state.gpsDegradation;
+    const local = state.agents.find(a => a.id === state.localAgentId);
+
+    // Clear old ghost markers
+    this._ghostMarkers.forEach(gm => m.removeLayer(gm));
+    this._ghostMarkers = [];
+
+    // Ghost trail (faded dots for last 3 positions when jammed)
+    if (gd && gd.status === 'jammed' && gd.lastPositions.length) {
+      gd.lastPositions.forEach((pos, i) => {
+        const alpha = 0.15 + (i / gd.lastPositions.length) * 0.25;
+        const gm = L.circleMarker([pos.lat, pos.lng], {
+          radius: 5 + i * 2,
+          color: '#ef4444',
+          fillColor: '#ef4444',
+          fillOpacity: alpha,
+          weight: 1,
+          opacity: alpha,
+          className: 'gps-ghost-dot',
+          zIndexOffset: 998
+        }).addTo(m);
+        this._ghostMarkers.push(gm);
+      });
+    }
+
+    // Accuracy / degradation ring around player marker (pulsing red when degraded)
+    if (gd && gd.accuracyOffset > 5 && local && Number.isFinite(local.lat)) {
+      const color = gd.status === 'jammed' ? '#ef4444' : '#ff9800';
+      const pulseClass = gd.status !== 'good' ? 'gps-degrade-ring gps-degrade-pulse' : 'gps-degrade-ring';
+      if (!this._degradeRing) {
+        this._degradeRing = L.circle([local.lat, local.lng], {
+          color, fillColor: color, fillOpacity: 0.04, weight: 2, radius: gd.accuracyOffset, className: pulseClass
+        }).addTo(m);
+      } else {
+        this._degradeRing.setLatLng([local.lat, local.lng]);
+        this._degradeRing.setRadius(gd.accuracyOffset);
+        this._degradeRing.setStyle({ color, fillColor: color });
+        // Update class for pulse animation
+        const path = this._degradeRing.getElement?.();
+        if (path) {
+          path.classList.remove('gps-degrade-pulse');
+          if (gd.status !== 'good') path.classList.add('gps-degrade-pulse');
+        }
+      }
+    } else if (this._degradeRing) {
+      m.removeLayer(this._degradeRing);
+      this._degradeRing = null;
+    }
+  },
+
+  clearMapVisuals() {
+    const m = MapModule.ensureMissionMap();
+    if (!m) return;
+    this._ghostMarkers.forEach(gm => m.removeLayer(gm));
+    this._ghostMarkers = [];
+    if (this._degradeRing) { m.removeLayer(this._degradeRing); this._degradeRing = null; }
+  },
+
+  /** HUD text and color for the GPS status indicator */
+  getHudText() {
+    const gd = state.gpsDegradation;
+    if (!gd) return { text: 'GPS: Good', color: '#4caf50' };
+    const labels = { good: 'GPS: Good', degraded: 'GPS: Degraded', jammed: 'GPS: Jammed' };
+    const colors = { good: '#4caf50', degraded: '#ff9800', jammed: '#ef4444' };
+    return { text: labels[gd.status] || labels.good, color: colors[gd.status] || colors.good };
+  }
+};
+
+/* ========================== ASSET LAZY-LOADER & MEMORY POOL (Phase 8 Task 9) ========================== */
+
+const AssetLoader = {
+  async loadImage(url) {
+    if (this._cache.has(url)) return this._cache.get(url);
+    if (this._loading.has(url)) return this._loading.get(url);
+    const promise = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => { this._cache.set(url, img); this._loaded.add(url); resolve(img); };
+      img.onerror = reject;
+      img.src = url;
+    });
+    this._loading.set(url, promise);
+    return promise;
+  },
+
+  async loadJSON(url) {
+    if (this._cache.has(url)) return this._cache.get(url);
+    const res = await fetch(url);
+    const data = await res.json();
+    this._cache.set(url, data);
+    this._loaded.add(url);
+    return data;
+  },
+
+  // Lazy-load on viewport intersection
+  observeLazy(elements, callback) {
+    if (!('IntersectionObserver' in window)) {
+      elements.forEach(callback);
+      return;
+    }
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { callback(e.target); obs.unobserve(e.target); } });
+    }, { rootMargin: '200px' });
+    elements.forEach(el => obs.observe(el));
+  },
+
+  // Memory pressure handler
+  onMemoryPressure() {
+    this._cache.clear();
+    this._loading.clear();
+    MemoryPool.clear();
+    console.warn('[AssetLoader] Memory pressure — cleared caches');
+  },
+
+  // Stats
+  getStats() {
+    return { cached: this._cache.size, loaded: this._loaded.size };
+  },
+
+  _cache: new Map(),
+  _loading: new Map(),
+  _loaded: new Set(),
+};
+
+const MemoryPool = {
+  pools: { div: [], span: [], particle: [], marker: [] },
+  maxSize: 200,
+
+  acquire(type) {
+    const pool = this.pools[type];
+    if (pool && pool.length > 0) return pool.pop();
+    if (type === 'div') return document.createElement('div');
+    if (type === 'span') return document.createElement('span');
+    if (type === 'particle') return { x:0, y:0, vx:0, vy:0, life:0, maxLife:0, size:0, color:'', alpha:0, trail:null, currentSize:0, gravity:0, char:'', colors:null };
+    return null;
+  },
+
+  release(type, obj) {
+    const pool = this.pools[type];
+    if (!pool) return;
+    if (pool.length >= this.maxSize) return;
+    if (type === 'div' || type === 'span') { obj.innerHTML = ''; obj.style.cssText = ''; obj.className = ''; }
+    if (type === 'particle') { obj.x=0; obj.y=0; obj.vx=0; obj.vy=0; obj.life=0; obj.maxLife=0; obj.size=0; obj.currentSize=0; obj.color=''; obj.alpha=0; obj.gravity=0; obj.char=''; obj.colors=null; obj.trail=null; }
+    pool.push(obj);
+  },
+
+  clear() {
+    Object.keys(this.pools).forEach(k => this.pools[k] = []);
+  },
+
+  // Pre-warm pool on splash screen
+  prewarm(counts) {
+    counts = counts || { div: 50, span: 50, particle: 100 };
+    Object.entries(counts).forEach(([type, n]) => {
+      for (let i = 0; i < n; i++) {
+        const obj = this.acquire(type);
+        if (obj) this.release(type, obj);
+      }
+    });
+  },
+
+  getStats() {
+    return Object.fromEntries(Object.entries(this.pools).map(([k, v]) => [k, v.length]));
+  }
+};
+
+/* ========================== PERFORMANCE MONITOR (5.3) ========================== */
+
+const PerfMonitor = {
+  // FPS tracking
+  frameCount: 0,
+  lastFpsTime: 0,
+  currentFps: 0,
+  fpsDropLogged: false,
+  fpsRecoverLogged: false,
+
+  // Slow operation tracking
+  slowOpThreshold: 16, // ms — budget for 60fps frame
+  slowOps: [], // { name, duration, timestamp }
+  maxSlowOps: 20,
+
+  // DOM overlay
+  overlayEl: null,
+  enabled: false,
+
+  init() {
+    this.overlayEl = document.getElementById('fpsDebugOverlay');
+    // Enable via URL param ?debug=1 or localStorage
+    try {
+      this.enabled = location.search.includes('debug=1') || localStorage.getItem('slv2_debug') === '1';
+    } catch (e) { this.enabled = false; }
+    if (this.enabled && this.overlayEl) {
+      this.overlayEl.classList.remove('hidden');
+    }
+  },
+
+  // Call at the top of an existing rAF loop — counts frames and computes FPS once per second
+  tick(ts) {
+    if (!this.enabled) return;
+    this.frameCount++;
+    if (ts - this.lastFpsTime >= 1000) {
+      this.currentFps = this.frameCount;
+      this.frameCount = 0;
+      this.lastFpsTime = ts;
+      this._updateOverlay();
+      this._checkFpsDrop();
+    }
+  },
+
+  // Wrap a function to measure its execution time
+  measure(name, fn) {
+    if (!this.enabled) return fn();
+    const start = performance.now();
+    try {
+      return fn();
+    } finally {
+      const duration = performance.now() - start;
+      if (duration > this.slowOpThreshold) {
+        this._logSlowOp(name, duration);
+      }
+    }
+  },
+
+  // Async variant
+  async measureAsync(name, fn) {
+    if (!this.enabled) return fn();
+    const start = performance.now();
+    try {
+      return await fn();
+    } finally {
+      const duration = performance.now() - start;
+      if (duration > this.slowOpThreshold) {
+        this._logSlowOp(name, duration);
+      }
+    }
+  },
+
+  _updateOverlay() {
+    if (!this.overlayEl) return;
+    const fps = this.currentFps;
+    this.overlayEl.textContent = `FPS: ${fps}`;
+    this.overlayEl.classList.remove('fps-low', 'fps-warn');
+    if (fps < 30) {
+      this.overlayEl.classList.add('fps-low');
+    } else if (fps < 45) {
+      this.overlayEl.classList.add('fps-warn');
+    }
+  },
+
+  _checkFpsDrop() {
+    const fps = this.currentFps;
+    if (fps < 30) {
+      if (!this.fpsDropLogged) {
+        console.warn(`[PerfMonitor] FPS dropped below 30: ${fps}`);
+        this.fpsDropLogged = true;
+        this.fpsRecoverLogged = false;
+      }
+    } else if (fps >= 45) {
+      if (!this.fpsRecoverLogged && this.fpsDropLogged) {
+        console.log(`[PerfMonitor] FPS recovered: ${fps}`);
+        this.fpsRecoverLogged = true;
+        this.fpsDropLogged = false;
+      }
+    }
+  },
+
+  _logSlowOp(name, duration) {
+    const entry = { name, duration: Math.round(duration * 10) / 10, timestamp: Date.now() };
+    this.slowOps.push(entry);
+    if (this.slowOps.length > this.maxSlowOps) this.slowOps.shift();
+    console.warn(`[PerfMonitor] Slow operation: "${name}" took ${entry.duration.toFixed(1)}ms`);
+  },
+
+  // Public API to toggle debug overlay at runtime
+  toggle() {
+    this.enabled = !this.enabled;
+    try { localStorage.setItem('slv2_debug', this.enabled ? '1' : '0'); } catch (e) {}
+    if (this.overlayEl) {
+      this.overlayEl.classList.toggle('hidden', !this.enabled);
+    }
+    if (!this.enabled && this.overlayEl) {
+      this.overlayEl.textContent = 'FPS: --';
+    }
+    return this.enabled;
+  },
+
+  getReport() {
+    return {
+      fps: this.currentFps,
+      slowOps: this.slowOps.slice()
+    };
+  }
+};
+
+/* ========================== PERFORMANCE PROFILE (P8 T10) ========================== */
+
+const PerformanceProfile = {
+  PROFILES: {
+    performance: { fps: 60, particles: 1.0, radarDetail: 'full',   shadows: true,  effects: true,  gpsInterval: 3000 },
+    balanced:    { fps: 30, particles: 0.6, radarDetail: 'medium', shadows: false, effects: true,  gpsInterval: 5000 },
+    powersave:   { fps: 20, particles: 0.3, radarDetail: 'low',    shadows: false, effects: false, gpsInterval: 10000 },
+  },
+
+  init() {
+    this._detectDeviceClass();
+    this._setupThermalDetection();
+    this._applyProfile(state.performanceProfile);
+  },
+
+  _detectDeviceClass() {
+    const mem = navigator.deviceMemory || 8;
+    const cores = navigator.hardwareConcurrency || 4;
+    if (mem <= 4 && cores <= 4) {
+      state.performanceProfile = 'balanced';
+    }
+    if (navigator.getBattery) {
+      navigator.getBattery().then(b => {
+        if (!b.charging && b.level <= 0.15) {
+          this.setProfile('powersave');
+        }
+      }).catch(() => {});
+    }
+  },
+
+  _setupThermalDetection() {
+    let slowFrames = 0;
+    const check = (frameTime) => {
+      if (frameTime > 33) slowFrames++;
+      else slowFrames = Math.max(0, slowFrames - 1);
+      if (slowFrames > 30) {
+        state.thermalState = 'serious';
+        this._autoThrottle();
+        slowFrames = 0;
+      }
+    };
+    const origTick = PerfMonitor.tick;
+    PerfMonitor.tick = (ts) => {
+      if (state.lastFrameTime) check(ts - state.lastFrameTime);
+      state.lastFrameTime = ts;
+      origTick.call(PerfMonitor, ts);
+    };
+  },
+
+  setProfile(name) {
+    state.performanceProfile = name;
+    this._applyProfile(name);
+    BatteryAwareGPS.onGpsStart();
+    addChat('System', `Performance: ${name} mode`);
+  },
+
+  _applyProfile(name) {
+    const cfg = this.PROFILES[name];
+    if (!cfg) return;
+    ParticleSystem._multiplier = cfg.particles;
+    RadarModule.detailLevel = cfg.radarDetail;
+    state.frameSkip = Math.max(0, Math.round(60 / cfg.fps) - 1);
+    BatteryAwareGPS.INTERVAL_NORMAL = cfg.gpsInterval;
+  },
+
+  _autoThrottle() {
+    const profiles = ['performance', 'balanced', 'powersave'];
+    const idx = profiles.indexOf(state.performanceProfile);
+    if (idx < profiles.length - 1) {
+      this.setProfile(profiles[idx + 1]);
+      ScreenJuice.addKillFeed('Thermal throttling — reduced visuals', '#ff9800');
+    }
+  },
+
+  onVisibilityChange() {
+    if (document.hidden) {
+      ParticleSystem.running = false;
+      if (RadarModule._animationId) cancelAnimationFrame(RadarModule._animationId);
+    } else {
+      ParticleSystem.running = true;
+      ParticleSystem._loop();
+      RadarModule.startLoop();
+    }
+  },
+
+  renderProfileSelector() {
+    const container = document.getElementById('perfProfileSettings');
+    if (!container) return;
+    const profiles = ['performance', 'balanced', 'powersave'];
+    const labels = { performance: 'Performance', balanced: 'Balanced', powersave: 'Power Saver' };
+    container.innerHTML = '';
+    profiles.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = 'perf-profile-btn' + (state.performanceProfile === p ? ' active' : '');
+      btn.textContent = labels[p];
+      btn.addEventListener('click', () => {
+        this.setProfile(p);
+        container.querySelectorAll('.perf-profile-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+      container.appendChild(btn);
+    });
+  }
+};
+
 /* ========================== STEALTH MODE MODULE (3.3) ========================== */
 
 const StealthMode = {
@@ -729,8 +3995,10 @@ const StealthMode = {
     const name = local ? `${local.name} (${local.callsign})` : 'You';
     if (state.stealth) {
       addChat('Stealth', `${name} entered stealth mode — detection range reduced.`);
+      EventLog.add('ability', '🥷', `<strong>Stealth ON</strong> Detection range reduced`);
     } else {
       addChat('Stealth', `${name} exited stealth mode — normal movement restored.`);
+      EventLog.add('ability', '👁️', `<strong>Stealth OFF</strong> Normal movement restored`);
     }
   },
 
@@ -875,6 +4143,266 @@ const WaypointsModule = {
   }
 };
 
+/* ========================== MINIMAP ZOOM & HUD CUSTOMIZATION (P6 T7) ========================== */
+
+const HUDCustomizer = {
+  STORAGE_KEY: 'slv2_hud_customize',
+  DRAGGABLE_IDS: ['abilityHotbar', 'trapSelector', 'droneBar', 'droneHUD', 'activeBuffs', 'mapLegend', 'compassRose', 'missionRadar'],
+  PANEL_IDS: ['abilityHotbar', 'trapSelector', 'droneBar', 'droneHUD', 'activeBuffs', 'mapLegend', 'compassRose', 'missionRadar', 'threatVignette', 'progressionHUD', 'weatherHUD', 'terrainHUD', 'supplyCacheHUD', 'jammerSurgeBanner', 'gpsDegradationHUD'],
+
+  init() {
+    this._load();
+    this._applyVisibility();
+    this._applyLayout();
+    this._bindMinimapZoom();
+    this._bindPanelToggles();
+    this._bindDrag();
+    this._bindReset();
+  },
+
+  // ---- Minimap Zoom ----
+  _bindMinimapZoom() {
+    const slider = document.getElementById('minimapZoomSlider');
+    const label = document.getElementById('minimapZoomLabel');
+    if (!slider) return;
+    slider.value = state.minimapZoom;
+    if (label) label.textContent = Math.round(state.minimapZoom * 100) + '%';
+    slider.addEventListener('input', () => {
+      const val = parseFloat(slider.value);
+      state.minimapZoom = val;
+      if (label) label.textContent = Math.round(val * 100) + '%';
+      this._applyMinimapZoom();
+      this._save();
+    });
+  },
+
+  _applyMinimapZoom() {
+    const canvas = document.getElementById('missionRadar');
+    if (!canvas) return;
+    const z = state.minimapZoom;
+    // Scale the radar canvas visually; keep base resolution
+    canvas.style.transform = `scale(${z})`;
+    canvas.style.transformOrigin = 'bottom left';
+  },
+
+  // ---- Panel Visibility ----
+  _bindPanelToggles() {
+    const container = document.getElementById('hudPanelToggles');
+    if (!container) return;
+    container.querySelectorAll('[data-hud-panel]').forEach(chk => {
+      const id = chk.dataset.hudPanel;
+      chk.checked = state.hudPanelsVisible[id] !== false;
+      chk.addEventListener('change', () => {
+        state.hudPanelsVisible[id] = chk.checked;
+        this._applyVisibility();
+        this._save();
+      });
+    });
+  },
+
+  _applyVisibility() {
+    const vis = state.hudPanelsVisible;
+    for (const id of this.PANEL_IDS) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      if (vis[id] === false) {
+        el.classList.add('hud-hidden');
+      } else {
+        el.classList.remove('hud-hidden');
+      }
+    }
+  },
+
+  // ---- Draggable Layout ----
+  _bindDrag() {
+    if ('ontouchstart' in window) {
+      // Touch devices: drag via long-press on a drag handle
+      this._bindTouchDrag();
+    } else {
+      this._bindMouseDrag();
+    }
+  },
+
+  _bindMouseDrag() {
+    let dragging = null;
+    let startX = 0, startY = 0;
+    let origLeft = 0, origTop = 0;
+
+    const onDown = (e) => {
+      const handle = e.target.closest('.hud-drag-handle');
+      if (!handle) return;
+      const panel = handle.closest('[id]');
+      if (!panel || !this.DRAGGABLE_IDS.includes(panel.id)) return;
+      e.preventDefault();
+      dragging = panel;
+      startX = e.clientX;
+      startY = e.clientY;
+      const rect = panel.getBoundingClientRect();
+      origLeft = rect.left;
+      origTop = rect.top;
+      panel.style.position = 'fixed';
+      panel.style.left = origLeft + 'px';
+      panel.style.top = origTop + 'px';
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+      panel.classList.add('hud-dragging');
+    };
+
+    const onMove = (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      dragging.style.left = (origLeft + dx) + 'px';
+      dragging.style.top = (origTop + dy) + 'px';
+    };
+
+    const onUp = () => {
+      if (!dragging) return;
+      dragging.classList.remove('hud-dragging');
+      this._storeLayout(dragging);
+      dragging = null;
+    };
+
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  },
+
+  _bindTouchDrag() {
+    let dragging = null;
+    let startX = 0, startY = 0;
+    let origLeft = 0, origTop = 0;
+
+    const onStart = (e) => {
+      const handle = e.target.closest('.hud-drag-handle');
+      if (!handle) return;
+      const panel = handle.closest('[id]');
+      if (!panel || !this.DRAGGABLE_IDS.includes(panel.id)) return;
+      dragging = panel;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      const rect = panel.getBoundingClientRect();
+      origLeft = rect.left;
+      origTop = rect.top;
+      panel.style.position = 'fixed';
+      panel.style.left = origLeft + 'px';
+      panel.style.top = origTop + 'px';
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+      panel.classList.add('hud-dragging');
+    };
+
+    const onMove = (e) => {
+      if (!dragging) return;
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      dragging.style.left = (origLeft + dx) + 'px';
+      dragging.style.top = (origTop + dy) + 'px';
+    };
+
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging.classList.remove('hud-dragging');
+      this._storeLayout(dragging);
+      dragging = null;
+    };
+
+    document.addEventListener('touchstart', onStart, { passive: false });
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+  },
+
+  _storeLayout(el) {
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    state.hudLayout[el.id] = {
+      left: rect.left,
+      top: rect.top,
+      right: vw - rect.right,
+      bottom: vh - rect.bottom,
+    };
+    this._save();
+  },
+
+  _applyLayout() {
+    for (const [id, pos] of Object.entries(state.hudLayout)) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      el.style.position = 'fixed';
+      if (Number.isFinite(pos.left)) el.style.left = pos.left + 'px';
+      if (Number.isFinite(pos.top)) el.style.top = pos.top + 'px';
+      if (Number.isFinite(pos.right)) el.style.right = pos.right + 'px';
+      if (Number.isFinite(pos.bottom)) el.style.bottom = pos.bottom + 'px';
+    }
+  },
+
+  _bindReset() {
+    const btn = document.getElementById('hudResetLayoutBtn');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      state.hudLayout = {};
+      state.minimapZoom = 1.0;
+      state.hudPanelsVisible = {
+        abilityHotbar: true, trapSelector: true, droneBar: true, droneHUD: true,
+        activeBuffs: true, mapLegend: true, compassRose: true, missionRadar: true,
+        threatVignette: true, progressionHUD: true, weatherHUD: true,
+        terrainHUD: true, supplyCacheHUD: true, jammerSurgeBanner: true,
+        gpsDegradationHUD: true,
+      };
+      // Reset DOM styles
+      for (const id of this.DRAGGABLE_IDS) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        el.style.position = '';
+        el.style.left = '';
+        el.style.top = '';
+        el.style.right = '';
+        el.style.bottom = '';
+      }
+      this._applyVisibility();
+      this._applyMinimapZoom();
+      // Reset slider
+      const slider = document.getElementById('minimapZoomSlider');
+      const label = document.getElementById('minimapZoomLabel');
+      if (slider) slider.value = 1.0;
+      if (label) label.textContent = '100%';
+      // Reset checkboxes
+      const container = document.getElementById('hudPanelToggles');
+      if (container) {
+        container.querySelectorAll('[data-hud-panel]').forEach(chk => {
+          chk.checked = true;
+        });
+      }
+      this._save();
+    });
+  },
+
+  // ---- Persistence ----
+  _save() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+        minimapZoom: state.minimapZoom,
+        hudLayout: state.hudLayout,
+        hudPanelsVisible: state.hudPanelsVisible,
+      }));
+    } catch (e) {}
+  },
+
+  _load() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (typeof data.minimapZoom === 'number') state.minimapZoom = data.minimapZoom;
+      if (data.hudLayout && typeof data.hudLayout === 'object') state.hudLayout = data.hudLayout;
+      if (data.hudPanelsVisible && typeof data.hudPanelsVisible === 'object') {
+        state.hudPanelsVisible = { ...state.hudPanelsVisible, ...data.hudPanelsVisible };
+      }
+    } catch (e) {}
+  },
+};
+
 /* ========================== DOM HELPERS ========================== */
 
 const $ = (sel) => document.querySelector(sel);
@@ -883,6 +4411,191 @@ const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 function escapeHtml(v) {
   return String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 }
+
+/* ========================== WEBGL RADAR RENDERER (P8 T8) ========================== */
+
+const WebGLRadar = {
+  canvas: null,
+  gl: null,
+  program: null,
+  buffers: {},
+  fallback: false,
+  maxBlips: 2048,
+  blipCount: 0,
+  aPosition: null,
+  aColor: null,
+  aSize: null,
+  uResolution: null,
+  uOffset: null,
+  uScale: null,
+
+  init(canvasId) {
+    this.canvas = document.getElementById(canvasId);
+    if (!this.canvas) { this.fallback = true; return false; }
+    this.gl = this.canvas.getContext('webgl', { alpha: true, antialias: false, preserveDrawingBuffer: false });
+    if (!this.gl) { this.fallback = true; return false; }
+    this._initShaders();
+    this._initBuffers();
+    this._resize();
+    return true;
+  },
+
+  _initShaders() {
+    const gl = this.gl;
+    const vsSrc = `
+      attribute vec2 a_position;
+      attribute vec3 a_color;
+      attribute float a_size;
+      uniform vec2 u_resolution;
+      uniform vec2 u_offset;
+      uniform float u_scale;
+      varying vec3 v_color;
+      void main() {
+        vec2 pos = (a_position - u_offset) * u_scale;
+        pos = (pos / u_resolution) * 2.0 - 1.0;
+        pos.y = -pos.y;
+        gl_Position = vec4(pos, 0.0, 1.0);
+        gl_PointSize = a_size;
+        v_color = a_color;
+      }
+    `;
+    const fsSrc = `
+      precision mediump float;
+      varying vec3 v_color;
+      void main() {
+        float dist = length(gl_PointCoord - 0.5);
+        if (dist > 0.5) discard;
+        float alpha = 1.0 - smoothstep(0.35, 0.5, dist);
+        gl_FragColor = vec4(v_color, alpha);
+      }
+    `;
+    const vs = this._compileShader(gl.VERTEX_SHADER, vsSrc);
+    const fs = this._compileShader(gl.FRAGMENT_SHADER, fsSrc);
+    if (!vs || !fs) { this.fallback = true; return; }
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      console.warn('[WebGLRadar] Link failed:', gl.getProgramInfoLog(prog));
+      this.fallback = true;
+      return;
+    }
+    this.program = prog;
+    this.aPosition = gl.getAttribLocation(prog, 'a_position');
+    this.aColor = gl.getAttribLocation(prog, 'a_color');
+    this.aSize = gl.getAttribLocation(prog, 'a_size');
+    this.uResolution = gl.getUniformLocation(prog, 'u_resolution');
+    this.uOffset = gl.getUniformLocation(prog, 'u_offset');
+    this.uScale = gl.getUniformLocation(prog, 'u_scale');
+  },
+
+  _compileShader(type, src) {
+    const gl = this.gl;
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.warn('[WebGLRadar] Shader compile failed:', gl.getShaderInfoLog(s));
+      gl.deleteShader(s);
+      return null;
+    }
+    return s;
+  },
+
+  _initBuffers() {
+    const gl = this.gl;
+    const max = this.maxBlips;
+    this.buffers.position = gl.createBuffer();
+    this.buffers.color = gl.createBuffer();
+    this.buffers.size = gl.createBuffer();
+    // Pre-allocate arrays
+    this.buffers.posArray = new Float32Array(max * 2);
+    this.buffers.colArray = new Float32Array(max * 3);
+    this.buffers.sizeArray = new Float32Array(max);
+  },
+
+  _resize() {
+    if (!this.canvas || !this.gl) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = this.canvas.getBoundingClientRect();
+    this.canvas.width = rect.width * dpr;
+    this.canvas.height = rect.height * dpr;
+    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+  },
+
+  // Add a blip to the batch. Call clearBlips() first each frame.
+  addBlip(x, y, r, g, b, size) {
+    if (this.fallback) return;
+    const i = this.blipCount;
+    if (i >= this.maxBlips) return;
+    const p = this.buffers.posArray;
+    const c = this.buffers.colArray;
+    const s = this.buffers.sizeArray;
+    p[i * 2] = x;
+    p[i * 2 + 1] = y;
+    c[i * 3] = r;
+    c[i * 3 + 1] = g;
+    c[i * 3 + 2] = b;
+    s[i] = size;
+    this.blipCount = i + 1;
+  },
+
+  clearBlips() {
+    this.blipCount = 0;
+  },
+
+  renderBlips(cx, cy, radius, effectiveRange) {
+    if (this.fallback || this.blipCount === 0 || !this.gl) return;
+    const gl = this.gl;
+    gl.useProgram(this.program);
+    // Upload data
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position);
+    gl.bufferData(gl.ARRAY_BUFFER, this.buffers.posArray.subarray(0, this.blipCount * 2), gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(this.aPosition);
+    gl.vertexAttribPointer(this.aPosition, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.color);
+    gl.bufferData(gl.ARRAY_BUFFER, this.buffers.colArray.subarray(0, this.blipCount * 3), gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(this.aColor);
+    gl.vertexAttribPointer(this.aColor, 3, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.size);
+    gl.bufferData(gl.ARRAY_BUFFER, this.buffers.sizeArray.subarray(0, this.blipCount), gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(this.aSize);
+    gl.vertexAttribPointer(this.aSize, 1, gl.FLOAT, false, 0, 0);
+
+    // Uniforms
+    gl.uniform2f(this.uResolution, this.canvas.width, this.canvas.height);
+    gl.uniform2f(this.uOffset, cx, cy);
+    gl.uniform1f(this.uScale, radius / effectiveRange);
+
+    // Enable blending for alpha
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    gl.drawArrays(gl.POINTS, 0, this.blipCount);
+  },
+
+  // Clear the WebGL canvas (used when WebGL handles everything)
+  clear() {
+    if (!this.gl || this.fallback) return;
+    const gl = this.gl;
+    gl.clearColor(0.04, 0.06, 0.08, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+  },
+
+  destroy() {
+    if (!this.gl) return;
+    const gl = this.gl;
+    if (this.program) { gl.deleteProgram(this.program); this.program = null; }
+    Object.values(this.buffers).forEach(b => { if (b && typeof b === 'object' && b !== null && 'deleteBuffer' in gl) gl.deleteBuffer(b); });
+    this.buffers = {};
+    this.gl = null;
+    this.canvas = null;
+    this.fallback = false;
+  }
+};
 
 /* ========================== RADAR MODULE ========================== */
 
@@ -902,13 +4615,69 @@ const RadarModule = {
   observer: null,
   THROTTLE_MS: 33, // ~30fps
 
+  useWebGL: false,
+
   init(canvasId) {
     this.canvas = document.getElementById(canvasId);
     if (!this.canvas) return;
     this.ctx = this.canvas.getContext('2d');
+    this.useWebGL = WebGLRadar.init(canvasId);
     this._initVisibility();
-    this.enterFullscreen();
+    this._initModeToggle();
+    if (this.fullscreen) {
+      this.enterFullscreen();
+    } else {
+      this.exitFullscreen();
+    }
     this.startLoop();
+  },
+
+  // === PHASE 12.1 RADAR: LONG-PRESS MODE TOGGLE ===
+  _initModeToggle() {
+    const el = this.canvas;
+    if (!el) return;
+    let pressTimer = null;
+    const cycleMode = () => {
+      const modes = ['2d', 'isometric', 'minimal'];
+      const idx = modes.indexOf(state.radarViewMode);
+      state.radarViewMode = modes[(idx + 1) % modes.length];
+      // Update CSS class on canvas wrapper for styling hooks
+      const wrap = document.getElementById('missionRadarWrap');
+      if (wrap) {
+        wrap.classList.remove('radar-isometric', 'radar-minimal');
+        if (state.radarViewMode === 'isometric') wrap.classList.add('radar-isometric');
+        if (state.radarViewMode === 'minimal') wrap.classList.add('radar-minimal');
+      }
+      // Update indicator text
+      const indicator = document.getElementById('radarModeIndicator');
+      if (indicator) {
+        indicator.textContent = state.radarViewMode === '2d' ? '2D' : state.radarViewMode === 'isometric' ? 'ISO' : 'MIN';
+      }
+    };
+    const startPress = (e) => {
+      if (e.button && e.button !== 0) return;
+      pressTimer = setTimeout(() => {
+        pressTimer = null;
+        cycleMode();
+      }, 500);
+    };
+    const cancelPress = () => {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    };
+    el.addEventListener('mousedown', startPress);
+    el.addEventListener('touchstart', startPress, { passive: true });
+    el.addEventListener('mouseup', cancelPress);
+    el.addEventListener('mouseleave', cancelPress);
+    el.addEventListener('touchend', cancelPress);
+    el.addEventListener('touchcancel', cancelPress);
+    this._modeToggleCleanup = () => {
+      el.removeEventListener('mousedown', startPress);
+      el.removeEventListener('touchstart', startPress);
+      el.removeEventListener('mouseup', cancelPress);
+      el.removeEventListener('mouseleave', cancelPress);
+      el.removeEventListener('touchend', cancelPress);
+      el.removeEventListener('touchcancel', cancelPress);
+    };
   },
 
   _initVisibility() {
@@ -948,6 +4717,22 @@ const RadarModule = {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     this.range = 500;
+    if (this.useWebGL) WebGLRadar._resize();
+    // Resize fog and particle canvases to full viewport so they cover correctly
+    const fogCanvas = document.getElementById('fogCanvas');
+    const particleCanvas = document.getElementById('particleCanvas');
+    if (fogCanvas) {
+      fogCanvas.width = window.innerWidth;
+      fogCanvas.height = window.innerHeight;
+      fogCanvas.style.width = window.innerWidth + 'px';
+      fogCanvas.style.height = window.innerHeight + 'px';
+    }
+    if (particleCanvas) {
+      particleCanvas.width = window.innerWidth;
+      particleCanvas.height = window.innerHeight;
+      particleCanvas.style.width = window.innerWidth + 'px';
+      particleCanvas.style.height = window.innerHeight + 'px';
+    }
   },
 
   exitFullscreen() {
@@ -958,6 +4743,26 @@ const RadarModule = {
     canvas.width = 160;
     canvas.height = 160;
     this.range = 200;
+    if (this.useWebGL) WebGLRadar._resize();
+    // Restore fog and particle canvases to map container size
+    const mapEl = document.getElementById('missionMap');
+    const fogCanvas = document.getElementById('fogCanvas');
+    const particleCanvas = document.getElementById('particleCanvas');
+    if (mapEl) {
+      const rect = mapEl.getBoundingClientRect();
+      if (fogCanvas) {
+        fogCanvas.width = rect.width;
+        fogCanvas.height = rect.height;
+        fogCanvas.style.width = rect.width + 'px';
+        fogCanvas.style.height = rect.height + 'px';
+      }
+      if (particleCanvas) {
+        particleCanvas.width = rect.width;
+        particleCanvas.height = rect.height;
+        particleCanvas.style.width = rect.width + 'px';
+        particleCanvas.style.height = rect.height + 'px';
+      }
+    }
   },
 
   toggleFullscreen() {
@@ -967,7 +4772,9 @@ const RadarModule = {
 
   startLoop() {
     if (this.animationId || this.timeoutId) return;
-    const loop = () => {
+    const loop = (ts) => {
+      PerfMonitor.tick(ts);
+      this.updateTrails();
       this.draw();
       if (this._shouldThrottle()) {
         // Throttled: use setTimeout for ~30fps
@@ -990,28 +4797,80 @@ const RadarModule = {
     if (this.timeoutId) { clearTimeout(this.timeoutId); this.timeoutId = null; }
   },
 
+  // === PHASE 12.1 RADAR: MOVEMENT TRAILS UPDATE ===
+  updateTrails() {
+    const now = performance.now();
+    const cutoff = now - 3000;
+    state.agents.forEach(agent => {
+      if (!Number.isFinite(agent.lat) || !Number.isFinite(agent.lng)) return;
+      const trail = state.radarTrails.get(agent.id) || [];
+      trail.push({ x: agent.lat, y: agent.lng, time: now });
+      // Keep last 20 positions, remove older than 3 seconds
+      const filtered = trail.filter(p => p.time > cutoff).slice(-20);
+      state.radarTrails.set(agent.id, filtered);
+    });
+  },
+
   draw() {
     const ctx = this.ctx;
     const canvas = this.canvas;
     if (!ctx || !canvas) return;
     const cx = canvas.width / 2, cy = canvas.height / 2, radius = Math.min(cx, cy) - 6;
 
+    // Apply camera shake to map
+    ScreenJuice.applyShakeToMap();
+
     // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Background circle
-    ctx.fillStyle = 'rgba(11,15,20,0.88)';
+    // === PHASE 12.1 RADAR: ISOMETRIC PROJECTION ===
+    const isIso = state.radarViewMode === 'isometric';
+    const isMinimal = state.radarViewMode === 'minimal';
+    if (isIso) {
+      ctx.save();
+      ctx.translate(cx, cy * 0.7);
+      ctx.scale(1, 0.5);
+    }
+
+    // Background circle - semi-transparent to see map underneath
+    ctx.fillStyle = 'rgba(11,15,20,0.65)';
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.fill();
 
+    // Outer border ring
+    ctx.strokeStyle = 'rgba(0,188,212,0.3)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
     // Range rings (4 rings)
     for (let r = 1; r <= 4; r++) {
-      ctx.strokeStyle = r === 4 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)';
+      ctx.strokeStyle = r === 4 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(cx, cy, (radius / 4) * r, 0, Math.PI * 2);
       ctx.stroke();
+    }
+
+    // === PHASE 12.1 RADAR: MOVEMENT TRAILS ===
+    if (state.designFlags.radarMovementTrails) {
+      state.agents.forEach(agent => {
+        const trail = state.radarTrails.get(agent.id);
+        if (!trail || trail.length < 2) return;
+        ctx.beginPath();
+        trail.forEach((p, i) => {
+          const pos = worldToRadar(p.x, p.y);
+          if (!pos) return;
+          const alpha = (i / trail.length) * 0.4;
+          if (i === 0) ctx.moveTo(pos.x, pos.y);
+          else ctx.lineTo(pos.x, pos.y);
+        });
+        ctx.strokeStyle = 'rgba(0,255,136,0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
     }
 
     // Crosshairs
@@ -1022,77 +4881,158 @@ const RadarModule = {
     ctx.moveTo(cx, cy - radius); ctx.lineTo(cx, cy + radius);
     ctx.stroke();
 
-    // Scan line (rotates clockwise)
-    const angle = (Date.now() / 2000) % (Math.PI * 2);
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(angle);
-    // Scan wedge gradient
-    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-    gradient.addColorStop(0, 'rgba(0,188,212,0.15)');
-    gradient.addColorStop(1, 'rgba(0,188,212,0)');
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, radius, -0.3, 0.3);
-    ctx.closePath();
-    ctx.fill();
-    // Scan line
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(radius * 1.2, 0);
-    ctx.strokeStyle = 'rgba(0,188,212,0.5)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.restore();
+    // Scan line (rotates clockwise) - high contrast for fullscreen overlay
+    if (!isMinimal) {
+      const angle = (Date.now() / 1500) % (Math.PI * 2);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+      // Scan wedge gradient - brighter for map visibility
+      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+      gradient.addColorStop(0, 'rgba(0,188,212,0.25)');
+      gradient.addColorStop(1, 'rgba(0,188,212,0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, radius, -0.5, 0.5);
+      ctx.closePath();
+      ctx.fill();
+      // Scan line - brighter and wider
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(radius * 1.3, 0);
+      ctx.strokeStyle = 'rgba(0,188,212,0.7)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // Get player position
     const player = state.agents.find(a => a.id === state.localAgentId);
     if (!player || !Number.isFinite(player.lat) || !Number.isFinite(player.lng)) {
       // No signal text
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.font = '10px system-ui';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.font = 'bold 14px system-ui';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('NO SIGNAL', cx, cy);
+      ctx.fillText('⚠ NO SIGNAL', cx, cy);
+      if (isIso) ctx.restore();
       return;
     }
 
-    // Player dot at center
-    ctx.fillStyle = '#00bcd4';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#00bcd460';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 7, 0, Math.PI * 2);
-    ctx.stroke();
+    // === PHASE 12.1 RADAR: MINIMAL MODE ===
+    if (isMinimal) {
+      // Compass rose only + nearest threat direction arrow
+      ctx.strokeStyle = 'rgba(0,188,212,0.5)';
+      ctx.lineWidth = 1;
+      // Draw simple compass ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius * 0.8, 0, Math.PI * 2);
+      ctx.stroke();
+      // N indicator
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = 'bold 10px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('N', cx, cy - radius * 0.8 - 2);
+      // Nearest threat arrow
+      const threats = (state.threats || []).filter(t => Number.isFinite(t.lat) && Number.isFinite(t.lng));
+      if (threats.length > 0) {
+        let nearest = threats[0];
+        let minDist = Infinity;
+        const playerX = player.lng * 111320 * Math.cos(player.lat * Math.PI / 180);
+        const playerY = player.lat * 111320;
+        threats.forEach(t => {
+          const tx = t.lng * 111320 * Math.cos(player.lat * Math.PI / 180);
+          const ty = t.lat * 111320;
+          const d = Math.hypot(tx - playerX, ty - playerY);
+          if (d < minDist) { minDist = d; nearest = t; }
+        });
+        const dx = (nearest.lng - player.lng) * 111320 * Math.cos(player.lat * Math.PI / 180);
+        const dy = (nearest.lat - player.lat) * 111320;
+        const threatAngle = Math.atan2(dx, dy); // angle from North
+        const arrowLen = radius * 0.6;
+        const ax = cx + Math.sin(threatAngle) * arrowLen;
+        const ay = cy - Math.cos(threatAngle) * arrowLen;
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(ax, ay);
+        ctx.stroke();
+        // Arrowhead
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(ax - Math.sin(threatAngle - 0.4) * 6, ay + Math.cos(threatAngle - 0.4) * 6);
+        ctx.lineTo(ax - Math.sin(threatAngle + 0.4) * 6, ay + Math.cos(threatAngle + 0.4) * 6);
+        ctx.closePath();
+        ctx.fillStyle = '#ef4444';
+        ctx.fill();
+      }
+      if (isIso) ctx.restore();
+      return;
+    }
 
     // Helper: convert world lat/lng to radar position
+    let effectiveRange = this.range * WeatherSystem.visionMultiplier();
+    // Critical power reduces radar range by 50% (Phase 7 Task 6)
+    if (PowerBudget.isCritical && PowerBudget.isCritical()) {
+      effectiveRange *= 0.5;
+    }
     const worldToRadar = (lat, lng) => {
       const dx = (lng - player.lng) * 111320 * Math.cos(player.lat * Math.PI / 180);
       const dy = (lat - player.lat) * 111320;
       const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist > this.range) return null;
-      const scale = radius / this.range;
+      if (dist > effectiveRange) return null;
+      const scale = radius / effectiveRange;
       return { x: cx + dx * scale, y: cy - dy * scale };
     };
 
-    // Draw beacons (orange dots)
+    // Hex to RGB helper for WebGL
+    const hexToRgb = (hex) => {
+      const v = hex.replace('#', '');
+      const bigint = parseInt(v, 16);
+      return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+    };
+
+    // Use WebGL for blips when available; collect blips then render in batch
+    const useGL = this.useWebGL && !WebGLRadar.fallback;
+    if (useGL) WebGLRadar.clearBlips();
+
+    // Player dot at center
+    if (useGL) {
+      WebGLRadar.addBlip(cx, cy, 0, 188, 212, 8); // #00bcd4 size 8
+    } else {
+      ctx.fillStyle = '#00bcd4';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#00bcd460';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Draw beacons (orange/green dots)
     if (this.filters.objectives !== false) {
     (state.objectives || []).filter(o => o.type !== 'Extraction').forEach(o => {
       const pos = worldToRadar(o.lat, o.lng);
       if (!pos) return;
       const color = o.found ? '#4caf50' : '#ff9800';
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2);
-      ctx.fill();
+      if (useGL) {
+        const [r, g, b] = hexToRgb(color);
+        WebGLRadar.addBlip(pos.x, pos.y, r / 255, g / 255, b / 255, 6);
+      } else {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
     });
     }
 
-    // Draw pings on radar (purple triangles)
+    // Draw pings on radar (colored by type)
     if (this.filters.pings !== false) {
     (state.pings || []).forEach(ping => {
       const pos = worldToRadar(ping.lat, ping.lng);
@@ -1100,20 +5040,31 @@ const RadarModule = {
       const age = Date.now() - (ping.createdAt || 0);
       const life = Math.max(0, 1 - age / PingSystem.PING_DURATION);
       const s = 3 + (1 - life) * 3;
-      ctx.fillStyle = `rgba(124,58,237,${0.4 + life * 0.6})`;
-      ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y - s);
-      ctx.lineTo(pos.x + s, pos.y + s);
-      ctx.lineTo(pos.x - s, pos.y + s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = `rgba(255,255,255,${life * 0.6})`;
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
+      const radarPingColors = {
+        danger: '#ef4444', enemy: '#ef4444', movehere: '#3b82f6', defend: '#22c55e',
+        waypoint: '#00bcd4', needbackup: '#f97316', enemieshere: '#dc2626',
+        loothere: '#eab308', watching: '#8b5cf6'
+      };
+      const isAlert = ['danger','enemy','enemieshere','needbackup'].includes(ping.type);
+      const pingColor = radarPingColors[ping.type] || '#00bcd4';
+      if (useGL) {
+        const [r, g, b] = hexToRgb(pingColor);
+        WebGLRadar.addBlip(pos.x, pos.y, r / 255, g / 255, b / 255, (isAlert ? 10 : s * 2));
+      } else {
+        ctx.fillStyle = pingColor;
+        ctx.globalAlpha = 0.4 + life * 0.6;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, isAlert ? 5 : s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = `rgba(255,255,255,${life * 0.6})`;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
     });
     }
 
-    // Draw custom waypoints on radar (small diamonds)
+    // Draw custom waypoints on radar (small diamonds) — Canvas only (shape)
     if (this.filters.waypoints !== false) {
     (state.waypoints || []).forEach(wp => {
       const pos = worldToRadar(wp.lat, wp.lng);
@@ -1133,7 +5084,7 @@ const RadarModule = {
     });
     }
 
-    // Draw extraction (pulsing green diamond)
+    // Draw extraction (pulsing green diamond) — Canvas only (shape + pulse)
     (state.objectives || []).filter(o => o.type === 'Extraction').forEach(o => {
       const pos = worldToRadar(o.lat, o.lng);
       if (!pos) return;
@@ -1160,18 +5111,21 @@ const RadarModule = {
       const pulse = 0.6 + Math.sin(Date.now() / 300 + (t.id || '').length) * 0.4;
       const isHunt = t.mode === 'hunt';
       const dotRadius = isHunt ? 6 : (t.alert ? 5 : 3);
-      ctx.fillStyle = `rgba(239,68,68,${pulse})`;
-      ctx.beginPath();
-      ctx.arc(pos.x, pos.y, dotRadius, 0, Math.PI * 2);
-      ctx.fill();
-      // Hunt mode: ! indicator
+      if (useGL) {
+        WebGLRadar.addBlip(pos.x, pos.y, 239 / 255, 68 / 255, 68 / 255, dotRadius * 2);
+      } else {
+        ctx.fillStyle = `rgba(239,68,68,${pulse})`;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Hunt mode: ! indicator + label — always Canvas (text)
       if (isHunt) {
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 8px system-ui';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('!', pos.x, pos.y);
-        // Label
         ctx.fillStyle = '#ef4444';
         ctx.font = 'bold 6px system-ui';
         ctx.fillText('HUNT', pos.x, pos.y - dotRadius - 5);
@@ -1184,12 +5138,52 @@ const RadarModule = {
     (state.agents || []).filter(a => a.id !== state.localAgentId).forEach(a => {
       const pos = worldToRadar(a.lat, a.lng);
       if (!pos) return;
-      ctx.fillStyle = a.team === 'North' ? '#4fc3f7' : '#ff8a65';
-      ctx.beginPath();
-      ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2);
-      ctx.fill();
+      const color = a.team === 'North' ? '#4fc3f7' : '#ff8a65';
+      const dotRadius = 3;
+      if (useGL) {
+        const [r, g, b] = hexToRgb(color);
+        WebGLRadar.addBlip(pos.x, pos.y, r / 255, g / 255, b / 255, 6);
+      } else {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // === PHASE 12.1 RADAR: HEALTH RINGS ===
+      if (state.designFlags.radarHealthRings && a.health !== undefined) {
+        const healthPct = a.health / 100;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, dotRadius + 3, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * healthPct));
+        ctx.strokeStyle = healthPct > 0.5 ? '#4caf50' : healthPct > 0.25 ? '#ff9800' : '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
     });
     } // end agents filter
+
+    // Flush WebGL blips
+    if (useGL) {
+      WebGLRadar.renderBlips(cx, cy, radius, effectiveRange);
+    }
+
+    // Draw ability pulse rings on radar
+    if (this.abilityPulses && this.abilityPulses.length > 0) {
+      const now = Date.now();
+      this.abilityPulses = this.abilityPulses.filter(p => (now - p.startTime) < p.duration);
+      this.abilityPulses.forEach(pulse => {
+        const pos = worldToRadar(pulse.lat, pulse.lng);
+        if (!pos) return;
+        const elapsed = now - pulse.startTime;
+        const progress = elapsed / pulse.duration;
+        const r = progress * pulse.maxRadius * radius;
+        const alpha = 1 - progress;
+        ctx.strokeStyle = `rgba(0,188,212,${alpha * 0.6})`;
+        ctx.lineWidth = 2 * (1 - progress) + 1;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
 
     // Range label
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
@@ -1197,6 +5191,9 @@ const RadarModule = {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillText(`${this.range}m`, cx, cy - radius + 10);
+
+    // Draw hit markers on radar
+    ScreenJuice.drawOnRadar(ctx);
   },
 
   toggle() {
@@ -1207,11 +5204,590 @@ const RadarModule = {
   destroy() {
     this.stopLoop();
     this._destroyVisibility();
+    if (this._modeToggleCleanup) { this._modeToggleCleanup(); this._modeToggleCleanup = null; }
+    WebGLRadar.destroy();
+    this.useWebGL = false;
     this.canvas = null;
     this.ctx = null;
   }
 
 }; // end RadarModule
+
+/* ========================== FULLSCREEN RADAR LABEL ========================== */
+const RadarFullscreenLabel = {
+  el: null,
+  init() {
+    this.el = document.getElementById('radarFullscreenLabel');
+  },
+  update() {
+    if (!this.el) return;
+    const fs = RadarModule.fullscreen;
+    this.el.textContent = fs ? 'FULL MAP' : 'MINI';
+    this.el.classList.toggle('active', fs);
+  }
+};
+
+/* ========================== DRONE SYSTEM (4.0) ========================== */
+const DroneSystem = {
+  charges: 1,
+  active: null, // { type, lat, lng, expiresAt, marker, layer }
+  markers: [],
+  lines: [],
+  selecting: false,
+
+  init() {
+    const bar = document.getElementById('droneBar');
+    if (!bar) return;
+    bar.querySelectorAll('.drone-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.drone;
+        if (!type || this.charges <= 0) return;
+        this.startDeploy(type);
+      });
+    });
+    this.updateUI();
+  },
+
+  startDeploy(type) {
+    if (this.selecting) return;
+    this.selecting = true;
+    const hint = MemoryPool.acquire('div');
+    hint.id = 'droneDeployHint';
+    hint.className = 'deploy-hint';
+    hint.textContent = 'Tap map to deploy drone';
+    document.body.appendChild(hint);
+    const crosshair = MemoryPool.acquire('div');
+    crosshair.id = 'droneCrosshair';
+    crosshair.className = 'deploy-crosshair';
+    document.body.appendChild(crosshair);
+
+    const map = MapModule.ensureMissionMap();
+    if (!map) { this.cancelDeploy(); return; }
+
+    const onClick = (e) => {
+      if (!this.selecting) return;
+      const { lat, lng } = e.latlng;
+      this.deploy(type, lat, lng);
+      this.cancelDeploy();
+    };
+    map._droneDeployHandler = onClick;
+    map.once('click', onClick);
+
+    // Auto-cancel after 10s
+    this._cancelTimer = setTimeout(() => this.cancelDeploy(), 10000);
+  },
+
+  cancelDeploy() {
+    this.selecting = false;
+    document.getElementById('droneDeployHint')?.remove();
+    document.getElementById('droneCrosshair')?.remove();
+    const map = MapModule.ensureMissionMap();
+    if (map && map._droneDeployHandler) {
+      map.off('click', map._droneDeployHandler);
+      map._droneDeployHandler = null;
+    }
+    if (this._cancelTimer) { clearTimeout(this._cancelTimer); this._cancelTimer = null; }
+  },
+
+  deploy(type, lat, lng) {
+    if (this.charges <= 0) return;
+    if (!PowerBudget.tryUse('droneDeploy')) return;
+    this.charges--;
+    const now = Date.now();
+    const durations = { scout: 120000, decoy: 15000, shield: 30000 };
+    const expires = now + (durations[type] || 30000);
+
+    // Clear previous active drone
+    this.clearActive();
+
+    const map = MapModule.ensureMissionMap();
+    let marker = null, layer = null;
+    if (map) {
+      const iconClass = type === 'scout' ? 'drone-marker-scout' : type === 'decoy' ? 'drone-marker-decoy' : 'drone-marker-shield';
+      marker = L.marker([lat, lng], {
+        icon: L.divIcon({ className: iconClass, iconSize: [16, 16], iconAnchor: [8, 8] })
+      }).addTo(map);
+
+      if (type === 'scout') {
+        layer = L.circle([lat, lng], { radius: 120, className: 'drone-reveal-circle', interactive: false }).addTo(map);
+        // Patrol waypoints
+        const waypoints = [];
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2 + Math.random() * 0.5;
+          waypoints.push({ lat: lat + Math.sin(a) * 0.002, lng: lng + Math.cos(a) * 0.002 });
+        }
+        this.active = { type, lat, lng, expiresAt: expires, marker, layer, waypoints, wpIndex: 0 };
+      } else if (type === 'decoy') {
+        layer = L.circle([lat, lng], { radius: 200, className: 'drone-attract-ring', interactive: false }).addTo(map);
+        this.active = { type, lat, lng, expiresAt: expires, marker, layer };
+        // Immediately attract threats
+        this._attractThreats(lat, lng);
+      } else if (type === 'shield') {
+        layer = L.circle([lat, lng], { radius: 80, className: 'drone-shield-ring', interactive: false }).addTo(map);
+        this.active = { type, lat, lng, expiresAt: expires, marker, layer };
+        ActiveBuffs.add('drone-shield', 'Drone Shield', 30000, '🛡️', 'buff-green');
+      }
+    } else {
+      this.active = { type, lat, lng, expiresAt: expires };
+    }
+
+    addChat('System', `${type.charAt(0).toUpperCase() + type.slice(1)} drone deployed.`);
+    SoundFX.play(660, 0.1, 'sine', 0.12);
+    this.updateUI();
+    this._tickInterval = setInterval(() => this.tick(), 1000);
+  },
+
+  _attractThreats(lat, lng) {
+    (state.threats || []).forEach(t => {
+      const d = haversine({ lat, lng }, t);
+      if (d < 250) {
+        t.mode = 'hunt';
+        t.targetId = null;
+        // Move threat toward decoy
+        const dLat = lat - t.lat, dLng = lng - t.lng;
+        const dist = Math.sqrt(dLat * dLat + dLng * dLng) || 1;
+        t.lat += (dLat / dist) * 0.0005;
+        t.lng += (dLng / dist) * 0.0005;
+      }
+    });
+  },
+
+  tick() {
+    if (!this.active) return;
+    const now = Date.now();
+    const a = this.active;
+    const remaining = Math.max(0, a.expiresAt - now);
+    const pct = Math.round((remaining / (a.expiresAt - (a.expiresAt - (a.type === 'scout' ? 120000 : a.type === 'decoy' ? 15000 : 30000)))) * 100);
+
+    // Update HUD
+    const hud = document.getElementById('droneHUD');
+    const status = document.getElementById('droneStatus');
+    const battery = document.querySelector('#droneBatteryBar .drone-battery-fill');
+    if (hud) hud.classList.remove('hidden');
+    if (status) status.textContent = `${a.type.charAt(0).toUpperCase() + a.type.slice(1)} drone — ${Math.ceil(remaining / 1000)}s`;
+    if (battery) battery.style.width = `${pct}%`;
+
+    // Scout patrol movement
+    if (a.type === 'scout' && a.waypoints) {
+      const target = a.waypoints[a.wpIndex];
+      const dLat = target.lat - a.lat;
+      const dLng = target.lng - a.lng;
+      const dist = Math.sqrt(dLat * dLat + dLng * dLng) || 1;
+      const speed = 0.00008;
+      if (dist < 0.0002) {
+        a.wpIndex = (a.wpIndex + 1) % a.waypoints.length;
+      } else {
+        a.lat += (dLat / dist) * speed;
+        a.lng += (dLng / dist) * speed;
+      }
+      if (a.marker) a.marker.setLatLng([a.lat, a.lng]);
+      if (a.layer) a.layer.setLatLng([a.lat, a.lng]);
+      // Reveal fog of war around drone
+      FogOfWar.reveal(a.lat, a.lng, 0.0012);
+    }
+
+    // Decoy re-attract
+    if (a.type === 'decoy') {
+      this._attractThreats(a.lat, a.lng);
+    }
+
+    // Weather drains drone battery faster in rain/storm
+    if (state.weather && (state.weather.type === 'rain' || state.weather.type === 'storm')) {
+      a.expiresAt -= 500; // extra 0.5s drain per tick
+    }
+
+    if (remaining <= 0) {
+      this.clearActive();
+      addChat('System', 'Drone battery depleted.');
+    }
+  },
+
+  clearActive() {
+    if (this._tickInterval) { clearInterval(this._tickInterval); this._tickInterval = null; }
+    if (this.active) {
+      const a = this.active;
+      const map = MapModule.ensureMissionMap();
+      if (map) {
+        if (a.marker) try { map.removeLayer(a.marker); } catch(e) {}
+        if (a.layer) try { map.removeLayer(a.layer); } catch(e) {}
+      }
+      this.active = null;
+    }
+    document.getElementById('droneHUD')?.classList.add('hidden');
+  },
+
+  updateUI() {
+    const bar = document.getElementById('droneBar');
+    const chargesEl = document.getElementById('droneCharges');
+    if (chargesEl) chargesEl.textContent = this.charges;
+    if (bar) bar.classList.toggle('hidden', state.screen !== 'mission' || state.status !== 'Live');
+    bar?.querySelectorAll('.drone-btn').forEach(btn => {
+      btn.classList.toggle('cooldown', this.charges <= 0);
+    });
+  },
+
+  reset() {
+    this.cancelDeploy();
+    this.clearActive();
+    this.charges = 1;
+    this.updateUI();
+  }
+};
+
+/* ========================== COMMAND WHEEL ========================== */
+
+const CommandWheel = {
+  canvas: null,
+  ctx: null,
+  RADIUS: 130,      // wheel radius in px
+  SEGMENTS: 8,
+  SEG_ANGLE: Math.PI / 4, // 45°
+  open: false,
+  animating: false,
+  animScale: 0,
+  animStartTime: 0,
+  hoveredSegment: -1,
+  roleCommands: {
+    Drone: ['Scout Area', 'Mark Route', 'Ping Threat', 'Follow'],
+    Mechanic: ['Boost Relay', 'Repair Station', 'Signal Mesh', 'Charge'],
+    Medic: ['Heal Here', 'Regroup', 'Med Station', 'Shield'],
+    Decoder: ['Decode', 'Hack', 'Trace', 'Intercept'],
+    Navigator: ['Waypoint', 'Route Calc', 'Guide', 'Mark'],
+    Courier: ['Carry', 'Deliver', 'Cache', 'Return'],
+    'Mission Control': ['Deploy', 'Track', 'Scan', 'Override'],
+    Saboteur: ['EMP Trap', 'Disrupt', 'Sabotage', 'Overload'],
+    Spotter: ['Mark', 'Reveal', 'Paint', 'Observe'],
+    Engineer: ['Turret', 'Repair', 'Fortify', 'Overclock'],
+    Hacker: ['Intercept', 'Decoy', 'Jam', 'Backdoor']
+  },
+  // Top 4 universal segments: [label, icon, color, pingType]
+  universalSegs: [
+    ['Danger', '⚠', '#ef4444', 'danger'],
+    ['Enemy', '👁', '#ef4444', 'enemy'],
+    ['Move Here', '📍', '#3b82f6', 'movehere'],
+    ['Defend', '🛡️', '#22c55e', 'defend']
+  ],
+
+  init(canvasId) {
+    this.canvas = document.getElementById(canvasId);
+    if (!this.canvas) return;
+    this.ctx = this.canvas.getContext('2d');
+    this.canvas.width = this.RADIUS * 2;
+    this.canvas.height = this.RADIUS * 2;
+    this._bindEvents();
+  },
+
+  _getRoleSegments() {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    const role = local ? local.role : 'Drone';
+    const commands = this.roleCommands[role] || this.roleCommands.Drone;
+    const icons = ['🔍', '📍', '⚠️', '🔄'];
+    const colors = ['#a78bfa', '#f59e0b', '#ef4444', '#06b6d4'];
+    return commands.map((cmd, i) => ({
+      label: cmd,
+      icon: icons[i % icons.length],
+      color: colors[i % colors.length],
+      pingType: cmd.toLowerCase().replace(/\s+/g, '')
+    }));
+  },
+
+  getAllSegments() {
+    const roleSegs = this._getRoleSegments();
+    const segs = [];
+    for (let i = 0; i < this.SEGMENTS; i++) {
+      if (i < 4) {
+        segs.push({ ...this.universalSegs[i], idx: i });
+      } else {
+        segs.push({ ...roleSegs[i - 4], idx: i });
+      }
+    }
+    return segs;
+  },
+
+  _bindEvents() {
+    // C key to toggle
+    this._keyHandler = (e) => {
+      if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey && !e.repeat) {
+        if (state.screen === 'mission' && state.status === 'Live') {
+          e.preventDefault();
+          this.toggle();
+        }
+      }
+    };
+    document.addEventListener('keydown', this._keyHandler);
+
+    // Mouse events on the canvas
+    this._onMouseMove = (e) => {
+      if (!this.open) return;
+      const rect = this.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      this.hoveredSegment = this._hitTest(x, y);
+      this.draw();
+    };
+
+    this._onClick = (e) => {
+      if (!this.open || this.animating) return;
+      const rect = this.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const segIdx = this._hitTest(x, y);
+      if (segIdx >= 0) {
+        this._selectSegment(segIdx);
+      }
+    };
+
+    // Right-click anywhere closes wheel (also emits move-here on map, handled by Leaflet)
+    this._onContextMenu = (e) => {
+      if (this.open) {
+        e.preventDefault();
+        this.close();
+      }
+    };
+  },
+
+  _hitTest(mx, my) {
+    const cx = this.RADIUS;
+    const cy = this.RADIUS;
+    const dx = mx - cx;
+    const dy = my - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > this.RADIUS || dist < this.RADIUS * 0.25) return -1;
+    let angle = Math.atan2(dy, dx);
+    if (angle < 0) angle += Math.PI * 2;
+    // Rotate so first segment center is at top (-PI/2)
+    angle = (angle + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2);
+    return Math.floor(angle / this.SEG_ANGLE) % this.SEGMENTS;
+  },
+
+  _selectSegment(segIdx) {
+    const segs = this.getAllSegments();
+    const seg = segs[segIdx];
+    if (!seg) return;
+
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    const lat = local && Number.isFinite(local.lat) ? local.lat : null;
+    const lng = local && Number.isFinite(local.lng) ? local.lng : null;
+
+    if (lat !== null && lng !== null) {
+      PingSystem.placePing(lat, lng, seg.pingType);
+    } else {
+      // Fallback: use mission center
+      const center = getMissionCenter();
+      PingSystem.placePing(center[0], center[1], seg.pingType);
+    }
+
+    // Log the command
+    const displayName = seg.label;
+    const icon = seg.icon;
+    EventLog.add('ability', icon, `<strong>${displayName}</strong> ping sent`);
+
+    this.close();
+  },
+
+  toggle() {
+    if (this.open) this.close();
+    else this.openWheel();
+  },
+
+  openWheel() {
+    if (!this.canvas) return;
+    this.open = true;
+    this.animating = true;
+    this.animScale = 0;
+    this.animStartTime = performance.now();
+    this.hoveredSegment = -1;
+
+    this.canvas.style.display = 'block';
+    this.canvas.style.pointerEvents = 'auto';
+
+    // Attach listeners
+    this.canvas.addEventListener('mousemove', this._onMouseMove);
+    this.canvas.addEventListener('click', this._onClick);
+    document.addEventListener('contextmenu', this._onContextMenu);
+
+    this._startAnimation();
+  },
+
+  close() {
+    if (!this.canvas) return;
+    this.open = false;
+    this.animating = false;
+    this.hoveredSegment = -1;
+    this.canvas.style.display = 'none';
+    this.canvas.style.pointerEvents = 'none';
+
+    this.canvas.removeEventListener('mousemove', this._onMouseMove);
+    this.canvas.removeEventListener('click', this._onClick);
+    document.removeEventListener('contextmenu', this._onContextMenu);
+
+    if (this._animId) {
+      cancelAnimationFrame(this._animId);
+      this._animId = null;
+    }
+  },
+
+  _startAnimation() {
+    const animate = (ts) => {
+      if (!this.open) return;
+      const elapsed = ts - this.animStartTime;
+      const duration = 400; // ms
+      const t = Math.min(1, elapsed / duration);
+
+      // easeOutBack
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      this.animScale = 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+
+      this.draw();
+
+      if (t < 1) {
+        this._animId = requestAnimationFrame(animate);
+      } else {
+        this.animScale = 1;
+        this.animating = false;
+        this.draw();
+        this._animId = null;
+      }
+    };
+    this._animId = requestAnimationFrame(animate);
+  },
+
+  draw() {
+    const ctx = this.ctx;
+    if (!ctx || !this.canvas) return;
+    const cx = this.RADIUS;
+    const cy = this.RADIUS;
+    const radius = this.RADIUS;
+    const segs = this.getAllSegments();
+
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Apply scale animation
+    const s = this.animScale;
+    if (s < 0.01) return;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(s, s);
+    ctx.translate(-cx, -cy);
+
+    // Draw background circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(11, 15, 20, 0.92)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw each segment
+    for (let i = 0; i < this.SEGMENTS; i++) {
+      const seg = segs[i];
+      const startAngle = i * this.SEG_ANGLE - Math.PI / 2;
+      const endAngle = startAngle + this.SEG_ANGLE;
+      const isHovered = i === this.hoveredSegment;
+
+      // Segment stagger fade-in during animation
+      const segDelay = i / this.SEGMENTS;
+      const segAlpha = this.animating
+        ? Math.min(1, Math.max(0, (s - segDelay * 0.5) * 2))
+        : 1;
+      if (segAlpha <= 0) continue;
+
+      // Draw pie slice
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, radius - 4, startAngle, endAngle);
+      ctx.closePath();
+
+      const baseColor = seg.color;
+      const alpha = segAlpha;
+
+      if (isHovered) {
+        ctx.fillStyle = `rgba(255, 255, 255, 0.15)`;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255, 255, 255, 0.5)`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = this._hexToRgba(baseColor, 0.08 * alpha);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255, 255, 255, 0.08)`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // Draw icon and label along bisector
+      const bisector = startAngle + this.SEG_ANGLE / 2;
+      const iconRadius = radius * 0.6;
+      const labelRadius = radius * 0.78;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(bisector);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Icon
+      const iconSize = isHovered ? 16 : 13;
+      ctx.font = `${iconSize}px system-ui`;
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.8 * alpha})`;
+      ctx.fillText(seg.icon, iconRadius * Math.cos(0), iconRadius * Math.sin(0));
+
+      // Label
+      ctx.font = `${isHovered ? 10 : 9}px system-ui`;
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * alpha})`;
+      ctx.fillText(seg.label, labelRadius * Math.cos(0), labelRadius * Math.sin(0));
+
+      ctx.restore();
+
+      // Segment separator line
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(
+        cx + (radius - 4) * Math.cos(startAngle),
+        cy + (radius - 4) * Math.sin(startAngle)
+      );
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.06 * alpha})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Center circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 0.22, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(11, 15, 20, 0.95)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Center label
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.font = '9px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('CMD', cx, cy);
+
+    ctx.restore();
+  },
+
+  _hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  },
+
+  destroy() {
+    this.close();
+    document.removeEventListener('keydown', this._keyHandler);
+    this.canvas = null;
+    this.ctx = null;
+  }
+
+}; // end CommandWheel
 
 /* ========================== RESULTS ANIMATIONS ========================== */
 
@@ -1230,6 +5806,7 @@ const ResultsAnimations = {
     const startValue = 0;
 
     const tick = (now) => {
+      PerfMonitor.tick(now);
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / durationMs, 1);
       // Ease-out cubic
@@ -1339,8 +5916,9 @@ const ResultsAnimations = {
     return this.__resizeHandler ||= () => this.resizeConfetti();
   },
 
-  confettiLoop() {
+  confettiLoop(ts) {
     if (!this.active) return;
+    PerfMonitor.tick(ts);
     const ctx = this.confettiCtx;
     const canvas = this.confettiCanvas;
     if (!ctx || !canvas) return;
@@ -1369,7 +5947,7 @@ const ResultsAnimations = {
     });
 
     if (alive > 0) {
-      this.confettiId = requestAnimationFrame(() => this.confettiLoop());
+      this.confettiId = requestAnimationFrame((ts) => this.confettiLoop(ts));
     } else {
       this.active = false;
       this.confettiId = null;
@@ -1436,7 +6014,7 @@ const TimerWarnings = {
   showOverlay(threshold) {
     let el = document.getElementById('timerWarningOverlay');
     if (!el) {
-      el = document.createElement('div');
+      el = MemoryPool.acquire('div');
       el.id = 'timerWarningOverlay';
       el.className = 'timer-warning-overlay hidden';
       el.innerHTML = `
@@ -1489,12 +6067,14 @@ const ThreatProximity = {
   vignette: null,
   glow: null,
   indicators: {},
+  directionArrow: null,
   lastAudioTime: 0,
   warnDistance: 200,
   criticalDistance: 100,
-  // Audio pulse interval ranges (ms): slowest at warn edge, fastest at critical
-  minPulseInterval: 600,
-  maxPulseInterval: 2200,
+  // Discrete audio pulse intervals (ms) based on proximity bands
+  pulseIntervalFar: 4000,
+  pulseIntervalMid: 2000,
+  pulseIntervalClose: 500,
   // Stealth reduces these distances by 50%
   getWarnDistance() { return state.stealth ? this.warnDistance * StealthMode.DETECT_RANGE_MULT : this.warnDistance; },
   getCriticalDistance() { return state.stealth ? this.criticalDistance * StealthMode.DETECT_RANGE_MULT : this.criticalDistance; },
@@ -1503,6 +6083,7 @@ const ThreatProximity = {
   init() {
     this.vignette = document.getElementById('threatVignette');
     this.glow = document.getElementById('threatGlow');
+    this.directionArrow = document.getElementById('threatDirectionArrow');
     this.indicators = {
       top: document.getElementById('threatIndicatorTop'),
       bottom: document.getElementById('threatIndicatorBottom'),
@@ -1533,12 +6114,14 @@ const ThreatProximity = {
       this.showVignette(true);
       this.showGlow(local, nearestThreat, true);
       this.showDirection(local, nearestThreat);
-      this.playAudioBeacon(true, nearestDist);
+      this.showDirectionArrow(local, nearestThreat);
+      this.playProximityPulse(nearestDist);
     } else if (nearestDist <= this.getWarnDistance()) {
       this.showVignette(true);
       this.showGlow(local, nearestThreat, false);
       this.showDirection(local, nearestThreat);
-      this.playAudioBeacon(false, nearestDist);
+      this.showDirectionArrow(local, nearestThreat);
+      this.playProximityPulse(nearestDist);
     } else {
       this.hideAll();
     }
@@ -1593,35 +6176,76 @@ const ThreatProximity = {
     });
   },
 
+  // Position a directional arrow on the screen edge pointing toward the threat
+  showDirectionArrow(local, threat) {
+    if (!this.directionArrow || !threat) return;
+    const dLat = threat.lat - local.lat;
+    const dLng = threat.lng - local.lng;
+    // Compute bearing in radians (0 = north, clockwise)
+    const bearing = Math.atan2(dLng, dLat);
+    const deg = bearing * (180 / Math.PI);
+
+    // Screen edge positioning: treat screen as a rectangle, find intersection
+    // of the bearing ray with the screen edge
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const cx = vw / 2;
+    const cy = vh / 2;
+    const margin = 36; // keep arrow slightly inside
+
+    let x = cx, y = cy;
+    const dx = Math.sin(bearing);
+    const dy = -Math.cos(bearing); // screen Y is down
+
+    // Scale ray to hit an edge
+    const scaleX = dx !== 0 ? ((dx > 0 ? vw - margin : margin) - cx) / dx : Infinity;
+    const scaleY = dy !== 0 ? ((dy > 0 ? vh - margin : margin) - cy) / dy : Infinity;
+    const scale = Math.min(Math.abs(scaleX), Math.abs(scaleY));
+    x = cx + dx * scale;
+    y = cy + dy * scale;
+
+    this.directionArrow.style.left = x + 'px';
+    this.directionArrow.style.top = y + 'px';
+    // Rotate arrow so it points toward the threat (arrow points up by default)
+    this.directionArrow.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
+    this.directionArrow.classList.add('active');
+  },
+
+  hideDirectionArrow() {
+    if (this.directionArrow) {
+      this.directionArrow.classList.remove('active');
+      this.directionArrow.style.transform = '';
+    }
+  },
+
   hideAll() {
     this.showVignette(false);
     this.hideGlow();
+    this.hideDirectionArrow();
     Object.values(this.indicators).forEach(el => {
       if (el) el.classList.remove('active');
     });
   },
 
-  // Compute dynamic audio cooldown based on proximity: closer = faster pulses
-  getPulseInterval(dist, critical) {
-    if (critical) return this.minPulseInterval;
-    const warn = this.getWarnDistance();
-    const crit = this.getCriticalDistance();
-    const range = Math.max(1, warn - crit);
-    const t = Math.max(0, Math.min(1, (dist - crit) / range));
-    return this.minPulseInterval + t * (this.maxPulseInterval - this.minPulseInterval);
+  // Discrete audio pulse intervals based on proximity bands
+  getPulseInterval(dist) {
+    if (dist > 80) return this.pulseIntervalFar;
+    if (dist >= 40) return this.pulseIntervalMid;
+    return this.pulseIntervalClose;
   },
 
-  playAudioBeacon(critical, dist) {
+  playProximityPulse(dist) {
     const now = Date.now();
-    const interval = this.getPulseInterval(dist, critical);
+    const interval = this.getPulseInterval(dist);
     if (now - this.lastAudioTime < interval) return;
     this.lastAudioTime = now;
-    if (critical) {
-      SoundFX.play(280, 0.18, 'sawtooth', 0.12);
-      setTimeout(() => SoundFX.play(220, 0.22, 'sawtooth', 0.1), 180);
-    } else {
-      SoundFX.play(320, 0.12, 'sine', 0.08);
-      setTimeout(() => SoundFX.play(280, 0.14, 'sine', 0.08), 200);
+    // Short beep/ping using Web Audio API via SoundFX
+    const isClose = dist < 40;
+    const freq = isClose ? 520 : (dist < 80 ? 380 : 300);
+    const vol = isClose ? 0.18 : 0.12;
+    SoundFX.play(freq, 0.1, 'sine', vol);
+    if (isClose) {
+      setTimeout(() => SoundFX.play(freq + 80, 0.08, 'sine', vol * 0.7), 100);
     }
   },
 
@@ -1690,6 +6314,10 @@ const SoundFX = {
   },
   play(freq, duration, type = 'sine', vol = 0.15) {
     if (!this.ctx || !this.inited) return;
+    if (state.settings && state.settings.sfxEnabled === false) return;
+    if (state.settings && state.settings.masterVolume !== undefined) {
+      vol = vol * (state.settings.masterVolume / 100);
+    }
     try {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -1703,7 +6331,7 @@ const SoundFX = {
       osc.stop(this.ctx.currentTime + duration);
     } catch(e) { /* silent fail */ }
   },
-  beaconCollected() { this.play(523, 0.1); setTimeout(() => this.play(659, 0.1), 100); },
+  beaconCollected() { this.play(523, 0.1); setTimeout(() => this.play(659, 0.1), 100); DamageNumbers.show('+PTS', '#4caf50'); },
   threatDetected() { this.play(200, 0.2, 'sawtooth', 0.12); },
   missionStart() {
     this.play(523, 0.15);
@@ -1718,7 +6346,161 @@ const SoundFX = {
     setTimeout(() => this.play(784, 0.1), 200);
     setTimeout(() => this.play(1047, 0.3), 350);
   },
-  scoreEvent() { this.play(880, 0.12); setTimeout(() => this.play(1100, 0.12), 80); }
+  scoreEvent() { this.play(880, 0.12); setTimeout(() => this.play(1100, 0.12), 80); DamageNumbers.show('+SCORE', '#ffd965'); }
+};
+
+/* ========================== MUSIC SYSTEM (PHASE 5 TASK 4) ========================== */
+
+const MusicSystem = {
+  ctx: null,
+  gainNodes: {},
+  currentState: 'ambient',
+  running: false,
+
+  init() {
+    if (!state.audio.musicEnabled) return;
+    try {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.gainNodes.ambient = this.ctx.createGain();
+      this.gainNodes.tension = this.ctx.createGain();
+      this.gainNodes.combat = this.ctx.createGain();
+      Object.values(this.gainNodes).forEach(g => {
+        g.gain.value = 0;
+        g.connect(this.ctx.destination);
+      });
+      this._startAmbient();
+      this._startTension();
+      this._startCombat();
+      this.gainNodes.ambient.gain.value = state.audio.musicVolume;
+      this.running = true;
+    } catch(e) { console.warn('[MusicSystem] AudioContext failed', e); }
+  },
+
+  _startAmbient() {
+    if (!this.ctx) return;
+    // Procedural drone: low sine + subtle noise
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = 55; // A1 drone
+    const gain = this.ctx.createGain();
+    gain.gain.value = 0.15;
+    osc.connect(gain);
+    gain.connect(this.gainNodes.ambient);
+    osc.start();
+    // LFO for subtle movement
+    const lfo = this.ctx.createOscillator();
+    lfo.frequency.value = 0.1;
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.value = 5;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    lfo.start();
+  },
+
+  _startTension() {
+    if (!this.ctx) return;
+    // Pulsing low tones
+    const osc = this.ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = 82; // E2
+    const gain = this.ctx.createGain();
+    gain.gain.value = 0;
+    osc.connect(gain);
+    gain.connect(this.gainNodes.tension);
+    osc.start();
+    // Pulse LFO
+    const pulse = this.ctx.createOscillator();
+    pulse.type = 'square';
+    pulse.frequency.value = 0.5;
+    const pulseGain = this.ctx.createGain();
+    pulseGain.gain.value = 0.08;
+    pulse.connect(pulseGain);
+    pulseGain.connect(gain.gain);
+    pulse.start();
+  },
+
+  _startCombat() {
+    if (!this.ctx) return;
+    // Rhythmic sawtooth stabs
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 110; // A2
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 400;
+    const gain = this.ctx.createGain();
+    gain.gain.value = 0;
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.gainNodes.combat);
+    osc.start();
+    // Rhythmic gate
+    const gate = this.ctx.createOscillator();
+    gate.type = 'square';
+    gate.frequency.value = 4; // 4Hz stutter
+    const gateGain = this.ctx.createGain();
+    gateGain.gain.value = 0.12;
+    gate.connect(gateGain);
+    gateGain.connect(gain.gain);
+    gate.start();
+  },
+
+  setState(newState) {
+    if (!this.ctx || this.currentState === newState) return;
+    this.currentState = newState;
+    const fadeTime = 2.0;
+    const now = this.ctx.currentTime;
+    Object.entries(this.gainNodes).forEach(([name, node]) => {
+      const target = name === newState ? state.audio.musicVolume : 0;
+      node.gain.setTargetAtTime(target, now, fadeTime);
+    });
+  },
+
+  tick() {
+    if (!this.ctx) return;
+    // Determine state from game conditions
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local) return;
+    const nearestThreat = state.threats.reduce((best, t) => {
+      const d = haversine(local, t);
+      return d < best.d ? { t, d } : best;
+    }, { d: Infinity });
+
+    if (nearestThreat.d < 150) {
+      this.setState('combat');
+    } else if (nearestThreat.d < 400 || state.objectives.some(o => !o.found && haversine(local, o) < 100)) {
+      this.setState('tension');
+    } else {
+      this.setState('ambient');
+    }
+  },
+
+  setVolume(vol) {
+    state.audio.musicVolume = Math.max(0, Math.min(1, vol));
+    if (this.gainNodes[this.currentState]) {
+      this.gainNodes[this.currentState].gain.value = state.audio.musicVolume;
+    }
+  },
+
+  start() {
+    if (!this.ctx) this.init();
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    this.running = true;
+  },
+
+  stop() {
+    this.running = false;
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    Object.values(this.gainNodes).forEach(node => {
+      node.gain.setTargetAtTime(0, now, 0.5);
+    });
+  },
+
+  toggle() {
+    if (this.running) { this.stop(); return false; }
+    this.start(); return true;
+  }
 };
 
 /* ========================== DAY/NIGHT CYCLE MODULE (2.5) ========================== */
@@ -1856,7 +6638,7 @@ const MapModule = (() => {
     extractionRadius: 50
   };
 
-  let map = null, setupMap = null;
+  let map = null, setupMap = null, briefingMap = null;
   let gpsActive = false;
   let currentPos = null;
   let beacons = [], extractions = [], squad = {}, zones = [], routes = [];
@@ -1870,9 +6652,12 @@ const MapModule = (() => {
     return L.divIcon({ className: 'sl-map-icon', html, iconSize: [size, size], iconAnchor: [size/2, size/2], popupAnchor: [0, -size/2] });
   }
 
-  function getPlayerIcon(color, pulse) {
+  function getPlayerIcon(color, pulse, isDowned, isEliminated, role) {
     const fx = pulse ? 'animation: slPulse 1.5s ease-in-out infinite;' : '';
-    return createIcon(`<div style="width:20px;height:20px;background:${color};border:3px solid #ffd965;border-radius:50%;box-shadow:0 0 12px ${color}80;${fx}"></div>`, 20);
+    const downedFx = isDowned ? 'animation: downedPulse 1.5s ease-in-out infinite;' : '';
+    const char = isEliminated ? '💀' : isDowned ? '🚨' : (pulse ? '★' : (roleEmojis[role] || '●'));
+    const borderColor = isEliminated ? '#333' : isDowned ? '#e45b4d' : '#ffd965';
+    return createIcon(`<div class="sl-player-icon" style="width:20px;height:20px;background:${color};border:3px solid ${borderColor};border-radius:50%;box-shadow:0 0 12px ${color}80;${fx}${downedFx};display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700;">${char}</div>`, 20);
   }
 
   function getBeaconIcon(idx, collected) {
@@ -1905,11 +6690,29 @@ const MapModule = (() => {
       map = initMap('#missionMap', {
         onClick: (lat, lng) => {
           if (state.screen === 'mission' && state.status === 'Live') {
-            PingSystem.placePing(lat, lng);
+            PingSystem.placePing(lat, lng, 'waypoint');
           }
         }
       });
-      if (map) setTimeout(() => map.invalidateSize(), 80);
+      if (map) {
+        setTimeout(() => map.invalidateSize(), 80);
+        // Right-click for move-here ping (command wheel handles complex commands)
+        map.on('contextmenu', (e) => {
+          if (CommandWheel && CommandWheel.open) {
+            CommandWheel.close();
+            return;
+          }
+          if (state.screen === 'mission' && state.status === 'Live') {
+            PingSystem.placePing(e.latlng.lat, e.latlng.lng, 'movehere');
+          }
+        });
+        // Double-click for quick danger ping
+        map.on('dblclick', (e) => {
+          if (state.screen === 'mission' && state.status === 'Live') {
+            PingSystem.placePing(e.latlng.lat, e.latlng.lng, 'danger');
+          }
+        });
+      }
     }
     return map;
   }
@@ -1939,14 +6742,24 @@ const MapModule = (() => {
     return setupMap;
   }
 
+  function ensureBriefingMap() {
+    if (!briefingMap && window.L) {
+      briefingMap = initMap('#briefingMap', { zoom: 13 });
+      if (briefingMap) setTimeout(() => briefingMap.invalidateSize(), 80);
+    }
+    return briefingMap;
+  }
+
   function destroyMaps() {
     if (map) { map.remove(); map = null; }
     if (setupMap) { setupMap.remove(); setupMap = null; }
+    if (briefingMap) { briefingMap.remove(); briefingMap = null; }
   }
 
   function setCenter(lat, lng, zoom) {
     if (map) map.setView([lat, lng], zoom || map.getZoom(), { animate: true });
     if (setupMap) setupMap.setView([lat, lng], zoom || setupMap.getZoom(), { animate: true });
+    if (briefingMap) briefingMap.setView([lat, lng], zoom || briefingMap.getZoom(), { animate: true });
   }
 
   function startGPS() {
@@ -1986,7 +6799,11 @@ const MapModule = (() => {
   }
 
   function handlePos(pos) {
-    const { latitude, longitude, accuracy } = pos.coords;
+    let { latitude, longitude, accuracy } = pos.coords;
+    // Apply GPS degradation jitter before storing
+    const jittered = GPSDegradation.applyJitter(latitude, longitude);
+    latitude = jittered[0];
+    longitude = jittered[1];
     currentPos = [latitude, longitude];
     updatePlayerMarker(latitude, longitude, accuracy);
     updateLocalAgentPosition(latitude, longitude, accuracy);
@@ -2092,21 +6909,132 @@ const MapModule = (() => {
     return e;
   }
 
-  function addSquadMember(id, name, lat, lng, role, isSelf, team) {
+  function addDataUpload(o) {
+    const m = ensureMissionMap(); if (!m) return;
+    const color = '#00bcd4';
+    const iconHtml = `<span style="width:28px;height:28px;background:${color};border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700;box-shadow:0 0 10px ${color}80;">⬆</span>`;
+    const marker = L.marker([o.lat, o.lng], { icon: createIcon(iconHtml, 28) }).addTo(m);
+    marker.bindPopup(`<div class="sl-popup"><strong>${escapeHtml(o.title)}</strong><br>Data Upload · ${o.radius}m</div>`);
+    const circle = L.circle([o.lat, o.lng], { color, fillColor: color, fillOpacity: 0.08, weight: 2, radius: o.radius }).addTo(m);
+    beacons.push({ id: o.id, lat: o.lat, lng: o.lng, label: o.title, marker, circle, collected: false });
+    return marker;
+  }
+
+  function addTriangulation(o) {
+    const m = ensureMissionMap(); if (!m) return;
+    if (!o.triPoints) return;
+    o.triPoints.forEach((p, idx) => {
+      const visited = p.visited;
+      const active = idx === (o.triIndex || 0) && !visited;
+      const color = visited ? '#4caf50' : active ? '#ffd965' : '#555';
+      const iconHtml = `<span style="width:22px;height:22px;background:${color};border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:${active?'#000':'#fff'};font-weight:700;">${idx+1}</span>`;
+      const marker = L.marker([p.lat, p.lng], { icon: createIcon(iconHtml, 22) }).addTo(m);
+      marker.bindPopup(`<div class="sl-popup"><strong>Signal ${idx+1}</strong><br>${visited?'Locked':active?'Next target':'Pending'}</div>`);
+      beacons.push({ id: `${o.id}_${p.id}`, lat: p.lat, lng: p.lng, label: `Signal ${idx+1}`, marker, circle: null, collected: visited });
+    });
+    // Connect lines between points
+    const pts = o.triPoints.map(p => [p.lat, p.lng]);
+    if (pts.length >= 2) {
+      const line = L.polyline(pts, { color: '#ffd965', opacity: 0.4, weight: 2, dashArray: '6,6', interactive: false }).addTo(m);
+      routes.push(line);
+    }
+  }
+
+  function addAssetRecovery(o) {
+    const m = ensureMissionMap(); if (!m) return;
+    const color = o.packagePickedUp ? '#e91e63' : '#7c3aed';
+    const iconHtml = `<span style="width:28px;height:28px;background:${color};border:2px solid #fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:700;box-shadow:0 0 10px ${color}80;">${o.packagePickedUp?'📦':'📦'}</span>`;
+    const marker = L.marker([o.packageLat, o.packageLng], { icon: createIcon(iconHtml, 28) }).addTo(m);
+    marker.bindPopup(`<div class="sl-popup"><strong>${escapeHtml(o.title)}</strong><br>${o.packagePickedUp?'Carrying package':'Asset package'}</div>`);
+    beacons.push({ id: o.id, lat: o.packageLat, lng: o.packageLng, label: o.title, marker, circle: null, collected: o.packagePickedUp });
+    return marker;
+  }
+
+  function addEscort(o) {
+    const m = ensureMissionMap(); if (!m) return;
+    const vipColor = o.vipRescued ? '#4caf50' : '#2196f3';
+    const vipIcon = `<span style="width:28px;height:28px;background:${vipColor};border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;font-weight:700;box-shadow:0 0 12px ${vipColor}80;">🛡️</span>`;
+    const vipMarker = L.marker([o.vipLat, o.vipLng], { icon: createIcon(vipIcon, 28) }).addTo(m);
+    vipMarker.bindPopup(`<div class="sl-popup"><strong>${escapeHtml(o.title)}</strong><br>VIP ${o.vipRescued?'extracted':'pending'}</div>`);
+    beacons.push({ id: o.id+'_vip', lat: o.vipLat, lng: o.vipLng, label: o.title+' VIP', marker: vipMarker, circle: null, collected: o.vipRescued });
+    if (o.vipWaypoints) {
+      o.vipWaypoints.forEach((wp, i) => {
+        const reached = i < (o.vipIndex || 0);
+        const active = i === (o.vipIndex || 0) && !reached;
+        const color = reached ? '#4caf50' : active ? '#ffd965' : '#555';
+        const iconHtml = `<span style="width:20px;height:20px;background:${color};border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:${active?'#000':'#fff'};font-weight:700;">${i+1}</span>`;
+        const marker = L.marker([wp.lat, wp.lng], { icon: createIcon(iconHtml, 20) }).addTo(m);
+        marker.bindPopup(`<div class="sl-popup"><strong>Waypoint ${i+1}</strong><br>${reached?'Reached':active?'Next':'Pending'}</div>`);
+        beacons.push({ id: `${o.id}_wp_${i}`, lat: wp.lat, lng: wp.lng, label: `WP ${i+1}`, marker, circle: null, collected: reached });
+      });
+      const pts = o.vipWaypoints.map(p => [p.lat, p.lng]);
+      if (pts.length >= 2) {
+        const line = L.polyline(pts, { color: '#2196f3', opacity: 0.35, weight: 2, dashArray: '6,6', interactive: false }).addTo(m);
+        routes.push(line);
+      }
+    }
+    return vipMarker;
+  }
+
+  function addSabotage(o) {
+    const m = ensureMissionMap(); if (!m) return;
+    const color = o.sabDestroyed ? '#4caf50' : '#ff5722';
+    const iconHtml = `<span style="width:28px;height:28px;background:${color};border:2px solid #fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;font-weight:700;box-shadow:0 0 12px ${color}80;">${o.sabDestroyed?'💥':'🎯'}</span>`;
+    const marker = L.marker([o.sabTargetLat, o.sabTargetLng], { icon: createIcon(iconHtml, 28) }).addTo(m);
+    marker.bindPopup(`<div class="sl-popup"><strong>${escapeHtml(o.title)}</strong><br>${o.sabDestroyed?'Destroyed':'Sabotage target'}${o.sabPlanted?' · Charge planted':''}</div>`);
+    beacons.push({ id: o.id, lat: o.sabTargetLat, lng: o.sabTargetLng, label: o.title, marker, circle: null, collected: o.sabDestroyed });
+    return marker;
+  }
+
+  function addRecon(o) {
+    const m = ensureMissionMap(); if (!m) return;
+    if (!o.reconPoints) return;
+    o.reconPoints.forEach((p, i) => {
+      const scanned = p.scanned;
+      const active = i === (o.reconIndex || 0) && !scanned;
+      const color = scanned ? '#4caf50' : active ? '#9c27b0' : '#555';
+      const iconHtml = `<span style="width:22px;height:22px;background:${color};border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700;">👁️</span>`;
+      const marker = L.marker([p.lat, p.lng], { icon: createIcon(iconHtml, 22) }).addTo(m);
+      marker.bindPopup(`<div class="sl-popup"><strong>Recon ${i+1}</strong><br>${scanned?'Scanned':active?'Next target':'Pending'}</div>`);
+      beacons.push({ id: `${o.id}_${p.id}`, lat: p.lat, lng: p.lng, label: `Recon ${i+1}`, marker, circle: null, collected: scanned });
+    });
+    const pts = o.reconPoints.map(p => [p.lat, p.lng]);
+    if (pts.length >= 2) {
+      const line = L.polyline(pts, { color: '#9c27b0', opacity: 0.3, weight: 2, dashArray: '4,6', interactive: false }).addTo(m);
+      routes.push(line);
+    }
+  }
+
+  function addSquadMember(id, name, lat, lng, role, isSelf, team, isDowned, isEliminated) {
     const m = ensureMissionMap(); if (!m) return;
     // Color by team: North=#4fc3f7, South=#ff8a65, Alpha=role-based
     let color;
-    if (isSelf) color = '#ffd965';
+    if (isEliminated) color = '#555555';
+    else if (isDowned) color = '#e45b4d';
+    else if (isSelf) color = '#ffd965';
     else if (team === 'North') color = '#4fc3f7';
     else if (team === 'South') color = '#ff8a65';
     else color = getRoleColor(role) || '#9e9e9e';
     if (squad[id]) {
       squad[id].marker.setLatLng([lat, lng]);
       squad[id].lat = lat; squad[id].lng = lng;
+      // Update icon if downed/eliminated state changed
+      const currentIcon = squad[id].marker.getElement();
+      if (currentIcon) {
+        const iconDiv = currentIcon.querySelector('.sl-player-icon');
+        if (iconDiv) {
+          iconDiv.style.background = color;
+          iconDiv.style.boxShadow = `0 0 10px ${color}80`;
+          if (isDowned) iconDiv.textContent = '🚨';
+          else if (isEliminated) iconDiv.textContent = '💀';
+          else iconDiv.textContent = isSelf ? '★' : (roleEmojis[role] || '●');
+        }
+      }
       updateSquadTrail(id, lat, lng, color);
     } else {
-      const marker = L.marker([lat, lng], { icon: getPlayerIcon(color, isSelf) }).addTo(m);
-      marker.bindPopup('<div class="sl-popup"><strong>'+(isSelf?'⭐ ':'')+escapeHtml(name)+'</strong><br>'+escapeHtml(role)+(team?' · '+escapeHtml(team):'')+'</div>');
+      const marker = L.marker([lat, lng], { icon: getPlayerIcon(color, isSelf, isDowned, isEliminated, role) }).addTo(m);
+      const statusLabel = isEliminated ? 'ELIMINATED' : isDowned ? 'DOWNED' : '';
+      marker.bindPopup('<div class="sl-popup"><strong>'+(isSelf?'⭐ ':'')+escapeHtml(name)+'</strong><br>'+escapeHtml(role)+(team?' · '+escapeHtml(team):'')+(statusLabel?' · <span style="color:#e45b4d">'+statusLabel+'</span>':'')+'</div>');
       squad[id] = { id, name, lat, lng, role, isSelf, team, marker };
       initSquadTrail(id, lat, lng, color);
     }
@@ -2192,12 +7120,18 @@ const MapModule = (() => {
     routes.forEach(r => map?.removeLayer(r)); routes = [];
     threatCircles.forEach(t => map?.removeLayer(t)); threatCircles = [];
     objectiveMarkers.forEach(o => map?.removeLayer(o)); objectiveMarkers = [];
+    // Phase 7 Task 8 — Clean up chained objective lines
+    if (MapModule._chainLines) {
+      MapModule._chainLines.forEach(l => { try { map?.removeLayer(l); } catch(e) {} });
+      MapModule._chainLines = [];
+    }
     if (playerMarker) {
       if (playerMarker._pulseInterval) clearInterval(playerMarker._pulseInterval);
       if (playerMarker.pulseRing) map?.removeLayer(playerMarker.pulseRing);
       map?.removeLayer(playerMarker); playerMarker = null;
     }
     if (accuracyCircle) { map?.removeLayer(accuracyCircle); accuracyCircle = null; }
+    GPSDegradation.clearMapVisuals();
   }
 
   function drawThreats(threats) {
@@ -2256,6 +7190,11 @@ const MapModule = (() => {
       }).addTo(m);
       mk.bindPopup(`<strong>${escapeHtml(o.title)}</strong><br>${escapeHtml(o.type)}<br>${o.radius}m${o.found?' ✅ Found':' '}`);
       objectiveMarkers.push(mk);
+      // Floating notification for objective completion
+      if (o.found && !o._notified) {
+        o._notified = true;
+        ScreenJuice.addKillFeed(`OBJECTIVE: ${o.title}`, '#4caf50');
+      }
     });
     // Locked objectives: gray overlay with lock
     objectives.filter(o => !o.decoded).forEach(o => {
@@ -2300,9 +7239,9 @@ const MapModule = (() => {
   }
 
   return {
-    initMap, ensureMissionMap, ensureSetupMap, destroyMaps, setCenter,
+    initMap, ensureMissionMap, ensureSetupMap, ensureBriefingMap, destroyMaps, setCenter,
     startGPS, stopGPS, setPlayerPosition,
-    addBeacon, collectBeacon, addExtraction, addSquadMember, removeSquadMember,
+    addBeacon, collectBeacon, addExtraction, addDataUpload, addTriangulation, addAssetRecovery, addEscort, addSabotage, addRecon, addSquadMember, removeSquadMember,
     drawZone, clearGameObjects, drawThreats, drawObjectives, drawRoute, fitToObjects,
     getGPSData: () => ({ position: currentPos, active: gpsActive }),
     restartGPSWithInterval
@@ -2326,12 +7265,20 @@ function cityKeysForCountry(c) { return Object.keys(cities).filter(k=>cities[k].
 function normalizeModules() { moduleCatalog.forEach(([k,,,def])=>{ if (typeof state.enabledModules[k]!=='boolean') state.enabledModules[k]=def; }); }
 function moduleEnabled(k) { normalizeModules(); return state.enabledModules[k]!==false; }
 function enabledPack(k) { return moduleEnabled(k)?(missionPacks[k]||[]):[]; }
-// Get mission center: custom location if set, otherwise selected city
+// Get mission center: custom location if set, otherwise selected map
 function getMissionCenter() {
   if (state.customLocation && Number.isFinite(state.customLocation.lat) && Number.isFinite(state.customLocation.lng)) {
     return [state.customLocation.lat, state.customLocation.lng];
   }
-  return cities[state.city].center;
+  const map = mapCatalog[state.currentMap];
+  if (map && map.center) return map.center;
+  if (state.city && cities[state.city]) return cities[state.city].center;
+  // Default fallback — Stockholm
+  if (cities && Object.keys(cities).length) {
+    const firstCity = Object.values(cities).find(c => c && c.center);
+    if (firstCity) return firstCity.center;
+  }
+  return [59.3293, 18.0686];
 }
 
 /* ========================== IDENTITY / STORAGE ========================== */
@@ -2424,6 +7371,7 @@ function drawTile(x, y, size, idx, pal, pulse, glow) {
 
 function drawTheme(ts) {
   tId = 0;
+  PerfMonitor.tick(ts);
   const pal = themePatternPalettes[state.themePalette];
   if (!pal || !tCtx) return;
   tTime = tReduced ? 0 : ts;
@@ -2460,27 +7408,52 @@ function drawTheme(ts) {
 
 function setScreen(name) {
   if (state.screen === name && document.body.dataset.screen === name) return;
-  const flow = ['lobby', 'setup', 'roles', 'mission', 'results', 'replay', 'spectator'];
+  const flow = ['lobby', 'setup', 'roles', 'loadout', 'briefing', 'mission', 'results', 'replay', 'spectator', 'tournament', 'mapEditor', 'training'];
   const prev = state.screen;
 
   // Pre-render content before showing
   if (name === 'roles') { renderRolesScreen(); }
+  if (name === 'loadout') { renderLoadoutScreen(); }
+  if (name === 'briefing') { renderBriefingScreen(); }
   if (name === 'replay') { renderReplay(); }
+  if (name === 'tournament') { TournamentSystem.renderList(); TournamentSystem.renderLobbyWidget(); }
+  if (name === 'mapEditor') { MapEditor.ensureEditorMap(); MapEditor._renderEditorMap(); MapEditor._renderItemList(); MapEditor._renderValidation(); MapEditor._renderProperties(); }
+  if (name === 'battlepass') { BattlePass.render(); }
+  if (name === 'leaderboard') { LeaderboardSystem.fetch('overall'); }
+  if (name === 'clan') { ClanSystem.renderClanPanel(); }
+
+  // Ensure data-screen attribute updates properly on all transitions
+  document.body.dataset.screen = name;
 
   // Stop mission systems when leaving mission
-  if (prev === 'mission' && name !== 'mission') {
+  if ((prev === 'mission' || prev === 'spectator') && name !== 'mission' && name !== 'spectator') {
+    FogOfWar.destroy();
     RadarModule.destroy();
+    ParticleSystem.destroy();
     ThreatProximity.stop();
     TimerWarnings.stop();
     DayNightCycle.stop();
+    // Clean up role ambient effects
+    if (_hexRainCanvas) { _hexRainCanvas.remove(); _hexRainCanvas = null; _hexRainCtx = null; }
+    if (_roleEffectInterval) { clearInterval(_roleEffectInterval); _roleEffectInterval = null; }
+    document.querySelectorAll('.mc-scan-line, .speed-line, .compass-pulse-el').forEach(el => el.remove());
   }
 
   // Stop GPS when leaving mission
   if (prev === 'mission') { MapModule.stopGPS(); }
 
+  // Stop spectator systems when leaving spectator
+  if (prev === 'spectator') {
+    stopSpectatorLoop();
+  }
+
+  // Destroy editor map when leaving editor
+  if (prev === 'mapEditor') {
+    MapEditor.destroyEditorMap();
+  }
+
   // Update state and body routing (CSS does the display: flex via [data-screen])
   state.screen = name;
-  document.body.dataset.screen = name;
 
   // Post-switch setup
   if (name === 'setup') {
@@ -2495,10 +7468,47 @@ function setScreen(name) {
       MapModule.ensureMissionMap();
       MapModule.setCenter(...getMissionCenter(), 14);
       renderMissionMap();
+      FogOfWar.init('fogCanvas');
       RadarModule.init('missionRadar');
+      RadarFullscreenLabel.init();
+      ParticleSystem.init('particleCanvas');
       ThreatProximity.start();
       TimerWarnings.start();
       DayNightCycle.start();
+      // Add ambient overlays
+      const missionScreen = document.getElementById('missionScreen');
+      if (missionScreen && !missionScreen.querySelector('.scan-lines-overlay')) {
+        const scan = MemoryPool.acquire('div');
+        scan.className = 'scan-lines-overlay';
+        missionScreen.appendChild(scan);
+      }
+      if (missionScreen && !missionScreen.querySelector('.edge-vignette')) {
+        const vig = MemoryPool.acquire('div');
+        vig.className = 'edge-vignette';
+        missionScreen.appendChild(vig);
+      }
+    }, 50);
+  }
+  if (name === 'briefing') {
+    setTimeout(() => {
+      MapModule.ensureBriefingMap();
+      MapModule.setCenter(...getMissionCenter(), 13);
+      DayNightCycle.apply();
+    }, 50);
+  }
+  if (name === 'loadout') {
+    setTimeout(() => {
+      initLoadoutScreen();
+    }, 50);
+  }
+  if (name === 'spectator') {
+    setTimeout(() => {
+      initSpectator();
+    }, 50);
+  }
+  if (name === 'lobby') {
+    setTimeout(() => {
+      CurrencySystem.renderCurrencyBar();
     }, 50);
   }
   saveState();
@@ -2509,6 +7519,17 @@ function setScreen(name) {
 function initLobby() {
   if (window._lobbyInitialized) return; // Prevent double-init from failsafe race
   window._lobbyInitialized = true;
+  CurrencySystem.init();
+  CurrencySystem.renderCurrencyBar();
+  DailyMissions.init();
+  DailyMissions.renderLobby();
+  AchievementSystem.renderLobby();
+  FriendSystem.init();
+  FriendSystem.render();
+  TournamentSystem.renderLobbyWidget();
+  BattlePass.renderLobbyWidget();
+  LeaderboardSystem.renderLobbyWidget();
+  ClanSystem.renderLobbyWidget();
   if (!window.isSecureContext && !['localhost','127.0.0.1','::1'].includes(location.hostname)) {
     $('#httpWarning')?.classList.remove('hidden');
   }
@@ -2584,9 +7605,113 @@ function initLobby() {
     }
   });
 
+  $('#spectateGame').addEventListener('click', () => {
+    const codeInput = $('#spectateCode').value.trim().toUpperCase();
+    const codeValid = /^[A-Z0-9]{2,}(?:-[A-Z0-9]{2,}){0,3}(?:-[0-9]{1,4})?$/.test(codeInput) || (codeInput.length >= 4 && codeInput.length <= 20 && /^[A-Za-z0-9-]+$/.test(codeInput));
+    if (!codeValid || !codeInput) {
+      addChat('System', 'Invalid mission code. Use format like FIELD-RADAR-46.');
+      return;
+    }
+    state.joinCode = codeInput;
+    try { localStorage.setItem('slv2_joinCode', codeInput); } catch {}
+    SignalNet.spectateGame(codeInput);
+    // Offline fallback: simulate spectating a local game
+    if (!SignalNet.connected) {
+      state.code = codeInput;
+      state.isSpectator = true;
+      state.status = 'Live';
+      if (!state.objectives?.length) { generateObjectives(); generateThreats(); }
+      setScreen('spectator');
+      initSpectator();
+    }
+  });
+
+  // Training Ground buttons
+  const trainingBtn = $('#trainingBtn');
+  if (trainingBtn) {
+    trainingBtn.addEventListener('click', () => {
+      SoundFX.init();
+      SplashScreen.dismiss();
+      setTimeout(() => TutorialSystem.start(true), 300);
+    });
+  }
+  const lobbyTrainingBtn = $('#lobbyTrainingBtn');
+  if (lobbyTrainingBtn) {
+    lobbyTrainingBtn.addEventListener('click', () => {
+      if (state.designFlags.trainingRangeEnabled && typeof MinigameSystem !== 'undefined') {
+        setScreen('training');
+        MinigameSystem.renderMenu();
+      } else {
+        TutorialSystem.start(true);
+      }
+    });
+  }
+
   $$('[data-theme-palette]').forEach(btn => {
     btn.addEventListener('click', () => setTheme(btn.dataset.themePalette));
   });
+
+  // Lobby settings button
+  const lobbySettingsBtn = $('#lobbySettingsBtn');
+  if (lobbySettingsBtn) {
+    lobbySettingsBtn.addEventListener('click', () => {
+      SettingsMenu.open();
+    });
+  }
+
+  // Shop button
+  const shopBtn = $('#lobbyShopBtn');
+  if (shopBtn) {
+    shopBtn.addEventListener('click', () => {
+      setScreen('shop');
+    });
+  }
+
+  // Stats button → Data Screen
+  const statsBtn = $('#statsBtn');
+  if (statsBtn) {
+    statsBtn.addEventListener('click', () => {
+      DataScreen.open();
+    });
+  }
+
+  // Clan button
+  const clanBtn = $('#lobbyClanBtn');
+  if (clanBtn) {
+    clanBtn.addEventListener('click', () => {
+      setScreen('clan');
+      ClanSystem.renderClanPanel();
+    });
+  }
+
+  // Map Editor button
+  const mapEditorBtn = $('#lobbyMapEditorBtn');
+  if (mapEditorBtn) {
+    mapEditorBtn.addEventListener('click', () => {
+      MapEditor.open();
+    });
+  }
+
+  // Friend add button
+  const addFriendBtn = $('#addFriendBtn');
+  if (addFriendBtn) {
+    addFriendBtn.addEventListener('click', () => {
+      const name = cleanText($('#friendNameInput').value, '', 22);
+      const callsign = cleanText($('#friendCallsignInput').value, '', 14);
+      if (!name) {
+        addChat('System', 'Please enter an agent name.');
+        return;
+      }
+      const ok = FriendSystem.addFriend(name, callsign);
+      if (ok) {
+        addChat('System', `Agent ${name} added to friends.`);
+        $('#friendNameInput').value = '';
+        $('#friendCallsignInput').value = '';
+      } else {
+        addChat('System', `${name} is already on your friend list.`);
+      }
+    });
+  }
 }
 
 function setTheme(t) {
@@ -2600,17 +7725,19 @@ function setTheme(t) {
 /* ========================== SETUP ========================== */
 
 function populateSetup() {
-  const countrySel = $('#setupCountry');
-  countrySel.innerHTML = Object.entries(countries).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
-  countrySel.value = state.country;
-  renderCityOptions();
-  $('#setupCity').value = state.city;
+  renderMapSelect();
   $('#setupDuration').value = state.duration;
   $('#setupDurationValue').textContent = `${state.duration} min`;
   $('#setupPlayers').value = state.maxPlayers;
   $('#setupPlayersValue').textContent = `${state.maxPlayers} players`;
   $('#setupPublic').checked = state.isPublic;
   $('#setupCode').textContent = state.code;
+  const crSel = $('#setupChallengeRating');
+  if (crSel) {
+    crSel.value = state.difficultyOverride || 0;
+    const label = state.difficultyOverride === 0 ? 'Auto' : `${state.difficultyOverride} — ${['','Recruit','Operator','Veteran','Elite','Nightmare'][state.difficultyOverride]}`;
+    $('#setupChallengeRatingValue').textContent = label;
+  }
   renderModuleList();
   renderMarkerList();
 
@@ -2624,8 +7751,37 @@ function populateSetup() {
   updateLocationUI();
 }
 
-function renderCityOptions() {
-  $('#setupCity').innerHTML = cityKeysForCountry(state.country).map(k=>`<option value="${k}">${cities[k].name}, ${countries[cities[k].country]}</option>`).join('');
+function renderMapSelect() {
+  const grid = $('#mapSelectGrid');
+  if (!grid) return;
+  const bestScores = loadMapScores();
+  grid.innerHTML = Object.values(mapCatalog).map(map => {
+    const selected = state.currentMap === map.id ? 'selected' : '';
+    const best = bestScores[map.id];
+    const diffDots = [1,2,3,4,5].map(i => `<span class="difficulty-dot ${i <= map.difficulty ? 'active' : ''}"></span>`).join('');
+    const previewEmoji = { downtown: '🏢', redwood: '🌲', rustbelt: '🏭', coastal: '🌊', mesa: '⛰️' }[map.id] || '🗺️';
+    return `<div class="map-select-card ${selected}" data-map-id="${map.id}">
+      <div class="map-card-preview">${previewEmoji}</div>
+      <div class="map-card-name">${escapeHtml(map.name)}</div>
+      <div class="map-card-theme">${escapeHtml(map.theme)}</div>
+      <div class="map-card-meta"><span>⏱ ${map.avgTime}m</span>${best ? `<span>🏆 ${best}</span>` : ''}</div>
+      <div class="map-card-difficulty">${diffDots}</div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('[data-map-id]').forEach(card => {
+    card.addEventListener('click', () => {
+      state.currentMap = card.dataset.mapId;
+      renderMapSelect();
+      MapModule.setCenter(...getMissionCenter(), 11);
+      saveState();
+    });
+  });
+}
+
+function loadMapScores() {
+  try {
+    return JSON.parse(localStorage.getItem('slv2_map_scores') || '{}');
+  } catch { return {}; }
 }
 
 function renderModuleList() {
@@ -2667,20 +7823,16 @@ function renderMarkerList() {
 }
 
 function initSetup() {
-  $('#setupCountry').addEventListener('change', e=>{
-    state.country = e.target.value;
-    const next = cityKeysForCountry(state.country)[0];
-    if (next) { state.city = next; renderCityOptions(); $('#setupCity').value = next; MapModule.setCenter(...cities[next].center, 11); }
-    saveState();
-  });
-  $('#setupCity').addEventListener('change', e=>{
-    state.city = e.target.value; state.country = cities[state.city].country;
-    MapModule.setCenter(...getMissionCenter(), 11);
-    saveState();
-  });
   $('#setupDuration').addEventListener('input', e=>{ state.duration = Number(e.target.value); $('#setupDurationValue').textContent = `${state.duration} min`; state.remaining = state.duration*60; saveState(); });
   $('#setupPlayers').addEventListener('input', e=>{ state.maxPlayers = Number(e.target.value); $('#setupPlayersValue').textContent = `${state.maxPlayers} players`; saveState(); });
   $('#setupPublic').addEventListener('change', e=>{ state.isPublic = e.target.checked; saveState(); });
+  $('#setupChallengeRating')?.addEventListener('change', e=>{
+    const val = Number(e.target.value);
+    state.difficultyOverride = val;
+    const label = val === 0 ? 'Auto' : `${val} — ${['','Recruit','Operator','Veteran','Elite','Nightmare'][val]}`;
+    $('#setupChallengeRatingValue').textContent = label;
+    saveState();
+  });
 
   $('#addMarker').addEventListener('click', ()=>{
     const lat = parseFloat($('#markerLat')?.value);
@@ -2705,6 +7857,10 @@ function initSetup() {
   });
 
   $('#launchMission').addEventListener('click', ()=>{
+    // Phase 7 Task 9 — Seed procedural generation for reproducible maps
+    state.missionSeed = Math.floor(Math.random() * 65536);
+    // Generate terrain first so objectives/threats can use procedural data
+    TerrainSystem.generate(getMissionCenter());
     generateObjectives();
     generateThreats();
     state.localRole = null;
@@ -2717,6 +7873,10 @@ function initSetup() {
 
   $('#backToLobby').addEventListener('click', ()=> setScreen('lobby'));
   $('#backToSetup').addEventListener('click', ()=> setScreen('setup'));
+  $('#backToLobbyFromTournament')?.addEventListener('click', ()=> setScreen('lobby'));
+  $('#backToLobbyFromBattlePass')?.addEventListener('click', ()=> setScreen('lobby'));
+  $('#backToLobbyFromClan')?.addEventListener('click', ()=> setScreen('lobby'));
+  $('#trainingBackBtn')?.addEventListener('click', ()=> { MinigameSystem.end(); setScreen('lobby'); });
 
   // === Location pick mode toggle ===
   $('#locMapMode').addEventListener('click', ()=>{
@@ -2744,12 +7904,12 @@ function initSetup() {
       saveFavoriteLocation(loc.lat, loc.lng, 'Custom');
       return;
     }
-    // Use current city selection
-    const city = cities[state.city];
-    if (city) {
-      const name = prompt('Name this favorite location:', city.name);
+    // Use current map center
+    const map = mapCatalog[state.currentMap];
+    if (map) {
+      const name = prompt('Name this favorite location:', map.name);
       if (name && name.trim()) {
-        saveFavoriteLocation(city.center[0], city.center[1], name.trim());
+        saveFavoriteLocation(map.center[0], map.center[1], name.trim());
       }
     }
   });
@@ -2782,11 +7942,11 @@ function initSetup() {
       lng = state.customLocation.lng;
       label = state.customLocation.label;
     } else {
-      const city = cities[state.city];
-      if (!city) return;
-      lat = city.center[0];
-      lng = city.center[1];
-      label = city.name;
+      const map = mapCatalog[state.currentMap];
+      if (!map) return;
+      lat = map.center[0];
+      lng = map.center[1];
+      label = map.name;
     }
     try {
       localStorage.setItem('slv2_defaultLocation', JSON.stringify({ lat, lng, label }));
@@ -2906,6 +8066,561 @@ function renderRolesScreen() {
   renderRoster();
 }
 
+/* ========================== LOADOUT SCREEN ========================== */
+
+function isItemUnlocked(item, role) {
+  const tier = RoleProgression.getTier(role || state.localRole);
+  const xp = state.roleXP[role || state.localRole] || 0;
+  return tier >= (item.unlockTier || 1) && xp >= (item.unlockXP || 0);
+}
+
+function getTotalXP() {
+  return Object.values(state.roleXP || {}).reduce((a, b) => a + b, 0);
+}
+
+// === PHASE 12.4 ===
+function renderStatBars(gear) {
+  if (!gear || !gear.stats) return '';
+  const statConfig = [
+    { key: 'damage', label: 'DMG', color: '#ef4444' },
+    { key: 'range',  label: 'RNG', color: '#3b82f6' },
+    { key: 'rate',   label: 'RATE', color: '#f59e0b' },
+    { key: 'weight', label: 'WGT', color: '#8b5cf6' },
+  ];
+  return statConfig.map(s => {
+    const val = gear.stats[s.key] || 0;
+    const pct = Math.min(100, Math.max(0, val));
+    return `<div class="stat-bar">
+      <span class="stat-bar-label">${s.label}</span>
+      <span class="stat-bar-track"><span class="stat-bar-fill" style="width:${pct}%;background:${s.color}"></span></span>
+      <span class="stat-bar-value">${val}</span>
+    </div>`;
+  }).join('');
+}
+
+function showToast(message, type) {
+  type = type || 'info';
+  let el = document.getElementById('loadoutToasts');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'loadoutToasts';
+    el.className = 'loadout-toast-container';
+    const main = document.querySelector('.loadout-main');
+    if (main) main.appendChild(el); else document.body.appendChild(el);
+  }
+  const colors = { info: '#58a6ff', success: '#3fb950', warning: '#f59e0b', error: '#ef4444' };
+  const color = colors[type] || colors.info;
+  const toast = document.createElement('div');
+  toast.className = 'loadout-toast show';
+  toast.style.cssText = `background:rgba(17,24,39,0.95);border:1px solid ${color};color:${color};`;
+  toast.textContent = message;
+  el.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    toast.classList.add('hide');
+    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+  }, 2500);
+}
+// === END PHASE 12.4 ===
+
+// === PHASE 12.4 === savePreset and loadPreset wrappers
+function savePreset(slotIndex) {
+  saveLoadoutPreset(slotIndex);
+}
+function loadPreset(slotIndex) {
+  loadLoadoutPreset(slotIndex);
+}
+// === END PHASE 12.4 ===
+
+function renderLoadoutScreen() {
+  // Show mission code
+  const codeEl = document.getElementById('loadoutCode');
+  if (codeEl) codeEl.textContent = state.code || state.joinCode || 'OFFLINE';
+
+  // Player info header
+  const infoEl = document.getElementById('loadoutPlayerInfo');
+  if (infoEl) {
+    const roleEmoji = roleEmojis[state.localRole] || '';
+    const tier = RoleProgression.getTier(state.localRole);
+    infoEl.innerHTML = `${escapeHtml(state.localProfile.name)} ${escapeHtml(state.localProfile.callsign)} · ${roleEmoji} ${state.localRole} <span class="tier-badge tier-${tier}">T${tier}</span>`;
+  }
+
+  // Initialize loadout state for this agent
+  if (!state.loadouts[state.localAgentId]) {
+    state.loadouts[state.localAgentId] = { gear: null, consumables: [null, null], confirmed: false };
+  }
+  if (!state.selectedCosmetics[state.localAgentId]) {
+    state.selectedCosmetics[state.localAgentId] = { trail: 'trail_classic', skin: 'skin_default' };
+  }
+
+  // === PHASE 12.4 === Render preset buttons (5 slots with save/load)
+  const presetEl = document.getElementById('loadoutPresets');
+  if (presetEl) {
+    if (!state.designFlags.phase12Loadout) {
+      // Original 3-slot behavior
+      presetEl.innerHTML = [1, 2, 3].map(n => {
+        const active = state.activePreset === n ? ' preset-active' : '';
+        return `<button class="preset-btn${active}" data-preset="${n}">Preset ${n}</button>`;
+      }).join('');
+      presetEl.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.activePreset = parseInt(btn.dataset.preset, 10);
+          loadLoadoutPreset(state.activePreset);
+          renderLoadoutScreen();
+          saveState();
+        });
+      });
+    } else {
+      // === PHASE 12.4 === 5 slots with save/load
+      const presets = state.loadoutPresets[state.localAgentId] || {};
+      presetEl.innerHTML = [1, 2, 3, 4, 5].map(n => {
+      const active = state.activePreset === n ? ' preset-active' : '';
+      const saved = presets['preset' + n] ? ' preset-saved' : '';
+      return `<div class="preset-group${saved}">
+        <button class="preset-btn${active}" data-preset="${n}">${n}</button>
+        <button class="preset-save-btn" data-preset="${n}" title="Save to slot ${n}">💾</button>
+      </div>`;
+    }).join('');
+    // Load preset on click
+    presetEl.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.activePreset = parseInt(btn.dataset.preset, 10);
+        loadPreset(state.activePreset);
+        renderLoadoutScreen();
+        saveState();
+      });
+    });
+    // Save preset
+    presetEl.querySelectorAll('.preset-save-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const slot = parseInt(btn.dataset.preset, 10);
+        saveLoadoutPreset(slot);
+        state.activePreset = slot;
+        showToast(`Loadout saved to slot ${slot}`, 'success');
+        renderLoadoutScreen();
+        saveState();
+      });
+    });
+  }
+  // === END PHASE 12.4 ===
+
+  // Render gear cards
+  const gearGrid = document.getElementById('loadoutGearCards');
+  if (gearGrid) {
+    const currentLoadout = state.loadouts[state.localAgentId];
+    gearGrid.innerHTML = Object.entries(gearCatalog).map(([key, item]) => {
+      const unlocked = isItemUnlocked(item);
+      const selected = currentLoadout?.gear === key ? ' selected' : '';
+      const lockedClass = unlocked ? '' : ' locked';
+      const lockOverlay = unlocked ? '' : `<span class="loadout-lock">🔒 T${item.unlockTier} · ${item.unlockXP} XP</span>`;
+      // === PHASE 12.4 ===
+      const statBars = state.designFlags.phase12Loadout ? renderStatBars(item) : '';
+      // === END PHASE 12.4 ===
+      return `<div class="loadout-card${selected}${lockedClass}" data-loadout-item="${key}" data-loadout-type="gear" data-unlocked="${unlocked}">
+        ${lockOverlay}
+        <span class="loadout-card-icon">${item.icon}</span>
+        <span class="loadout-card-name">${escapeHtml(item.name)}</span>
+        <span class="loadout-card-desc">${escapeHtml(item.desc)}</span>
+        ${statBars}
+        <span class="loadout-card-tag">GEAR</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Render consumable cards
+  const conGrid = document.getElementById('loadoutConsumableSlots');
+  if (conGrid) {
+    const currentLoadout = state.loadouts[state.localAgentId];
+    const selectedCons = currentLoadout?.consumables?.filter(Boolean) || [];
+    conGrid.innerHTML = Object.entries(consumableCatalog).map(([key, item]) => {
+      const unlocked = isItemUnlocked(item);
+      const isSelected = selectedCons.includes(key);
+      const idx = selectedCons.indexOf(key);
+      const selectedClass = isSelected ? ' consumable-selected' : '';
+      const lockedClass = unlocked ? '' : ' locked';
+      const badge = isSelected ? `<span class="loadout-card-badge">${idx + 1}</span>` : '';
+      const lockOverlay = unlocked ? '' : `<span class="loadout-lock">🔒 T${item.unlockTier} · ${item.unlockXP} XP</span>`;
+      return `<div class="loadout-card${selectedClass}${lockedClass}" data-loadout-item="${key}" data-loadout-type="consumable" data-unlocked="${unlocked}">
+        ${lockOverlay}${badge}
+        <span class="loadout-card-icon">${item.icon}</span>
+        <span class="loadout-card-name">${escapeHtml(item.name)}</span>
+        <span class="loadout-card-desc">${escapeHtml(item.desc)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Render cosmetics
+  const cosGrid = document.getElementById('loadoutCosmeticSlots');
+  if (cosGrid) {
+    const selectedCos = state.selectedCosmetics[state.localAgentId] || { trail: 'trail_classic', skin: 'skin_default' };
+    cosGrid.innerHTML = Object.entries(cosmeticCatalog).map(([key, item]) => {
+      const unlocked = isItemUnlocked(item);
+      const isSelected = selectedCos[item.type] === key;
+      const selectedClass = isSelected ? ' cosmetic-selected' : '';
+      const lockedClass = unlocked ? '' : ' locked';
+      const lockOverlay = unlocked ? '' : `<span class="loadout-lock">🔒 T${item.unlockTier} · ${item.unlockXP} XP</span>`;
+      const colorDot = item.color ? `<span class="cosmetic-color" style="background:${item.color}"></span>` : '';
+      return `<div class="loadout-card cosmetic-card${selectedClass}${lockedClass}" data-cosmetic="${key}" data-cosmetic-type="${item.type}" data-unlocked="${unlocked}">
+        ${lockOverlay}${colorDot}
+        <span class="loadout-card-icon">${item.icon}</span>
+        <span class="loadout-card-name">${escapeHtml(item.name)}</span>
+        <span class="loadout-card-desc">${item.type === 'trail' ? 'Movement trail effect' : 'Agent appearance'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Role bonus
+  renderLoadoutRoleBonus();
+  renderLoadoutReadyList();
+}
+}function renderLoadoutRoleBonus() {
+  const el = document.getElementById('loadoutRoleBonus');
+  if (!el) return;
+  const bonus = roleStartingBonuses[state.localRole];
+  if (bonus) {
+    el.innerHTML = `<span style="font-size:24px;margin-bottom:6px;display:block">${bonus.icon}</span>${escapeHtml(bonus.text)}`;
+  } else {
+    el.innerHTML = '<span style="font-size:24px;margin-bottom:6px;display:block">🎯</span>No bonus assigned for your role';
+  }
+}
+
+function renderLoadoutReadyList() {
+  const el = document.getElementById('loadoutReadyList');
+  if (!el) return;
+  const agents = state.agents || [];
+  if (agents.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = agents.map(a => {
+    const loadout = state.loadouts[a.id];
+    const confirmed = loadout?.confirmed;
+    return `<span class="loadout-ready-tick ${confirmed ? 'ready' : 'waiting'}">
+      ${confirmed ? '✅' : '⏳'} ${escapeHtml(a.name)}
+    </span>`;
+  }).join('');
+}
+
+function loadLoadoutPreset(num) {
+  const presets = state.loadoutPresets[state.localAgentId];
+  if (presets && presets['preset' + num]) {
+    const p = presets['preset' + num];
+    state.loadouts[state.localAgentId] = {
+      gear: p.gear || null,
+      consumables: p.consumables ? [...p.consumables] : [null, null],
+      confirmed: false
+    };
+    if (p.cosmetics) {
+      state.selectedCosmetics[state.localAgentId] = { ...p.cosmetics };
+    }
+    // === PHASE 12.4 ===
+    if (state.designFlags.phase12Loadout) {
+      showToast(`Loadout loaded from slot ${num}`, 'info');
+    }
+    // === END PHASE 12.4 ===
+  } else if (state.designFlags.phase12Loadout) {
+    // === PHASE 12.4 ===
+    showToast(`Slot ${num} is empty — save a loadout first`, 'warning');
+    // === END PHASE 12.4 ===
+  }
+}
+
+function saveLoadoutPreset(num) {
+  if (!state.loadoutPresets[state.localAgentId]) state.loadoutPresets[state.localAgentId] = {};
+  const loadout = state.loadouts[state.localAgentId];
+  state.loadoutPresets[state.localAgentId]['preset' + num] = {
+    gear: loadout?.gear || null,
+    consumables: loadout?.consumables ? [...loadout.consumables] : [null, null],
+    cosmetics: { ...(state.selectedCosmetics[state.localAgentId] || { trail: 'trail_classic', skin: 'skin_default' }) }
+  };
+}
+
+function initLoadoutScreen() {
+  // Gear selection — pick one
+  document.querySelectorAll('[data-loadout-type="gear"]').forEach(card => {
+    card.addEventListener('click', () => {
+      if (card.dataset.unlocked !== 'true') {
+        addChat('System', '🔒 This gear is locked. Earn more Role XP to unlock it.');
+        return;
+      }
+      const key = card.dataset.loadoutItem;
+      if (!state.loadouts[state.localAgentId]) {
+        state.loadouts[state.localAgentId] = { gear: null, consumables: [null, null], confirmed: false };
+      }
+      state.loadouts[state.localAgentId].gear = key;
+      state.loadouts[state.localAgentId].confirmed = false;
+      savePreset(state.activePreset || 1);
+      renderLoadoutScreen();
+      saveState();
+    });
+  });
+
+  // Consumable selection — pick up to 2
+  document.querySelectorAll('[data-loadout-type="consumable"]').forEach(card => {
+    card.addEventListener('click', () => {
+      if (card.dataset.unlocked !== 'true') {
+        addChat('System', '🔒 This consumable is locked. Earn more Role XP to unlock it.');
+        return;
+      }
+      const key = card.dataset.loadoutItem;
+      if (!state.loadouts[state.localAgentId]) {
+        state.loadouts[state.localAgentId] = { gear: null, consumables: [null, null], confirmed: false };
+      }
+      const cons = state.loadouts[state.localAgentId].consumables;
+      const idx = cons.indexOf(key);
+      if (idx !== -1) {
+        // Deselect
+        cons[idx] = null;
+      } else {
+        // Select — find first empty slot
+        const emptyIdx = cons.indexOf(null);
+        if (emptyIdx !== -1) {
+          cons[emptyIdx] = key;
+        }
+      }
+      state.loadouts[state.localAgentId].confirmed = false;
+      savePreset(state.activePreset || 1);
+      renderLoadoutScreen();
+      saveState();
+    });
+  });
+
+  // Cosmetic selection
+  document.querySelectorAll('[data-cosmetic]').forEach(card => {
+    card.addEventListener('click', () => {
+      if (card.dataset.unlocked !== 'true') {
+        addChat('System', '🔒 This cosmetic is locked. Earn more Role XP to unlock it.');
+        return;
+      }
+      const key = card.dataset.cosmetic;
+      const type = card.dataset.cosmeticType;
+      if (!state.selectedCosmetics[state.localAgentId]) {
+        state.selectedCosmetics[state.localAgentId] = { trail: 'trail_classic', skin: 'skin_default' };
+      }
+      state.selectedCosmetics[state.localAgentId][type] = key;
+      savePreset(state.activePreset || 1);
+      renderLoadoutScreen();
+      saveState();
+    });
+  });
+
+  // Confirm button
+  document.getElementById('loadoutConfirmBtn').addEventListener('click', () => {
+    const loadout = state.loadouts[state.localAgentId];
+    if (!loadout || !loadout.gear) {
+      addChat('System', 'Please select your starting gear first.');
+      return;
+    }
+    const selectedCons = loadout.consumables.filter(Boolean);
+    if (selectedCons.length < 2) {
+      addChat('System', 'Please select 2 consumables.');
+      return;
+    }
+    loadout.confirmed = true;
+    savePreset(state.activePreset || 1);
+    renderLoadoutReadyList();
+    saveState();
+
+    // Auto-proceed to briefing if all confirmed (single-player/offline)
+    const allConfirmed = (state.agents || []).every(a => state.loadouts[a.id]?.confirmed);
+    if (allConfirmed || !state.agents?.length) {
+      goToBriefingFromLoadout();
+    }
+  });
+
+  // Back button
+  const backBtn = document.getElementById('loadoutBackBtn');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      setScreen('roles');
+    });
+  }
+}
+
+function goToBriefingFromLoadout() {
+  if (!state.objectives?.length) { generateObjectives(); }
+  if (!state.threats?.length) { generateThreats(); }
+  setScreen('briefing');
+}
+
+function loadoutAllConfirmed() {
+  const agents = state.agents || [];
+  if (agents.length === 0) return false;
+  return agents.every(a => state.loadouts[a.id]?.confirmed === true);
+}
+
+function useLoadoutConsumable() {
+  const agent = state.agents.find(a => a.id === state.localAgentId);
+  if (!agent) return;
+  if (agent._smokeReady) {
+    agent._smokeReady = false;
+    // Obscure area on radar for 15s
+    const smokeId = 'smoke-' + Date.now();
+    state.pings.push({ id: smokeId, lat: agent.lat, lng: agent.lng, dist: 80, createdAt: Date.now(), sender: 'Smoke', type: 'smoke' });
+    addChat('System', '💨 Smoke Grenade deployed — area obscured for 15s');
+    ScreenJuice.addKillFeed('SMOKE DEPLOYED', '#8b949e');
+    setTimeout(() => { state.pings = state.pings.filter(p => p.id !== smokeId); }, 15000);
+    return;
+  }
+  if (agent._empReady) {
+    agent._empReady = false;
+    const nearest = state.threats.sort((a, b) => haversine(agent, a) - haversine(agent, b))[0];
+    if (nearest) {
+      nearest._empDisabled = true;
+      addChat('System', `⚡ EMP Charge disabled ${nearest.name} for 8s`);
+      ScreenJuice.addKillFeed('EMP BLAST', '#f0883e');
+      setTimeout(() => { if (nearest) nearest._empDisabled = false; }, 8000);
+    } else {
+      addChat('System', '⚡ No threats in range for EMP');
+    }
+    return;
+  }
+  addChat('System', 'No usable consumable available. Press G when equipped with Smoke or EMP.');
+}
+
+function applyLoadoutBonuses() {
+  const loadout = state.loadouts[state.localAgentId];
+  if (!loadout) return;
+
+  const agent = state.agents.find(a => a.id === state.localAgentId);
+  if (!agent) return;
+
+  // Apply gear effects
+  if (loadout.gear === 'medkit') {
+    agent.stamina = Math.min(100, (agent.stamina || 92) + 30);
+    addChat('System', '🩹 Field Medkit applied: +30 stamina');
+  }
+  if (loadout.gear === 'shield') {
+    agent._shieldActive = true;
+    addChat('System', '🛡️ Portable Shield active — blocks one threat attack');
+  }
+  if (loadout.gear === 'dronekit') {
+    if (window.DroneSystem && DroneSystem.deploy) {
+      DroneSystem.deploy(agent.lat, agent.lng);
+      addChat('System', '🛸 Drone Kit deployed extra scout');
+    }
+  }
+  if (loadout.gear === 'relay') {
+    state.agents.forEach(a => { if (a.team === agent.team) a.signal = Math.min(100, (a.signal || 80) + 15); });
+    addChat('System', '📡 Mini Relay active — squad +15% signal for 60s');
+    setTimeout(() => { if (state.status === 'Live') renderHUD(); }, 60000);
+  }
+
+  // Notify about role starting bonus
+  const bonus = roleStartingBonuses[state.localRole];
+  if (bonus && addChat) {
+    addChat('System', `${bonus.icon} Role bonus: ${bonus.text}`);
+  }
+}
+
+function renderBriefingScreen() {
+  $('#briefingCode').textContent = state.code;
+  // Location meta
+  const map = mapCatalog[state.currentMap];
+  const locLabel = state.customLocation ? state.customLocation.label : (map ? `${map.name} — ${map.city}` : 'Unknown');
+  $('#briefingLocation').textContent = locLabel;
+  $('#briefingDuration').textContent = `${state.duration} min`;
+  $('#briefingSquadSize').textContent = `${Math.min(state.maxPlayers, 7)} agents`;
+
+  // Roster (same logic as roles screen but using briefing DOM)
+  const localTeam = state.isHost ? 'North' : 'South';
+  const roster = [];
+  roster.push({
+    name: state.localProfile.name + ' ' + state.localProfile.callsign,
+    role: state.localRole || '—',
+    isLocal: true,
+    team: localTeam
+  });
+  const roleKeys = Object.keys(roleCatalog);
+  const availableRoles = roleKeys.filter(r => r !== state.localRole);
+  const botNames = ['Ada', 'Mika', 'Rune', 'Liv', 'Echo', 'Kai'];
+  for (let i = 0; i < Math.min(state.maxPlayers - 1, 6); i++) {
+    const role = availableRoles[i % availableRoles.length];
+    roster.push({
+      name: botNames[i % botNames.length],
+      role: role,
+      isLocal: false,
+      team: i % 2 === 0 ? 'North' : 'South'
+    });
+  }
+  $('#briefingRoster').innerHTML = roster.map(item => {
+    const color = roleColors[item.role] || '#9e9e9e';
+    const localTag = item.isLocal ? '<span class="briefing-roster-role" style="color:#ffd965">YOU</span>' : '';
+    const teamStr = item.team ? ` · ${item.team}` : '';
+    return `<div class="briefing-roster-item">
+      <span class="briefing-roster-dot" style="background:${color}"></span>
+      <span class="briefing-roster-name">${escapeHtml(item.name)}</span>
+      <span class="briefing-roster-role" style="color:${color}">${roleEmojis[item.role]||''} ${item.role}${teamStr}</span>
+      ${localTag}
+    </div>`;
+  }).join('');
+
+  // Objectives
+  const objs = state.objectives || [];
+  $('#briefingObjCount').textContent = objs.length;
+  const typeIcons = {
+    Cipher: '🔐', Puzzle: '🧩', Treasure: '💎', Waypoint: '📍',
+    Extraction: '✈️', DataUpload: '⬆️', Triangulation: '🔺', AssetRecovery: '📦',
+    Escort: '🛡️', Sabotage: '💥', Recon: '👁️'
+  };
+  const typeColors = {
+    Cipher: '#7c4dff', Puzzle: '#ff9800', Treasure: '#ffd965', Waypoint: '#00bcd4',
+    Extraction: '#00e676', DataUpload: '#00bcd4', Triangulation: '#ffd965', AssetRecovery: '#e91e63',
+    Escort: '#2196f3', Sabotage: '#ff5722', Recon: '#9c27b0'
+  };
+  $('#briefingObjectives').innerHTML = objs.map((o, i) => {
+    const icon = typeIcons[o.type] || '🎯';
+    const color = typeColors[o.type] || '#9e9e9e';
+    return `<div class="briefing-obj-item">
+      <div class="briefing-obj-icon" style="background:${color}20;color:${color}">${icon}</div>
+      <div class="briefing-obj-body">
+        <div class="briefing-obj-title">${escapeHtml(o.title)}</div>
+        <div class="briefing-obj-brief">${escapeHtml(o.brief || '')}</div>
+      </div>
+      <span class="briefing-obj-type" style="background:${color}20;color:${color}">${o.type}</span>
+    </div>`;
+  }).join('');
+
+  // Threats summary
+  const threats = state.threats || [];
+  if (threats.length === 0) {
+    $('#briefingThreats').innerHTML = '<div class="briefing-threat-item"><span class="briefing-threat-icon">✅</span><span class="briefing-threat-name">No active threats detected</span></div>';
+  } else {
+    $('#briefingThreats').innerHTML = threats.map(t => {
+      const modeLabel = t.mode === 'hunt' ? 'Hunting' : t.alert ? 'Jamming' : 'Patrolling';
+      return `<div class="briefing-threat-item">
+        <span class="briefing-threat-icon">⚠️</span>
+        <span class="briefing-threat-name">${escapeHtml(t.name)}</span>
+        <span class="briefing-threat-detail">${modeLabel} · ${t.radius}m</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Draw objectives on briefing map
+  const bm = MapModule.ensureBriefingMap();
+  if (bm) {
+    // Clear old layers on briefing map (reuse beacons array logic by creating temporary markers)
+    // We don't have a dedicated clear for briefing map, so we just add markers
+    // They'll persist until the map is destroyed, which is acceptable for a pre-mission screen
+    const center = getMissionCenter();
+    bm.setView(center, 13);
+    objs.forEach((o, i) => {
+      const color = typeColors[o.type] || '#9e9e9e';
+      const iconHtml = `<span style="width:24px;height:24px;background:${color};border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700;box-shadow:0 0 12px ${color}80;">${i+1}</span>`;
+      const marker = L.marker([o.lat, o.lng], { icon: L.divIcon({ className: 'sl-map-icon', html: iconHtml, iconSize: [24,24], iconAnchor: [12,12], popupAnchor: [0,-12] }) }).addTo(bm);
+      marker.bindPopup(`<div class="sl-popup"><strong>${escapeHtml(o.title)}</strong><br>${o.type}</div>`);
+    });
+    // Add extraction marker last (green)
+    const ex = objs.find(o => o.type === 'Extraction');
+    if (ex) {
+      const exIcon = `<div class="sl-extract-icon" style="width:28px;height:28px;background:linear-gradient(135deg,#00e676,#00c853);border:2px solid #fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;box-shadow:0 0 14px #00e67680;">✈</div>`;
+      const exMarker = L.marker([ex.lat, ex.lng], { icon: L.divIcon({ className: 'sl-map-icon', html: exIcon, iconSize: [28,28], iconAnchor: [14,14], popupAnchor: [0,-14] }) }).addTo(bm);
+      exMarker.bindPopup('<div class="sl-popup"><strong>Extraction</strong></div>');
+    }
+  }
+}
+
 function renderRoleCards() {
   const grid = $('#roleGrid');
   const roles = Object.keys(roleCatalog);
@@ -2913,10 +8628,14 @@ function renderRoleCards() {
     const color = roleColors[role] || '#9e9e9e';
     const duties = roleCatalog[role] || [];
     const emoji = roleEmojis[role] || '';
+    const desc = roleDescriptions[role] || '';
     const selected = state.localRole === role ? 'selected' : '';
+    const tier = RoleProgression.getTier(role);
     return `<div class="role-card ${selected}" data-role="${role}" style="--role-color:${color};--role-glow:${color}40;">
+      <span class="role-tier">T${tier}</span>
       <span class="role-emoji">${emoji}</span>
       <h4>${role}</h4>
+      <div class="role-desc">${desc}</div>
       <div class="role-duties">${duties.map(d => '• ' + d).join('<br>')}</div>
     </div>`;
   }).join('');
@@ -2933,8 +8652,11 @@ function renderRoleCards() {
 
 function renderRoster() {
   const list = $('#rosterList');
-  // Determine local team
-  const localTeam = state.isHost ? 'North' : 'South';
+  // Determine local team using TeamBalance
+  let localTeam = state.isHost ? 'North' : 'South';
+  const localAgent = state.agents.find(a => a.id === state.localAgentId);
+  if (localAgent && localAgent.team) localTeam = localAgent.team;
+
   // Show team badge
   const badge = $('#rosterTeamBadge');
   if (badge) {
@@ -2946,7 +8668,7 @@ function renderRoster() {
   const roster = [];
   // Local player
   roster.push({
-    id: 'local',
+    id: state.localAgentId || 'local',
     name: state.localProfile.name + ' ' + state.localProfile.callsign,
     role: state.localRole || '—',
     isLocal: true,
@@ -2976,26 +8698,55 @@ function renderRoster() {
       <span class="roster-role" style="color:${color}">${item.isLocal ? '🧑 ' : '🤖 '}${item.role}${teamStr}</span>
     </div>`;
   }).join('');
+
+  // Render team balance panel
+  TeamBalance.renderBalancePanel();
 }
 
 function initRolesScreen() {
+  $('#spectateFromRoles').addEventListener('click', () => {
+    const code = state.code || state.joinCode;
+    if (!code) {
+      addChat('System', 'No mission code available to spectate.');
+      return;
+    }
+    state.isSpectator = true;
+    SignalNet.spectateGame(code);
+    if (!SignalNet.connected) {
+      state.status = 'Live';
+      if (!state.objectives?.length) { generateObjectives(); generateThreats(); }
+      setScreen('spectator');
+      initSpectator();
+    }
+  });
+
   $('#readyToMission').addEventListener('click', () => {
     if (!state.localRole) {
       addChat('System', 'Please select a role before launching.');
       return;
     }
+    // Show "press SPACE to ready" hint on roles screen
+    const rolesScreen = document.getElementById('rolesScreen');
+    if (rolesScreen && !rolesScreen.querySelector('.ready-space-hint')) {
+      const hint = MemoryPool.acquire('div');
+      hint.className = 'ready-space-hint';
+      hint.textContent = 'Press SPACE to ready';
+      rolesScreen.appendChild(hint);
+    }
+    // Generate objectives and threats if not already done
+    if (!state.objectives?.length) { generateObjectives(); }
+    if (!state.threats?.length) { generateThreats(); }
     // Create all agents (local + bots)
     state.agents = [];
     state.scores = { North: 0, South: 0 };
-    // Local player — assign team based on host/join
-    const localTeam = state.isHost ? 'North' : 'South';
+    // Local player — assign team using TeamBalance
     const [lat, lng] = jitter(getMissionCenter(), 0.004);
     const localAgent = {
       id: `agent-${Math.random().toString(36).slice(2,9)}`,
       name: state.localProfile.name,
       callsign: state.localProfile.callsign,
       role: state.localRole,
-      team: localTeam,
+      team: TeamBalance.assignTeam({ name: state.localProfile.name, role: state.localRole }),
       lat, lng,
       signal: 78,
       stamina: 92,
@@ -3010,22 +8761,29 @@ function initRolesScreen() {
     for (let i = 0; i < Math.min(state.maxPlayers - 1, 6); i++) {
       const role = availableRoles[i % availableRoles.length];
       const [ba, bn] = jitter(getMissionCenter(), 0.009);
-      const team = i % 2 === 0 ? 'North' : 'South';
-      state.agents.push({
+      const bot = {
         id: `bot-${i}-${Date.now()}`,
         name: botNames[i % botNames.length],
         callsign: botNames[i % botNames.length].toUpperCase(),
         role: role,
-        team: team,
         lat: ba, lng: bn,
         signal: 62 + Math.round(Math.random() * 30),
         stamina: 70 + Math.round(Math.random() * 25),
         bot: true,
+        personality: ['Cautious','Aggressive','Balanced'][Math.floor(Math.random()*3)],
         lastSeen: Date.now()
-      });
+      };
+      bot.team = TeamBalance.assignTeam(bot);
+      state.agents.push(bot);
     }
     saveState();
+    setScreen('loadout');
+  });
+
+  $('#backToRoles').addEventListener('click', () => setScreen('roles'));
+  $('#deployMission').addEventListener('click', () => {
     setScreen('mission');
+    applyLoadoutBonuses();
     startMissionClock();
   });
 }
@@ -3040,7 +8798,7 @@ function joinAgentFromLobby() {
     name: state.localProfile.name,
     callsign: state.localProfile.callsign,
     role,
-    team: 'South',
+    team: TeamBalance.assignTeam({ name: state.localProfile.name, role }),
     lat, lng,
     signal: 78,
     stamina: 92,
@@ -3052,15 +8810,22 @@ function joinAgentFromLobby() {
   while (state.agents.length < Math.min(4, state.maxPlayers)) {
     const r = Object.keys(roleCatalog)[state.agents.length % Object.keys(roleCatalog).length];
     const [la, ln] = jitter(getMissionCenter(), 0.009);
-    state.agents.push({
+    const bot = {
       id: `bot-${state.agents.length}`,
       name: ['Ada','Mika','Rune','Liv'][state.agents.length-1] || `Bot ${state.agents.length}`,
-      role: r, team: state.agents.length%2?'North':'South',
+      role: r,
       lat: la, lng: ln, signal: 62+Math.round(Math.random()*30), stamina: 70+Math.round(Math.random()*25),
-      bot: true, lastSeen: Date.now()
-    });
+      bot: true, personality: ['Cautious','Aggressive','Balanced'][Math.floor(Math.random()*3)], lastSeen: Date.now()
+    };
+    bot.team = TeamBalance.assignTeam(bot);
+    state.agents.push(bot);
   }
   // Generate objectives so they exist when entering mission
+  // Phase 7 Task 9 — Ensure procedural terrain exists before generating objectives/threats
+  if (!state.proceduralHeightmap || !state.proceduralInterestMap) {
+    state.missionSeed = state.missionSeed || Math.floor(Math.random() * 65536);
+    TerrainSystem.generate(getMissionCenter());
+  }
   if (!state.objectives.length) generateObjectives();
   if (!state.threats.length) generateThreats();
   saveState();
@@ -3076,18 +8841,387 @@ function populateRoles() {
   try { localStorage.setItem('slv2_joinCode', state.joinCode); } catch {}
 }
 
+/* ========================== DYNAMIC OBJECTIVE PLACEMENT (Phase 7 Task 8) ========================== */
+
 function generateObjectives() {
   const center = getMissionCenter();
-  const types = [
-    ...enabledPack('ciphers'), ...enabledPack('treasure'), ...enabledPack('waypoints'),
-    ...customMarkerObjectives(),
-    ...missionPacks.extraction
-  ];
-  state.objectives = types.map(([title, type, radius, brief, meta={}], i) => {
-    const marker = meta.source==='custom' ? state.customMarkers.find(m=>m.id===meta.markerId && markerInArea(m)) : null;
-    const [lat, lng] = marker ? [marker.lat, marker.lng] : jitter(center, 0.006 + i*0.0018);
-    return { id:`obj-${i}`, title, type, brief, radius, lat, lng, decoded: i===0, found: false, progress: i===0?22:0, source: meta.source||'pack', markerId: meta.markerId||'' };
+  const timeDelta = DifficultySystem.get('timeLimit');
+  const map = mapCatalog[state.currentMap];
+  const biomeMix = map?.biomeMix || { open: 0.4, urban: 0.25, forest: 0.20, industrial: 0.15 };
+  const signatureType = map?.signatureObjective || null;
+
+  // --- 1. GATHER SOURCE OBJECTIVES ---
+  const packKeys = ['ciphers','treasure','waypoints','dataUpload','triangulation','recovery','hvt','intercept','relay','escort','sabotage','recon'];
+  let sourcePacks = [];
+  packKeys.forEach(k => {
+    const pack = enabledPack(k);
+    pack.forEach(item => sourcePacks.push({ pack: k, item }));
   });
+  // Add custom marker objectives
+  customMarkerObjectives().forEach(item => sourcePacks.push({ pack: 'custom', item }));
+
+  // --- 2. SQUAD COMPOSITION WEIGHTING ---
+  // Detect squad roles and boost relevant objective types
+  const squadRoles = new Set((state.agents || []).map(a => a.role));
+  const roleBonus = {
+    Decoder: ['ciphers','dataUpload','intercept'],
+    Medic: ['escort','recovery'],
+    Spotter: ['recon','hvt'],
+    Navigator: ['triangulation','waypoints'],
+    Courier: ['recovery','relay'],
+    Mechanic: ['relay','sabotage'],
+    Drone: ['recon','hvt'],
+    Saboteur: ['sabotage','intercept'],
+    Engineer: ['relay','sabotage'],
+    Hacker: ['intercept','dataUpload']
+  };
+  function getSquadWeight(packKey) {
+    let w = 1.0;
+    squadRoles.forEach(role => {
+      const bonuses = roleBonus[role];
+      if (bonuses && bonuses.includes(packKey)) w += 0.6;
+    });
+    return w;
+  }
+
+  // --- 3. BIOME FAVORITISM ---
+  // Map types favor certain objective packs
+  const biomeFavorites = {
+    urban: ['dataUpload','intercept','relay','sabotage'],
+    forest: ['recon','hvt','escort'],
+    industrial: ['sabotage','relay','dataUpload'],
+    open: ['waypoints','triangulation','recovery'],
+    high_ground: ['triangulation','hvt'],
+    water: ['recovery','escort']
+  };
+  function getBiomeWeight(packKey) {
+    let w = 1.0;
+    for (const [biome, weight] of Object.entries(biomeMix)) {
+      const favs = biomeFavorites[biome];
+      if (favs && favs.includes(packKey)) w += weight * 0.8;
+    }
+    // Signature objective for this map gets big boost
+    if (signatureType) {
+      const sigMap = {
+        DataUpload: 'dataUpload', Triangulation: 'triangulation', Recon: 'recon',
+        Escort: 'escort', Sabotage: 'sabotage', HVT: 'hvt', Intercept: 'intercept',
+        Relay: 'relay', Recovery: 'recovery'
+      };
+      if (sigMap[signatureType] === packKey) w += 1.5;
+    }
+    return w;
+  }
+
+  // --- 4. SHUFFLE & WEIGHTED SAMPLE ---
+  // Score each pack, sort by weighted random, take 5-7 objectives
+  const targetCount = clamp(4 + Math.floor((state.agents || []).length / 2), 4, 7);
+  const scored = sourcePacks.map(sp => ({
+    ...sp,
+    score: getSquadWeight(sp.pack) * getBiomeWeight(sp.pack) + Math.random() * 0.4
+  }));
+  scored.sort((a, b) => b.score - a.score);
+  const selected = scored.slice(0, targetCount).map(s => s.item);
+
+  // --- 5. DISTANCE TIER PLACEMENT ---
+  // First 2 within 300m, next 3 at 400-800m, final at 600-1000m
+  function tieredJitter(idx, total) {
+    const ratio = total <= 1 ? 0 : idx / (total - 1);
+    let minM, maxM;
+    if (ratio < 0.33) { minM = 80; maxM = 300; }
+    else if (ratio < 0.67) { minM = 400; maxM = 800; }
+    else { minM = 600; maxM = 1000; }
+    const distM = minM + Math.random() * (maxM - minM);
+    const angle = Math.random() * Math.PI * 2;
+    // Convert meters to degrees (~111km per degree)
+    const dLat = (Math.sin(angle) * distM) / 111000;
+    const dLng = (Math.cos(angle) * distM) / (111000 * Math.cos(center[0] * Math.PI / 180));
+    return [center[0] + dLat, center[1] + dLng];
+  }
+
+  // --- 6. THREAT AWARENESS ---
+  // After threats are generated we could reposition, but threats come after objectives.
+  // Use procedural heightmap to predict threat zones (valleys = ambush, ridges = overwatch).
+  const hm = state.proceduralHeightmap;
+  const valleys = hm ? ProceduralMap.findValleys(hm, 8) : [];
+  const ridges = hm ? ProceduralMap.findRidges(hm, 8) : [];
+  const predictedThreatZones = [...valleys, ...ridges].map(p => ({ lat: p.lat, lng: p.lng }));
+
+  function isNearThreatZone(lat, lng, radiusM) {
+    if (!predictedThreatZones.length) return false;
+    return predictedThreatZones.some(z => haversine({ lat, lng }, z) < radiusM);
+  }
+
+  // --- 7. INTEREST PEAKS FOR CLUSTERING ---
+  const im = state.proceduralInterestMap;
+  const peaks = (im && selected.length > 1) ? ProceduralMap.findInterestPeaks(im, Math.min(selected.length, 6)) : [];
+
+  // --- 8. BUILD OBJECTIVES ---
+  const nonExtract = selected.filter(([,,type]) => type !== 'Extraction');
+  const extractionPack = missionPacks.extraction[0];
+
+  let objectives = [];
+  nonExtract.forEach(([title, type, radius, brief, meta={}], i) => {
+    const marker = meta.source==='custom' ? state.customMarkers.find(m=>m.id===meta.markerId && markerInArea(m)) : null;
+    let lat, lng;
+    if (marker) {
+      [lat, lng] = [marker.lat, marker.lng];
+    } else if (peaks.length && i < peaks.length) {
+      // Cluster around interest peaks with small jitter
+      [lat, lng] = jitter([peaks[i].lat, peaks[i].lng], 0.0012);
+    } else {
+      [lat, lng] = tieredJitter(i, nonExtract.length);
+    }
+
+    // Threat avoidance: if within predicted threat zone, nudge away
+    if (isNearThreatZone(lat, lng, 150)) {
+      let attempts = 0;
+      while (isNearThreatZone(lat, lng, 150) && attempts < 8) {
+        const [nLat, nLng] = tieredJitter(i, nonExtract.length);
+        lat = nLat; lng = nLng;
+        attempts++;
+      }
+    }
+
+    // Radius reduction if near predicted threat patrol (within 250m)
+    const nearPatrol = isNearThreatZone(lat, lng, 250);
+    const finalRadius = nearPatrol ? Math.max(15, Math.round(radius * 0.7)) : radius;
+
+    const base = {
+      id:`obj-${i}`, title, type, brief, radius: finalRadius, lat, lng,
+      decoded: i===0, found: false, progress: i===0?22:0,
+      source: meta.source||'pack', markerId: meta.markerId||'',
+      _placedAtTier: i, _nearPatrol: nearPatrol
+    };
+
+    // Type-specific init
+    if (type === 'DataUpload') { base.uploadProgress = 0; base.uploading = false; base.uploadLeftAt = 0; }
+    if (type === 'Triangulation') { base.triPoints = generateTriPoints(base.lat, base.lng, finalRadius); base.triIndex = 0; }
+    if (type === 'AssetRecovery') { base.packageLat = base.lat; base.packageLng = base.lng; base.packagePickedUp = false; base.carryingAgentId = null; base.detected = false; }
+    if (type === 'HVT') { base.hvtLat = base.lat; base.hvtLng = base.lng; base.hvtWaypoints = generateHVTPatrol(base.lat, base.lng); base.hvtIndex = 0; base.hvtEliminated = false; base.hvtTimeout = 120 + timeDelta; base.hvtHealth = 1; base.hvtSpeed = 0.0005; }
+    if (type === 'DataIntercept') { base.interceptProgress = 0; base.interceptTarget = 15; base.interceptState = 'idle'; base.signalQuality = 'normal'; base.lastInteractTime = Date.now(); base.interceptVisual = null; }
+    if (type === 'RelayActivation') { base.relayPoints = generateRelayPoints(base.lat, base.lng, 3); base.relayIndex = 0; base.relayActivated = [false, false, false]; base.relayTimer = 90 + timeDelta; base.relayTimerStarted = false; base.relayProgress = 0; base.relayActivating = false; }
+    if (type === 'Escort') { base.vipLat = base.lat; base.vipLng = base.lng; base.vipWaypoints = generateEscortWaypoints(base.lat, base.lng); base.vipIndex = 0; base.vipRescued = false; base.vipHealth = 3; base.vipSpeed = 0.0004; base.vipFollowing = false; base.vipTimer = 180 + timeDelta; base.vipTimerStarted = false; }
+    if (type === 'Sabotage') { base.sabTargetLat = base.lat; base.sabTargetLng = base.lng; base.sabHealth = 100; base.sabDestroyed = false; base.sabTimer = 120 + timeDelta; base.sabTimerStarted = false; base.sabPlanting = false; base.sabPlantStart = 0; base.sabPlanted = false; base.sabDetonated = false; }
+    if (type === 'Recon') { base.reconPoints = generateReconPoints(base.lat, base.lng, 3); base.reconIndex = 0; base.reconScanned = [false, false, false]; base.reconTimer = 240 + timeDelta; base.reconTimerStarted = false; base.reconDetected = false; }
+
+    objectives.push(base);
+  });
+
+  // --- 9. OBJECTIVE CHAINING (20% chance) ---
+  // Link 2 objectives with a dashed line; must complete first to unlock second
+  if (objectives.length >= 3 && Math.random() < 0.20) {
+    const chainStartIdx = Math.floor(Math.random() * (objectives.length - 1));
+    const chainEndIdx = chainStartIdx + 1 + Math.floor(Math.random() * (objectives.length - chainStartIdx - 1));
+    objectives[chainStartIdx].chainedTo = objectives[chainEndIdx].id;
+    objectives[chainEndIdx].chainedFrom = objectives[chainStartIdx].id;
+    objectives[chainEndIdx].decoded = false; // Locked until chain start is found
+    objectives[chainEndIdx].progress = 0;
+  }
+
+  // --- 10. EXTRACTION DYNAMICS ---
+  // Extraction is hidden until 60% completion, placed opposite to squad centroid
+  const extractTitle = extractionPack[0];
+  const extractRadius = extractionPack[2];
+  const extractBrief = extractionPack[3];
+
+  // Compute opposite direction from squad centroid
+  const squadCentroid = (state.agents || []).length ? {
+    lat: state.agents.reduce((s, a) => s + a.lat, 0) / state.agents.length,
+    lng: state.agents.reduce((s, a) => s + a.lng, 0) / state.agents.length
+  } : { lat: center[0], lng: center[1] };
+  const oppAngle = Math.atan2(squadCentroid.lng - center[1], squadCentroid.lat - center[0]) + Math.PI;
+  const extractDist = 0.007 + Math.random() * 0.003; // ~700-900m
+  const exLat = center[0] + Math.cos(oppAngle) * extractDist;
+  const exLng = center[1] + Math.sin(oppAngle) * extractDist;
+
+  const extractionObj = {
+    id: `obj-extract`, title: extractTitle, type: 'Extraction', brief: extractBrief,
+    radius: extractRadius, lat: exLat, lng: exLng,
+    decoded: false, found: false, progress: 0,
+    source: 'pack', markerId: '',
+    _hiddenUntilProgress: 0.60, _revealed: false
+  };
+  objectives.push(extractionObj);
+
+  state.objectives = objectives;
+}
+
+// Phase 7 Task 8 — Check extraction reveal condition
+function checkExtractionReveal() {
+  const extractionObj = state.objectives.find(o => o.type === 'Extraction');
+  if (!extractionObj || extractionObj._revealed) return;
+  const total = state.objectives.length;
+  const found = state.objectives.filter(o => o.found).length;
+  const progress = total > 0 ? found / total : 0;
+  if (progress >= (extractionObj._hiddenUntilProgress || 0.60)) {
+    extractionObj._revealed = true;
+    extractionObj.decoded = true;
+    extractionObj.progress = 22;
+    addChat('System', '📡 Extraction point decoded! Coordinates received.');
+    EventLog.add('system', '📡', '<strong>Extraction Revealed</strong> EVA point coordinates received');
+    ScreenJuice.addKillFeed('EXTRACTION REVEALED', '#00e676');
+    SoundFX.play(660, 0.10, 'sine', 0.15);
+  }
+}
+
+// Phase 7 Task 8 — Check chained objective unlocks
+function checkChainedObjectives() {
+  state.objectives.forEach(o => {
+    if (o.chainedFrom && !o.decoded) {
+      const parent = state.objectives.find(p => p.id === o.chainedFrom);
+      if (parent && parent.found) {
+        o.decoded = true;
+        o.progress = 18;
+        addChat('System', `🔗 ${o.title} unlocked — chain objective active.`);
+        EventLog.add('system', '🔗', `<strong>Chain Unlocked</strong> ${escapeHtml(o.title)}`);
+      }
+    }
+  });
+}
+
+/* ========================== DIFFICULTY SCALING SYSTEM (Phase 7 Task 3) ========================== */
+
+const DifficultySystem = {
+  // Difficulty lookup tables
+  MODIFIERS: {
+    threatCount:   { 1: -1, 2: 0, 3: 1, 4: 2, 5: 3 },
+    threatSpeed:   { 1: 0.85, 2: 1.0, 3: 1.08, 4: 1.16, 5: 1.25 },
+    detectRange:   { 1: 0.85, 2: 1.0, 3: 1.10, 4: 1.20, 5: 1.30 },
+    reinforceChance:{ 1: 0.0, 2: 0.10, 3: 0.20, 4: 0.30, 5: 0.40 },
+    timeLimit:     { 1: 30, 2: 0, 3: -15, 4: -30, 5: -45 },  // seconds delta
+    supplySpawn:   { 1: 1.50, 2: 1.0, 3: 0.75, 4: 0.50, 5: 0.25 }, // multiplier
+  },
+
+  /** Compute win streak from match history */
+  _winStreak() {
+    const list = MatchHistory.load();
+    let streak = 0;
+    for (const m of list) {
+      // A win is recorded when status is 'Complete' and time remained (mission succeeded)
+      if (m.status === 'Complete' && m.remainingSec > 0) streak++;
+      else break;
+    }
+    return Math.min(2, Math.floor(streak / 2));
+  },
+
+  /** Average squad role tier */
+  _avgSquadTier() {
+    const tiers = state.agents.map(a => state.roleTier[a.role] || 1);
+    if (!tiers.length) return 1;
+    return tiers.reduce((s, t) => s + t, 0) / tiers.length;
+  },
+
+  /** Calculate base difficulty (1-5) */
+  calculate() {
+    if (state.difficultyOverride >= 1 && state.difficultyOverride <= 5) {
+      return state.difficultyOverride;
+    }
+    const winBonus = this._winStreak();
+    const tierBonus = Math.floor(this._avgSquadTier() / 2);
+    return clamp(1 + tierBonus + winBonus, 1, 5);
+  },
+
+  /** Effective difficulty including adaptive offset */
+  effective() {
+    return clamp(state.difficulty + state.difficultyAdaptive, 1, 5);
+  },
+
+  /** Get a modifier value for current effective difficulty */
+  get(key) {
+    const eff = Math.round(this.effective());
+    return this.MODIFIERS[key]?.[eff] ?? this.MODIFIERS[key]?.[3] ?? 0;
+  },
+
+  /** Initialize difficulty at mission start */
+  init() {
+    state.difficulty = this.calculate();
+    state.difficultyAdaptive = 0;
+    state._adaptiveCheckedAt = Date.now();
+    state._difficultyAnnounced = false;
+  },
+
+  /** Adaptive mid-mission scaling check */
+  checkAdaptive() {
+    if (state.status !== 'Live') return;
+    const now = Date.now();
+    if (now - state._adaptiveCheckedAt < 30000) return; // check every 30s
+    state._adaptiveCheckedAt = now;
+
+    const total = state.objectives.length || 1;
+    const completed = state.objectives.filter(o => o.found).length;
+    const progress = completed / total;
+
+    const downedCount = Object.values(state.downedAgents || {}).filter(d => d.eliminated).length;
+    const avgStamina = state.agents.length
+      ? state.agents.reduce((s, a) => s + (a.stamina || 0), 0) / state.agents.length
+      : 100;
+
+    let changed = false;
+    // Bump up: 60%+ objectives, no eliminations, >70% stamina
+    if (progress >= 0.60 && downedCount === 0 && avgStamina > 70) {
+      if (state.difficultyAdaptive < 0.5) {
+        state.difficultyAdaptive = 0.5;
+        changed = true;
+        addChat('System', `⚡ Adaptive scaling: threat level increased. Stay sharp.`);
+        ScreenJuice.addKillFeed('DIFFICULTY INCREASED', '#ef4444');
+      }
+    }
+    // Reduce: 2+ eliminations before 30% completion
+    if (downedCount >= 2 && progress < 0.30) {
+      if (state.difficultyAdaptive > -0.5) {
+        state.difficultyAdaptive = -0.5;
+        changed = true;
+        addChat('System', `🔻 Adaptive scaling: threat level reduced. Regroup and recover.`);
+        ScreenJuice.addKillFeed('DIFFICULTY REDUCED', '#3fb950');
+      }
+    }
+    if (changed && !state._difficultyAnnounced) {
+      state._difficultyAnnounced = true;
+    }
+  },
+};
+
+function generateTriPoints(lat, lng, radius) {
+  // Create 3 points roughly in a triangle around the center, spaced ~radius meters apart
+  const offsets = [
+    [0.0009, 0.0006],
+    [-0.0006, 0.0009],
+    [0.0003, -0.0010]
+  ];
+  return offsets.map(([dlat, dlng], idx) => ({
+    id: `tri-${idx}`,
+    lat: lat + dlat,
+    lng: lng + dlng,
+    visited: false
+  }));
+}
+
+function generateHVTPatrol(lat, lng) {
+  const offsets = [[0.003, 0.002], [-0.002, 0.003], [-0.003, -0.002], [0.002, -0.003]];
+  return offsets.map(([dlat, dlng]) => ({lat: lat + dlat + (Math.random()-0.5)*0.001, lng: lng + dlng + (Math.random()-0.5)*0.001}));
+}
+
+function generateEscortWaypoints(lat, lng) {
+  const offsets = [[0.002, 0.0015], [-0.0015, 0.002], [0.001, -0.002]];
+  return offsets.map(([dlat, dlng], i) => ({ id: `wp-${i}`, lat: lat + dlat + (Math.random()-0.5)*0.0008, lng: lng + dlng + (Math.random()-0.5)*0.0008 }));
+}
+
+function generateReconPoints(lat, lng, count) {
+  const points = []; const angleStep = (Math.PI * 2) / count; const baseDist = 0.004 + Math.random() * 0.002;
+  for (let i = 0; i < count; i++) {
+    const angle = angleStep * i + Math.random() * 0.4;
+    points.push({ id: `rc-${i}`, lat: lat + Math.sin(angle) * baseDist, lng: lng + Math.cos(angle) * baseDist, scanned: false });
+  }
+  return points;
+}
+
+function generateRelayPoints(lat, lng, count) {
+  const points = []; const angleStep = (Math.PI * 2) / count; const baseDist = 0.003 + Math.random() * 0.002;
+  for (let i = 0; i < count; i++) {
+    const angle = angleStep * i + Math.random() * 0.3;
+    points.push({id: String.fromCharCode(65 + i), lat: lat + Math.sin(angle) * baseDist, lng: lng + Math.cos(angle) * baseDist, activated: false});
+  }
+  return points;
 }
 
 function customMarkerObjectives() {
@@ -3103,12 +9237,355 @@ function markerInArea(m) {
   return haversine({lat:m.lat, lng:m.lng}, {lat:getMissionCenter()[0], lng:getMissionCenter()[1]}) <= 1800;
 }
 
+/* ========================== BEHAVIOR TREE AI ========================== */
+
+const BehaviorTree = {
+  // Node types
+  Selector(nodes) {
+    return { type: 'selector', nodes };
+  },
+  Sequence(nodes) {
+    return { type: 'sequence', nodes };
+  },
+  Condition(fn) {
+    return { type: 'condition', fn };
+  },
+  Action(fn) {
+    return { type: 'action', fn };
+  },
+
+  // Tick a tree against a threat context. Returns 'success' | 'failure' | 'running'
+  tick(tree, ctx) {
+    if (!tree) return 'failure';
+    switch (tree.type) {
+      case 'selector': {
+        for (const node of tree.nodes) {
+          const res = this.tick(node, ctx);
+          if (res === 'success' || res === 'running') return res;
+        }
+        return 'failure';
+      }
+      case 'sequence': {
+        for (const node of tree.nodes) {
+          const res = this.tick(node, ctx);
+          if (res === 'failure') return 'failure';
+          if (res === 'running') return 'running';
+        }
+        return 'success';
+      }
+      case 'condition': {
+        return tree.fn(ctx) ? 'success' : 'failure';
+      }
+      case 'action': {
+        return tree.fn(ctx);
+      }
+      default:
+        return 'failure';
+    }
+  }
+};
+
+// Difficulty scaling helpers
+function getDifficultyMultiplier(stat) {
+  const keyMap = { speed: 'threatSpeed', detect: 'detectRange', reinforcement: 'reinforceChance' };
+  const key = keyMap[stat] || stat;
+  const val = DifficultySystem.get(key);
+  if (val !== undefined && val !== 0) return val;
+  // Fallback for stats not in DifficultySystem (e.g. ambushPatience)
+  const diff = clamp(state.difficulty || 1, 1, 5);
+  const mults = {
+    speed: [0.85, 1.0, 1.08, 1.16, 1.25],
+    detect: [0.85, 1.0, 1.10, 1.20, 1.30],
+    reinforcement: [0, 0.10, 0.20, 0.30, 0.40],
+    ambushPatience: [6.0, 4.5, 3.0, 1.5, 0.0]
+  };
+  return (mults[stat] || [1,1,1,1,1])[diff - 1];
+}
+
+function computeMissionDifficulty() {
+  const agents = state.agents || [];
+  const squadSize = Math.max(1, agents.length);
+  // Average role tier (1-3) — default to 1 if not set
+  const avgTier = agents.reduce((s, a) => s + (a.roleTier || 1), 0) / squadSize;
+  // Win streak bonus from match history
+  let winStreak = 0;
+  try {
+    const hist = JSON.parse(localStorage.getItem('slv2_match_history') || '[]');
+    for (let i = hist.length - 1; i >= 0; i--) {
+      if (hist[i].result === 'win') winStreak++;
+      else break;
+    }
+  } catch {}
+  const winStreakBonus = Math.min(2, Math.floor(winStreak / 2));
+  return clamp(1 + Math.floor(avgTier / 2) + winStreakBonus, 1, 5);
+}
+
+// Predictive intercept: calculate where target will be based on velocity
+function predictInterceptPos(threat, target, speed) {
+  if (!target || !target._lastPositions || target._lastPositions.length < 2) {
+    return { lat: target?.lat ?? threat.lat, lng: target?.lng ?? threat.lng };
+  }
+  const prev = target._lastPositions[target._lastPositions.length - 2];
+  const curr = target._lastPositions[target._lastPositions.length - 1];
+  const dt = (curr.t - prev.t) / 1000;
+  if (dt <= 0) return { lat: target.lat, lng: target.lng };
+  // Approximate velocity in deg/s
+  const vLat = (curr.lat - prev.lat) / dt;
+  const vLng = (curr.lng - prev.lng) / dt;
+  // Time to intercept (distance / speed)
+  const dLat = target.lat - threat.lat;
+  const dLng = target.lng - threat.lng;
+  const distDeg = Math.sqrt(dLat * dLat + dLng * dLng) || 1;
+  const timeToIntercept = distDeg / (speed || 0.00038);
+  return {
+    lat: target.lat + vLat * timeToIntercept,
+    lng: target.lng + vLng * timeToIntercept
+  };
+}
+
+// Build a behavior tree for a threat
+function createThreatBehaviorTree(t) {
+  return BehaviorTree.Selector([
+    // 1. Retreat & Heal
+    BehaviorTree.Sequence([
+      BehaviorTree.Condition(ctx => ctx.t._retreatHealActive === true),
+      BehaviorTree.Action(ctx => {
+        const { t, center } = ctx;
+        // Move away from nearest agent
+        const nearby = state.agents.filter(a => haversine(a, t) <= 350);
+        if (nearby.length) {
+          const cLat = nearby.reduce((s, a) => s + a.lat, 0) / nearby.length;
+          const cLng = nearby.reduce((s, a) => s + a.lng, 0) / nearby.length;
+          const dLat2 = t.lat - cLat, dLng2 = t.lng - cLng, dist2 = Math.sqrt(dLat2 * dLat2 + dLng2 * dLng2) || 1;
+          const rs = (t.speed || 0.00038) * 2.2 * TerrainSystem.threatSpeedModifier(t.lat, t.lng) * getDifficultyMultiplier('speed');
+          const newLat = t.lat + (dLat2 / dist2) * rs;
+          const newLng = t.lng + (dLng2 / dist2) * rs;
+          if (TerrainSystem.isPassableForThreat(newLat, newLng)) { t.lat = newLat; t.lng = newLng; }
+        }
+        if (Date.now() > (t._retreatHealUntil || 0)) {
+          t._retreatHealActive = false;
+          t._retreatHealUntil = 0;
+          t.mode = 'patrol';
+          return 'success';
+        }
+        return 'running';
+      })
+    ]),
+
+    // 2. Ambush (flanker role hides near paths)
+    BehaviorTree.Sequence([
+      BehaviorTree.Condition(ctx => ctx.t._swarmRole === 'flanker' && ctx.t.mode !== 'hunt' && ctx.t.mode !== 'retreat'),
+      BehaviorTree.Condition(ctx => {
+        const patience = getDifficultyMultiplier('ambushPatience');
+        if (patience <= 0) return true; // instant trigger at max diff
+        if (!ctx.t._ambushTimer) ctx.t._ambushTimer = Date.now() + patience * 1000;
+        return Date.now() >= ctx.t._ambushTimer;
+      }),
+      BehaviorTree.Action(ctx => {
+        const { t } = ctx;
+        // Find nearest agent on a "high-traffic" path (within 200m of any agent)
+        const nearest = state.agents.reduce((best, a) => {
+          const d = haversine(a, t);
+          return d < (best.d || Infinity) ? { agent: a, d } : best;
+        }, {});
+        if (nearest.agent && nearest.d < 200) {
+          t.mode = 'hunt';
+          t.targetId = nearest.agent.id;
+          t.huntCooldown = Date.now() + Math.round(10000 / (1.0 + (state.objectives.filter(o => o.found).length / (state.objectives.length || 1)) * 0.5));
+          t._ambushTimer = 0;
+          return 'success';
+        }
+        // Stay still / hide
+        return 'running';
+      })
+    ]),
+
+    // 3. Investigate (lost target — spiral search at last known pos)
+    BehaviorTree.Sequence([
+      BehaviorTree.Condition(ctx => ctx.t._investigateActive === true),
+      BehaviorTree.Action(ctx => {
+        const { t } = ctx;
+        if (!t._investigateTarget) { t._investigateActive = false; return 'failure'; }
+        const target = t._investigateTarget;
+        const now = Date.now();
+        if (now > (t._investigateUntil || 0)) {
+          t._investigateActive = false;
+          t._investigateTarget = null;
+          t.mode = 'patrol';
+          t.targetId = null;
+          return 'success';
+        }
+        // Spiral search around last known position
+        const elapsed = (now - (t._investigateStart || now)) / 1000;
+        const angle = elapsed * 1.5; // radians per second
+        const radius = Math.min(0.003, elapsed * 0.00015); // expand spiral
+        const sp = (t.speed || 0.00038) * 0.7 * TerrainSystem.threatSpeedModifier(t.lat, t.lng) * getDifficultyMultiplier('speed');
+        const newLat = target.lat + Math.cos(angle) * radius;
+        const newLng = target.lng + Math.sin(angle) * radius;
+        const dLat = newLat - t.lat, dLng = newLng - t.lng;
+        const dist = Math.sqrt(dLat * dLat + dLng * dLng) || 1;
+        const moveLat = t.lat + (dLat / dist) * sp;
+        const moveLng = t.lng + (dLng / dist) * sp;
+        if (TerrainSystem.isPassableForThreat(moveLat, moveLng)) { t.lat = moveLat; t.lng = moveLng; }
+        return 'running';
+      })
+    ]),
+
+    // 4. Call Reinforcements (when entering hunt mode)
+    BehaviorTree.Sequence([
+      BehaviorTree.Condition(ctx => ctx.t.mode === 'hunt' && ctx.t.targetId && !ctx.t._reinforcementCalled),
+      BehaviorTree.Action(ctx => {
+        const { t } = ctx;
+        const chance = getDifficultyMultiplier('reinforcement');
+        if (Math.random() < chance && state.threats.length < 8) {
+          t._reinforcementCalled = true;
+          t._reinforcementSpawnAt = Date.now() + 10000;
+        }
+        return 'success'; // always succeed so tree continues
+      })
+    ]),
+
+    // 5. Hunt (predictive intercept)
+    BehaviorTree.Sequence([
+      BehaviorTree.Condition(ctx => ctx.t.mode === 'hunt' && ctx.t.targetId),
+      BehaviorTree.Action(ctx => {
+        const { t, activeDecoy } = ctx;
+        let target = state.agents.find(a => a.id === t.targetId);
+        if (activeDecoy && haversine(t, activeDecoy) <= TrapSystem.CONFIG.decoy.attractRadius) {
+          target = activeDecoy;
+        }
+        if (!target) {
+          // Lost target — start investigate
+          t._investigateActive = true;
+          t._investigateTarget = { lat: t._lastKnownLat ?? t.lat, lng: t._lastKnownLng ?? t.lng };
+          t._investigateStart = Date.now();
+          t._investigateUntil = Date.now() + 8000;
+          t.mode = 'investigate';
+          t.targetId = null;
+          return 'success';
+        }
+        // Update last known position
+        t._lastKnownLat = target.lat;
+        t._lastKnownLng = target.lng;
+
+        const baseHuntSpeed = (t.speed || 0.00038) * 2 * (1.0 + (state.objectives.filter(o => o.found).length / (state.objectives.length || 1)) * 0.5) * WeatherSystem.threatSpeedMultiplier() * getDifficultyMultiplier('speed');
+        const terrainSpeedMult = TerrainSystem.threatSpeedModifier(t.lat, t.lng);
+        const huntSpeed = baseHuntSpeed * terrainSpeedMult;
+
+        // Predictive intercept
+        const intercept = predictInterceptPos(t, target, huntSpeed);
+        const dLat = intercept.lat - t.lat;
+        const dLng = intercept.lng - t.lng;
+        const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+
+        if (dist > 0.0001) {
+          // Flanking repulsion
+          let flankDx = 0, flankDy = 0;
+          const huntingThreats = state.threats.filter(o => o.id !== t.id && o.mode === 'hunt' && o.targetId === t.targetId);
+          huntingThreats.forEach(other => {
+            const dx = t.lat - other.lat, dy = t.lng - other.lng, od = Math.sqrt(dx * dx + dy * dy);
+            if (od < 0.003 && od > 0.0001) {
+              flankDx += (dx / od) * 0.00035;
+              flankDy += (dy / od) * 0.00035;
+            }
+          });
+
+          // Pinch maneuver
+          let pinchDx = 0, pinchDy = 0;
+          if (huntingThreats.length >= 2) {
+            const allHunting = state.threats.filter(o => o.mode === 'hunt' && o.targetId === t.targetId);
+            const idxInHunt = allHunting.findIndex(o => o.id === t.id);
+            if (idxInHunt >= 0 && allHunting.length >= 3) {
+              const angleOffset = (idxInHunt / allHunting.length) * Math.PI * 2;
+              const approachAngle = Math.atan2(dLng, dLat) + angleOffset * 0.4;
+              pinchDx = Math.cos(approachAngle) * 0.0003 - (dLat / dist) * baseHuntSpeed * 0.3;
+              pinchDy = Math.sin(approachAngle) * 0.0003 - (dLng / dist) * baseHuntSpeed * 0.3;
+            }
+          }
+
+          const newLat = t.lat + (dLat / dist) * huntSpeed + flankDx + pinchDx;
+          const newLng = t.lng + (dLng / dist) * huntSpeed + flankDy + pinchDy;
+          if (TerrainSystem.isPassableForThreat(newLat, newLng)) {
+            t.lat = newLat; t.lng = newLng;
+          }
+        }
+
+        if (Date.now() > t.huntCooldown && t._alertState !== 'hunting') {
+          t.mode = 'patrol'; t.targetId = null;
+        }
+        return 'running';
+      })
+    ]),
+
+    // 6. Patrol / default movement
+    BehaviorTree.Action(ctx => {
+      const { t, center, playerCentroid, threatAggression, i } = ctx;
+      t.angle = (t.angle || 0) + 0.38 + (i || 0) * 0.08;
+      const orbit = (t.speed || 0.00038) * TerrainSystem.threatSpeedModifier(t.lat, t.lng) * getDifficultyMultiplier('speed');
+      const adLat = center[0] * 0.7 + playerCentroid.lat * 0.3 - t.lat;
+      const adLng = center[1] * 0.7 + playerCentroid.lng * 0.3 - t.lng;
+      const adDist = Math.sqrt(adLat * adLat + adLng * adLng) || 1;
+      const bias = 0.00008 * threatAggression;
+      const newLat = t.lat + Math.sin(t.angle) * orbit + (adLat / adDist) * bias;
+      const newLng = t.lng + Math.cos(t.angle * 0.9) * orbit * 1.25 + (adLng / adDist) * bias;
+      if (TerrainSystem.isPassableForThreat(newLat, newLng)) {
+        t.lat = newLat; t.lng = newLng;
+      }
+      if (haversine({ lat: t.lat, lng: t.lng }, { lat: center[0], lng: center[1] }) > 1450) {
+        const [la, ln] = jitter(center, 0.01); t.lat = la; t.lng = ln;
+      }
+      return 'running';
+    })
+  ]);
+}
+
 function generateThreats() {
   const center = getMissionCenter();
-  const seeds = [['Jammer Kestrel',135,0.008,0.00042],['Hunter Relay',115,0.011,0.00034],['False Beacon',95,0.0065,0.0005]];
+  const squadSize = Math.max(1, state.agents.length || 1);
+  const baseSeeds = [['Jammer Kestrel',135,0.008,0.00042],['Signal Jammer',115,0.011,0.00034],['False Beacon',95,0.0065,0.0005]];
+  const diff = clamp(state.difficulty || computeMissionDifficulty(), 1, 5);
+  state.difficulty = diff;
+  const diffCountMod = diff - 2;
+  const threatCount = Math.min(8, Math.max(2, Math.floor(squadSize * 0.8) + 1 + diffCountMod));
+  const seeds = [];
+  for (let i = 0; i < threatCount; i++) {
+    const base = baseSeeds[i % baseSeeds.length];
+    const speedMult = 1 + (squadSize - 1) * 0.05;
+    seeds.push([base[0] + (i >= baseSeeds.length ? ` ${i + 1}` : ''), base[1], base[2], base[3] * speedMult]);
+  }
+
+  // Phase 7 Task 9 — Procedural threat placement using noise valleys and ridges
+  const hm = state.proceduralHeightmap;
+  const valleys = hm ? ProceduralMap.findValleys(hm, threatCount) : [];
+  const ridges = hm ? ProceduralMap.findRidges(hm, threatCount) : [];
+
   state.threats = seeds.map(([name, radius, spread, speed], i)=>{
-    const [lat, lng] = jitter(center, spread);
-    return { id:`threat-${i}`, name, radius, lat, lng, angle: Math.random()*Math.PI*2, speed, alert: false, lastHit: 0, mode: 'patrol', huntCooldown: 0, targetId: null };
+    let lat, lng;
+    if (hm && valleys.length && ridges.length) {
+      // Alternate between valleys (ambush) and ridges (overwatch)
+      const useValley = i % 2 === 0;
+      const point = useValley ? valleys[Math.floor(i / 2) % valleys.length] : ridges[Math.floor(i / 2) % ridges.length];
+      if (point) {
+        // Add small jitter so multiple threats don't stack exactly
+        [lat, lng] = jitter([point.lat, point.lng], 0.001);
+      } else {
+        [lat, lng] = jitter(center, spread);
+      }
+    } else {
+      [lat, lng] = jitter(center, spread);
+    }
+    const t = {
+      id:`threat-${i}`, name, radius, lat, lng, angle: Math.random()*Math.PI*2, speed, alert: false, lastHit: 0,
+      mode: 'patrol', huntCooldown: 0, targetId: null, evadedAt: 0, respawnAt: 0, retreatUntil: 0,
+      hits: 0, _alertState: 'idle', _alertTimer: 0, _swarmRole: null,
+      _lastKnownLat: null, _lastKnownLng: null,
+      _investigateActive: false, _investigateTarget: null, _investigateStart: 0, _investigateUntil: 0,
+      _reinforcementCalled: false, _reinforcementSpawnAt: 0,
+      _retreatHealActive: false, _retreatHealUntil: 0,
+      _ambushTimer: 0
+    };
+    t.behaviorTree = createThreatBehaviorTree(t);
+    return t;
   });
 }
 
@@ -3123,6 +9600,8 @@ function updateLocalAgentPosition(lat, lng, accuracy) {
     // Limit path size to avoid memory bloat
     if (state.playerPath.length > 2000) state.playerPath = state.playerPath.slice(-1500);
   }
+  // Broadcast position to multiplayer server (~throttled server-side)
+  SignalNet.updatePosition(lat, lng, state.playerHeading || 0);
   $('#manualLat').value = lat.toFixed(6);
   $('#manualLng').value = lng.toFixed(6);
   renderMissionMap();
@@ -3133,6 +9612,7 @@ function updateLocalAgentPosition(lat, lng, accuracy) {
 /* ========================== MISSION ========================== */
 
 function initMission() {
+  DailyMissions.renderHUD();
   // Sound init on first user interaction
   const initSound = () => {
     if (!SoundFX.inited) {
@@ -3157,6 +9637,7 @@ function initMission() {
   // Fullscreen radar toggle
   $('#fullscreenRadar').addEventListener('click', ()=>{
     RadarModule.toggleFullscreen();
+    RadarFullscreenLabel.update();
     const btn = $('#fullscreenRadar');
     btn.textContent = RadarModule.fullscreen ? '🔲' : '🔄';
     btn.title = RadarModule.fullscreen ? 'Minimize Radar' : 'Full Radar';
@@ -3165,9 +9646,37 @@ function initMission() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && RadarModule.fullscreen) {
       RadarModule.toggleFullscreen();
+      RadarFullscreenLabel.update();
       const btn = $('#fullscreenRadar');
       btn.textContent = '🔄';
       btn.title = 'Full Radar';
+    }
+    // P key: place waypoint ping at current GPS position
+    if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey && !e.repeat) {
+      if (state.screen === 'mission' && state.status === 'Live') {
+        const local = state.agents.find(a => a.id === state.localAgentId);
+        if (local && Number.isFinite(local.lat) && Number.isFinite(local.lng)) {
+          PingSystem.placePing(local.lat, local.lng, 'waypoint');
+        }
+      }
+    }
+    // C key: open command wheel (also handled in CommandWheel._bindEvents)
+    if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey && !e.repeat) {
+      // CommandWheel handles this via its own listener, but also ensure
+      // right-click on the Leaflet map emits move-here instead of opening wheel
+    }
+
+    // Quick-chat presets F1-F6
+    if (e.key.startsWith('F') && !e.ctrlKey && !e.metaKey && !e.repeat) {
+      const preset = state.quickChat.find(q => q.key === e.key);
+      if (preset && state.screen === 'mission' && state.status === 'Live') {
+        e.preventDefault();
+        const local = state.agents.find(a => a.id === state.localAgentId);
+        const sender = local ? `${local.name} (${local.callsign})` : 'Mission Control';
+        const text = `${preset.icon} ${preset.label}`;
+        addChat(sender, text, { team: local?.team || 'North' });
+        SignalNet.sendChat(text, true);
+      }
     }
   });
 
@@ -3206,6 +9715,7 @@ function initMission() {
     if (fsBtn) {
       fsBtn.addEventListener('click', () => {
         RadarModule.toggleFullscreen();
+        RadarFullscreenLabel.update();
         fsBtn.textContent = RadarModule.fullscreen ? 'Fullscreen' : 'Minimize';
       });
     }
@@ -3359,6 +9869,16 @@ function initMission() {
     if (local) MapModule.setCenter(local.lat, local.lng, 16);
   });
 
+  // Settings button in HUD overflow
+  const openSettingsBtn = $('#openSettingsBtn');
+  if (openSettingsBtn) {
+    openSettingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      $('#hudOverflowMenu')?.classList.remove('open');
+      SettingsMenu.open();
+    });
+  }
+
   // HUD overflow menu toggle
   $('#hudOverflowToggle').addEventListener('click', (e)=>{
     e.stopPropagation();
@@ -3384,6 +9904,43 @@ function initMission() {
     if (local) MapModule.setCenter(local.lat, local.lng, 16);
   });
 
+  // Map Legend toggle (2.3)
+  (function initMapLegend() {
+    const toggle = $('#mapLegendToggle');
+    const content = $('#mapLegendContent');
+    if (!toggle || !content) return;
+    // Start collapsed on mobile, expanded on desktop
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) content.classList.add('collapsed');
+    toggle.addEventListener('click', () => {
+      content.classList.toggle('collapsed');
+    });
+  })();
+
+  // Trap selector button handlers
+  (function initTrapSelector() {
+    const selector = $('#trapSelector');
+    if (!selector) return;
+    selector.querySelectorAll('.trap-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.trap;
+        if (!type) return;
+        state.selectedTrapType = type;
+        // Visual selection
+        selector.querySelectorAll('.trap-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        // Deploy the trap immediately
+        TrapSystem.deploySelected();
+        // Hide selector after deploy
+        state.trapSelectorOpen = false;
+        selector.classList.add('hidden');
+      });
+    });
+    // Set initial selection
+    const initialBtn = selector.querySelector(`.trap-btn[data-trap="${state.selectedTrapType || 'mine'}"]`);
+    if (initialBtn) initialBtn.classList.add('selected');
+  })();
+
   // GPS controls
   $('#startGps').addEventListener('click', ()=> MapModule.startGPS());
   $('#stopGps').addEventListener('click', ()=> MapModule.stopGPS());
@@ -3403,14 +9960,48 @@ function initMission() {
     const input = $('#chatInput');
     if (!input.value.trim()) return;
     const text = input.value.trim();
-    addChat('Mission Control', text);
-    SignalNet.sendChat(text);
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    const sender = local ? `${local.name} (${local.callsign})` : 'Mission Control';
+    const teamOnly = $('#chatTeamToggle')?.classList.contains('active') || false;
+    addChat(sender, text, { team: teamOnly ? (local?.team || 'North') : null });
+    SignalNet.sendChat(text, teamOnly);
     input.value = '';
+  });
+
+  // Chat tabs — PHASE 12.2 CHAT
+  $('#chatTabAll')?.addEventListener('click', () => ChatSystem.setTab('all'));
+  $('#chatTabTeam')?.addEventListener('click', () => ChatSystem.setTab('team'));
+  $('#chatTabSquad')?.addEventListener('click', () => ChatSystem.setTab('squad'));
+  $('#chatTabSystem')?.addEventListener('click', () => ChatSystem.setTab('system'));
+
+  // Chat toolbar toggles
+  $('#chatSoundToggle')?.addEventListener('click', () => ChatSystem.toggleSound());
+  $('#chatTimestampsToggle')?.addEventListener('click', () => ChatSystem.toggleTimestamps());
+  $('#chatTeamToggle')?.addEventListener('click', () => {
+    const btn = $('#chatTeamToggle');
+    if (!btn) return;
+    btn.classList.toggle('active');
+    btn.textContent = btn.classList.contains('active') ? '👥 Team' : '🌐 All';
+  });
+
+  // Report / Kick button in HUD overflow
+  $('#reportKickBtn')?.addEventListener('click', ()=>{
+    ReportKickSystem._showPlayerList();
   });
 
   // End mission button in HUD → show confirm dialog
   $('#endMissionBtn').addEventListener('click', ()=>{
     $('#confirmEndDialog').classList.remove('hidden');
+  });
+
+  // Dynamic Music toggle
+  $('#musicToggle')?.addEventListener('click', ()=>{
+    const on = MusicSystem.toggle();
+    const btn = $('#musicToggle');
+    if (btn) {
+      btn.classList.toggle('muted', !on);
+      btn.title = on ? 'Mute Ambient Music' : 'Unmute Ambient Music';
+    }
   });
 
   // Confirm dialog
@@ -3433,12 +10024,52 @@ function initMission() {
   });
 }
 
-function startMissionClock() {
+function startMissionClock(authoritative) {
   stopMissionClock();
   state.status = 'Live';
   state.remaining = state.duration * 60;
   state.missionStartTime = Date.now();
+  DifficultySystem.init();
+  EventLog.clear();
+  DynamicEvents.start();
+  SupplyCacheSystem.start();
+  WeatherSystem.init();
+  // Phase 7 Task 9 — Generate procedural terrain before objectives/threats if not already done
+  if (!state.proceduralHeightmap || !state.proceduralInterestMap) {
+    TerrainSystem.generate(getMissionCenter());
+  }
+  // Phase 7 Task 9 — Regenerate objectives/threats to use procedural data when not from server
+  if (!authoritative || !authoritative.objectives) {
+    if (!state.objectives?.length) generateObjectives();
+  }
+  if (!authoritative || !authoritative.threats) {
+    if (!state.threats?.length) generateThreats();
+  }
+  TrapSystem.initMission();
+  TriangulationMinigame.init();
   SoundFX.missionStart();
+  MusicSystem.start();
+  // Apply authoritative server state if provided (server-side game state sync)
+  if (authoritative) {
+    if (authoritative.threats) state.threats = authoritative.threats;
+    if (authoritative.objectives) state.objectives = authoritative.objectives;
+    if (authoritative.scores) state.scores = authoritative.scores;
+    if (authoritative.weather) state.weather = authoritative.weather;
+    if (authoritative.terrain) state.terrainZones = authoritative.terrain;
+    if (authoritative.dynamicEvents) state.dynamicEvents = { ...state.dynamicEvents, ...authoritative.dynamicEvents };
+    if (authoritative.supplyCaches) state.supplyCaches = authoritative.supplyCaches;
+    if (authoritative.traps) state.traps = authoritative.traps;
+    if (authoritative.downedAgents) state.downedAgents = authoritative.downedAgents;
+  }
+  EventLog.add('system', '🚀', `<strong>Mission Started</strong> Good luck, agent`);
+  // Announce biome zones
+  const biomes = TerrainSystem.listBiomes();
+  if (biomes.length) {
+    addChat('System', `🗺️ Biomes detected: ${biomes.join(', ')}`);
+    ScreenJuice.addKillFeed('BIOMES: ' + biomes.join(' · '), '#ffd965');
+  }
+  // Countdown animation
+  showCountdown();
   let lastTickMinute = Math.ceil(state.remaining / 60);
   timerId = setInterval(()=>{
     state.remaining = Math.max(0, state.remaining-1);
@@ -3479,80 +10110,396 @@ function stopMissionClock() {
   state.extractCountdown = 0;
   $('#extractionOverlay')?.classList.add('hidden');
   TimerWarnings.stop();
+  DynamicEvents.stop();
+  SupplyCacheSystem.stop();
+  WeatherSystem.clearVisuals();
+  MusicSystem.stop();
+  // Phase 7 Task 9 — Clear procedural maps so next mission generates fresh
+  state.proceduralHeightmap = null;
+  state.proceduralInterestMap = null;
+
+  // Phase 7 Task 4 — Reset triangulation minigame state
+  TriangulationMinigame.reset();
 }
+
+// Team Balance — assigns agents to balanced teams and tracks composition
+const TeamBalance = {
+  _teams: { North: [], South: [] },
+  _lastBalance: null,
+
+  assignTeam(agent) {
+    // Simple round-robin: alternate teams based on total assignment count
+    const nCount = this._teams.North.length;
+    const sCount = this._teams.South.length;
+    const team = nCount <= sCount ? 'North' : 'South';
+    this._teams[team].push(agent);
+    return team;
+  },
+
+  tick() {
+    // Re-balance if teams are significantly uneven (stub for future use)
+  },
+
+  renderBalancePanel() {
+    const panel = $('#balancePanel');
+    if (!panel) return;
+    panel.innerHTML = `<div class="balance-north"><strong>North</strong>: ${this._teams.North.length} agents</div>
+                       <div class="balance-south"><strong>South</strong>: ${this._teams.South.length} agents</div>`;
+  },
+
+  reset() {
+    this._teams = { North: [], South: [] };
+  }
+};
 
 function simulateWorld() {
   if (state.status !== 'Live') return;
   const center = getMissionCenter();
 
-  // --- THREAT HUNTING ---
-  state.threats.forEach((t, i)=>{
+  // --- TUTORIAL AUTO-ADVANCE ---
+  if (state.tutorial.inProgress) {
+    const step = TutorialSystem.STEPS[state.tutorial.step];
+    if (step) {
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      if (step.action === 'move' && local && (local.lat !== center[0] || local.lng !== center[1])) {
+        TutorialSystem.next();
+      }
+      if (step.action === 'reach' && local && state.objectives.some(o => !o.found && haversine(local, o) < 30)) {
+        TutorialSystem.next();
+      }
+      if (step.action === 'avoid' && local) {
+        const nearestThreat = state.threats.reduce((best, t) => {
+          const d = haversine(local, t);
+          return d < best.d ? { t, d } : best;
+        }, { d: Infinity });
+        if (nearestThreat.d > 200) TutorialSystem.next();
+      }
+    }
+  }
+
+  // --- TEAM BALANCE TICK ---
+  TeamBalance.tick();
+
+  // --- TRAP SYSTEM TICK ---
+  TrapSystem.tick();
+
+  // --- WEATHER SYSTEM TICK ---
+  WeatherSystem.tick();
+
+  // --- DYNAMIC MUSIC TICK ---
+  MusicSystem.tick();
+
+  // --- TERRAIN SYSTEM TICK ---
+  TerrainSystem.renderHUD();
+
+  // Phase 6 Task 10 — Ambient zone particles
+  if (Math.random() < 0.2) {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (local) {
+      const terrain = TerrainSystem.getTerrainAt(local.lat, local.lng);
+      const weather = state.weather?.type || 'clear';
+      const preset = weather !== 'clear' ? (weather === 'storm' ? 'rain' : weather)
+        : ({ urban: 'urban', forest: 'jungle', industrial: 'urban', water: 'fog' }[terrain]);
+      if (preset) ParticleSystem.spawnPreset(preset, local.lat, local.lng, 1);
+    }
+  }
+
+  // --- POWER BUDGET TICK (Phase 7 Task 6) ---
+  PowerBudget.tick();
+
+  // --- DIFFICULTY ADAPTIVE SCALING (Phase 7 Task 3) ---
+  DifficultySystem.checkAdaptive();
+
+  // --- THREAT HUNTING (Behavior Tree AI) ---
+  // When connected to a server, threats are authoritatively synced; keep local
+  // prediction for smoothness but do not regenerate them client-side.
+  const activeAgents = state.agents.filter(a => Number.isFinite(a.lat) && Number.isFinite(a.lng));
+  const playerCentroid = activeAgents.length ? {
+    lat: activeAgents.reduce((s, a) => s + a.lat, 0) / activeAgents.length,
+    lng: activeAgents.reduce((s, a) => s + a.lng, 0) / activeAgents.length
+  } : { lat: center[0], lng: center[1] };
+
+  // Mission progress scaling
+  const totalObjs = state.objectives.length || 1;
+  const completedObjs = state.objectives.filter(o => o.found).length;
+  const missionProgress = completedObjs / totalObjs;
+  const threatAggression = 1.0 + missionProgress * 0.5;
+
+  // Tick counter for swarm coordination
+  if (state.threatTick === undefined) state.threatTick = 0;
+  state.threatTick++;
+
+  // Track agent positions for predictive intercept
+  activeAgents.forEach(a => {
+    if (!a._lastPositions) a._lastPositions = [];
+    a._lastPositions.push({ lat: a.lat, lng: a.lng, t: Date.now() });
+    if (a._lastPositions.length > 5) a._lastPositions.shift();
+  });
+
+  const activeDecoy = TrapSystem.getActiveDecoy();
+
+  // Pass 1: Alert state detection + mode switching + coordinated attack + retreat triggers
+  state.threats.forEach((t, i) => {
     const nearest = state.agents.reduce((best, a) => {
       const d = haversine(a, t);
       return d < (best.d || Infinity) ? { agent: a, d } : best;
     }, {}).agent;
     const nearestDist = nearest ? haversine(nearest, t) : Infinity;
-
-    // Hunt mode: within detection range of a player (stealth reduces range)
+    const squadSize = Math.max(1, state.agents.length || 1);
+    const baseDetectRange = Math.min(600, 400 + (squadSize - 1) * 40) * threatAggression * getDifficultyMultiplier('detect');
+    const terrainDetectMult = nearest ? TerrainSystem.threatDetectModifier(nearest.lat, nearest.lng) : 1.0;
     const detectRange = (nearest && nearest.id === state.localAgentId)
-      ? StealthMode.getEffectiveDetectRange(400)
-      : 400;
-    if (nearestDist < detectRange && nearest) {
-      t.mode = 'hunt';
-      t.huntCooldown = Date.now() + 10000; // 10s hunt
-      t.targetId = nearest.id;
-    } else if (t.mode === 'hunt' && Date.now() > t.huntCooldown) {
-      t.mode = 'patrol';
+      ? StealthMode.getEffectiveDetectRange(baseDetectRange) * terrainDetectMult
+      : baseDetectRange * terrainDetectMult;
+    if (t.hits === undefined) t.hits = 0;
+
+    // Retreat & Heal: 3+ hits triggers retreat for 12s with reduced detection
+    if (t.hits >= 3 && !t._retreatHealActive && t.mode !== 'retreat') {
+      t._retreatHealActive = true;
+      t._retreatHealUntil = Date.now() + 12000;
+      t.mode = 'retreat';
       t.targetId = null;
+      t._alertState = 'idle';
     }
 
-    if (t.mode === 'hunt' && t.targetId) {
-      // Move toward target at 2x speed
-      const target = state.agents.find(a => a.id === t.targetId);
-      if (target) {
-        const dLat = target.lat - t.lat;
-        const dLng = target.lng - t.lng;
-        const dist = Math.sqrt(dLat*dLat + dLng*dLng);
-        if (dist > 0.0001) {
-          const huntSpeed = (t.speed || 0.00038) * 2;
-          t.lat += (dLat / dist) * huntSpeed;
-          t.lng += (dLng / dist) * huntSpeed;
+    // Legacy retreat (2+ agents very close) — shorter, doesn't heal
+    const retreatThreshold = Math.max(80, 250 - t.hits * 40);
+    const nearbyAgents = state.agents.filter(a => haversine(a, t) <= retreatThreshold);
+    if (nearbyAgents.length >= 2 && t.mode !== 'retreat' && !t._retreatHealActive) {
+      t.mode = 'retreat';
+      t.retreatUntil = Date.now() + 6000;
+      t.targetId = null;
+    } else if (t.mode === 'retreat' && Date.now() > t.retreatUntil && !t._retreatHealActive) {
+      const nearestThreat = state.threats.reduce((best, other) => {
+        if (other.id === t.id) return best;
+        const d = haversine(t, other);
+        return d < (best.d || Infinity) ? { threat: other, d } : best;
+      }, {}).threat;
+      if (nearestThreat && haversine(t, nearestThreat) >= 500) {
+        const dLat = nearestThreat.lat - t.lat;
+        const dLng = nearestThreat.lng - t.lng;
+        const dist = Math.sqrt(dLat*dLat + dLng*dLng) || 1;
+        t.lat += (dLat / dist) * (t.speed || 0.00038) * 1.5;
+        t.lng += (dLng / dist) * (t.speed || 0.00038) * 1.5;
+      } else t.mode = 'patrol';
+    }
+
+    // Respawn
+    const EVADE_DISTANCE = 800;
+    const allEvaded = state.agents.every(a => haversine(a, t) > EVADE_DISTANCE);
+    if (allEvaded && !t.respawnAt) {
+      t.evadedAt = Date.now();
+      t.respawnAt = Date.now() + 30000 + Math.random() * 30000;
+    } else if (!allEvaded) { t.evadedAt = 0; t.respawnAt = 0; }
+    if (t.respawnAt && Date.now() >= t.respawnAt) {
+      let attempts = 0, newLat, newLng;
+      while (attempts < 10) {
+        [newLat, newLng] = jitter(center, 0.008 + Math.random() * 0.006);
+        if (state.agents.reduce((m, a) => Math.min(m, haversine({lat:newLat,lng:newLng}, a)), Infinity) > 400) break;
+        attempts++;
+      }
+      t.lat = newLat; t.lng = newLng;
+      t.angle = Math.random() * Math.PI * 2;
+      t.mode = 'patrol'; t.targetId = null;
+      t.evadedAt = 0; t.respawnAt = 0; t.retreatUntil = 0; t.hits = 0;
+      t._retreatHealActive = false; t._retreatHealUntil = 0;
+      t._reinforcementCalled = false; t._reinforcementSpawnAt = 0;
+      t._investigateActive = false; t._investigateTarget = null;
+      return;
+    }
+
+    // Alert state system: idle -> suspicious -> alerted -> hunting
+    // During retreat & heal, detection range is reduced by 40%
+    const effectiveDetectRange = t._retreatHealActive ? detectRange * 0.6 : detectRange;
+    if (t.mode !== 'retreat' && !t._investigateActive) {
+      if (!t._alertState) t._alertState = 'idle';
+      if (!t._alertTimer) t._alertTimer = 0;
+
+      const now = Date.now();
+      if (nearestDist < effectiveDetectRange * 0.3 && nearest) {
+        t._alertState = 'hunting';
+        t.mode = 'hunt';
+        t.huntCooldown = now + Math.round(10000 / threatAggression);
+        t.targetId = nearest.id;
+      } else if (nearestDist < effectiveDetectRange * 0.6 && nearest) {
+        if (t._alertState === 'idle') {
+          t._alertState = 'suspicious';
+          t._alertTimer = now + 3000;
+        } else if (t._alertState === 'suspicious' && now > t._alertTimer) {
+          t._alertState = 'alerted';
+          t._alertTimer = now + 4000;
+        } else if (t._alertState === 'alerted' && now > t._alertTimer) {
+          t._alertState = 'hunting';
+          t.mode = 'hunt';
+          t.huntCooldown = now + Math.round(10000 / threatAggression);
+          t.targetId = nearest.id;
+        }
+      } else if (nearestDist < effectiveDetectRange && nearest) {
+        if (t._alertState === 'idle') {
+          t._alertState = 'suspicious';
+          t._alertTimer = now + 5000;
         }
       } else {
-        t.mode = 'patrol';
-        t.targetId = null;
+        if (t._alertState !== 'idle' && now > (t._alertTimer || 0)) {
+          const states = ['hunting', 'alerted', 'suspicious', 'idle'];
+          const idx = states.indexOf(t._alertState);
+          if (idx < states.length - 1) {
+            t._alertState = states[idx + 1];
+            t._alertTimer = now + 3000;
+          }
+        }
+        if (t._alertState === 'idle' && t.mode === 'hunt') {
+          // Lost target — trigger investigate instead of immediate patrol
+          t._investigateActive = true;
+          t._investigateTarget = { lat: t._lastKnownLat ?? t.lat, lng: t._lastKnownLng ?? t.lng };
+          t._investigateStart = now;
+          t._investigateUntil = now + 8000;
+          t.mode = 'investigate';
+          t.targetId = null;
+        }
       }
-    } else {
-      // Patrol mode: orbit city center
-      t.angle = (t.angle||0)+0.38+i*0.08;
-      const orbit = t.speed||0.00038;
-      t.lat += Math.sin(t.angle)*orbit;
-      t.lng += Math.cos(t.angle*0.9)*orbit*1.25;
-      // Drift back toward center if too far
-      if (haversine({lat:t.lat, lng:t.lng}, {lat:center[0], lng:center[1]}) > 1450) {
-        const [la, ln] = jitter(center, 0.01); t.lat=la; t.lng=ln;
+      if (nearestDist < detectRange && nearest && t._alertState === 'hunting') {
+        t.mode = 'hunt';
+        t.huntCooldown = now + Math.round(10000 / threatAggression);
+        t.targetId = nearest.id;
+      } else if (t.mode === 'hunt' && Date.now() > t.huntCooldown && t._alertState !== 'hunting') {
+        t._investigateActive = true;
+        t._investigateTarget = { lat: t._lastKnownLat ?? t.lat, lng: t._lastKnownLng ?? t.lng };
+        t._investigateStart = Date.now();
+        t._investigateUntil = Date.now() + 8000;
+        t.mode = 'investigate';
+        t.targetId = null;
       }
     }
 
-    // Jamming logic (stealth reduces threat effective radius against local player)
+    // Coordinated attack: alert nearby patrol threats
+    if (t.mode === 'hunt' && t.targetId) {
+      state.threats.forEach(other => {
+        if (other.id === t.id || other.mode === 'retreat' || other._retreatHealActive) return;
+        if (other.mode === 'patrol' && haversine(t, other) < 300) {
+          other.mode = 'hunt';
+          other.huntCooldown = Date.now() + Math.round(8000 / threatAggression);
+          other.targetId = t.targetId;
+        }
+      });
+    }
+
+    // Update last known position of target
+    if (t.targetId) {
+      const target = state.agents.find(a => a.id === t.targetId);
+      if (target) { t._lastKnownLat = target.lat; t._lastKnownLng = target.lng; }
+    }
+  });
+
+  // Pass 2: Behavior Tree movement + reinforcement spawn + jamming
+  state.threats.forEach((t, i) => {
+    // Ensure tree exists
+    if (!t.behaviorTree) t.behaviorTree = createThreatBehaviorTree(t);
+
+    // Tick behavior tree
+    BehaviorTree.tick(t.behaviorTree, { t, center, playerCentroid, threatAggression, i, activeDecoy });
+
+    // Spawn reinforcement if called and timer expired
+    if (t._reinforcementSpawnAt && Date.now() >= t._reinforcementSpawnAt) {
+      t._reinforcementSpawnAt = 0;
+      if (state.threats.length < 8) {
+        const baseSeeds = [['Jammer Kestrel',135,0.008,0.00042],['Signal Jammer',115,0.011,0.00034],['False Beacon',95,0.0065,0.0005]];
+        const base = baseSeeds[Math.floor(Math.random() * baseSeeds.length)];
+        const spawnAngle = Math.random() * Math.PI * 2;
+        // 600m in degrees ~ 0.0054
+        const spawnDist = 0.0054;
+        const newLat = t.lat + Math.sin(spawnAngle) * spawnDist;
+        const newLng = t.lng + Math.cos(spawnAngle) * spawnDist;
+        const newThreat = {
+          id: `threat-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+          name: base[0] + ' Reinforcement',
+          radius: base[1], lat: newLat, lng: newLng,
+          angle: Math.random() * Math.PI * 2,
+          speed: base[3] * getDifficultyMultiplier('speed'),
+          alert: false, lastHit: 0, mode: 'hunt', huntCooldown: Date.now() + 15000,
+          targetId: t.targetId, evadedAt: 0, respawnAt: 0, retreatUntil: 0,
+          hits: 0, _alertState: 'hunting', _alertTimer: 0, _swarmRole: 'attacker',
+          _lastKnownLat: t._lastKnownLat, _lastKnownLng: t._lastKnownLng,
+          _investigateActive: false, _investigateTarget: null, _investigateStart: 0, _investigateUntil: 0,
+          _reinforcementCalled: false, _reinforcementSpawnAt: 0,
+          _retreatHealActive: false, _retreatHealUntil: 0,
+          _ambushTimer: 0
+        };
+        newThreat.behaviorTree = createThreatBehaviorTree(newThreat);
+        state.threats.push(newThreat);
+        addChat('System', `⚠️ ${t.name} called reinforcements!`);
+        ScreenJuice.addKillFeed(`REINFORCEMENTS ARRIVED`, '#ef4444');
+        SoundFX.threatDetected();
+      }
+    }
+
+    // Jamming logic
     const exposed = state.agents.filter(a => {
       const d = haversine(a, t);
-      if (a.id === state.localAgentId && state.stealth) {
-        return d <= t.radius * StealthMode.DETECT_RANGE_MULT;
-      }
+      if (a.id === state.localAgentId && state.stealth) return d <= t.radius * StealthMode.DETECT_RANGE_MULT;
       return d <= t.radius;
     });
     const wasAlert = t.alert;
-    t.alert = exposed.length>0;
+    t.alert = exposed.length > 0;
     if (t.alert && !wasAlert) {
       SoundFX.threatDetected();
+      EventLog.add('threat', '⚠️', `<strong>Threat</strong> ${escapeHtml(t.name)} detected nearby`);
+      // Threat drones flash red when detecting player
+      ScreenJuice.addKillFeed(`${t.name} DETECTED`, '#ef4444');
     }
     if (exposed.length && Date.now() - (t.lastHit||0) > 9000) {
-      exposed.forEach(a=>{ a.signal=clamp(a.signal-8,24,98); a.stamina=clamp(a.stamina-4,20,100); });
+      exposed.forEach(a => {
+        // Portable Shield blocks one threat attack
+        if (a._shieldActive) {
+          a._shieldActive = false;
+          addChat('System', `🛡️ ${a.name}'s shield blocked ${t.name}'s jam!`);
+          ScreenJuice.addKillFeed(`SHIELD BLOCKED`, '#58a6ff');
+          return;
+        }
+        a.signal=clamp(a.signal-8,24,98); a.stamina=clamp(a.stamina-4,20,100);
+      });
       t.lastHit = Date.now();
+      t.hits = (t.hits || 0) + 1;
       addChat('AI Watch', `${t.name} jammed ${exposed.map(a=>a.name).join(', ')}.`);
+      EventLog.add('threat', '📡', `<strong>Jammed</strong> by ${escapeHtml(t.name)}`);
+      ScreenJuice.shake(6, 250);
+      ScreenJuice.flashVignette(0.4);
+      ScreenJuice.flashScreen('#ef4444');
+      DamageNumbers.show(`${t.name} JAM`, '#ff4444');
+      ScreenJuice.addKillFeed(`${t.name} JAMMED SQUAD`, '#ef4444');
     }
   });
+
+  // SWARM COORDINATION (runs every 5th tick ~12.5s)
+  if (state.threatTick % 5 === 0) {
+    const patrolThreats = state.threats.filter(t => t.mode === 'patrol' || t.mode === 'investigate');
+    const scoutRatio = Math.max(0.2, 0.5 - missionProgress * 0.3);
+    const attackerRatio = Math.max(0.3, 0.4 + missionProgress * 0.2);
+    let scoutCount = Math.max(1, Math.round(patrolThreats.length * scoutRatio));
+    let attackerCount = Math.max(0, Math.round(patrolThreats.length * attackerRatio));
+    patrolThreats.forEach((t, idx) => {
+      if (idx < scoutCount) t._swarmRole = 'scout';
+      else if (idx < scoutCount + attackerCount) {
+        t._swarmRole = 'attacker';
+        const nearest = activeAgents.reduce((best, a) => {
+          const d = haversine(a, t);
+          return d < (best.d||Infinity) ? {agent:a,d} : best;
+        }, {});
+        if (nearest.agent && nearest.d < 500) { t.mode='hunt'; t.targetId=nearest.agent.id; t.huntCooldown=Date.now()+12000/threatAggression; }
+      } else t._swarmRole = 'flanker';
+    });
+    // Role rotation every 4th tick
+    if (state.threatTick % 4 === 0) {
+      const allRoles = state.threats.filter(t => t._swarmRole);
+      if (allRoles.length >= 3) {
+        const roleOrder = ['scout','attacker','flanker'];
+        allRoles.forEach((t, idx) => {
+          const ci = roleOrder.indexOf(t._swarmRole);
+          if (ci >= 0 && idx % 2 === 0) t._swarmRole = roleOrder[(ci+1)%3];
+        });
+      }
+    }
+  }
 
   // --- EXTRACTION COUNTDOWN ---
   if (state.extracting) {
@@ -3572,29 +10519,769 @@ function simulateWorld() {
       const dLng = extractionObj.lng - t.lng;
       const dist = Math.sqrt(dLat*dLat + dLng*dLng);
       if (dist > 0.0005) {
-        const rushSpeed = (t.speed || 0.00038) * 1.5;
+        const rushSpeed = (t.speed || 0.00038) * 1.5 * TerrainSystem.threatSpeedModifier(t.lat, t.lng) * getDifficultyMultiplier('speed');
         t.lat += (dLat / dist) * rushSpeed;
         t.lng += (dLng / dist) * rushSpeed;
       }
       t.mode = 'hunt'; // All threats converge
     });
+    // Extraction charging station: +5%/s while in zone (Phase 7 Task 6)
+    PowerBudget.tickExtractionCharge();
   }
 
   // Apply stealth movement penalty to local player
   const speedMult = StealthMode.getSpeedMultiplier();
   StealthMode.tick();
   BatteryAwareGPS.tick();
+  GPSDegradation.tick();
+  ReviveSystem.tick();
+
+  // --- PATROL ROUTES: threats move between predefined waypoints ---
+  // Phase 7 Task 9 — Procedural patrol waypoints follow noise contours
+  state.threats.forEach(t => {
+    if ((t.mode === 'patrol' || t.mode === 'investigate') && !t._waypoints) {
+      const center = getMissionCenter();
+      t._waypoints = [];
+      const hm = state.proceduralHeightmap;
+      if (hm) {
+        // Follow noise contour: sample points at similar height to threat spawn
+        const spawnH = ProceduralMap.sampleGrid(hm, t.lat, t.lng);
+        const wpCount = 4;
+        for (let i = 0; i < wpCount; i++) {
+          const angle = (i / wpCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+          const dist = 0.0025 + Math.random() * 0.0035;
+          let wLat = t.lat + Math.sin(angle) * dist;
+          let wLng = t.lng + Math.cos(angle) * dist;
+          // Pull waypoint toward similar height (contour following)
+          const h = ProceduralMap.sampleGrid(hm, wLat, wLng);
+          const dh = h - spawnH;
+          if (Math.abs(dh) > 0.08) {
+            // Nudge toward spawn height by moving toward threat position
+            const pull = Math.min(0.6, Math.abs(dh) * 3);
+            wLat = wLat + (t.lat - wLat) * pull;
+            wLng = wLng + (t.lng - wLng) * pull;
+          }
+          t._waypoints.push({ lat: wLat, lng: wLng });
+        }
+      } else {
+        // Fallback: random orbit around center
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2 + Math.random() * 0.5;
+          const dist = 0.003 + Math.random() * 0.004;
+          t._waypoints.push({
+            lat: center[0] + Math.sin(angle) * dist,
+            lng: center[1] + Math.cos(angle) * dist
+          });
+        }
+      }
+      t._wpIndex = 0;
+    }
+    if (t.mode === 'patrol' && t._waypoints) {
+      const target = t._waypoints[t._wpIndex];
+      const dLat = target.lat - t.lat;
+      const dLng = target.lng - t.lng;
+      const dist = Math.sqrt(dLat*dLat + dLng*dLng);
+      if (dist < 0.0003) {
+        t._wpIndex = (t._wpIndex + 1) % t._waypoints.length;
+      } else {
+        const patrolSpeed = (t.speed || 0.00038) * 0.8 * TerrainSystem.threatSpeedModifier(t.lat, t.lng) * getDifficultyMultiplier('speed');
+        t.lat += (dLat / dist) * patrolSpeed;
+        t.lng += (dLng / dist) * patrolSpeed;
+      }
+    }
+  });
+
+  // --- ALLY BOT AI (role-specific, replaces Brownian motion) ---
+  function moveTo(ag, tLat, tLng, sp) { const dL=tLat-ag.lat,dN=tLng-ag.lng,d=Math.sqrt(dL*dL+dN*dN); if(d>5e-5){ag.lat+=dL/d*sp;ag.lng+=dN/d*sp} return d; }
+  function nUF(ag) { let b=null,bD=Infinity; state.objectives.forEach(o=>{if(o.found)return;const d=haversine(ag,o);if(d<bD){bD=d;b=o}}); return b; }
+  function avThr(ag,fS) { state.threats.forEach(t=>{const d=haversine(ag,t);if(d<180&&d>0.5){const dL=ag.lat-t.lat,dN=ag.lng-t.lng,ds=Math.sqrt(dL*dL+dN*dN)||1;ag.lat+=dL/ds*fS;ag.lng+=dN/ds*fS}}); }
+
+  // === SQUAD COORDINATION MODULE (Task 2) ===
+  const bots = state.agents.filter(a => a.bot && !ReviveSystem.isDowned(a.id) && !ReviveSystem.isEliminated(a.id));
+  const localPlayer = state.agents.find(a => a.id === state.localAgentId);
+  const extObj = state.objectives.find(o => o.type === 'Extraction');
+  const decodedObjs = state.objectives.filter(o => o.decoded && !o.found);
+
+  // Personality multipliers
+  function persMult(a, type) {
+    const p = a.personality || 'Balanced';
+    if (type === 'evade') return p === 'Cautious' ? 1.4 : p === 'Aggressive' ? 0.7 : 1.0;
+    if (type === 'rush')  return p === 'Aggressive' ? 1.3 : p === 'Cautious' ? 0.7 : 1.0;
+    return 1.0;
+  }
+
+  // Shared Threat Memory: bots share threat positions within 300m for 15s
+  if (!state._sharedThreatMemory) state._sharedThreatMemory = {};
+  const now = Date.now();
+  bots.forEach(b => {
+    state.threats.forEach(t => {
+      const d = haversine(b, t);
+      if (d < 250) state._sharedThreatMemory[t.id] = { lat: t.lat, lng: t.lng, expires: now + 15000, name: t.name };
+    });
+  });
+  // Clean expired
+  Object.keys(state._sharedThreatMemory).forEach(k => { if (state._sharedThreatMemory[k].expires < now) delete state._sharedThreatMemory[k]; });
+
+  // Objective Queueing: greedy assignment of decoded objectives to bots
+  if (!state._botObjClaims) state._botObjClaims = {};
+  // Clear claims for completed/found objectives
+  Object.keys(state._botObjClaims).forEach(k => {
+    const claimed = state.objectives.find(o => o.id === state._botObjClaims[k]);
+    if (!claimed || claimed.found) delete state._botObjClaims[k];
+  });
+  // Assign unclaimed decoded objectives
+  const unclaimed = decodedObjs.filter(o => !Object.values(state._botObjClaims).includes(o.id));
+  bots.forEach(b => {
+    if (!state._botObjClaims[b.id] && unclaimed.length) {
+      let best = null, bestD = Infinity;
+      unclaimed.forEach(o => { const d = haversine(b, o); if (d < bestD) { bestD = d; best = o; } });
+      if (best) { state._botObjClaims[b.id] = best.id; unclaimed.splice(unclaimed.indexOf(best), 1); }
+    }
+  });
+
+  // Formation Following offsets (loose diamond/wedge in lat/lng degrees ~60-100m)
+  function formationOffset(role, idx, total) {
+    // Navigator leads (front), Medic trails (back), others fill sides
+    const offsets = {
+      Navigator: { lat: 0.0006, lng: 0 },
+      Spotter:   { lat: 0.0002, lng: 0.0005 },
+      Drone:     { lat: 0.0002, lng: -0.0005 },
+      Decoder:   { lat: -0.0002, lng: 0.0005 },
+      Mechanic:  { lat: -0.0002, lng: -0.0005 },
+      Medic:     { lat: -0.0006, lng: 0 },
+      Courier:   { lat: 0, lng: 0.0004 },
+      Saboteur:  { lat: 0, lng: -0.0004 },
+      Engineer:  { lat: 0.0003, lng: 0.0003 },
+      Hacker:    { lat: 0.0003, lng: -0.0003 },
+      'Mission Control': { lat: 0, lng: 0 }
+    };
+    return offsets[role] || { lat: (Math.random()-0.5)*0.0006, lng: (Math.random()-0.5)*0.0006 };
+  }
+
+  // Extraction Escort: bots converge on extraction and form perimeter
+  function extractionTarget(b) {
+    if (!state.extracting || !extractionObj) return null;
+    const angle = (bots.indexOf(b) / Math.max(1, bots.length)) * Math.PI * 2 + now * 0.0001;
+    const radius = 0.0007; // ~70m perimeter
+    return { lat: extractionObj.lat + Math.sin(angle)*radius, lng: extractionObj.lng + Math.cos(angle)*radius };
+  }
+
+  // Role Synergy helpers
+  function findDecoderBot() { return bots.find(b => b.role === 'Decoder'); }
+  function findMedicBot()   { return bots.find(b => b.role === 'Medic'); }
+  function findSpotterBot() { return bots.find(b => b.role === 'Spotter'); }
+  function isBotDecoding(b) {
+    const target = state.objectives.find(o => o.id === state._botObjClaims[b.id]);
+    return target && haversine(b, target) < 50 && !target.found;
+  }
+  function isBotReviving(b) {
+    const target = state.agents.find(ag => ag._beingRevivedBy === b.id);
+    return !!target;
+  }
 
   state.agents.forEach(a=>{
     const isLocal = a.id === state.localAgentId;
-    const mult = isLocal ? speedMult : 1.0;
-    a.lat += (Math.random()-0.5)*0.0011 * mult;
-    a.lng += (Math.random()-0.5)*0.0014 * mult;
-    a.signal = clamp(a.signal + Math.round(Math.random()*10-5), 38, 98);
-    a.stamina = clamp(a.stamina + Math.round(Math.random()*6-4), 35, 100);
+    if (isLocal) {
+      // Skip local agent updates if downed or eliminated
+      if (ReviveSystem.isDowned(a.id) || ReviveSystem.isEliminated(a.id)) {
+        a.stamina = 0;
+        return;
+      }
+      const terrainSignalMult = TerrainSystem.signalModifier(a.lat, a.lng);
+      const weatherSignalMult = WeatherSystem.signalMultiplier();
+      a.signal = clamp(Math.round((a.signal + Math.round((Math.random()*6-3) * terrainSignalMult)) * weatherSignalMult), 38, 98);
+      a.stamina = clamp(a.stamina + Math.round(Math.random()*4-3), 35, 100);
+      // Trigger downed state if stamina hits 0
+      if (a.stamina <= 0 && !ReviveSystem.isDowned(a.id) && !ReviveSystem.isEliminated(a.id)) {
+        ReviveSystem.down(a.id, 'Stamina depleted');
+      }
+      return;
+    }
+    // Skip bot agents that are downed or eliminated
+    if (ReviveSystem.isDowned(a.id) || ReviveSystem.isEliminated(a.id)) {
+      a.stamina = ReviveSystem.isEliminated(a.id) ? 0 : a.stamina;
+      return;
+    }
+    const role = a.role || 'Drone';
+    const BS = 0.00055, FS = 0.0008; // base speed, flee strength
+    const pEvade = persMult(a, 'evade');
+    const pRush  = persMult(a, 'rush');
+
+    // --- SQUAD COORDINATION OVERRIDES (applied before role behavior) ---
+    let coordTarget = null; // if set, bot moves here instead of default
+    let coordSpeed = BS;
+
+    // Extraction Escort: highest priority
+    const escortTarget = extractionTarget(a);
+    if (escortTarget) {
+      coordTarget = escortTarget;
+      coordSpeed = BS * 0.9 * pRush;
+    }
+    // Formation Following: when no active objectives and not extracting
+    else if (!state.extracting && localPlayer && decodedObjs.length === 0) {
+      const off = formationOffset(role, bots.indexOf(a), bots.length);
+      coordTarget = { lat: localPlayer.lat + off.lat, lng: localPlayer.lng + off.lng };
+      coordSpeed = BS * 0.7;
+    }
+    // Role Synergy: Mechanic stays near decoding Decoder
+    else if (role === 'Mechanic') {
+      const decoder = findDecoderBot();
+      if (decoder && isBotDecoding(decoder) && haversine(a, decoder) > 50) {
+        coordTarget = { lat: decoder.lat, lng: decoder.lng };
+        coordSpeed = BS * 0.75;
+      }
+    }
+    // Role Synergy: Spotter overwatch when Medic is reviving
+    else if (role === 'Spotter') {
+      const medic = findMedicBot();
+      if (medic && isBotReviving(medic)) {
+        // Move to high ground near medic (offset ~40m)
+        const dLat = a.lat - medic.lat, dLng = a.lng - medic.lng;
+        const d = Math.sqrt(dLat*dLat + dLng*dLng) || 1;
+        if (d > 0.0004) {
+          coordTarget = { lat: medic.lat + (dLat/d)*0.0004, lng: medic.lng + (dLng/d)*0.0004 };
+          coordSpeed = BS * 0.6;
+        }
+        // Ping nearby threats for squad awareness
+        state.threats.forEach(t => { if (haversine(a, t) < 300 && !t.alert) { addChat('Spotter', `${a.name} overwatch: ${t.name} near revive site.`); ScreenJuice.addKillFeed(`${a.name}: Overwatch Ping`, '#9c27b0'); } });
+      }
+    }
+
+    // Shared Threat Memory: if bot doesn't see threats directly, steer away from shared memory
+    let sharedThreatNear = false;
+    if (!coordTarget) {
+      Object.values(state._sharedThreatMemory).forEach(mem => {
+        const d = haversine(a, mem);
+        if (d < 200 * pEvade) { sharedThreatNear = true; }
+      });
+    }
+
+    switch (role) {
+      case 'Drone': {
+        if (coordTarget) { moveTo(a, coordTarget.lat, coordTarget.lng, coordSpeed); }
+        else {
+          const o = nUF(a);
+          if (o) {
+            const d = haversine(a, o), tD = (130 + Math.random()*70) * pRush;
+            if (d < tD) { const dL=a.lat-o.lat,dN=a.lng-o.lng,ds=Math.sqrt(dL*dL+dN*dN)||1; a.lat+=dL/ds*BS*0.6; a.lng+=dN/ds*BS*0.6; }
+            else if (d > tD+80) moveTo(a, o.lat, o.lng, BS*0.7);
+            else { a.lat += (Math.random()-0.5)*BS*0.5; a.lng += (Math.random()-0.5)*BS*0.5; }
+          }
+        }
+        state.threats.forEach(t => { if (haversine(a, t) < 200 && !t.alert) { EventLog.add('drone', '📡', `<strong>Drone ping:</strong> ${escapeHtml(t.name)} at ${t.lat.toFixed(4)},${t.lng.toFixed(4)}`); ParticleSystem.emitRole(a.lat, a.lng, 'Drone', a.id); addChat('Drone', `${a.name} spotted ${t.name}!`); ScreenJuice.addKillFeed(`${a.name}: Enemy Spotted!`, '#58a6ff'); } });
+        break;
+      }
+      case 'Mechanic': {
+        if (coordTarget) { moveTo(a, coordTarget.lat, coordTarget.lng, coordSpeed); }
+        else {
+          let lS=Infinity,tA=null;
+          state.agents.forEach(o=>{if(o.id!==a.id&&o.signal<lS){lS=o.signal;tA=o}});
+          if(tA){const d=haversine(a,tA);if(d>55)moveTo(a,tA.lat,tA.lng,BS*0.65);else{tA.signal=clamp(tA.signal+4,38,98);a.lat+=(Math.random()-0.5)*BS*0.3;a.lng+=(Math.random()-0.5)*BS*0.3;ParticleSystem.emitRole(a.lat,a.lng,'Mechanic',a.id)}}
+        }
+        // Power transfer to nearby low-power agents (Phase 7 Task 6)
+        state.agents.forEach(o => {
+          if (o.id !== a.id && (o.powerBudget || 100) < 30 && haversine(a, o) <= 80) {
+            PowerBudget.tryTransferPower(a, o);
+          }
+        });
+        break;
+      }
+      case 'Medic': {
+        if (coordTarget) { moveTo(a, coordTarget.lat, coordTarget.lng, coordSpeed); }
+        else {
+          let lS=Infinity,tA=null;
+          state.agents.forEach(o=>{if(o.id!==a.id&&o.stamina<lS){lS=o.stamina;tA=o}});
+          if(tA){const d=haversine(a,tA);if(d>55)moveTo(a,tA.lat,tA.lng,BS*0.65);else{tA.stamina=clamp(tA.stamina+5,35,100);a.lat+=(Math.random()-0.5)*BS*0.3;a.lng+=(Math.random()-0.5)*BS*0.3;ParticleSystem.emitRole(a.lat,a.lng,'Medic',a.id)}}
+        }
+        break;
+      }
+      case 'Decoder': {
+        const claimedId = state._botObjClaims[a.id];
+        const claimedObj = claimedId ? state.objectives.find(o => o.id === claimedId) : null;
+        const o = claimedObj || state.objectives.find(o=>!o.found&&(!o.decoded||o.type==='Cipher'));
+        if (coordTarget) { moveTo(a, coordTarget.lat, coordTarget.lng, coordSpeed); }
+        else if(o){const d=haversine(a,o);if(d>40)moveTo(a,o.lat,o.lng,BS*0.6*pRush);else{if(!o.decoded&&o.progress!==undefined){o.progress=clamp(o.progress+3,0,100);if(o.progress>=100&&!o.found){o.decoded=true;addChat('Decoder',`${a.name} decoded ${o.title}.`)}}a.lat+=(Math.random()-0.5)*BS*0.3;a.lng+=(Math.random()-0.5)*BS*0.3;ParticleSystem.emitRole(a.lat,a.lng,'Decoder',a.id)}}
+        break;
+      }
+      case 'Navigator': {
+        if (coordTarget) { moveTo(a, coordTarget.lat, coordTarget.lng, coordSpeed); }
+        else {
+          const local=state.agents.find(ag=>ag.id===state.localAgentId);
+          if(local){const d=haversine(a,local),iD=(40+Math.random()*40)*pEvade;if(d>iD+10)moveTo(a,local.lat,local.lng,BS*0.5);else if(d<iD-10){const dL=a.lat-local.lat,dN=a.lng-local.lng,ds=Math.sqrt(dL*dL+dN*dN)||1;a.lat+=dL/ds*BS*0.3;a.lng+=dN/ds*BS*0.3}}
+        }
+        const o=nUF(a);if(o&&!state.waypoints.find(w=>w.label==='Nav_'+a.id)){state.waypoints.push({lat:o.lat,lng:o.lng,label:'Nav_'+a.id});ParticleSystem.emitRole(a.lat,a.lng,'Navigator',a.id)}
+        break;
+      }
+      case 'Courier': {
+        const e=state.objectives.find(o=>o.type==='Extraction'),c=state.objectives.some(o=>o.carryingAgentId===a.id);
+        if (coordTarget) { moveTo(a, coordTarget.lat, coordTarget.lng, coordSpeed); }
+        else if(c&&e)moveTo(a,e.lat,e.lng,BS*0.9);
+        else{const o=nUF(a);if(o)moveTo(a,o.lat,o.lng,BS*0.7*pRush);else if(e)moveTo(a,e.lat,e.lng,BS*0.5)}
+        break;
+      }
+      case 'Mission Control': {
+        if (coordTarget) { moveTo(a, coordTarget.lat, coordTarget.lng, coordSpeed); }
+        else { const[mL,mN]=getMissionCenter(),d=haversine(a,{lat:mL,lng:mN}); if(d>80)moveTo(a,mL,mN,BS*0.4);else{a.lat+=(Math.random()-0.5)*BS*0.4;a.lng+=(Math.random()-0.5)*BS*0.4} }
+        break;
+      }
+      default: {
+        if (coordTarget) { moveTo(a, coordTarget.lat, coordTarget.lng, coordSpeed); }
+        else { const[mL,mN]=getMissionCenter(),d=haversine(a,{lat:mL,lng:mN}); if(d>200)moveTo(a,mL,mN,BS*0.3);a.lat+=(Math.random()-0.5)*BS*0.4;a.lng+=(Math.random()-0.5)*BS*0.4 }
+      }
+    }
+    avThr(a, FS * pEvade);
+    const terrainSignalMult = TerrainSystem.signalModifier(a.lat, a.lng);
+    const weatherSignalMult = WeatherSystem.signalMultiplier();
+    a.signal = clamp(Math.round((a.signal + Math.round((Math.random()*6-3) * terrainSignalMult)) * weatherSignalMult), 38, 98);
+    a.stamina = clamp(a.stamina + Math.round(Math.random()*4-3), 35, 100);
+    // Trigger downed state if stamina hits 0
+    if (a.stamina <= 0 && !ReviveSystem.isDowned(a.id) && !ReviveSystem.isEliminated(a.id)) {
+      ReviveSystem.down(a.id, 'Stamina depleted');
+    }
   });
   state.objectives.forEach(o=>{
     if (!o.decoded || o.found) return;
+    const local = state.agents.find(a=>a.id===state.localAgentId);
+
+    // Block objective interaction if downed or eliminated
+    if (local && (ReviveSystem.isDowned(local.id) || ReviveSystem.isEliminated(local.id))) return;
+
+    // --- Data Upload: stand in zone for 5 continuous seconds ---
+    if (o.type === 'DataUpload') {
+      const dist = local ? haversine(local, o) : Infinity;
+      const inside = dist <= o.radius;
+      if (inside && !o.uploading) {
+        o.uploading = true;
+        o.uploadLeftAt = 0;
+      }
+      if (!inside && o.uploading) {
+        o.uploading = false;
+        o.uploadProgress = 0;
+        o.uploadLeftAt = Date.now();
+      }
+      if (o.uploading) {
+        o.uploadProgress = clamp(o.uploadProgress + (2500 / 50), 0, 100); // 2500ms tick, need 5000ms total => +5% per tick? Wait 2500/50=50? No. 2500ms tick, target 5000ms => 2 ticks. Each tick add 50%.
+        // Actually: 2500ms per simulateWorld tick. To fill 100% in 5000ms => +50 per tick.
+        o.uploadProgress = clamp(o.uploadProgress + 50, 0, 100);
+        o.progress = o.uploadProgress;
+      }
+      if (o.uploadProgress >= 100) {
+        o.found = true; o.progress = 100;
+        ObjectiveAutoFocus.focusNext();
+        if (local && local.team && state.scores[local.team] !== undefined) {
+          state.scores[local.team] += 30;
+          addChat('Score', `${local.team} +30pts for ${o.title}.`);
+          SoundFX.scoreEvent();
+          EventLog.add('score', '⭐', `<strong>+30 pts</strong> ${escapeHtml(o.title)}`);
+        } else {
+          addChat('Mission Control', `${o.title} uploaded.`);
+          SoundFX.beaconCollected();
+          EventLog.add('objective', '⬆️', `<strong>Uploaded</strong> ${escapeHtml(o.title)}`);
+        }
+      }
+      return;
+    }
+
+    // --- Signal Triangulation: visit 3 points in sequence ---
+    if (o.type === 'Triangulation') {
+      if (!o.triPoints || o.triIndex >= o.triPoints.length) return;
+      const point = o.triPoints[o.triIndex];
+      const dist = local ? haversine(local, point) : Infinity;
+      if (dist <= 40) {
+        point.visited = true;
+        o.triIndex++;
+        o.progress = Math.round((o.triIndex / o.triPoints.length) * 100);
+        SoundFX.play(880, 0.06, 'sine', 0.08);
+        addChat('System', `Signal point ${o.triIndex}/${o.triPoints.length} locked.`);
+        if (o.triIndex >= o.triPoints.length) {
+          o.found = true; o.progress = 100;
+          ObjectiveAutoFocus.focusNext();
+          if (local && local.team && state.scores[local.team] !== undefined) {
+            state.scores[local.team] += 35;
+            addChat('Score', `${local.team} +35pts for ${o.title}.`);
+            SoundFX.scoreEvent();
+            EventLog.add('score', '⭐', `<strong>+35 pts</strong> ${escapeHtml(o.title)}`);
+          } else {
+            addChat('Mission Control', `${o.title} triangulated.`);
+            SoundFX.beaconCollected();
+            EventLog.add('objective', '🔺', `<strong>Triangulated</strong> ${escapeHtml(o.title)}`);
+          }
+        }
+      }
+      return;
+    }
+
+    // --- Asset Recovery: pick up package, carry to extraction without detection ---
+    if (o.type === 'AssetRecovery') {
+      const distToPackage = local ? haversine(local, { lat: o.packageLat, lng: o.packageLng }) : Infinity;
+      if (!o.packagePickedUp && distToPackage <= 30) {
+        o.packagePickedUp = true;
+        o.carryingAgentId = state.localAgentId;
+        o.progress = 35;
+        addChat('System', 'Asset package acquired. Deliver to extraction without detection.');
+        SoundFX.play(660, 0.08, 'sine', 0.12);
+      }
+      if (o.packagePickedUp && o.carryingAgentId === state.localAgentId && local) {
+        // Package follows local agent
+        o.packageLat = local.lat;
+        o.packageLng = local.lng;
+        // Check detection by threats
+        const detected = state.threats.some(t => {
+          const d = haversine(local, t);
+          const range = (t.radius || 100);
+          return d <= range && t.mode === 'hunt';
+        });
+        if (detected && !o.detected) {
+          o.detected = true;
+          o.packagePickedUp = false;
+          o.carryingAgentId = null;
+          o.progress = 0;
+          addChat('AI Watch', 'Asset carrier detected! Package dropped.');
+          SoundFX.threatDetected();
+        }
+        // Check delivery to extraction
+        const extractionObj = state.objectives.find(ex => ex.type === 'Extraction');
+        if (extractionObj && !o.found) {
+          const distToExtraction = haversine(local, extractionObj);
+          if (distToExtraction <= 50) {
+            o.found = true; o.progress = 100;
+            ObjectiveAutoFocus.focusNext();
+            if (local.team && state.scores[local.team] !== undefined) {
+              state.scores[local.team] += 40;
+              addChat('Score', `${local.team} +40pts for ${o.title}.`);
+              SoundFX.scoreEvent();
+              EventLog.add('score', '⭐', `<strong>+40 pts</strong> ${escapeHtml(o.title)}`);
+            } else {
+              addChat('Mission Control', `${o.title} delivered.`);
+              SoundFX.beaconCollected();
+              EventLog.add('objective', '📦', `<strong>Delivered</strong> ${escapeHtml(o.title)}`);
+            }
+          } else {
+            o.progress = Math.round(35 + (1 - Math.min(1, distToExtraction / 800)) * 65);
+          }
+        }
+      }
+      return;
+    }
+
+    // --- HVT Elimination: track and eliminate a moving high-value target ---
+    if (o.type === 'HVT') {
+      if (o.hvtEliminated) return;
+      // Move HVT along waypoints
+      const target = o.hvtWaypoints[o.hvtIndex];
+      if (target) {
+        const dlat = target.lat - o.hvtLat;
+        const dlng = target.lng - o.hvtLng;
+        const step = o.hvtSpeed;
+        const distToTarget = Math.sqrt(dlat*dlat + dlng*dlng);
+        if (distToTarget <= step) {
+          o.hvtLat = target.lat;
+          o.hvtLng = target.lng;
+          o.hvtIndex = (o.hvtIndex + 1) % o.hvtWaypoints.length;
+        } else {
+          o.hvtLat += (dlat / distToTarget) * step;
+          o.hvtLng += (dlng / distToTarget) * step;
+        }
+      }
+      o.hvtTimeout -= 2.5;
+      if (o.hvtTimeout <= 0) {
+        o.hvtEliminated = true; o.found = false; o.progress = 0;
+        addChat('AI Watch', 'Ghost Signal escaped. HVT objective failed.');
+        SoundFX.threatDetected();
+        return;
+      }
+      // Eliminate if player within 15m
+      const distToHVT = local ? haversine(local, { lat: o.hvtLat, lng: o.hvtLng }) : Infinity;
+      if (distToHVT <= 15) {
+        o.hvtEliminated = true; o.found = true; o.progress = 100;
+        ObjectiveAutoFocus.focusNext();
+        if (local && local.team && state.scores[local.team] !== undefined) {
+          state.scores[local.team] += 40;
+          addChat('Score', `${local.team} +40pts for ${o.title}.`);
+          SoundFX.scoreEvent();
+          EventLog.add('score', '⭐', `<strong>+40 pts</strong> ${escapeHtml(o.title)}`);
+        } else {
+          addChat('Mission Control', `${o.title} neutralized.`);
+          SoundFX.beaconCollected();
+          EventLog.add('objective', '🎯', `<strong>Neutralized</strong> ${escapeHtml(o.title)}`);
+        }
+      } else {
+        o.progress = Math.round(Math.max(0, (1 - distToHVT / 200) * 60));
+      }
+      return;
+    }
+
+    // --- Data Intercept: stand in the zone while signal fluctuates ---
+    if (o.type === 'DataIntercept') {
+      const dist = local ? haversine(local, o) : Infinity;
+      const inside = dist <= o.radius;
+      if (inside && !o.found) {
+        const roll = Math.random();
+        let delta = 0;
+        if (roll < 0.60) delta = 1;
+        else if (roll < 0.85) delta = 0;
+        else if (roll < 0.95) delta = 2;
+        else delta = -1;
+        o.interceptProgress = Math.max(0, o.interceptProgress + delta);
+        o.progress = Math.round((o.interceptProgress / o.interceptTarget) * 100);
+        if (delta > 0) {
+          SoundFX.play(520 + delta * 110, 0.05, 'sine', 0.06);
+          addChat('System', `Intercept progress: ${o.interceptProgress}/${o.interceptTarget}s`);
+        } else if (delta < 0) {
+          addChat('AI Watch', 'Signal interference! Progress lost.');
+          SoundFX.threatDetected();
+        }
+        if (o.interceptProgress >= o.interceptTarget) {
+          o.found = true; o.progress = 100;
+          ObjectiveAutoFocus.focusNext();
+          if (local && local.team && state.scores[local.team] !== undefined) {
+            state.scores[local.team] += 35;
+            addChat('Score', `${local.team} +35pts for ${o.title}.`);
+            SoundFX.scoreEvent();
+            EventLog.add('score', '⭐', `<strong>+35 pts</strong> ${escapeHtml(o.title)}`);
+          } else {
+            addChat('Mission Control', `${o.title} intercepted.`);
+            SoundFX.beaconCollected();
+            EventLog.add('objective', '📡', `<strong>Intercepted</strong> ${escapeHtml(o.title)}`);
+          }
+        }
+      } else if (!inside && o.interceptProgress > 0 && !o.found) {
+        o.interceptProgress = Math.max(0, o.interceptProgress - 0.5);
+        o.progress = Math.round((o.interceptProgress / o.interceptTarget) * 100);
+      }
+      return;
+    }
+
+    // --- Relay Activation: activate relays A-B-C in order within 90s ---
+    if (o.type === 'RelayActivation') {
+      if (o.found) return;
+      if (!o.relayTimerStarted) {
+        o.relayTimerStarted = true;
+        o.relayTimer = 90;
+      }
+      o.relayTimer -= 2.5;
+      if (o.relayTimer <= 0) {
+        o.found = false; o.progress = 0; o.relayIndex = 0; o.relayActivated = [false, false, false]; o.relayTimerStarted = false;
+        addChat('AI Watch', 'Relay activation timed out. Sequence reset.');
+        SoundFX.threatDetected();
+        return;
+      }
+      const currentRelay = o.relayPoints[o.relayIndex];
+      if (currentRelay && local) {
+        const dist = haversine(local, currentRelay);
+        if (dist <= o.radius) {
+          if (!o.relayActivating) {
+            o.relayActivating = true;
+            o.relayActivateStart = Date.now();
+            addChat('System', `Activating relay ${currentRelay.id}... (5s)`);
+          }
+          const elapsed = (Date.now() - o.relayActivateStart) / 1000;
+          o.progress = Math.round(((o.relayIndex * 5 + elapsed) / 15) * 100);
+          if (elapsed >= 5) {
+            currentRelay.activated = true;
+            o.relayActivated[o.relayIndex] = true;
+            o.relayIndex++;
+            o.relayActivating = false;
+            SoundFX.play(660 + o.relayIndex * 110, 0.07, 'sine', 0.10);
+            addChat('System', `Relay ${currentRelay.id} activated. ${o.relayIndex}/3 complete.`);
+            if (o.relayIndex >= o.relayPoints.length) {
+              o.found = true; o.progress = 100;
+              ObjectiveAutoFocus.focusNext();
+              if (local.team && state.scores[local.team] !== undefined) {
+                state.scores[local.team] += 40;
+                addChat('Score', `${local.team} +40pts for ${o.title}.`);
+                SoundFX.scoreEvent();
+                EventLog.add('score', '⭐', `<strong>+40 pts</strong> ${escapeHtml(o.title)}`);
+              } else {
+                addChat('Mission Control', `${o.title} complete.`);
+                SoundFX.beaconCollected();
+                EventLog.add('objective', '🔁', `<strong>Relays Active</strong> ${escapeHtml(o.title)}`);
+              }
+            }
+          }
+        } else {
+          if (o.relayActivating) {
+            o.relayActivating = false;
+            addChat('System', `Relay ${currentRelay.id} activation interrupted.`);
+          }
+          o.progress = Math.round((o.relayIndex / o.relayPoints.length) * 100);
+        }
+      }
+      return;
+    }
+
+    // --- VIP Escort: guide a VIP through waypoints to extraction ---
+    if (o.type === 'Escort') {
+      if (o.vipRescued) return;
+      if (!o.vipTimerStarted) { o.vipTimerStarted = true; o.vipTimer = 180; }
+      o.vipTimer -= 2.5;
+      if (o.vipTimer <= 0) {
+        o.vipRescued = true; o.found = false; o.progress = 0;
+        addChat('AI Watch', 'VIP extraction failed. Time expired.');
+        SoundFX.threatDetected();
+        return;
+      }
+      const local = state.agents.find(a=>a.id===state.localAgentId);
+      // Start following when player gets within 25m
+      const distToPlayer = local ? haversine(local, { lat: o.vipLat, lng: o.vipLng }) : Infinity;
+      if (!o.vipFollowing && distToPlayer <= 25) {
+        o.vipFollowing = true;
+        addChat('System', 'VIP is following you. Guide them to the waypoints.');
+        SoundFX.play(720, 0.07, 'sine', 0.10);
+      }
+      // Move VIP toward current waypoint if following
+      if (o.vipFollowing) {
+        const target = o.vipWaypoints[o.vipIndex];
+        if (target) {
+          const dlat = target.lat - o.vipLat;
+          const dlng = target.lng - o.vipLng;
+          const step = o.vipSpeed;
+          const distToTarget = Math.sqrt(dlat*dlat + dlng*dlng);
+          if (distToTarget <= step) {
+            o.vipLat = target.lat; o.vipLng = target.lng;
+            o.vipIndex++;
+            SoundFX.play(880, 0.06, 'sine', 0.08);
+            addChat('System', `VIP reached waypoint ${o.vipIndex}/${o.vipWaypoints.length}.`);
+          } else {
+            o.vipLat += (dlat / distToTarget) * step;
+            o.vipLng += (dlng / distToTarget) * step;
+          }
+        }
+        // Check if VIP reached extraction
+        const extractionObj = state.objectives.find(ex => ex.type === 'Extraction');
+        if (extractionObj) {
+          const distToExtraction = haversine({ lat: o.vipLat, lng: o.vipLng }, extractionObj);
+          if (distToExtraction <= 50) {
+            o.vipRescued = true; o.found = true; o.progress = 100;
+            ObjectiveAutoFocus.focusNext();
+            if (local && local.team && state.scores[local.team] !== undefined) {
+              state.scores[local.team] += 45;
+              addChat('Score', `${local.team} +45pts for ${o.title}.`);
+              SoundFX.scoreEvent();
+              EventLog.add('score', '⭐', `<strong>+45 pts</strong> ${escapeHtml(o.title)}`);
+            } else {
+              addChat('Mission Control', `${o.title} complete. VIP extracted.`);
+              SoundFX.beaconCollected();
+              EventLog.add('objective', '🛡️', `<strong>VIP Extracted</strong> ${escapeHtml(o.title)}`);
+            }
+            return;
+          }
+        }
+        o.progress = Math.round((o.vipIndex / o.vipWaypoints.length) * 100);
+      } else {
+        o.progress = Math.round(Math.max(0, (1 - distToPlayer / 200) * 30));
+      }
+      return;
+    }
+
+    // --- Sabotage: plant charge and destroy target within time limit ---
+    if (o.type === 'Sabotage') {
+      if (o.sabDestroyed) return;
+      if (!o.sabTimerStarted) { o.sabTimerStarted = true; o.sabTimer = 120; }
+      o.sabTimer -= 2.5;
+      if (o.sabTimer <= 0 && !o.sabPlanted) {
+        o.sabDestroyed = true; o.found = false; o.progress = 0;
+        addChat('AI Watch', 'Sabotage window closed. Target reinforced.');
+        SoundFX.threatDetected();
+        return;
+      }
+      const local = state.agents.find(a=>a.id===state.localAgentId);
+      const dist = local ? haversine(local, { lat: o.sabTargetLat, lng: o.sabTargetLng }) : Infinity;
+      // Plant charge: stand within 20m for 5s
+      if (!o.sabPlanted && dist <= 20) {
+        if (!o.sabPlanting) { o.sabPlanting = true; o.sabPlantStart = Date.now(); addChat('System', 'Planting charge... (5s)'); }
+        const elapsed = (Date.now() - o.sabPlantStart) / 1000;
+        o.progress = Math.round((elapsed / 5) * 50);
+        if (elapsed >= 5) {
+          o.sabPlanted = true; o.sabPlanting = false;
+          addChat('System', 'Charge planted. Detonation in 10s — clear the area!');
+          SoundFX.play(440, 0.10, 'sawtooth', 0.15);
+          o.sabDetonateAt = Date.now() + 10000;
+        }
+      } else if (!o.sabPlanted && o.sabPlanting) {
+        o.sabPlanting = false;
+        addChat('System', 'Planting interrupted.');
+      }
+      // Detonation
+      if (o.sabPlanted && !o.sabDetonated) {
+        const timeToDet = o.sabDetonateAt - Date.now();
+        o.progress = Math.round(50 + ((10000 - timeToDet) / 10000) * 50);
+        if (timeToDet <= 0) {
+          o.sabDetonated = true; o.sabDestroyed = true; o.found = true; o.progress = 100;
+          ObjectiveAutoFocus.focusNext();
+          ScreenJuice.addKillFeed('TARGET DESTROYED', '#ff5722');
+          if (local && local.team && state.scores[local.team] !== undefined) {
+            state.scores[local.team] += 40;
+            addChat('Score', `${local.team} +40pts for ${o.title}.`);
+            SoundFX.scoreEvent();
+            EventLog.add('score', '⭐', `<strong>+40 pts</strong> ${escapeHtml(o.title)}`);
+          } else {
+            addChat('Mission Control', `${o.title} target destroyed.`);
+            SoundFX.beaconCollected();
+            EventLog.add('objective', '💥', `<strong>Destroyed</strong> ${escapeHtml(o.title)}`);
+          }
+        }
+      }
+      return;
+    }
+
+    // --- Recon: scan locations without being detected by threats ---
+    if (o.type === 'Recon') {
+      if (o.reconDetected) return;
+      if (!o.reconTimerStarted) { o.reconTimerStarted = true; o.reconTimer = 240; }
+      o.reconTimer -= 2.5;
+      if (o.reconTimer <= 0) {
+        o.reconDetected = true; o.found = false; o.progress = 0;
+        addChat('AI Watch', 'Recon window expired. Targets have relocated.');
+        SoundFX.threatDetected();
+        return;
+      }
+      const local = state.agents.find(a=>a.id===state.localAgentId);
+      // Check detection by threats
+      if (local) {
+        const detected = state.threats.some(t => {
+          const d = haversine(local, t);
+          return d <= (t.radius || 100) && t.mode === 'hunt';
+        });
+        if (detected) {
+          o.reconDetected = true; o.found = false; o.progress = 0;
+          addChat('AI Watch', 'Recon agent detected! Objective compromised.');
+          SoundFX.threatDetected();
+          return;
+        }
+      }
+      // Scan points
+      if (o.reconIndex < o.reconPoints.length) {
+        const point = o.reconPoints[o.reconIndex];
+        const dist = local ? haversine(local, point) : Infinity;
+        if (dist <= 35) {
+          point.scanned = true;
+          o.reconScanned[o.reconIndex] = true;
+          o.reconIndex++;
+          SoundFX.play(920, 0.06, 'sine', 0.08);
+          addChat('System', `Recon scan ${o.reconIndex}/${o.reconPoints.length} complete.`);
+          if (o.reconIndex >= o.reconPoints.length) {
+            o.found = true; o.progress = 100;
+            ObjectiveAutoFocus.focusNext();
+            if (local && local.team && state.scores[local.team] !== undefined) {
+              state.scores[local.team] += 40;
+              addChat('Score', `${local.team} +40pts for ${o.title}.`);
+              SoundFX.scoreEvent();
+              EventLog.add('score', '⭐', `<strong>+40 pts</strong> ${escapeHtml(o.title)}`);
+            } else {
+              addChat('Mission Control', `${o.title} complete. All locations scanned.`);
+              SoundFX.beaconCollected();
+              EventLog.add('objective', '👁️', `<strong>Recon Complete</strong> ${escapeHtml(o.title)}`);
+            }
+            return;
+          }
+        }
+      }
+      o.progress = Math.round((o.reconIndex / o.reconPoints.length) * 100);
+      return;
+    }
+
+    // --- Default reach-location objective ---
     const nearest = nearestAgentDist(o);
     o.progress = clamp(o.progress + (nearest<180?8:2), 0, 100);
     if (nearest <= o.radius || o.progress >= 100) {
@@ -3610,28 +11297,41 @@ function simulateWorld() {
         state.scores[nearestAgent.team] += pts;
         addChat('Score', `${nearestAgent.team} +${pts}pts for ${o.title}.`);
         SoundFX.scoreEvent();
+        EventLog.add('score', '⭐', `<strong>+${pts} pts</strong> ${escapeHtml(o.title)}`);
       } else {
         addChat('Mission Control', `${o.title} complete.`);
         SoundFX.beaconCollected();
+        EventLog.add('objective', '✓', `<strong>Complete</strong> ${escapeHtml(o.title)}`);
       }
     }
   });
   // Check mission completion: all objectives found + player near extraction
   const allFound = state.objectives.length && state.objectives.every(o=>o.found);
-  const extractionObj = state.objectives.find(o => o.type==='Extraction');
+  const _extractionObj = state.objectives.find(o => o.type==='Extraction');
   const local = state.agents.find(a=>a.id===state.localAgentId);
   let nearExtraction = false;
-  if (extractionObj && local) {
-    nearExtraction = haversine(local, extractionObj) <= 80; // 80m threshold
+  if (_extractionObj && local) {
+    nearExtraction = haversine(local, _extractionObj) <= 80; // 80m threshold
   }
 
-  // Start extraction countdown if all found and near extraction
-  if (allFound && nearExtraction && !state.extracting) {
+  // Start extraction countdown if all found and near extraction (block if downed/eliminated)
+  if (allFound && nearExtraction && !state.extracting && local && !ReviveSystem.isDowned(local.id) && !ReviveSystem.isEliminated(local.id)) {
     state.extracting = true;
     state.extractCountdown = 15;
     addChat('System', 'Extraction sequence initiated. Hold position for 15s...');
     showExtractionOverlay();
+    SoundFX.extractionReady();
+    EventLog.add('system', '✈️', `<strong>Extraction</strong> sequence started — hold position`);
+    ScreenJuice.addKillFeed('EXTRACTION SEQUENCE STARTED', '#00e676');
     return;
+  }
+
+  // Abort extraction if player becomes downed or eliminated during countdown
+  if (state.extracting && local && (ReviveSystem.isDowned(local.id) || ReviveSystem.isEliminated(local.id))) {
+    state.extracting = false;
+    state.extractCountdown = 15;
+    $('#extractionOverlay')?.classList.add('hidden');
+    addChat('System', 'Extraction sequence aborted — agent downed.');
   }
 
   if (state.extracting && state.extractCountdown <= 0) {
@@ -3642,27 +11342,53 @@ function simulateWorld() {
     state.status = 'Complete';
     state.missionEndTime = Date.now();
     SoundFX.missionComplete();
+    DailyMissions.checkWin(true);
     setScreen('results');
     renderResults();
     addChat('System', 'Extraction successful. Mission complete.');
+    EventLog.add('system', '🏆', `<strong>Mission Complete!</strong> Extraction successful`);
     stopMissionClock();
     return;
   }
 
-  if (allFound && !extractionObj) {
+  if (allFound && !_extractionObj) {
     stopMissionClock(); state.status='Complete';
     state.missionEndTime = Date.now();
     SoundFX.missionComplete();
+    DailyMissions.checkWin(true);
     setScreen('results'); renderResults();
     addChat('System', 'All objectives complete. Signal restored.');
+    EventLog.add('system', '🏆', `<strong>Mission Complete!</strong> All objectives found`);
     return;
   }
+  // Phase 7 Task 8 — Check extraction reveal and chained objective unlocks
+  checkExtractionReveal();
+  checkChainedObjectives();
+
+  // Check supply cache collection for local player (block if downed/eliminated)
+  const localAgent = state.agents.find(a => a.id === state.localAgentId);
+  if (localAgent && !ReviveSystem.isDowned(state.localAgentId) && !ReviveSystem.isEliminated(state.localAgentId)) {
+    state.supplyCaches.forEach(cache => {
+      if (!cache.collected && cache.dropProgress >= 1) {
+        const dist = haversine(localAgent, cache);
+        if (dist <= SupplyCacheSystem.COLLECT_RANGE) {
+          SupplyCacheSystem.tryCollect(cache.id, state.localAgentId);
+        }
+      }
+    });
+  }
+
   renderMissionMap();
   renderHUD();
   renderObjectivesList();
   renderRoleTools();
+  TriangulationMinigame.tick();
   ThreatProximity.update();
+  // Supply Cache tick: despawn expired caches
+  SupplyCacheSystem.tick();
+
   saveState();
+  DynamicEvents.tick();
 }
 
 function nearestAgentDist(point) {
@@ -3679,32 +11405,118 @@ function showExtractionOverlay() {
 }
 
 function updateExtractionOverlay() {
-  const progress = ((15 - state.extractCountdown) / 15) * 100;
+  const total = 15;
+  const progress = ((total - state.extractCountdown) / total) * 100;
   const bar = $('#extractionProgress');
   const timer = $('#extractionTimer');
+  const ring = $('#extractionClockRing');
+  const wrap = timer?.closest('.extraction-clock-wrap');
   if (bar) bar.style.width = `${Math.min(100, progress)}%`;
+  if (ring) {
+    const circumference = 2 * Math.PI * 18; // r=18
+    const offset = circumference * (state.extractCountdown / total);
+    ring.style.strokeDashoffset = offset;
+  }
   if (timer) {
     timer.textContent = state.extractCountdown;
-    timer.classList.toggle('urgent', state.extractCountdown <= 5);
+    // Dynamic pulse speed based on remaining time
+    timer.classList.remove('pulse-slow', 'pulse-medium', 'pulse-fast', 'urgent');
+    wrap?.classList.remove('urgent');
+    if (state.extractCountdown <= 3) {
+      timer.classList.add('urgent');
+      wrap?.classList.add('urgent');
+    } else if (state.extractCountdown <= 7) {
+      timer.classList.add('pulse-fast');
+    } else if (state.extractCountdown <= 11) {
+      timer.classList.add('pulse-medium');
+    } else {
+      timer.classList.add('pulse-slow');
+    }
   }
 }
 
 function renderHUD() {
-  $('#missionTimer').textContent = formatTime(state.remaining);
+  const timerEl = $('#missionTimer');
+  if (timerEl) {
+    timerEl.textContent = formatTime(state.remaining);
+    // Dramatic countdown below 30s
+    timerEl.classList.toggle('dramatic', state.remaining > 0 && state.remaining <= 30);
+  }
   $('#missionStatus').textContent = state.status;
   const avgSignal = state.agents.length ? Math.round(state.agents.reduce((s,a)=>s+a.signal,0)/state.agents.length) : 72;
   const avgStamina = state.agents.length ? Math.round(state.agents.reduce((s,a)=>s+a.stamina,0)/state.agents.length) : 85;
   const signalBar = $('#hudSignalBar');
   const staminaBar = $('#hudStaminaBar');
   if (signalBar) signalBar.style.width = `${avgSignal}%`;
-  if (staminaBar) staminaBar.style.width = `${avgStamina}%`;
+  if (staminaBar) {
+    staminaBar.style.width = `${avgStamina}%`;
+    // Stamina color states: green > 50%, amber 25-50%, red < 25%
+    staminaBar.classList.remove('stamina-green', 'stamina-amber', 'stamina-red');
+    if (avgStamina > 50) staminaBar.classList.add('stamina-green');
+    else if (avgStamina >= 25) staminaBar.classList.add('stamina-amber');
+    else staminaBar.classList.add('stamina-red');
+  }
+  // Critical health pulse
+  const local = state.agents.find(a=>a.id===state.localAgentId);
+  if (local) ScreenJuice.updateCriticalPulse(local.stamina);
   $('#objCount').textContent = `${state.objectives.filter(o=>o.found).length}/${state.objectives.length}`;
   // Update stealth button state
   StealthMode._updateUI();
   // Render mobile drawer bars
   renderDrawerBars(avgSignal, avgStamina);
-}
+  // Update ability hotbar cooldown visuals and active buffs
+  AbilityHotbar.render();
+  AbilityHotbar.updateCooldowns();
+  ActiveBuffs.tick();
 
+  // Dynamic events HUD indicators
+  const deData = state.dynamicEvents.eventData || {};
+  const jammerBanner = $('#jammerSurgeBanner');
+  if (deData.markerType === 'jammer_surge' && deData.jammerSurgeUntil && Date.now() < deData.jammerSurgeUntil) {
+    if (!jammerBanner) {
+      const banner = MemoryPool.acquire('div');
+      banner.id = 'jammerSurgeBanner';
+      banner.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(255,152,0,0.9);color:#000;padding:4px 14px;border-radius:6px;font-size:12px;font-weight:700;z-index:999;text-align:center;white-space:nowrap';
+      banner.textContent = '⚡ JAMMER SURGE — Abilities slowed';
+      document.body.appendChild(banner);
+    }
+  } else if (jammerBanner) {
+    jammerBanner.remove();
+  }
+
+  // Supply Cache HUD
+  SupplyCacheSystem.renderHUD();
+
+  // Terrain HUD
+  TerrainSystem.renderHUD();
+
+  // Weather HUD
+  WeatherSystem.renderHUD();
+
+  // Role-specific ambient effects
+  updateRoleAmbientEffects();
+
+  // Trap system HUD update
+  TrapSystem.renderHUD();
+
+  // Role progression HUD
+  RoleProgression.renderHUD();
+
+  // Downed & Revive System HUD
+  ReviveSystem.renderHUD();
+
+  // Report & Kick System HUD
+  ReportKickSystem.renderVoteToast();
+
+  // GPS Degradation HUD
+  const gpsHud = $('#gpsDegradationHUD');
+  const gpsInfo = GPSDegradation.getHudText();
+  if (gpsHud) {
+    gpsHud.textContent = gpsInfo.text;
+    gpsHud.style.color = gpsInfo.color;
+    gpsHud.classList.toggle('gps-pulse', state.gpsDegradation.status !== 'good');
+  }
+}
 function renderDrawerBars(avgSignal, avgStamina) {
   // Only on mobile: inject signal/stamina bars into the drawer
   if (window.innerWidth > 768) return;
@@ -3712,7 +11524,7 @@ function renderDrawerBars(avgSignal, avgStamina) {
   if (!panels) return;
   let bars = panels.querySelector('.panel-drawer-bars');
   if (!bars) {
-    bars = document.createElement('div');
+    bars = MemoryPool.acquire('div');
     bars.className = 'panel-drawer-bars';
     bars.innerHTML = `
       <div class="hud-bar-row">
@@ -3744,15 +11556,72 @@ function renderMissionMap() {
   MapModule.drawZone(center[0], center[1], 1000, '#ff5722');
   state.objectives.forEach((o, i)=>{
     if (o.type==='Extraction') MapModule.addExtraction(o.lat, o.lng, o.title);
+    else if (o.type==='DataUpload') MapModule.addDataUpload(o);
+    else if (o.type==='Triangulation') MapModule.addTriangulation(o);
+    else if (o.type==='AssetRecovery') MapModule.addAssetRecovery(o);
+    else if (o.type==='Escort') MapModule.addEscort(o);
+    else if (o.type==='Sabotage') MapModule.addSabotage(o);
+    else if (o.type==='Recon') MapModule.addRecon(o);
     else MapModule.addBeacon(o.id, o.lat, o.lng, o.title);
     if (o.found) MapModule.collectBeacon(o.id);
   });
   state.agents.forEach(a=>{
-    MapModule.addSquadMember(a.id, a.name, a.lat, a.lng, a.role, a.id===state.localAgentId, a.team);
+    const isDowned = ReviveSystem.isDowned(a.id);
+    const isEliminated = ReviveSystem.isEliminated(a.id);
+    MapModule.addSquadMember(a.id, a.name, a.lat, a.lng, a.role, a.id===state.localAgentId, a.team, isDowned, isEliminated);
   });
   MapModule.drawThreats(state.threats);
   MapModule.drawObjectives(state.objectives);
   MapModule.drawRoute(state.objectives);
+  ReviveSystem.renderOnMap();
+
+  // Render placed traps on map
+  TrapSystem.renderOnMap();
+
+  // Render supply caches on map
+  SupplyCacheSystem.renderOnMap();
+
+  // Render terrain zones on map
+  TerrainSystem.renderOnMap();
+
+  // Render GPS degradation visuals (ghost trail + accuracy ring)
+  GPSDegradation.renderOnMap();
+
+  // Render triangulation heatmap overlay (P7-T4)
+  TriangulationMinigame.renderOnMap();
+
+  // Phase 7 Task 8 — Render chained objective dashed lines
+  state.objectives.forEach(o => {
+    if (o.chainedTo) {
+      const target = state.objectives.find(t => t.id === o.chainedTo);
+      if (target) {
+        const m = MapModule.ensureMissionMap();
+        if (m) {
+          const chainLine = L.polyline([[o.lat, o.lng], [target.lat, target.lng]], {
+            color: '#a5d6a7', opacity: 0.6, weight: 2,
+            dashArray: '8,8', interactive: false
+          }).addTo(m);
+          // Auto-remove on next render (MapModule.clearGameObjects handles layers)
+          // Store reference so clearGameObjects can clean it up if needed
+          if (!MapModule._chainLines) MapModule._chainLines = [];
+          MapModule._chainLines.push(chainLine);
+        }
+      }
+    }
+  });
+
+  // Dynamic events map markers
+  const deData = state.dynamicEvents.eventData || {};
+  if (deData.markerType === 'supply_drop' && !deData.looted) {
+    MapModule.addBeacon('supply-drop', deData.lat, deData.lng, '📦 Supply Drop');
+  }
+  if (deData.markerType === 'signal_flare') {
+    MapModule.addBeacon('signal-flare', deData.flareLat, deData.flareLng, '📡 Flare');
+  }
+  if (deData.markerType === 'extraction_shift') {
+    MapModule.addBeacon('extraction-old', deData.oldExtractLat, deData.oldExtractLng, '❌ Old EVA');
+    MapModule.addBeacon('extraction-new', deData.newExtractLat, deData.newExtractLng, '✈️ New EVA');
+  }
 }
 
 function renderObjectivesList() {
@@ -3760,15 +11629,482 @@ function renderObjectivesList() {
   if (!el) return;
   const local = state.agents.find(a=>a.id===state.localAgentId);
   const nearestUndecoded = (state.objectives||[]).find(o => !o.decoded);
-  el.innerHTML = (state.objectives||[]).map(o=>`
-    <div class="objective-card ${o.found?'found':''} ${!o.decoded?'locked':''} ${!o.found && o.decoded && !nearestUndecoded?'current':''}">
-      <strong>${escapeHtml(o.title)}</strong>
-      <small>${o.decoded?`${escapeHtml(o.type)} / ${o.radius}m`:'Encrypted packet'}</small>
+  let html = (state.objectives||[]).map(o=>{
+    const typeLabel = getObjectiveTypeLabel(o);
+    const statusText = getObjectiveStatusText(o);
+    const extra = getObjectiveExtraHTML(o, local);
+    const chainIcon = o.chainedTo ? '🔗 ' : o.chainedFrom ? '⛓️ ' : '';
+    const chainHint = o.chainedTo ? '<small class="chain-hint">Chain start</small>' : o.chainedFrom ? '<small class="chain-hint">Chained</small>' : '';
+    return `
+    <div class="objective-card ${o.found?'found':''} ${!o.decoded?'locked':''} ${!o.found && o.decoded && !nearestUndecoded?'current':''} ${o.type.toLowerCase()}-obj">
+      <strong>${chainIcon}${escapeHtml(o.title)}</strong>
+      <small>${o.decoded?`${escapeHtml(typeLabel)} / ${o.radius}m`:'Encrypted packet'}</small>
+      ${chainHint}
       <div class="progress"><b style="width:${o.progress}%"></b></div>
-      <span>${o.found?'Found ✓':o.decoded?`${o.progress}%`:'Locked 🔒'}</span>
+      ${extra}
+      <span>${statusText}</span>
     </div>
-  `).join('');
+  `;
+  }).join('');
+
+  // Downed squadmates section
+  const downed = Object.entries(state.downedAgents)
+    .filter(([_, d]) => !d.eliminated && !d.revivedBy)
+    .map(([id, d]) => {
+      const agent = state.agents.find(a => a.id === id);
+      const remaining = Math.max(0, Math.ceil((ReviveSystem.DOWN_TIME - (Date.now() - d.downedAt)) / 1000));
+      const dist = local ? Math.round(haversine(local, { lat: d.lat, lng: d.lng })) : null;
+      return { name: agent ? agent.callsign : id, remaining, dist, role: agent ? agent.role : '' };
+    });
+  if (downed.length) {
+    html += `<div class="downed-squad-section"><strong>🚨 Downed Squad</strong>`;
+    downed.forEach(d => {
+      html += `<div class="downed-squad-item"><span>${escapeHtml(d.name)} ${d.role ? '(' + escapeHtml(d.role) + ')' : ''}</span><span>${d.remaining}s ${d.dist !== null ? '· ' + d.dist + 'm' : ''}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  el.innerHTML = html;
 }
+
+function getObjectiveTypeLabel(o) {
+  if (o.type === 'DataUpload') return 'Data Upload';
+  if (o.type === 'Triangulation') return 'Triangulation';
+  if (o.type === 'AssetRecovery') return 'Asset Recovery';
+  if (o.type === 'Escort') return 'VIP Escort';
+  if (o.type === 'Sabotage') return 'Sabotage';
+  if (o.type === 'Recon') return 'Recon Scan';
+  return o.type;
+}
+
+function getObjectiveStatusText(o) {
+  if (o.found) return 'Found ✓';
+  if (!o.decoded) return 'Locked 🔒';
+  if (o.type === 'DataUpload') {
+    if (o.uploading) return `Uploading… ${Math.round(o.uploadProgress || 0)}%`;
+    if ((o.uploadProgress || 0) > 0) return 'Upload reset — re-enter zone';
+    return 'Stand in zone to upload';
+  }
+  if (o.type === 'Triangulation') {
+    const idx = o.triIndex || 0;
+    const total = o.triPoints ? o.triPoints.length : 3;
+    return `Points ${idx}/${total}`;
+  }
+  if (o.type === 'AssetRecovery') {
+    if (o.packagePickedUp) return 'Carrying package → extraction';
+    return 'Pick up package';
+  }
+  if (o.type === 'Escort') {
+    if (o.vipRescued) return 'VIP extracted ✓';
+    if (o.vipFollowing) return `Escorting VIP — waypoint ${o.vipIndex||0}/${(o.vipWaypoints||[]).length}`;
+    return 'Reach VIP to start escort';
+  }
+  if (o.type === 'Sabotage') {
+    if (o.sabDestroyed) return o.sabDetonated ? 'Target destroyed ✓' : 'Failed';
+    if (o.sabPlanted) return 'Charge planted — clear area!';
+    if (o.sabPlanting) return 'Planting charge…';
+    return 'Plant charge on target';
+  }
+  if (o.type === 'Recon') {
+    if (o.reconDetected) return 'Compromised';
+    const idx = o.reconIndex || 0;
+    const total = o.reconPoints ? o.reconPoints.length : 3;
+    return `Scans ${idx}/${total} — avoid threats`;
+  }
+  return `${o.progress}%`;
+}
+
+function getObjectiveExtraHTML(o, local) {
+  if (!o.decoded || o.found) return '';
+  if (o.type === 'DataUpload' && o.uploading) {
+    return `<div class="obj-progress-bar"><div class="obj-progress-fill" style="width:${o.uploadProgress}%"></div></div>`;
+  }
+  if (o.type === 'Triangulation' && o.triPoints) {
+    const dots = o.triPoints.map((p, i) => `<span class="tri-dot ${p.visited?'visited':''} ${i===(o.triIndex||0)?'active':''}"></span>`).join('');
+    return `<div class="tri-dots">${dots}</div>`;
+  }
+  if (o.type === 'AssetRecovery' && o.packagePickedUp && local) {
+    const dist = haversine(local, state.objectives.find(ex=>ex.type==='Extraction')||o);
+    return `<div class="obj-carry-dist">Extraction ${formatDistance(dist)} away</div>`;
+  }
+  if (o.type === 'Escort' && o.vipWaypoints) {
+    const dots = o.vipWaypoints.map((p, i) => `<span class="tri-dot ${i < (o.vipIndex||0)?'visited':''} ${i===(o.vipIndex||0)?'active':''}"></span>`).join('');
+    return `<div class="tri-dots">${dots}</div>`;
+  }
+  if (o.type === 'Sabotage' && o.sabPlanted && !o.sabDetonated) {
+    const timeLeft = Math.max(0, Math.ceil(((o.sabDetonateAt || 0) - Date.now()) / 1000));
+    return `<div class="obj-progress-bar"><div class="obj-progress-fill" style="width:${o.progress}%;background:#ff5722"></div></div><small>Detonation in ${timeLeft}s</small>`;
+  }
+  if (o.type === 'Recon' && o.reconPoints) {
+    const dots = o.reconPoints.map((p, i) => `<span class="tri-dot ${o.reconScanned && o.reconScanned[i]?'visited':''} ${i===(o.reconIndex||0)?'active':''}"></span>`).join('');
+    return `<div class="tri-dots">${dots}</div>`;
+  }
+  return '';
+}
+
+/* ========================== ABILITY FEEDBACK EFFECTS (2.5) ========================== */
+
+// Show floating text above player marker on the map
+function showAbilityFloatingText(text, color) {
+  const mapContainer = document.getElementById('missionMap');
+  if (!mapContainer) return;
+  const local = state.agents.find(a => a.id === state.localAgentId);
+  if (!local || !Number.isFinite(local.lat) || !Number.isFinite(local.lng)) return;
+
+  const el = MemoryPool.acquire('div');
+  el.className = 'ability-floating-text';
+  el.textContent = text;
+  el.style.color = color || '#58a6ff';
+  mapContainer.appendChild(el);
+
+  // Position above the player marker using Leaflet's latlngToContainerPoint
+  const m = MapModule.ensureMissionMap();
+  if (m) {
+    const point = m.latLngToContainerPoint([local.lat, local.lng]);
+    el.style.left = (point.x - 80) + 'px';
+    el.style.top = (point.y - 30) + 'px';
+    el.style.width = '160px';
+    el.style.textAlign = 'center';
+  } else {
+    el.style.left = '50%';
+    el.style.top = '40%';
+    el.style.transform = 'translateX(-50%)';
+  }
+
+  setTimeout(() => { if (el.parentNode) { el.parentNode.removeChild(el); MemoryPool.release('div', el); } }, 2000);
+
+  // Re-position on map move/zoom
+  const reposition = () => {
+    const mm = MapModule.ensureMissionMap();
+    if (!mm || !el.parentNode) { if (mm) mm.off('move', reposition); return; }
+    const pt = mm.latLngToContainerPoint([local.lat, local.lng]);
+    el.style.left = (pt.x - 80) + 'px';
+    el.style.top = (pt.y - 30) + 'px';
+  };
+  if (m) {
+    m.on('move', reposition);
+    setTimeout(() => { try { m.off('move', reposition); } catch(e) {} }, 2000);
+  }
+}
+
+// Show a brief screen flash/glow matching role color
+function showAbilityScreenFlash(color) {
+  const flash = MemoryPool.acquire('div');
+  flash.className = 'ability-flash-overlay';
+  flash.style.background = `radial-gradient(circle at center, ${color} 0%, ${color}00 70%)`;
+  document.body.appendChild(flash);
+  setTimeout(() => { if (flash.parentNode) flash.parentNode.removeChild(flash); }, 700);
+}
+
+// Add a radar pulse effect (concentric ring) to the RadarModule
+function addAbilityRadarPulse() {
+  const player = state.agents.find(a => a.id === state.localAgentId);
+  if (!RadarModule.abilityPulses) RadarModule.abilityPulses = [];
+  if (player && Number.isFinite(player.lat) && Number.isFinite(player.lng)) {
+    RadarModule.abilityPulses.push({
+      lat: player.lat,
+      lng: player.lng,
+      startTime: Date.now(),
+      duration: 1200,
+      maxRadius: 0.6 // fraction of radar radius
+    });
+  }
+}
+
+// Combined ability feedback: floating text + screen flash + radar pulse
+function showAbilityFeedback(toolName, role) {
+  const color = roleColors[role] || '#58a6ff';
+  showAbilityFloatingText(toolName, color);
+  showAbilityScreenFlash(color);
+  addAbilityRadarPulse();
+}
+
+// Resolve power cost key for a role+tool combination (Phase 7 Task 6)
+function _resolvePowerCostKey(role, tool) {
+  if (role === 'Drone' && tool.includes('Scan')) return 'radarPulse';
+  if (role === 'Mechanic' && tool.includes('Boost')) return 'signalBoost';
+  return null;
+}
+
+/* ========================== ABILITY HOTBAR & BUFFS (2.2) ========================== */
+
+const AbilityHotbar = {
+  _raf: null,
+  _lastRole: null,
+
+  toolEmoji(tool) {
+    const map = {
+      'Scan routes': '📡', 'Mark safe corridor': '🛡️', 'Ping AI scout': '👁️',
+      'Boost GPS mesh': '⚡', 'Repair relay': '🔧', 'Stabilize signal': '📶',
+      'Find nearest agent': '🏥', 'Call regroup': '📢', 'Protect low-signal players': '🛡️',
+      'Decode cipher': '🔓', 'Reveal clue': '💡', 'Validate intercepted signal': '✅',
+      'Set waypoint': '📍', 'Measure proximity': '📏', 'Guide squad': '🧭',
+      'Carry key shard': '💎', 'Deliver objective': '📦', 'Trigger checkpoint': '🚩',
+      'Track all agents': '📊', 'Deploy objectives': '🚀', 'Monitor signal strength': '📈'
+    };
+    return map[tool] || '⚙️';
+  },
+
+  render() {
+    const el = document.getElementById('abilityHotbar');
+    if (!el) return;
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    const role = local?.role || 'Drone';
+    const tools = roleCatalog[role] || [];
+    // Include trap slot and ultimate slot in count check
+    const hasUlt = RoleProgression.canUseUltimate(role);
+    const expectedSlots = tools.length + 1 + (hasUlt ? 1 : 0); // +1 trap, +1 ult
+
+    // Only rebuild DOM when role changes to avoid killing click handlers / raf
+    if (this._lastRole === role && el.children.length === expectedSlots) {
+      return;
+    }
+    this._lastRole = role;
+
+    let html = tools.map((t, i) => {
+      const emoji = this.toolEmoji(t);
+      const keyLabel = i < 3 ? ['Q','W','E'][i] : '';
+      return `
+        <div class="ability-slot" data-tool="${t}" data-role="${role}">
+          <button class="ability-icon" data-tool="${t}" title="${t}">${emoji}</button>
+          <svg class="ability-cd-svg" viewBox="0 0 48 48">
+            <circle class="ability-cd-ring" cx="24" cy="24" r="20"></circle>
+            <circle class="ability-cd-progress" cx="24" cy="24" r="20"
+              stroke-dasharray="125.66" stroke-dashoffset="0"></circle>
+          </svg>
+          <span class="ability-cd-text"></span>
+          ${keyLabel ? `<span class="ability-key">${keyLabel}</span>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    // Trap deploy button (key T)
+    const trapCharges = TrapSystem._getCharges(state.localAgentId);
+    html += `
+      <div class="ability-slot trap-slot" data-trap="deploy" title="Deploy Trap (T)">
+        <button class="ability-icon trap-icon" data-trap="deploy">🕸️</button>
+        <span class="ability-cd-text trap-charges-text">${trapCharges}</span>
+        <span class="ability-key">T</span>
+      </div>
+    `;
+
+    // Ultimate ability slot (key U) — Tier 4 only
+    if (hasUlt) {
+      const ult = RoleProgression.ultimates[role];
+      html += `
+        <div class="ability-slot ultimate-slot" data-ultimate="${role}" title="${ult.name} (U)">
+          <button class="ability-icon ultimate-icon" data-ultimate="${role}">${ult.icon}</button>
+          <svg class="ability-cd-svg" viewBox="0 0 48 48">
+            <circle class="ability-cd-ring" cx="24" cy="24" r="20"></circle>
+            <circle class="ability-cd-progress ultimate-cd-progress" cx="24" cy="24" r="20"
+              stroke-dasharray="125.66" stroke-dashoffset="0"></circle>
+          </svg>
+          <span class="ability-cd-text ultimate-cd-text"></span>
+          <span class="ability-key">U</span>
+        </div>
+      `;
+    }
+
+    el.innerHTML = html;
+
+    el.querySelectorAll('.ability-icon').forEach(btn => {
+      if (btn.dataset.tool) {
+        btn.addEventListener('click', () => executeTool(role, btn.dataset.tool));
+      }
+      if (btn.dataset.trap === 'deploy') {
+        btn.addEventListener('click', () => TrapSystem.toggleSelector());
+      }
+      if (btn.dataset.ultimate) {
+        btn.addEventListener('click', () => RoleProgression.useUltimate(btn.dataset.ultimate));
+      }
+    });
+
+    // Keyboard shortcuts via SettingsModule keybinds
+    this._keyHandler = this._keyHandler || ((e) => {
+      if (state.screen === 'roles' && SettingsModule.matches(e, 'ready')) {
+        e.preventDefault();
+        const btn = document.getElementById('readyToMission');
+        if (btn) btn.click();
+        return;
+      }
+      if (state.screen !== 'mission') return;
+      if (SettingsModule.matches(e, 'trapSelector')) {
+        e.preventDefault();
+        TrapSystem.toggleSelector();
+        return;
+      }
+      if (SettingsModule.matches(e, 'ultimate')) {
+        e.preventDefault();
+        const local = state.agents.find(a => a.id === state.localAgentId);
+        const role = local?.role || 'Drone';
+        if (RoleProgression.canUseUltimate(role)) RoleProgression.useUltimate(role);
+        return;
+      }
+      if (e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        useLoadoutConsumable();
+        return;
+      }
+      const idx = { [SettingsModule.getKey('ability1')]: 0, [SettingsModule.getKey('ability2')]: 1, [SettingsModule.getKey('ability3')]: 2 }[e.key.toLowerCase()];
+      if (idx == null) return;
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      const role = local?.role || 'Drone';
+      const tools = roleCatalog[role] || [];
+      if (tools[idx]) executeTool(role, tools[idx]);
+    });
+    document.removeEventListener('keydown', this._keyHandler);
+    document.addEventListener('keydown', this._keyHandler);
+  },
+
+  updateCooldowns() {
+    const el = document.getElementById('abilityHotbar');
+    if (!el) return;
+    const now = Date.now();
+    const slots = el.querySelectorAll('.ability-slot');
+    slots.forEach(slot => {
+      const tool = slot.dataset.tool;
+      const role = slot.dataset.role;
+      const cdKey = `${role}:${tool}`;
+      const cdEnd = state.cooldowns[cdKey] || 0;
+      const btn = slot.querySelector('.ability-icon');
+      const progress = slot.querySelector('.ability-cd-progress');
+      const text = slot.querySelector('.ability-cd-text');
+      const tierMod = RoleProgression.getAbilityModifier(role, 'cooldown');
+      const cooldownMult = tierMod.cooldownMult || 1.0;
+      const duration = Math.round((abilityCooldowns[cdKey] || 10000) * cooldownMult);
+
+      if (now < cdEnd) {
+        const remaining = cdEnd - now;
+        const pct = remaining / duration;
+        const circumference = 125.66; // 2 * PI * 20
+        progress.style.strokeDashoffset = `${circumference * pct}`;
+        text.textContent = (remaining / 1000).toFixed(1) + 's';
+        btn.disabled = true;
+        slot.classList.remove('ability-ready', 'ability-active');
+        slot.classList.add('ability-cooldown');
+      } else {
+        progress.style.strokeDashoffset = '0';
+        text.textContent = '';
+        btn.disabled = false;
+        const hadCooldown = slot.classList.contains('ability-cooldown');
+        slot.classList.remove('ability-cooldown');
+        // Brief active flash when cooldown just finished, then ready
+        if (hadCooldown) {
+          slot.classList.add('ability-active');
+          setTimeout(() => {
+            slot.classList.remove('ability-active');
+            slot.classList.add('ability-ready');
+          }, 600);
+        } else if (!slot.classList.contains('ability-active')) {
+          slot.classList.add('ability-ready');
+        }
+      }
+    });
+  }
+};
+
+/* ========================== EVENT LOG / KILL FEED OVERLAY ========================== */
+
+const EventLog = {
+  MAX_ENTRIES: 6,
+  DISPLAY_MS: 5000,
+  FADE_MS: 400,
+  entries: [], // { id, html, type, expiresAt }
+
+  add(type, icon, text) {
+    const now = Date.now();
+    const id = `evt_${now}_${Math.random().toString(36).slice(2, 5)}`;
+    const entry = { id, type, icon, text, expiresAt: now + this.DISPLAY_MS };
+    this.entries.push(entry);
+    if (this.entries.length > this.MAX_ENTRIES) {
+      this.entries.shift();
+    }
+    this.render();
+    // Auto-remove after display duration
+    setTimeout(() => this._remove(id), this.DISPLAY_MS);
+  },
+
+  _remove(id) {
+    const idx = this.entries.findIndex(e => e.id === id);
+    if (idx === -1) return;
+    const el = document.querySelector(`[data-event-id="${id}"]`);
+    if (el) {
+      el.classList.add('event-log-fade');
+      setTimeout(() => {
+        this.entries = this.entries.filter(e => e.id !== id);
+        this.render();
+      }, this.FADE_MS);
+    } else {
+      this.entries = this.entries.filter(e => e.id !== id);
+      this.render();
+    }
+  },
+
+  render() {
+    const el = document.getElementById('eventLogOverlay');
+    if (!el) return;
+    el.innerHTML = this.entries.map(e => `
+      <div class="event-log-item event-${e.type}" data-event-id="${e.id}">
+        <span class="eli-icon">${e.icon}</span>
+        <span class="eli-text">${e.text}</span>
+      </div>
+    `).join('');
+  },
+
+  clear() {
+    this.entries = [];
+    this.render();
+  }
+};
+
+const ActiveBuffs = {
+  add(type, name, durationMs, icon, colorClass) {
+    const now = Date.now();
+    // Remove existing buff of same type to refresh
+    state.activeEffects = state.activeEffects.filter(b => b.type !== type);
+    state.activeEffects.push({ type, name, icon, colorClass, endAt: now + durationMs });
+    this.render();
+  },
+
+  remove(type) {
+    state.activeEffects = state.activeEffects.filter(b => b.type !== type);
+    this.render();
+  },
+
+  tick() {
+    const now = Date.now();
+    const before = state.activeEffects.length;
+    state.activeEffects = state.activeEffects.filter(b => b.endAt > now);
+    if (state.activeEffects.length !== before) this.render();
+    this._updateTimers();
+  },
+
+  render() {
+    const el = document.getElementById('activeBuffs');
+    if (!el) return;
+    el.innerHTML = state.activeEffects.map(b => `
+      <div class="buff-item ${b.colorClass || ''}" data-buff-type="${b.type}">
+        <span class="buff-icon">${b.icon}</span>
+        <span class="buff-name">${b.name}</span>
+        <span class="buff-time">${Math.ceil((b.endAt - Date.now()) / 1000)}s</span>
+      </div>
+    `).join('');
+  },
+
+  _updateTimers() {
+    const el = document.getElementById('activeBuffs');
+    if (!el) return;
+    const now = Date.now();
+    el.querySelectorAll('.buff-item').forEach(item => {
+      const type = item.dataset.buffType;
+      const buff = state.activeEffects.find(b => b.type === type);
+      const timeEl = item.querySelector('.buff-time');
+      if (buff && timeEl) {
+        timeEl.textContent = Math.ceil((buff.endAt - now) / 1000) + 's';
+      }
+    });
+  }
+};
 
 function renderRoleTools() {
   const local = state.agents.find(a=>a.id===state.localAgentId);
@@ -3781,16 +12117,29 @@ function renderRoleTools() {
     const cdEnd = state.cooldowns[cdKey] || 0;
     const onCd = now < cdEnd;
     const remaining = onCd ? Math.ceil((cdEnd - now) / 1000) : 0;
-    return `<button type="button" data-tool="${t}" ${onCd?'disabled':''}>${t}${onCd?` (${remaining}s)`:''}</button>`;
+    const stateClass = onCd ? 'tool-cooldown' : 'tool-ready';
+    return `<button type="button" class="${stateClass}" data-tool="${t}" ${onCd?'disabled':''}>${t}${onCd?` (${remaining}s)`:''}</button>`;
   }).join('');
   $('#roleTools').querySelectorAll('button').forEach(b=>{
     b.addEventListener('click', ()=>{ executeTool(role, b.dataset.tool); });
   });
+  // Sync hotbar when role/tools change
+  AbilityHotbar.render();
 }
 
 function executeTool(role, tool) {
   const local = state.agents.find(a=>a.id===state.localAgentId);
   if (!local) return;
+
+  // Block abilities if downed or eliminated
+  if (ReviveSystem.isDowned(state.localAgentId)) {
+    addChat('System', 'You are downed — cannot use abilities.');
+    return;
+  }
+  if (ReviveSystem.isEliminated(state.localAgentId)) {
+    addChat('System', 'You have been eliminated — spectator only.');
+    return;
+  }
 
   // Check cooldown
   const cdKey = `${role}:${tool}`;
@@ -3802,8 +12151,22 @@ function executeTool(role, tool) {
     return;
   }
 
-  // Set 10-second cooldown
-  state.cooldowns[cdKey] = now + 10000;
+  // Apply tier cooldown modifier
+  const tierMod = RoleProgression.getAbilityModifier(role, 'cooldown');
+  const cooldownMult = tierMod.cooldownMult || 1.0;
+  const cooldownMs = Math.round((abilityCooldowns[cdKey] || 10000) * cooldownMult);
+  state.cooldowns[cdKey] = now + cooldownMs;
+
+  // Power cost check (Phase 7 Task 6)
+  const powerCostKey = _resolvePowerCostKey(role, tool);
+  if (powerCostKey && !PowerBudget.tryUse(powerCostKey)) {
+    // Refund cooldown since power insufficient
+    state.cooldowns[cdKey] = 0;
+    return;
+  }
+
+  // Ability feedback effects: floating text + screen flash + radar pulse
+  showAbilityFeedback(tool, role);
 
   if (role==='Drone' && tool.includes('Scan')) {
     // Scan pulse circle on map
@@ -3815,14 +12178,21 @@ function executeTool(role, tool) {
       setTimeout(() => { try { m.removeLayer(pulseCircle); } catch(e) {} }, 3000);
       addChat(role, 'Scan routes — pulse emitted.');
     }
+    ActiveBuffs.add('scanning', 'Scanning', 8000, '📡', 'buff-blue');
+    EventLog.add('ability', '📡', `<strong>Scan</strong> Pulse emitted`);
     return;
   }
   if (role==='Mechanic' && tool.includes('Boost')) {
-    state.agents.forEach(a=>a.signal=clamp(a.signal+15,0,100));
+    const mod = RoleProgression.getAbilityModifier(role, 'boost');
+    const boostAmt = Math.round(15 * (mod.boostStrength || 1.0));
+    state.agents.forEach(a=>a.signal=clamp(a.signal+boostAmt,0,100));
+    state.squadBoosts = (state.squadBoosts || 0) + 1;
     // Flash effect on HUD
     const hud = document.querySelector('.mission-hud');
     if (hud) { hud.classList.remove('hud-flash-green'); void hud.offsetWidth; hud.classList.add('hud-flash-green'); }
     addChat(role, 'GPS mesh boosted for all agents.');
+    ActiveBuffs.add('signal-boost', 'Signal Boost', 15000, '⚡', 'buff-green');
+    EventLog.add('ability', '⚡', `<strong>Signal Boost</strong> Squad signal +15%`);
     renderHUD();
     return;
   }
@@ -3831,12 +12201,15 @@ function executeTool(role, tool) {
     const hud = document.querySelector('.mission-hud');
     if (hud) { hud.classList.remove('hud-flash-blue'); void hud.offsetWidth; hud.classList.add('hud-flash-blue'); }
     addChat(role, 'Regroup pulse restored squad stamina.');
+    ActiveBuffs.add('stamina-surge', 'Stamina Surge', 15000, '📢', 'buff-blue');
+    EventLog.add('ability', '📢', `<strong>Regroup</strong> Squad stamina restored`);
     renderHUD();
     return;
   }
   if (role==='Decoder' && tool.includes('Decode')) {
+    const mod = RoleProgression.getAbilityModifier(role, 'decode');
     const next = state.objectives.find(o=>!o.decoded);
-    if (next) { next.decoded=true; next.progress=Math.max(next.progress,18); addChat(role, `${next.title} decoded.`); }
+    if (next) { next.decoded=true; next.progress=Math.max(next.progress, Math.round(18 * (mod.decodeSpeed || 1.0))); addChat(role, `${next.title} decoded.`); EventLog.add('ability', '🔓', `<strong>Decoded</strong> ${escapeHtml(next.title)}`); state.objectivesDecoded = (state.objectivesDecoded || 0) + 1; DailyMissions.track('decode_objs', 1); }
     else addChat(role, 'All objective packets are open.');
     renderObjectivesList();
     // If this decoded objective is the next active one, focus it
@@ -3849,6 +12222,7 @@ function executeTool(role, tool) {
     if (next) {
       const dist = haversine(local, next);
       addChat(role, `Nearest objective: ${next.title} — ${formatDistance(dist)}.`);
+      EventLog.add('ability', '📏', `<strong>Measure</strong> ${escapeHtml(next.title)} — ${formatDistance(dist)}`);
       // Draw temporary line on map
       const m = MapModule.ensureMissionMap();
       if (m) {
@@ -3863,10 +12237,13 @@ function executeTool(role, tool) {
     return;
   }
   if (role==='Courier' && tool.includes('Deliver')) {
-    const target = state.objectives.find(o => o.decoded && !o.found && haversine(local, o) <= 30);
+    const mod = RoleProgression.getAbilityModifier(role, 'delivery');
+    const rangeMult = mod.deliverySpeed ? 1.2 : 1.0; // delivery speed also increases range slightly
+    const target = state.objectives.find(o => o.decoded && !o.found && haversine(local, o) <= 30 * rangeMult);
     if (target) {
       target.found = true;
       target.progress = 100;
+      state.deliveries = (state.deliveries || 0) + 1;
       ObjectiveAutoFocus.focusNext();
       const pts = target.type === 'Extraction' ? 50 : target.type === 'Waypoint' ? 30 : 25;
       if (local.team && state.scores[local.team] !== undefined) {
@@ -3875,6 +12252,7 @@ function executeTool(role, tool) {
       }
       SoundFX.scoreEvent();
       addChat(role, `${target.title} delivered!`);
+      EventLog.add('score', '⭐', `<strong>+${pts} pts</strong> ${escapeHtml(target.title)}`);
     } else {
       addChat(role, 'No objective within 30m. Move closer.');
     }
@@ -3884,11 +12262,13 @@ function executeTool(role, tool) {
   if (role==='Mission Control' && tool.includes('Track')) {
     const statuses = state.agents.map(a=>`${a.name}: SIG ${a.signal}% STA ${a.stamina}%`).join(' | ');
     addChat(role, `All agents — ${statuses}`);
+    EventLog.add('ability', '📊', `<strong>Track</strong> Squad status checked`);
     return;
   }
   if (role==='Mission Control' && tool.includes('Monitor')) {
     const avg = Math.round(state.agents.reduce((s,a)=>s+a.signal,0)/(state.agents.length||1));
     addChat(role, `Squad signal average: ${avg}%.`);
+    EventLog.add('ability', '📈', `<strong>Monitor</strong> Squad avg ${avg}% signal`);
     return;
   }
   if (role==='Drone' && tool.includes('Ping')) {
@@ -3898,6 +12278,7 @@ function executeTool(role, tool) {
     }, {}).threat;
     if (nearest) {
       addChat(role, `${nearest.name} detected at ${formatDistance(haversine(local, nearest))}.`);
+      EventLog.add('ability', '👁️', `<strong>Scout</strong> ${escapeHtml(nearest.name)} nearby`);
       // Flash threat indicator briefly
       ThreatProximity._forcePing?.(nearest);
     } else {
@@ -3913,6 +12294,8 @@ function executeTool(role, tool) {
     if (target && target.id) {
       target.signal = clamp(target.signal + 25, 0, 100);
       addChat(role, `Repaired ${target.name}'s signal relay (+25%).`);
+      ActiveBuffs.add('signal-stable', 'Signal Stable', 12000, '🔧', 'buff-green');
+      EventLog.add('ability', '🔧', `<strong>Repair</strong> ${escapeHtml(target.name)} +25% signal`);
     } else {
       addChat(role, 'No damaged relays found.');
     }
@@ -3924,6 +12307,8 @@ function executeTool(role, tool) {
     if (lowSignal.length) {
       lowSignal.forEach(a => { a.signal = clamp(a.signal + 15, 0, 100); });
       addChat(role, `Protected ${lowSignal.length} low-signal agent${lowSignal.length > 1 ? 's' : ''}.`);
+      ActiveBuffs.add('signal-shield', 'Signal Shield', 12000, '🛡️', 'buff-purple');
+      EventLog.add('ability', '🛡️', `<strong>Shield</strong> ${lowSignal.length} agent${lowSignal.length > 1 ? 's' : ''} protected`);
     } else {
       addChat(role, 'All agents have stable signal.');
     }
@@ -3935,6 +12320,7 @@ function executeTool(role, tool) {
     if (decoded.length) {
       decoded.forEach(o => { o.progress = clamp(o.progress + 20, 0, 100); });
       addChat(role, `Validated ${decoded.length} intercepted signal${decoded.length > 1 ? 's' : ''}.`);
+      EventLog.add('ability', '✅', `<strong>Validated</strong> ${decoded.length} signal${decoded.length > 1 ? 's' : ''}`);
     } else {
       addChat(role, 'No decoded signals to validate.');
     }
@@ -3945,7 +12331,9 @@ function executeTool(role, tool) {
     const undecoded = state.objectives.find(o => !o.decoded);
     if (undecoded) {
       addChat(role, `Next target: ${undecoded.title} — ${formatDistance(haversine(local, undecoded))} away.`);
+      EventLog.add('ability', '🧭', `<strong>Guide</strong> Next target set`);
       ObjectiveAutoFocus.panTo(undecoded.lat, undecoded.lng);
+      state.waypointsGuided = (state.waypointsGuided || 0) + 1;
     } else {
       const next = state.objectives.find(o => o.decoded && !o.found);
       if (next) {
@@ -3967,6 +12355,7 @@ function executeTool(role, tool) {
       }
       SoundFX.scoreEvent();
       addChat(role, `${waypoint.title} checkpoint triggered!`);
+      EventLog.add('score', '⭐', `<strong>+30 pts</strong> ${escapeHtml(waypoint.title)}`);
       ObjectiveAutoFocus.focusNext();
     } else {
       addChat(role, 'No checkpoint within 40m. Move closer.');
@@ -3980,33 +12369,3106 @@ function executeTool(role, tool) {
       undecoded.decoded = true;
       undecoded.progress = Math.max(undecoded.progress, 18);
       addChat(role, `Deployed objective: ${undecoded.title}.`);
+      EventLog.add('ability', '🚀', `<strong>Deployed</strong> ${escapeHtml(undecoded.title)}`);
       renderObjectivesList();
     } else {
       addChat(role, 'All objectives are already deployed.');
     }
     return;
   }
+  // === NEW ROLES: Saboteur, Spotter, Engineer, Hacker ===
+  if (role==='Saboteur' && tool.includes('EMP')) {
+    const m = MapModule.ensureMissionMap();
+    if (m && local) {
+      const pulseCircle = L.circle([local.lat, local.lng], {
+        color: '#e45b4d', fillColor: '#e45b4d', fillOpacity: 0.12, weight: 2, radius: 80, className: 'sl-scan-circle', interactive: false
+      }).addTo(m);
+      setTimeout(() => { try { m.removeLayer(pulseCircle); } catch(e) {} }, 5000);
+    }
+    // Disable nearest threat for 10s
+    const nearest = state.threats.sort((a,b)=>haversine(local,a)-haversine(local,b))[0];
+    if (nearest) {
+      nearest._empDisabled = Date.now() + 10000;
+      addChat(role, `EMP detonated! ${nearest.name} disabled for 10s.`);
+      EventLog.add('ability', '💥', `<strong>EMP</strong> ${escapeHtml(nearest.name)} disabled`);
+      ScreenJuice.addKillFeed('EMP BLAST', '#e45b4d');
+      ParticleSystem.burst(local.lat, local.lng, ['#e45b4d', '#ff8800'], 14);
+    } else {
+      addChat(role, 'EMP pulse emitted — no threats in range.');
+    }
+    state.empTrapsPlaced = (state.empTrapsPlaced || 0) + 1;
+    return;
+  }
+  if (role==='Saboteur' && tool.includes('Disable')) {
+    const nearest = state.threats.sort((a,b)=>haversine(local,a)-haversine(local,b))[0];
+    if (nearest) {
+      nearest._commsDisabled = Date.now() + 12000;
+      addChat(role, `Threat comms jammed — ${nearest.name} blinded for 12s.`);
+      EventLog.add('ability', '📵', `<strong>Comms Down</strong> ${escapeHtml(nearest.name)} blinded`);
+      ScreenJuice.addKillFeed('THREAT COMMS DOWN', '#e45b4d');
+    } else {
+      addChat(role, 'No threats to disable.');
+    }
+    return;
+  }
+  if (role==='Saboteur' && tool.includes('Sabotage')) {
+    const target = state.objectives.find(o => o.decoded && !o.found && haversine(local, o) <= 50);
+    if (target) {
+      target._sabotaged = true;
+      target.progress = Math.max(0, target.progress - 30);
+      addChat(role, `Relay sabotaged! ${target.title} progress reduced.`);
+      EventLog.add('ability', '🔥', `<strong>Sabotage</strong> ${escapeHtml(target.title)} damaged`);
+      ScreenJuice.addKillFeed('RELAY SABOTAGED', '#e45b4d');
+      ParticleSystem.burst(target.lat, target.lng, ['#e45b4d', '#ff4444'], 10);
+    } else {
+      addChat(role, 'No decoded relay within 50m to sabotage.');
+    }
+    return;
+  }
+  if (role==='Spotter' && tool.includes('Mark')) {
+    const nearest = state.threats.sort((a,b)=>haversine(local,a)-haversine(local,b))[0];
+    if (nearest) {
+      nearest._marked = Date.now() + 15000;
+      addChat(role, `Target marked! ${nearest.name} takes +50% damage for 15s.`);
+      EventLog.add('ability', '🎯', `<strong>Marked</strong> ${escapeHtml(nearest.name)} vulnerable`);
+      ScreenJuice.addKillFeed('TARGET MARKED', '#a5d6a7');
+      const m = MapModule.ensureMissionMap();
+      if (m) {
+        const mk = L.marker([nearest.lat, nearest.lng], { icon: L.divIcon({ className:'sl-map-icon', html:'<span style="font-size:18px">🎯</span>', iconSize:[20,20], iconAnchor:[10,10] }), interactive:false }).addTo(m);
+        setTimeout(()=>{ try{m.removeLayer(mk);}catch(e){} }, 15000);
+      }
+    } else {
+      addChat(role, 'No targets in range to mark.');
+    }
+    state.targetsMarked = (state.targetsMarked || 0) + 1;
+    return;
+  }
+  if (role==='Spotter' && tool.includes('Reveal')) {
+    const m = MapModule.ensureMissionMap();
+    if (m && local) {
+      const pulseCircle = L.circle([local.lat, local.lng], {
+        color: '#a5d6a7', fillColor: '#a5d6a7', fillOpacity: 0.18, weight: 2, radius: 250, className: 'sl-scan-circle', interactive: false
+      }).addTo(m);
+      setTimeout(() => { try { m.removeLayer(pulseCircle); } catch(e) {} }, 8000);
+    }
+    // Reveal all threats briefly
+    state.threats.forEach(t => { t._revealed = Date.now() + 8000; });
+    addChat(role, 'Fog area revealed — all threats visible for 8s.');
+    EventLog.add('ability', '🔭', `<strong>Reveal</strong> Threats exposed`);
+    ScreenJuice.addKillFeed('FOG REVEALED', '#a5d6a7');
+    state.fogReveals = (state.fogReveals || 0) + 1;
+    return;
+  }
+  if (role==='Spotter' && tool.includes('Paint')) {
+    const ex = state.objectives.find(o => o.type === 'Extraction');
+    if (ex) {
+      ex._painted = Date.now() + 20000;
+      const m = MapModule.ensureMissionMap();
+      if (m) {
+        const mk = L.marker([ex.lat, ex.lng], { icon: L.divIcon({ className:'sl-map-icon', html:'<span style="font-size:20px">🚁</span>', iconSize:[24,24], iconAnchor:[12,12] }), interactive:false }).addTo(m);
+        setTimeout(()=>{ try{m.removeLayer(mk);}catch(e){} }, 20000);
+      }
+      addChat(role, 'Extraction painted — squad can see it clearly for 20s.');
+      EventLog.add('ability', '🚁', `<strong>Painted</strong> Extraction visible`);
+      ScreenJuice.addKillFeed('EXTRACTION PAINTED', '#a5d6a7');
+    } else {
+      addChat(role, 'No extraction point found.');
+    }
+    return;
+  }
+  if (role==='Engineer' && tool.includes('Build')) {
+    if (!state.turrets) state.turrets = [];
+    state.turrets.push({
+      id: 'turret-' + Date.now(),
+      lat: local.lat, lng: local.lng,
+      builtAt: Date.now(),
+      ammo: 3,
+      lastShot: 0
+    });
+    addChat(role, 'Defensive turret deployed! It will auto-fire at threats.');
+    EventLog.add('ability', '🛡️', `<strong>Turret</strong> Defensive turret deployed`);
+    ScreenJuice.addKillFeed('TURRET DEPLOYED', '#90a4ae');
+    SoundFX.play(440, 0.08, 'sine', 0.15);
+    state.turretsBuilt = (state.turretsBuilt || 0) + 1;
+    return;
+  }
+  if (role==='Engineer' && tool.includes('Repair')) {
+    // Repair nearest allied drone (or restore signal to nearest agent)
+    const target = state.agents.reduce((best, a) => {
+      if (a.id === local.id) return best;
+      return a.signal < (best.signal || 100) ? a : best;
+    }, { signal: 100 });
+    if (target && target.id) {
+      target.signal = clamp(target.signal + 20, 0, 100);
+      target.stamina = clamp((target.stamina || 70) + 10, 0, 100);
+      addChat(role, `Repaired ${target.name}'s drone — signal +20%, stamina +10%.`);
+      EventLog.add('ability', '🔧', `<strong>Repair Drone</strong> ${escapeHtml(target.name)} restored`);
+      ActiveBuffs.add('drone-repaired', 'Drone Repaired', 10000, '🔧', 'buff-green');
+    } else {
+      addChat(role, 'No allied drones need repair.');
+    }
+    renderHUD();
+    return;
+  }
+  if (role==='Engineer' && tool.includes('Fortify')) {
+    local._fortified = Date.now() + 15000;
+    addChat(role, 'Position fortified — damage reduction active for 15s.');
+    EventLog.add('ability', '🏰', `<strong>Fortify</strong> Position hardened`);
+    ActiveBuffs.add('fortified', 'Fortified', 15000, '🏰', 'buff-purple');
+    ScreenJuice.addKillFeed('POSITION FORTIFIED', '#90a4ae');
+    return;
+  }
+  if (role==='Hacker' && tool.includes('Intercept')) {
+    // Fake enemy comms message
+    const fakeMessages = [
+      'Enemy patrol shifting east.',
+      'Comms check — all sectors clear.',
+      'Requesting backup at grid 4-B.',
+      'Target acquired, moving to intercept.'
+    ];
+    const msg = fakeMessages[Math.floor(Math.random() * fakeMessages.length)];
+    addChat(role, `💻 Intercepted: "${msg}"`);
+    EventLog.add('ability', '💻', `<strong>Intercept</strong> Enemy comms captured`);
+    ScreenJuice.addKillFeed('COMMS INTERCEPTED', '#00e5ff');
+    state.commsIntercepted = (state.commsIntercepted || 0) + 1;
+    return;
+  }
+  if (role==='Hacker' && tool.includes('Fake')) {
+    if (!state.fakeObjectives) state.fakeObjectives = [];
+    const [lat, lng] = jitter(local, 0.003);
+    state.fakeObjectives.push({
+      id: 'fake-' + Date.now(),
+      lat, lng,
+      title: 'Decoy Signal',
+      placedAt: Date.now(),
+      expiresAt: Date.now() + 45000
+    });
+    const m = MapModule.ensureMissionMap();
+    if (m) {
+      const mk = L.marker([lat, lng], { icon: L.divIcon({ className:'sl-map-icon', html:'<span style="font-size:18px">📡</span>', iconSize:[20,20], iconAnchor:[10,10] }), interactive:false }).addTo(m);
+      setTimeout(()=>{ try{m.removeLayer(mk);}catch(e){} }, 45000);
+    }
+    addChat(role, 'Fake objective marker planted — enemies will investigate.');
+    EventLog.add('ability', '🎭', `<strong>Decoy</strong> Fake objective planted`);
+    ScreenJuice.addKillFeed('FAKE OBJECTIVE PLANTED', '#00e5ff');
+    state.fakeObjectivesPlanted = (state.fakeObjectivesPlanted || 0) + 1;
+    return;
+  }
+  if (role==='Hacker' && tool.includes('Jam')) {
+    const m = MapModule.ensureMissionMap();
+    if (m && local) {
+      const pulseCircle = L.circle([local.lat, local.lng], {
+        color: '#00e5ff', fillColor: '#00e5ff', fillOpacity: 0.12, weight: 2, radius: 120, className: 'sl-scan-circle', interactive: false
+      }).addTo(m);
+      setTimeout(() => { try { m.removeLayer(pulseCircle); } catch(e) {} }, 6000);
+    }
+    // Reduce all threat signal/movement temporarily
+    state.threats.forEach(t => { t._jammed = Date.now() + 6000; });
+    addChat(role, 'Signal jammer active — threats slowed for 6s.');
+    EventLog.add('ability', '📵', `<strong>Jam</strong> Threat signals disrupted`);
+    ScreenJuice.addKillFeed('SIGNALS JAMMED', '#00e5ff');
+    state.signalsJammed = (state.signalsJammed || 0) + 1;
+    return;
+  }
   addChat(role, `${tool} executed.`);
 }
 
-function addChat(speaker, text) {
-  state.chat.push([speaker, text, Date.now()]);
-  state.chat = state.chat.slice(-50);
-  renderChat();
+/* ========================== PROXIMITY TRAP SYSTEM ========================== */
+
+const TrapSystem = {
+  CHARGES_PER_PLAYER: 2,
+  CONFIG: {
+    mine:   { radius: 15, damage: 999, agentStaminaDrain: 15, icon: '💥', color: '#e45b4d', label: 'Proximity Mine' },
+    flare:  { radius: 10, revealDuration: 20000, icon: '🔦', color: '#ffd700', label: 'Trip Flare' },
+    decoy:  { radius: 25, attractRadius: 100, attractDuration: 12000, icon: '📡', color: '#f0883e', label: 'Decoy Signal' }
+  },
+
+  initMission() {
+    state.traps = [];
+    state.trapCharges = {};
+    state.selectedTrapType = 'mine';
+    state.trapSelectorOpen = false;
+    // Give each agent their starting charges
+    state.agents.forEach(a => {
+      state.trapCharges[a.id] = this.CHARGES_PER_PLAYER;
+    });
+  },
+
+  place(type, lat, lng, ownerId) {
+    const charges = this._getCharges(ownerId);
+    if (charges <= 0) {
+      addChat('System', 'No trap charges remaining.');
+      return false;
+    }
+    // Power cost for decoy traps (Phase 7 Task 6)
+    if (type === 'decoy' && !PowerBudget.tryUse('decoyTrap')) {
+      return false;
+    }
+    const trap = {
+      id: 'trap-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      type,
+      lat, lng, ownerId,
+      triggered: false,
+      triggeredAt: 0,
+      placedAt: Date.now()
+    };
+    state.traps.push(trap);
+    this._setCharges(ownerId, charges - 1);
+    addChat('System', `${this.CONFIG[type].icon} ${this.CONFIG[type].label} placed.`);
+    EventLog.add('ability', this.CONFIG[type].icon, `<strong>${this.CONFIG[type].label}</strong> Deployed`);
+    SoundFX.play(600, 0.06, 'sine', 0.08);
+    saveState();
+    return true;
+  },
+
+  tick() {
+    state.traps.forEach(trap => {
+      if (trap.triggered) return;
+      const cfg = this.CONFIG[trap.type];
+      // Check threats
+      state.threats.forEach(t => {
+        const d = haversine(t, trap);
+        if (d <= cfg.radius) {
+          this._trigger(trap, t);
+        }
+      });
+    });
+    // Clean up old triggered traps after 30s
+    state.traps = state.traps.filter(t => {
+      if (!t.triggered) return true;
+      return Date.now() - t.triggeredAt < 30000;
+    });
+  },
+
+  _trigger(trap, threat) {
+    trap.triggered = true;
+    trap.triggeredAt = Date.now();
+    const cfg = this.CONFIG[trap.type];
+    switch (trap.type) {
+      case 'mine':
+        // Remove threat
+        state.threats = state.threats.filter(t => t.id !== threat.id);
+        // Drain nearby agents
+        state.agents.forEach(a => {
+          if (haversine(a, trap) <= cfg.radius * 1.5) {
+            a.stamina = Math.max(0, a.stamina - cfg.agentStaminaDrain);
+          }
+        });
+        addChat('System', `💥 Mine detonated! ${threat.name} eliminated.`);
+        ScreenJuice.addKillFeed('MINE DETONATED', '#e45b4d');
+        SoundFX.play(150, 0.2, 'square', 0.3);
+        ParticleSystem.burst(trap.lat, trap.lng, ['#ff4444', '#ff8800'], 12);
+        break;
+      case 'flare':
+        trap.revealedThreatId = threat.id;
+        trap.revealUntil = Date.now() + cfg.revealDuration;
+        addChat('System', `🔦 Flare triggered! ${threat.name} revealed for ${cfg.revealDuration/1000}s.`);
+        ScreenJuice.addKillFeed('FLARE TRIGGERED', '#ffd700');
+        SoundFX.play(880, 0.1, 'sine', 0.15);
+        break;
+      case 'decoy':
+        trap.attractUntil = Date.now() + cfg.attractDuration;
+        addChat('System', `📡 Decoy active! Threats drawn to location for ${cfg.attractDuration/1000}s.`);
+        ScreenJuice.addKillFeed('DECOY SIGNAL ACTIVE', '#f0883e');
+        SoundFX.play(440, 0.08, 'sine', 0.2);
+        break;
+    }
+    saveState();
+  },
+
+  // Called from threat AI to check if a decoy is active
+  getActiveDecoy() {
+    return state.traps.find(t => t.type === 'decoy' && t.triggered && Date.now() < (t.attractUntil || 0));
+  },
+
+  _getCharges(ownerId) {
+    if (!state.trapCharges) state.trapCharges = {};
+    if (state.trapCharges[ownerId] === undefined) state.trapCharges[ownerId] = this.CHARGES_PER_PLAYER;
+    return state.trapCharges[ownerId];
+  },
+
+  _setCharges(ownerId, n) {
+    if (!state.trapCharges) state.trapCharges = {};
+    state.trapCharges[ownerId] = n;
+  },
+
+  renderOnMap() {
+    state.traps.forEach(trap => {
+      const cfg = this.CONFIG[trap.type];
+      const label = trap.triggered ? `${cfg.icon} TRIGGERED` : `${cfg.icon} ${cfg.label}`;
+      const color = trap.triggered ? '#ff0000' : cfg.color;
+      MapModule.addBeacon(trap.id, trap.lat, trap.lng, label);
+      if (!trap.triggered) {
+        MapModule.drawZone(trap.lat, trap.lng, cfg.radius, color + '40'); // transparent fill
+      }
+    });
+  },
+
+  renderHUD() {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local) return;
+    const charges = this._getCharges(state.localAgentId);
+    const el = document.getElementById('trapCharges');
+    if (el) el.textContent = charges;
+  },
+
+  // Open/close the trap selector UI
+  toggleSelector() {
+    state.trapSelectorOpen = !state.trapSelectorOpen;
+    const el = document.getElementById('trapSelector');
+    if (el) el.classList.toggle('hidden', !state.trapSelectorOpen);
+    this.renderHUD();
+  },
+
+  // Deploy selected trap at local agent position
+  deploySelected() {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local) return false;
+    const type = state.selectedTrapType || 'mine';
+    return this.place(type, local.lat, local.lng, state.localAgentId);
+  }
+};
+
+/* ========================== ROLE AMBIENT EFFECTS ========================== */
+
+let _roleEffectInterval = null;
+let _hexRainCanvas = null;
+let _hexRainCtx = null;
+
+function updateRoleAmbientEffects() {
+  const local = state.agents.find(a => a.id === state.localAgentId);
+  const role = local?.role;
+  const screen = state.screen;
+
+  // Clean up old effects when role/screen changes
+  if (screen !== 'mission') {
+    if (_hexRainCanvas) { _hexRainCanvas.remove(); _hexRainCanvas = null; _hexRainCtx = null; }
+    if (_roleEffectInterval) { clearInterval(_roleEffectInterval); _roleEffectInterval = null; }
+    document.querySelectorAll('.mc-scan-line, .speed-line, .compass-pulse-el').forEach(el => el.remove());
+    return;
+  }
+
+  // Decoder: hex code rain
+  if (role === 'Decoder') {
+    if (!_hexRainCanvas) {
+      _hexRainCanvas = document.createElement('canvas');
+      _hexRainCanvas.className = 'hex-rain-canvas';
+      _hexRainCanvas.width = window.innerWidth;
+      _hexRainCanvas.height = window.innerHeight;
+      document.getElementById('missionScreen')?.appendChild(_hexRainCanvas);
+      _hexRainCtx = _hexRainCanvas.getContext('2d');
+    }
+    _drawHexRain();
+  } else if (_hexRainCanvas) {
+    _hexRainCanvas.remove(); _hexRainCanvas = null; _hexRainCtx = null;
+  }
+
+  // Mission Control: scan line
+  if (role === 'Mission Control' && !document.querySelector('.mc-scan-line')) {
+    const scan = MemoryPool.acquire('div');
+    scan.className = 'mc-scan-line';
+    document.getElementById('missionScreen')?.appendChild(scan);
+  } else if (role !== 'Mission Control') {
+    document.querySelectorAll('.mc-scan-line').forEach(el => el.remove());
+  }
+
+  // Navigator: compass pulse near objective
+  if (role === 'Navigator') {
+    const nearest = state.objectives.find(o => o.decoded && !o.found);
+    const compass = document.getElementById('compassRose');
+    if (compass && nearest && local) {
+      const dist = haversine(local, nearest);
+      compass.classList.toggle('compass-pulse', dist < 200);
+    }
+  }
+
+  // Courier: speed lines when moving fast
+  if (role === 'Courier' && local) {
+    const speed = Math.sqrt((local._lastLat - local.lat)**2 + (local._lastLng - local.lng)**2) || 0;
+    local._lastLat = local.lat; local._lastLng = local.lng;
+    if (speed > 0.0003 && Math.random() < 0.3) {
+      const line = MemoryPool.acquire('div');
+      line.className = 'speed-line';
+      line.style.top = Math.random() * window.innerHeight + 'px';
+      document.getElementById('missionScreen')?.appendChild(line);
+      setTimeout(() => line.remove(), 1000);
+    }
+  }
+}
+
+function _drawHexRain() {
+  if (!_hexRainCtx) return;
+  const ctx = _hexRainCtx;
+  const w = _hexRainCanvas.width;
+  const h = _hexRainCanvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#d2a8ff';
+  ctx.font = '10px monospace';
+  const cols = Math.floor(w / 14);
+  for (let i = 0; i < cols; i++) {
+    const x = i * 14;
+    const y = (Date.now() * 0.02 + i * 37) % (h + 20) - 10;
+    const hex = Math.floor(Math.random() * 16).toString(16).toUpperCase();
+    ctx.globalAlpha = 0.15 + Math.random() * 0.25;
+    ctx.fillText(hex, x, y);
+  }
+}
+
+/* ========================== WEATHER SYSTEM ========================== */
+
+const WeatherSystem = {
+  TYPES: ['clear', 'rain', 'fog', 'storm'],
+  WEIGHTS: [0.45, 0.25, 0.20, 0.10],
+  SHIFT_CHANCE: 0.35,
+
+  init() {
+    const type = this._roll();
+    state.weather = {
+      type,
+      startedAt: Date.now(),
+      nextChangeAt: 0,
+      effects: this._buildEffects(type),
+    };
+    // Schedule potential mid-mission shift at 40-60% of mission duration
+    const shiftDelay = (state.duration * 0.4 + Math.random() * state.duration * 0.2) * 1000;
+    state.weather.nextChangeAt = Date.now() + shiftDelay;
+    this._applyVisuals();
+    addChat('System', `Weather: ${this._label(type)} — ${this._desc(type)}`);
+    EventLog.add('event', this._icon(type), `<strong>Weather</strong> ${this._label(type)} — ${this._desc(type)}`);
+  },
+
+  _roll() {
+    const r = Math.random();
+    let cum = 0;
+    for (let i = 0; i < this.TYPES.length; i++) {
+      cum += this.WEIGHTS[i];
+      if (r <= cum) return this.TYPES[i];
+    }
+    return 'clear';
+  },
+
+  _label(t) {
+    return { clear: 'Clear', rain: 'Rain', fog: 'Fog', storm: 'Storm' }[t];
+  },
+  _icon(t) {
+    return { clear: '☀️', rain: '🌧️', fog: '🌫️', storm: '⛈️' }[t];
+  },
+  _desc(t) {
+    return {
+      clear: 'Optimal conditions.',
+      rain: 'Signal dampened. Threat detection range shrinks.',
+      fog: 'Visibility reduced to 150m. Threats harder to spot.',
+      storm: 'All effects + threat speed +25%.',
+    }[t];
+  },
+
+  _buildEffects(type) {
+    switch (type) {
+      case 'clear':
+        return { signalMult: 1.0, visionMult: 1.0, threatDetectMult: 1.0, threatSpeedMult: 1.0 };
+      case 'rain':
+        return { signalMult: 0.7 + Math.random() * 0.1, visionMult: 1.0, threatDetectMult: 0.75, threatSpeedMult: 1.0 };
+      case 'fog':
+        return { signalMult: 0.95, visionMult: 0.3, threatDetectMult: 0.7, threatSpeedMult: 1.0 };
+      case 'storm':
+        return { signalMult: 0.65 + Math.random() * 0.1, visionMult: 0.3, threatDetectMult: 0.7, threatSpeedMult: 1.25 };
+      default:
+        return { signalMult: 1.0, visionMult: 1.0, threatDetectMult: 1.0, threatSpeedMult: 1.0 };
+    }
+  },
+
+  tick() {
+    const w = state.weather;
+    if (!w) return;
+    // Check for mid-mission shift
+    if (w.nextChangeAt && Date.now() > w.nextChangeAt) {
+      w.nextChangeAt = 0;
+      if (Math.random() < this.SHIFT_CHANCE) {
+        const newType = this._roll();
+        if (newType !== w.type) {
+          w.type = newType;
+          w.startedAt = Date.now();
+          w.effects = this._buildEffects(newType);
+          this._applyVisuals();
+          addChat('System', `Weather shift: ${this._label(newType)}!`);
+          EventLog.add('event', this._icon(newType), `<strong>Weather Shift</strong> ${this._label(newType)}`);
+          ScreenJuice.addKillFeed('WEATHER SHIFT: ' + this._label(newType).toUpperCase(), '#8aa3bf');
+          SoundFX.play(440, 0.08, 'sine', 0.2);
+        }
+      }
+    }
+    // Lightning flash during storm
+    if (w.type === 'storm' && Math.random() < 0.008) {
+      this._lightningFlash();
+    }
+    // Rain particles
+    if ((w.type === 'rain' || w.type === 'storm') && Math.random() < 0.3) {
+      this._spawnRainDrop();
+    }
+    // Phase 6 Task 10 — Particle presets per weather type
+    if (w.type !== 'clear' && state.status === 'Live') {
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      if (local && Math.random() < 0.25) {
+        const preset = w.type === 'storm' ? 'rain' : w.type;
+        ParticleSystem.spawnPreset(preset, local.lat, local.lng, 2);
+      }
+    }
+  },
+
+  _lightningFlash() {
+    const flash = document.getElementById('weatherLightning');
+    if (!flash) return;
+    flash.style.opacity = '0.6';
+    setTimeout(() => { flash.style.opacity = '0'; }, 80);
+    setTimeout(() => { flash.style.opacity = '0.3'; }, 150);
+    setTimeout(() => { flash.style.opacity = '0'; }, 250);
+    SoundFX.play(800, 0.12, 'sawtooth', 0.08);
+  },
+
+  _spawnRainDrop() {
+    const overlay = document.getElementById('weatherOverlay');
+    if (!overlay) return;
+    const drop = MemoryPool.acquire('div');
+    drop.className = 'rain-drop';
+    drop.style.left = Math.random() * 100 + 'vw';
+    drop.style.animationDuration = (0.4 + Math.random() * 0.3) + 's';
+    overlay.appendChild(drop);
+    setTimeout(() => { drop.remove(); MemoryPool.release('div', drop); }, 800);
+  },
+
+  // Modifiers called by other systems
+  signalMultiplier() {
+    return (state.weather.effects.signalMult || 1.0);
+  },
+
+  visionMultiplier() {
+    return (state.weather.effects.visionMult || 1.0);
+  },
+
+  threatDetectMultiplier() {
+    return (state.weather.effects.threatDetectMult || 1.0);
+  },
+
+  threatSpeedMultiplier() {
+    return (state.weather.effects.threatSpeedMult || 1.0);
+  },
+
+  _applyVisuals() {
+    const type = state.weather.type;
+    const body = document.body;
+    body.dataset.weather = type;
+    // Ensure overlay exists
+    let overlay = document.getElementById('weatherOverlay');
+    if (!overlay) {
+      overlay = MemoryPool.acquire('div');
+      overlay.id = 'weatherOverlay';
+      overlay.className = 'weather-overlay';
+      document.body.appendChild(overlay);
+    }
+    // Ensure lightning flash layer exists
+    let lightning = document.getElementById('weatherLightning');
+    if (!lightning) {
+      lightning = MemoryPool.acquire('div');
+      lightning.id = 'weatherLightning';
+      lightning.className = 'weather-lightning';
+      document.body.appendChild(lightning);
+    }
+    overlay.className = 'weather-overlay weather-' + type;
+    if (type === 'clear') {
+      overlay.style.opacity = '0';
+    } else {
+      overlay.style.opacity = String(0.12 + Math.random() * 0.08);
+    }
+  },
+
+  clearVisuals() {
+    document.getElementById('weatherOverlay')?.remove();
+    document.getElementById('weatherLightning')?.remove();
+    document.body.dataset.weather = '';
+  },
+
+  renderHUD() {
+    const el = document.getElementById('weatherHUD');
+    if (!el) return;
+    const w = state.weather;
+    const icons = { clear: '☀️', rain: '🌧️', fog: '🌫️', storm: '⛈️' };
+    el.textContent = `${icons[w.type] || '☀️'} ${this._label(w.type)}`;
+    el.title = this._desc(w.type);
+  },
+};
+
+/* ========================== COUNTDOWN ANIMATION ========================== */
+
+function showCountdown() {
+  const missionScreen = document.getElementById('missionScreen');
+  if (!missionScreen) return;
+  const numbers = ['3', '2', '1', 'GO!'];
+  let idx = 0;
+  const showNext = () => {
+    if (idx >= numbers.length) return;
+    const overlay = MemoryPool.acquire('div');
+    overlay.className = 'countdown-overlay';
+    const num = MemoryPool.acquire('div');
+    num.className = numbers[idx] === 'GO!' ? 'countdown-go' : 'countdown-number';
+    num.textContent = numbers[idx];
+    overlay.appendChild(num);
+    missionScreen.appendChild(overlay);
+    setTimeout(() => {
+      overlay.remove();
+      MemoryPool.release('div', num);
+      MemoryPool.release('div', overlay);
+    }, 900);
+    idx++;
+    if (idx < numbers.length) setTimeout(showNext, 800);
+  };
+  showNext();
+}
+
+/* ========================== DYNAMIC MISSION EVENTS ========================== */
+
+const DynamicEvents = {
+  nextEventAt: 0,
+  minInterval: 60000,
+  maxInterval: 90000,
+  activeEvent: null,
+  eventTimers: [],
+
+  start() {
+    this._scheduleNext();
+  },
+
+  stop() {
+    this.activeEvent = null;
+    this.eventTimers.forEach(t => clearTimeout(t));
+    this.eventTimers = [];
+  },
+
+  _scheduleNext() {
+    const delay = this.minInterval + Math.random() * (this.maxInterval - this.minInterval);
+    const timer = setTimeout(() => this._triggerRandom(), delay);
+    this.eventTimers.push(timer);
+  },
+
+  _triggerRandom() {
+    const events = ['supply_drop', 'threat_reinforcements', 'signal_flare', 'jammer_surge'];
+    if (state.objectives.some(o => o.type === 'Extraction') &&
+        state.objectives.filter(o => o.found).length / state.objectives.length > 0.7) {
+      events.push('extraction_shift');
+    }
+    const evt = events[Math.floor(Math.random() * events.length)];
+    this.activate(evt);
+    this._scheduleNext();
+  },
+
+  activate(type) {
+    this.activeEvent = type;
+    switch(type) {
+      case 'supply_drop': this._supplyDrop(); break;
+      case 'threat_reinforcements': this._threatReinforcements(); break;
+      case 'signal_flare': this._signalFlare(); break;
+      case 'jammer_surge': this._jammerSurge(); break;
+      case 'extraction_shift': this._extractionShift(); break;
+    }
+  },
+
+  _supplyDrop() {
+    SupplyCacheSystem.spawnDrop();
+  },
+
+  _threatReinforcements() {
+    const count = 2 + Math.floor(Math.random() * 2);
+    const center = getMissionCenter();
+    const names = ['Patrol Echo', 'Hunter Nova', 'Seeker Pulse'];
+    const ids = [];
+    for (let i = 0; i < count; i++) {
+      const [lat, lng] = jitter(center, 0.01);
+      const id = 'temp-threat-' + Date.now() + '-' + i;
+      ids.push(id);
+      state.threats.push({
+        id, name: names[i % names.length],
+        lat, lng, radius: 100 + Math.random() * 50,
+        angle: Math.random() * Math.PI * 2,
+        speed: 0.0003 + Math.random() * 0.00015,
+        mode: 'patrol', targetId: null,
+        temp: true, expiresAt: Date.now() + 120000,
+        hits: 0, alert: false,
+        _alertState: 'idle', _alertTimer: 0,
+        retreatUntil: 0, evadedAt: 0, respawnAt: 0
+      });
+    }
+    state.dynamicEvents.extraThreatIds = ids;
+    addChat('System', '🔴 ' + count + ' new threats entering AO!');
+    EventLog.add('event', '🔴', '<strong>Reinforcements</strong> ' + count + ' threats entering area');
+    ScreenJuice.addKillFeed('THREAT REINFORCEMENTS DETECTED', '#ff4444');
+    SoundFX.threatDetected();
+  },
+
+  _signalFlare() {
+    if (!state.threats.length) return;
+    const target = state.threats[Math.floor(Math.random() * state.threats.length)];
+    state.dynamicEvents.eventData = {
+      flareLat: target.lat, flareLng: target.lng,
+      flareTime: Date.now(), flareDuration: 15000,
+      markerType: 'signal_flare'
+    };
+    addChat('System', '📡 Signal flare — threat position revealed for 15s!');
+    EventLog.add('event', '📡', '<strong>Signal Flare</strong> Enemy position revealed');
+    ScreenJuice.addKillFeed('ENEMY SIGNAL FLARE', '#ffd700');
+    SoundFX.play(660, 0.1, 'sine', 0.12);
+  },
+
+  _jammerSurge() {
+    state.dynamicEvents.eventData = {
+      jammerSurgeUntil: Date.now() + 20000,
+      markerType: 'jammer_surge'
+    };
+    addChat('System', '⚡ Jammer surge — abilities slowed for 20s!');
+    EventLog.add('event', '⚡', '<strong>Jammer Surge</strong> All abilities +50% cooldown for 20s');
+    ScreenJuice.addKillFeed('JAMMER SURGE ACTIVE', '#ff9800');
+    const flash = MemoryPool.acquire('div');
+    flash.style.cssText = 'position:fixed;inset:0;background:rgba(255,152,0,0.15);z-index:9999;pointer-events:none;transition:opacity 0.5s';
+    document.body.appendChild(flash);
+    setTimeout(() => { flash.style.opacity = '0'; setTimeout(() => flash.remove(), 500); }, 300);
+    SoundFX.play(220, 0.12, 'sawtooth', 0.2);
+  },
+
+  _extractionShift() {
+    const extractionObj = state.objectives.find(o => o.type === 'Extraction');
+    if (!extractionObj) return;
+    const center = getMissionCenter();
+    const [newLat, newLng] = jitter(center, 0.006 + Math.random() * 0.008);
+    state.dynamicEvents.eventData = {
+      oldExtractLat: extractionObj.lat, oldExtractLng: extractionObj.lng,
+      newExtractLat: newLat, newExtractLng: newLng,
+      shiftDeadline: Date.now() + 90000,
+      markerType: 'extraction_shift'
+    };
+    extractionObj.lat = newLat;
+    extractionObj.lng = newLng;
+    addChat('System', '✈️ Extraction zone relocated! 90 seconds to reach new position.');
+    EventLog.add('event', '✈️', '<strong>Extraction Shifted</strong> New EVA point marked');
+    ScreenJuice.addKillFeed('EXTRACTION RELOCATED', '#ff5722');
+    SoundFX.play(440, 0.15, 'square', 0.18);
+  },
+
+  tick() {
+    const data = state.dynamicEvents.eventData || {};
+    if (data.markerType === 'supply_drop' && data.looted) {
+      state.dynamicEvents.activeEvent = null;
+      state.dynamicEvents.eventData = {};
+    }
+    if (state.dynamicEvents.extraThreatIds.length > 0) {
+      state.threats = state.threats.filter(t => {
+        if (t.temp && Date.now() > t.expiresAt) return false;
+        return true;
+      });
+      state.dynamicEvents.extraThreatIds = state.dynamicEvents.extraThreatIds.filter(id =>
+        state.threats.some(t => t.id === id)
+      );
+    }
+    if (data.markerType === 'signal_flare' && data.flareTime && (Date.now() - data.flareTime) > data.flareDuration) {
+      state.dynamicEvents.activeEvent = null;
+      state.dynamicEvents.eventData = {};
+    }
+    if (data.markerType === 'jammer_surge' && data.jammerSurgeUntil && Date.now() > data.jammerSurgeUntil) {
+      state.dynamicEvents.activeEvent = null;
+      state.dynamicEvents.eventData = {};
+    }
+    if (data.markerType === 'extraction_shift' && data.shiftDeadline && Date.now() > data.shiftDeadline) {
+      state.dynamicEvents.activeEvent = null;
+      state.dynamicEvents.eventData = {};
+    }
+  }
+};
+
+/* ========================== PROCEDURAL MAP GENERATION (Phase 7 Task 9) ========================== */
+
+const ProceduralMap = {
+  GRID_SIZE: 32,
+  PERMUTATION: null,
+  _seed: 0,
+
+  init(seed) {
+    this._seed = seed || Math.floor(Math.random() * 65536);
+    this.PERMUTATION = this._buildPermutation(this._seed);
+  },
+
+  _buildPermutation(seed) {
+    const p = new Array(256);
+    for (let i = 0; i < 256; i++) p[i] = i;
+    // Seeded Fisher-Yates shuffle
+    let s = seed;
+    for (let i = 255; i > 0; i--) {
+      s = (s * 16807 + 0) % 2147483647;
+      const j = s % (i + 1);
+      [p[i], p[j]] = [p[j], p[i]];
+    }
+    return p;
+  },
+
+  _fade(t) {
+    return t * t * t * (t * (t * 6 - 15) + 10);
+  },
+
+  _lerp(a, b, t) {
+    return a + (b - a) * t;
+  },
+
+  _grad(hash, x, y) {
+    const h = hash & 3;
+    const u = h < 2 ? x : -x;
+    const v = h < 1 || h === 3 ? y : -y;
+    return u + v;
+  },
+
+  _perm(i) {
+    return this.PERMUTATION[i & 255];
+  },
+
+  // 2D Perlin noise in range [-1, 1]
+  noise2D(x, y) {
+    const X = Math.floor(x) & 255;
+    const Y = Math.floor(y) & 255;
+    const xf = x - Math.floor(x);
+    const yf = y - Math.floor(y);
+    const u = this._fade(xf);
+    const v = this._fade(yf);
+
+    const aa = this._perm(X) + Y;
+    const ab = this._perm(X) + Y + 1;
+    const ba = this._perm(X + 1) + Y;
+    const bb = this._perm(X + 1) + Y + 1;
+
+    const g1 = this._grad(this._perm(aa), xf, yf);
+    const g2 = this._grad(this._perm(ba), xf - 1, yf);
+    const g3 = this._grad(this._perm(ab), xf, yf - 1);
+    const g4 = this._grad(this._perm(bb), xf - 1, yf - 1);
+
+    const x1 = this._lerp(g1, g2, u);
+    const x2 = this._lerp(g3, g4, u);
+    return this._lerp(x1, x2, v);
+  },
+
+  // Multi-octave noise in range [0, 1]
+  fbm(x, y, octaves = 4, persistence = 0.5, lacunarity = 2.0) {
+    let total = 0;
+    let amplitude = 0.5;
+    let frequency = 1.0;
+    let maxVal = 0;
+    for (let i = 0; i < octaves; i++) {
+      total += this.noise2D(x * frequency, y * frequency) * amplitude;
+      maxVal += amplitude;
+      amplitude *= persistence;
+      frequency *= lacunarity;
+    }
+    return (total / maxVal) * 0.5 + 0.5;
+  },
+
+  // Generate heightmap over mission area
+  generateHeightmap(centerLat, centerLng, rangeDeg) {
+    const size = this.GRID_SIZE;
+    const half = rangeDeg / 2;
+    const grid = new Array(size);
+    for (let r = 0; r < size; r++) {
+      grid[r] = new Array(size);
+      for (let c = 0; c < size; c++) {
+        const nx = (c / (size - 1)) * 4.0; // scale for noise frequency
+        const ny = (r / (size - 1)) * 4.0;
+        grid[r][c] = this.fbm(nx, ny, 4, 0.5, 2.0);
+      }
+    }
+    return { grid, size, centerLat, centerLng, rangeDeg, half };
+  },
+
+  // Generate interest map (second noise layer for objective clustering)
+  generateInterestMap(centerLat, centerLng, rangeDeg) {
+    const size = this.GRID_SIZE;
+    const grid = new Array(size);
+    for (let r = 0; r < size; r++) {
+      grid[r] = new Array(size);
+      for (let c = 0; c < size; c++) {
+        const nx = (c / (size - 1)) * 6.0 + 100; // offset seed
+        const ny = (r / (size - 1)) * 6.0 + 100;
+        grid[r][c] = this.fbm(nx, ny, 3, 0.5, 2.0);
+      }
+    }
+    return { grid, size, centerLat, centerLng, rangeDeg };
+  },
+
+  // Bilinear interpolation for continuous noise sampling
+  sampleGrid(gridData, lat, lng) {
+    const { grid, size, centerLat, centerLng, rangeDeg } = gridData;
+    const half = rangeDeg / 2;
+    const minLat = centerLat - half;
+    const minLng = centerLng - half;
+    const maxLat = centerLat + half;
+    const maxLng = centerLng + half;
+
+    const nr = (lat - minLat) / (maxLat - minLat);
+    const nc = (lng - minLng) / (maxLng - minLng);
+
+    const r = nr * (size - 1);
+    const c = nc * (size - 1);
+    const r0 = Math.max(0, Math.min(size - 2, Math.floor(r)));
+    const c0 = Math.max(0, Math.min(size - 2, Math.floor(c)));
+    const dr = r - r0;
+    const dc = c - c0;
+
+    const v00 = grid[r0][c0];
+    const v01 = grid[r0][c0 + 1];
+    const v10 = grid[r0 + 1][c0];
+    const v11 = grid[r0 + 1][c0 + 1];
+
+    return this._lerp(this._lerp(v00, v01, dc), this._lerp(v10, v11, dc), dr);
+  },
+
+  // Height value to terrain feature type
+  heightToFeature(h) {
+    if (h < 0.30) return 'low';
+    if (h < 0.50) return 'flat';
+    if (h < 0.70) return 'elevated';
+    return 'peak';
+  },
+
+  // Biome blending: returns dominant biome and blend weights
+  // Phase 7 Task 7 — Optional mapWeights biases generation toward the selected map's biome mix
+  getBiomeBlend(lat, lng, heightmap, interestMap, mapWeights) {
+    const h = this.sampleGrid(heightmap, lat, lng);
+    const interest = interestMap ? this.sampleGrid(interestMap, lat, lng) : 0.5;
+
+    // Biome dominance based on height + interest variation
+    const feature = this.heightToFeature(h);
+
+    // Base biome weights
+    const weights = { open: 0, high_ground: 0, urban: 0, forest: 0, industrial: 0, water: 0 };
+
+    if (feature === 'low') {
+      weights.open = 0.6; weights.water = 0.3; weights.forest = 0.1;
+    } else if (feature === 'flat') {
+      weights.open = 0.4; weights.urban = 0.35; weights.industrial = 0.25;
+    } else if (feature === 'elevated') {
+      weights.high_ground = 0.5; weights.forest = 0.4; weights.open = 0.1;
+    } else {
+      weights.high_ground = 0.7; weights.open = 0.2; weights.forest = 0.1;
+    }
+
+    // Interest modulates urban/industrial concentration
+    if (interest > 0.6) {
+      weights.urban += 0.15;
+      weights.industrial += 0.10;
+      weights.open -= 0.25;
+    }
+
+    // Phase 7 Task 7 — Blend with map biome mix weights if provided
+    if (mapWeights) {
+      for (const k in weights) {
+        const mapW = mapWeights[k] || 0;
+        weights[k] = weights[k] * 0.55 + mapW * 0.45;
+      }
+    }
+
+    // Normalize
+    let total = 0;
+    for (const k in weights) total += weights[k];
+    for (const k in weights) weights[k] /= total;
+
+    // Dominant biome
+    let dominant = 'open';
+    let maxW = 0;
+    for (const k in weights) {
+      if (weights[k] > maxW) { maxW = weights[k]; dominant = k; }
+    }
+
+    return { dominant, weights, height: h, interest, feature };
+  },
+
+  // Find local maxima in interest map for objective clusters
+  findInterestPeaks(interestMap, count) {
+    const { grid, size } = interestMap;
+    const peaks = [];
+    for (let r = 1; r < size - 1; r++) {
+      for (let c = 1; c < size - 1; c++) {
+        const v = grid[r][c];
+        let isMax = true;
+        for (let dr = -1; dr <= 1 && isMax; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            if (grid[r + dr][c + dc] > v) { isMax = false; break; }
+          }
+        }
+        if (isMax && v > 0.45) {
+          const lat = interestMap.centerLat - interestMap.rangeDeg / 2 + (r / (size - 1)) * interestMap.rangeDeg;
+          const lng = interestMap.centerLng - interestMap.rangeDeg / 2 + (c / (size - 1)) * interestMap.rangeDeg;
+          peaks.push({ lat, lng, value: v, r, c });
+        }
+      }
+    }
+    peaks.sort((a, b) => b.value - a.value);
+    return peaks.slice(0, count);
+  },
+
+  // Find valleys (low height) for ambush points
+  findValleys(heightmap, count) {
+    const { grid, size } = heightmap;
+    const valleys = [];
+    for (let r = 1; r < size - 1; r++) {
+      for (let c = 1; c < size - 1; c++) {
+        const v = grid[r][c];
+        let isMin = true;
+        for (let dr = -1; dr <= 1 && isMin; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            if (grid[r + dr][c + dc] < v) { isMin = false; break; }
+          }
+        }
+        if (isMin && v < 0.40) {
+          const lat = heightmap.centerLat - heightmap.rangeDeg / 2 + (r / (size - 1)) * heightmap.rangeDeg;
+          const lng = heightmap.centerLng - heightmap.rangeDeg / 2 + (c / (size - 1)) * heightmap.rangeDeg;
+          valleys.push({ lat, lng, value: v });
+        }
+      }
+    }
+    valleys.sort((a, b) => a.value - b.value);
+    return valleys.slice(0, count);
+  },
+
+  // Find ridges (high height) for overwatch points
+  findRidges(heightmap, count) {
+    const { grid, size } = heightmap;
+    const ridges = [];
+    for (let r = 1; r < size - 1; r++) {
+      for (let c = 1; c < size - 1; c++) {
+        const v = grid[r][c];
+        let isMax = true;
+        for (let dr = -1; dr <= 1 && isMax; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            if (grid[r + dr][c + dc] > v) { isMax = false; break; }
+          }
+        }
+        if (isMax && v > 0.60) {
+          const lat = heightmap.centerLat - heightmap.rangeDeg / 2 + (r / (size - 1)) * heightmap.rangeDeg;
+          const lng = heightmap.centerLng - heightmap.rangeDeg / 2 + (c / (size - 1)) * heightmap.rangeDeg;
+          ridges.push({ lat, lng, value: v });
+        }
+      }
+    }
+    ridges.sort((a, b) => b.value - a.value);
+    return ridges.slice(0, count);
+  }
+};
+
+/* ========================== TERRAIN SYSTEM (Phase 4 Task 3) ========================== */
+
+const TerrainSystem = {
+  CELL_SIZE: 0.0018, // ~200m in degrees
+  // Phase 6 Task 2 — New Map Biomes: Urban, Forest (was woods), Industrial
+  TYPES: ['open', 'high_ground', 'urban', 'forest', 'industrial', 'water'],
+  WEIGHTS: [0.25, 0.12, 0.22, 0.18, 0.18, 0.05],
+
+  generate(center) {
+    // Phase 7 Task 9 — Procedural map generation with Perlin noise
+    // Phase 7 Task 7 — Use selected map's biome mix weights
+    const rangeDeg = this.CELL_SIZE * 7; // ~1.4km coverage
+    ProceduralMap.init(state.missionSeed || Math.floor(Math.random() * 65536));
+    const heightmap = ProceduralMap.generateHeightmap(center[0], center[1], rangeDeg);
+    const interestMap = ProceduralMap.generateInterestMap(center[0], center[1], rangeDeg);
+    state.proceduralHeightmap = heightmap;
+    state.proceduralInterestMap = interestMap;
+
+    // Get map biome mix weights
+    const map = mapCatalog[state.currentMap];
+    const mapWeights = map?.biomeMix || null;
+
+    // Build discrete grid for rendering and compatibility
+    const grid = [];
+    const rows = 7, cols = 7;
+    const startLat = center[0] - (rows * this.CELL_SIZE) / 2;
+    const startLng = center[1] - (cols * this.CELL_SIZE) / 2;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const lat = startLat + r * this.CELL_SIZE + this.CELL_SIZE / 2;
+        const lng = startLng + c * this.CELL_SIZE + this.CELL_SIZE / 2;
+        const blend = ProceduralMap.getBiomeBlend(lat, lng, heightmap, interestMap, mapWeights);
+        grid.push({
+          lat,
+          lng,
+          type: blend.dominant,
+          radius: this.CELL_SIZE * 0.55,
+          blend: blend.weights,
+          height: blend.height,
+          interest: blend.interest
+        });
+      }
+    }
+    state.terrainZones = grid;
+    return grid;
+  },
+
+  _pickZoneCenters(rows, cols, count) {
+    const centers = [];
+    const margin = 1;
+    while (centers.length < count) {
+      const r = margin + Math.floor(Math.random() * (rows - margin * 2));
+      const c = margin + Math.floor(Math.random() * (cols - margin * 2));
+      const tooClose = centers.some(z => Math.abs(z.r - r) + Math.abs(z.c - c) < 3);
+      if (!tooClose) centers.push({ r, c });
+    }
+    return centers;
+  },
+
+  _assignCellsToZones(rows, cols, zoneCenters, biomeTypes) {
+    const map = Array.from({ length: rows }, () => Array(cols).fill('open'));
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        let bestDist = Infinity;
+        let bestIdx = -1;
+        for (let i = 0; i < zoneCenters.length; i++) {
+          const z = zoneCenters[i];
+          const d = Math.sqrt((r - z.r) ** 2 + (c - z.c) ** 2);
+          if (d < bestDist) { bestDist = d; bestIdx = i; }
+        }
+        if (bestDist <= 2.5) {
+          map[r][c] = biomeTypes[bestIdx];
+        } else if (Math.random() < 0.06) {
+          map[r][c] = 'water';
+        } else if (Math.random() < 0.10) {
+          map[r][c] = 'high_ground';
+        }
+      }
+    }
+    return map;
+  },
+
+  _rollType() {
+    const r = Math.random();
+    let cum = 0;
+    for (let i = 0; i < this.TYPES.length; i++) {
+      cum += this.WEIGHTS[i];
+      if (r <= cum) return this.TYPES[i];
+    }
+    return 'open';
+  },
+
+  getTerrainAt(lat, lng) {
+    // Phase 7 Task 9 — Use continuous noise sampling when available
+    if (state.proceduralHeightmap && state.proceduralInterestMap) {
+      const blend = ProceduralMap.getBiomeBlend(lat, lng, state.proceduralHeightmap, state.proceduralInterestMap);
+      return blend.dominant;
+    }
+    if (!state.terrainZones.length) return 'open';
+    let nearest = state.terrainZones[0];
+    let minD = Infinity;
+    for (const cell of state.terrainZones) {
+      const d = haversine({ lat, lng }, cell);
+      if (d < minD) { minD = d; nearest = cell; }
+    }
+    return nearest.type;
+  },
+
+  getTerrainBlendAt(lat, lng) {
+    // Phase 7 Task 9 — Return blended biome weights for smooth transitions
+    if (state.proceduralHeightmap && state.proceduralInterestMap) {
+      return ProceduralMap.getBiomeBlend(lat, lng, state.proceduralHeightmap, state.proceduralInterestMap);
+    }
+    const type = this.getTerrainAt(lat, lng);
+    const weights = { open: 0, high_ground: 0, urban: 0, forest: 0, industrial: 0, water: 0 };
+    weights[type] = 1.0;
+    return { dominant: type, weights, height: 0.5, interest: 0.5, feature: 'flat' };
+  },
+
+  signalModifier(lat, lng) {
+    // Phase 7 Task 9 — Use blended biome weights for smooth transition modifiers
+    const blend = this.getTerrainBlendAt(lat, lng);
+    const weights = blend.weights;
+    const mods = { open: 1.0, high_ground: 1.2, urban: 0.75, forest: 0.80, industrial: 1.15, water: 0.7 };
+    let total = 0;
+    for (const k in weights) total += weights[k] * (mods[k] || 1.0);
+    return total;
+  },
+
+  threatDetectModifier(lat, lng) {
+    // Phase 7 Task 9 — Use blended biome weights for smooth transition modifiers
+    const blend = this.getTerrainBlendAt(lat, lng);
+    const weights = blend.weights;
+    const mods = { open: 1.0, high_ground: 1.0, urban: 0.65, forest: 0.55, industrial: 1.25, water: 1.0 };
+    let total = 0;
+    for (const k in weights) total += weights[k] * (mods[k] || 1.0);
+    return total;
+  },
+
+  threatSpeedModifier(lat, lng) {
+    // Phase 7 Task 9 — Use blended biome weights for smooth transition modifiers
+    const blend = this.getTerrainBlendAt(lat, lng);
+    const weights = blend.weights;
+    const mods = { open: 1.0, high_ground: 1.0, urban: 0.70, forest: 0.85, industrial: 1.0, water: 0.5 };
+    let total = 0;
+    for (const k in weights) total += weights[k] * (mods[k] || 1.0);
+    return total;
+  },
+
+  isPassableForThreat(lat, lng) {
+    return this.getTerrainAt(lat, lng) !== 'water';
+  },
+
+  label(type) {
+    return { open: 'Open', high_ground: 'High Ground', urban: 'Urban', forest: 'Forest', industrial: 'Industrial', water: 'Water' }[type] || type;
+  },
+
+  icon(type) {
+    return { open: '', high_ground: '⛰️', urban: '🏢', forest: '🌲', industrial: '🏭', water: '💧' }[type] || '';
+  },
+
+  description(type) {
+    return {
+      open: 'Open terrain. No modifiers.',
+      high_ground: 'Elevated position. +20% signal range.',
+      urban: 'Dense buildings. Reduced signal, short threat sightlines.',
+      forest: 'Thick canopy. Reduced signal, threats hide easily.',
+      industrial: 'Relay infrastructure. +15% signal, open threat sightlines.',
+      water: 'Water hazard. Signal blocked, impassable.'
+    }[type] || '';
+  },
+
+  listBiomes() {
+    const seen = new Set();
+    for (const cell of state.terrainZones) {
+      if (cell.type !== 'open' && cell.type !== 'water' && cell.type !== 'high_ground') {
+        seen.add(this.icon(cell.type) + ' ' + this.label(cell.type));
+      }
+    }
+    return Array.from(seen);
+  },
+
+  renderOnMap() {
+    // Phase 7 Task 9 — Draw blended terrain zones using cell blend weights
+    state.terrainZones.forEach(cell => {
+      const b = cell.blend || {};
+      // Compute blended color from biome weights
+      const colors = {
+        open: [200, 210, 200],
+        high_ground: [255, 255, 200],
+        urban: [100, 120, 140],
+        forest: [80, 140, 80],
+        industrial: [180, 140, 60],
+        water: [80, 140, 200]
+      };
+      let r = 0, g = 0, bl = 0, a = 0;
+      for (const k in colors) {
+        const w = b[k] || 0;
+        if (w > 0) {
+          r += colors[k][0] * w;
+          g += colors[k][1] * w;
+          bl += colors[k][2] * w;
+          a += w;
+        }
+      }
+      if (a > 0) {
+        const color = `rgba(${Math.round(r)},${Math.round(g)},${Math.round(bl)},0.10)`;
+        MapModule.drawZone(cell.lat, cell.lng, this.CELL_SIZE * 5550, color);
+      }
+      if (cell.type !== 'open') {
+        MapModule.addBeacon('terrain-' + cell.lat + '-' + cell.lng, cell.lat, cell.lng, this.icon(cell.type));
+      }
+    });
+  },
+
+  renderHUD() {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local) return;
+    const blend = this.getTerrainBlendAt(local.lat, local.lng);
+    const t = blend.dominant;
+    const el = document.getElementById('terrainHUD');
+    if (el) {
+      // Phase 7 Task 9 — Show blend percentages when transitioning between biomes
+      const weights = blend.weights || {};
+      const secondary = Object.entries(weights)
+        .filter(([k, v]) => k !== t && v > 0.15)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 1)
+        .map(([k, v]) => `${this.label(k)} ${Math.round(v * 100)}%`)
+        .join(' · ');
+      const blendText = secondary ? ` (${secondary})` : '';
+      el.textContent = `${this.icon(t)} ${this.label(t)}${blendText}`;
+      el.title = this.description(t);
+      // Color-code by biome family
+      const color = {
+        open: 'var(--text-dim)', high_ground: '#ffd965',
+        urban: '#79c0ff', forest: '#3fb950',
+        industrial: '#f0883e', water: '#58a6ff'
+      }[t] || 'var(--text-dim)';
+      el.style.color = color;
+      // Notify on biome change
+      if (el.dataset.lastBiome !== t) {
+        if (el.dataset.lastBiome && t !== 'open') {
+          ScreenJuice.addKillFeed(`Entered ${this.label(t)}`, color);
+        }
+        el.dataset.lastBiome = t;
+      }
+    }
+    // Phase 6 Task 10 — Terrain ambient particles
+    if (state.status === 'Live' && local && Math.random() < 0.15) {
+      const terrainPreset = { urban: 'urban', forest: 'jungle', industrial: 'urban', water: 'fog' }[t];
+      if (terrainPreset) {
+        ParticleSystem.spawnPreset(terrainPreset, local.lat, local.lng, 1);
+      }
+    }
+  }
+};
+
+/* ========================== SUPPLY CACHE DROPS (Phase 4 Task 5) ========================== */
+
+const SupplyCacheSystem = {
+  MIN_INTERVAL: 90000,   // 90s
+  MAX_INTERVAL: 150000,  // 150s
+  COLLECT_RANGE: 30,     // meters
+  DESPAWN_TIME: 45000,   // 45s to collect
+  DROP_ANIM_DURATION: 4000, // 4s parachute descent
+
+  CACHE_TYPES: [
+    { id: 'ammo',    name: 'Ammo Cache',     effect: 'ammo',    icon: '🔫', weight: 0.25, desc: '+1 drone charge, +1 trap charge' },
+    { id: 'signal',  name: 'Signal Cache',   effect: 'signal',  icon: '📶', weight: 0.25, desc: '+25% signal boost 60s', duration: 60000, value: 25 },
+    { id: 'medical', name: 'Medical Cache',  effect: 'medical', icon: '🩹', weight: 0.25, desc: '+40 stamina team-wide, +1 bandage', value: 40 },
+    { id: 'intel',   name: 'Intel Cache',    effect: 'intel',   icon: '📡', weight: 0.25, desc: 'Reveal all objectives 30s', duration: 30000 }
+  ],
+
+  _nextDropAt: 0,
+  _dropTimer: null,
+
+  start() {
+    this._scheduleNext();
+  },
+
+  stop() {
+    if (this._dropTimer) { clearTimeout(this._dropTimer); this._dropTimer = null; }
+    this._nextDropAt = 0;
+  },
+
+  _scheduleNext() {
+    const delay = this.MIN_INTERVAL + Math.random() * (this.MAX_INTERVAL - this.MIN_INTERVAL);
+    this._nextDropAt = Date.now() + delay;
+    this._dropTimer = setTimeout(() => {
+      this.spawnDrop();
+      this._scheduleNext();
+    }, delay);
+  },
+
+  spawnDrop() {
+    const center = getMissionCenter();
+    const spawnMult = DifficultySystem.get('supplySpawn');
+    const baseCount = 2 + Math.floor(Math.random() * 2); // 2-3 caches
+    const count = Math.max(0, Math.round(baseCount * spawnMult));
+    if (count <= 0) return; // No spawn on highest difficulty
+    const now = Date.now();
+    const caches = [];
+    for (let i = 0; i < count; i++) {
+      const lat = center[0] + (Math.random() - 0.5) * 0.008;
+      const lng = center[1] + (Math.random() - 0.5) * 0.008;
+      const cacheType = this._weightedRandom(this.CACHE_TYPES);
+      caches.push({
+        id: 'cache-' + now + '-' + i,
+        lat, lng,
+        type: cacheType,
+        collected: false,
+        spawnedAt: now,
+        despawnAt: now + this.DESPAWN_TIME,
+        dropProgress: 0 // 0-1 animation progress
+      });
+    }
+    // Add to global state
+    state.supplyCaches.push(...caches);
+    addChat('System', `📦 ${count} supply caches detected in the AO!`);
+    EventLog.add('event', '📦', `<strong>Supply Caches</strong> ${count} crates detected`);
+    ScreenJuice.addKillFeed('SUPPLY CACHES DETECTED', '#ffd700');
+    SoundFX.play(880, 0.08, 'sine', 0.15);
+    // Animate drop progress
+    this._animateDrops(caches);
+  },
+
+  _animateDrops(caches) {
+    const start = Date.now();
+    const anim = () => {
+      const elapsed = Date.now() - start;
+      const progress = Math.min(1, elapsed / this.DROP_ANIM_DURATION);
+      caches.forEach(c => { c.dropProgress = progress; });
+      if (progress < 1) requestAnimationFrame(anim);
+    };
+    requestAnimationFrame(anim);
+  },
+
+  _weightedRandom(items) {
+    const r = Math.random();
+    let cum = 0;
+    for (const item of items) {
+      cum += item.weight;
+      if (r <= cum) return item;
+    }
+    return items[items.length - 1];
+  },
+
+  tick() {
+    const now = Date.now();
+    // Remove expired/despawned caches
+    const before = state.supplyCaches.length;
+    state.supplyCaches = state.supplyCaches.filter(c => {
+      if (c.collected) return false;
+      return now < c.despawnAt;
+    });
+    if (state.supplyCaches.length < before && before > 0) {
+      // Some caches despawned
+      renderMissionMap();
+    }
+  },
+
+  tryCollect(cacheId, agentId) {
+    const cache = state.supplyCaches.find(c => c.id === cacheId && !c.collected);
+    if (!cache) return false;
+    const agent = state.agents.find(a => a.id === agentId);
+    if (!agent) return false;
+    const dist = haversine(agent, cache);
+    if (dist > this.COLLECT_RANGE) return false;
+    cache.collected = true;
+    this._applyEffect(cache.type, agent);
+    addChat('System', `${cache.type.icon} Collected: ${cache.type.name}!`);
+    EventLog.add('event', cache.type.icon, `<strong>${cache.type.name}</strong> Collected`);
+    SoundFX.play(660, 0.1, 'sine', 0.12);
+    ParticleSystem.burst(agent.lat, agent.lng, ['#ffd700', '#ffeb3b'], 8);
+    saveState();
+    return true;
+  },
+
+  _applyEffect(type, agent) {
+    switch (type.effect) {
+      case 'ammo': {
+        // +1 drone charge, +1 trap charge
+        DroneSystem.charges = (DroneSystem.charges || 0) + 1;
+        const trapCharges = state.trapCharges || {};
+        trapCharges[agent.id] = (trapCharges[agent.id] || 2) + 1;
+        state.trapCharges = trapCharges;
+        ActiveBuffs.add('ammo-cache', 'Ammo Cache', 5000, '🔫', 'buff-orange');
+        break;
+      }
+      case 'signal': {
+        agent.signal = clamp(agent.signal + type.value, 0, 100);
+        ActiveBuffs.add('signal-boost-cache', 'Signal Boost', type.duration, '📶', 'buff-green');
+        break;
+      }
+      case 'medical': {
+        state.agents.forEach(a => { a.stamina = clamp(a.stamina + type.value, 0, 100); });
+        ActiveBuffs.add('medical-cache', 'Medical Cache', 8000, '🩹', 'buff-blue');
+        break;
+      }
+      case 'intel': {
+        // Reveal all undecoded objectives on map for duration
+        state.objectives.forEach(o => {
+          if (!o.decoded) o._intelRevealedUntil = Date.now() + type.duration;
+        });
+        ActiveBuffs.add('intel-cache', 'Intel Cache', type.duration, '📡', 'buff-purple');
+        break;
+      }
+    }
+    // 25% chance for Power Cell in any cache (Phase 7 Task 6)
+    if (Math.random() < 0.25) {
+      PowerBudget.addPower(20, 'Power Cell');
+    }
+  },
+
+  renderOnMap() {
+    const now = Date.now();
+    state.supplyCaches.forEach(c => {
+      if (c.collected) return;
+      const remaining = Math.max(0, c.despawnAt - now);
+      const label = c.dropProgress < 1
+        ? `🪂 ${c.type.name} ${Math.ceil(remaining / 1000)}s`
+        : `${c.type.icon} ${c.type.name} ${Math.ceil(remaining / 1000)}s`;
+      MapModule.addBeacon(c.id, c.lat, c.lng, label);
+      // Draw collection radius
+      if (c.dropProgress >= 1) {
+        MapModule.drawZone(c.lat, c.lng, this.COLLECT_RANGE, 'rgba(255,215,0,0.08)');
+      }
+    });
+  },
+
+  renderHUD() {
+    const el = document.getElementById('supplyCacheHUD');
+    if (!el) return;
+    const active = state.supplyCaches.filter(c => !c.collected && c.dropProgress >= 1);
+    if (!active.length) {
+      el.classList.add('hidden');
+      return;
+    }
+    el.classList.remove('hidden');
+    const now = Date.now();
+    el.innerHTML = active.map(c => {
+      const remaining = Math.max(0, Math.ceil((c.despawnAt - now) / 1000));
+      return `<div class="cache-hud-item cache-${c.type.id}">${c.type.icon} ${c.type.name} <span class="cache-timer">${remaining}s</span></div>`;
+    }).join('');
+  }
+};
+
+/* ========================== COSMETIC SHOP (Phase 8 Task 5) ========================== */
+
+const CosmeticShop = {
+  DAILY_ROTATION_SIZE: 6,
+  ROTATION_HOUR: 0, // midnight UTC
+  STORAGE_KEY: 'slv2_inventory',
+  TABS: ['daily', 'trails', 'skins', 'emotes', 'themes', 'pings', 'badges', 'inventory'],
+
+  init() {
+    this._loadInventory();
+    this._generateDailyRotation();
+    this._wireUI();
+  },
+
+  purchase(itemKey) {
+    const item = shopCatalog[itemKey];
+    if (!item || state.inventory[itemKey]) return false;
+    const currency = item.costTokens ? 'tokens' : 'credits';
+    const cost = item.costTokens || item.costCredits || 0;
+    if ((state[currency] || 0) < cost) return false;
+    state[currency] -= cost;
+    state.inventory[itemKey] = { acquiredAt: Date.now(), equipped: false };
+    this._saveInventory();
+    CurrencySystem._save();
+    ScreenJuice.addKillFeed(`Acquired: ${item.name}`, '#ffd965');
+    return true;
+  },
+
+  equip(itemKey) {
+    const item = shopCatalog[itemKey];
+    if (!item || !state.inventory[itemKey]) return;
+    // Unequip same-type items
+    Object.entries(state.inventory).forEach(([k, v]) => {
+      if (shopCatalog[k]?.type === item.type) v.equipped = false;
+    });
+    state.inventory[itemKey].equipped = true;
+    // Apply to selectedCosmetics for trail/skin
+    if (!state.selectedCosmetics[state.localAgentId]) {
+      state.selectedCosmetics[state.localAgentId] = { trail: 'trail_classic', skin: 'skin_default' };
+    }
+    if (item.type === 'trail') state.selectedCosmetics[state.localAgentId].trail = itemKey;
+    if (item.type === 'skin') state.selectedCosmetics[state.localAgentId].skin = itemKey;
+    this._saveInventory();
+    saveState();
+  },
+
+  unequip(itemKey) {
+    if (!state.inventory[itemKey]) return;
+    state.inventory[itemKey].equipped = false;
+    const item = shopCatalog[itemKey];
+    if (item && state.selectedCosmetics[state.localAgentId]) {
+      if (item.type === 'trail') state.selectedCosmetics[state.localAgentId].trail = 'trail_classic';
+      if (item.type === 'skin') state.selectedCosmetics[state.localAgentId].skin = 'skin_default';
+    }
+    this._saveInventory();
+    saveState();
+  },
+
+  _generateDailyRotation() {
+    const today = new Date().toISOString().slice(0, 10);
+    if (state.shopRotationDate === today) return;
+    const seed = this._hashString(today);
+    const items = Object.keys(shopCatalog);
+    state.shopRotation = this._shuffleWithSeed(items, seed).slice(0, this.DAILY_ROTATION_SIZE);
+    state.shopRotationDate = today;
+  },
+
+  renderShop() {
+    const container = document.getElementById('shopContent');
+    if (!container) return;
+    const tab = state.shopTab || 'daily';
+    let items = [];
+    if (tab === 'daily') {
+      items = (state.shopRotation || []).map(k => [k, shopCatalog[k]]).filter(([,v]) => !!v);
+    } else if (tab === 'inventory') {
+      items = Object.entries(state.inventory).map(([k, v]) => [k, shopCatalog[k], v]);
+    } else {
+      items = Object.entries(shopCatalog).filter(([,v]) => v.type === tab);
+    }
+    const currencyHtml = `<div class="shop-currency-bar"><span class="shop-currency-tokens">🪙 ${(state.tokens || 0).toLocaleString()}</span><span class="shop-currency-credits">💎 ${(state.credits || 0).toLocaleString()}</span></div>`;
+    const tabHtml = `<div class="shop-tabs">${this.TABS.map(t => {
+      const label = t === 'daily' ? '⭐ Daily Deals' : t === 'pings' ? '💓 Pings' : t === 'badges' ? '🏅 Badges' : t.charAt(0).toUpperCase() + t.slice(1);
+      const active = t === tab ? ' active' : '';
+      return `<button class="shop-tab${active}" data-shop-tab="${t}">${label}</button>`;
+    }).join('')}</div>`;
+    let gridHtml = '';
+    if (tab === 'inventory') {
+      if (!items.length) {
+        gridHtml = `<div class="shop-empty">Your inventory is empty. Visit the shop to buy cosmetics!</div>`;
+      } else {
+        gridHtml = `<div class="shop-grid">${items.map(([k, item, inv]) => {
+          if (!item) return '';
+          const rarity = item.rarity || 'common';
+          const border = rarityColors[rarity] || '#a0aec0';
+          const equipped = inv.equipped ? '<span class="shop-badge equipped">Equipped</span>' : '';
+          const btn = inv.equipped
+            ? `<button class="compact-button ghost-button shop-btn" data-shop-unequip="${k}">Unequip</button>`
+            : `<button class="compact-button primary-button shop-btn" data-shop-equip="${k}">Equip</button>`;
+          return `<div class="shop-card" style="border-color:${border}"><div class="shop-card-header"><span class="shop-card-icon">${item.icon}</span><span class="shop-card-rarity" style="color:${border}">${rarity}</span></div><div class="shop-card-name">${escapeHtml(item.name)}</div><div class="shop-card-type">${item.type}</div>${equipped}${btn}</div>`;
+        }).join('')}</div>`;
+      }
+    } else {
+      if (!items.length) {
+        gridHtml = `<div class="shop-empty">No items in this category.</div>`;
+      } else {
+        gridHtml = `<div class="shop-grid">${items.map(([k, item]) => {
+          const owned = !!state.inventory[k];
+          const rarity = item.rarity || 'common';
+          const border = rarityColors[rarity] || '#a0aec0';
+          const cost = item.costCredits || item.costTokens || 0;
+          const currencyIcon = item.costTokens ? '🪙' : '💎';
+          const badge = owned ? '<span class="shop-badge owned">Own</span>' : `<span class="shop-card-cost">${currencyIcon} ${cost}</span>`;
+          const btn = owned
+            ? (state.inventory[k].equipped ? `<button class="compact-button ghost-button shop-btn" data-shop-unequip="${k}">Unequip</button>` : `<button class="compact-button primary-button shop-btn" data-shop-equip="${k}">Equip</button>`)
+            : `<button class="compact-button primary-button shop-btn" data-shop-buy="${k}">Buy</button>`;
+          return `<div class="shop-card" style="border-color:${border}"><div class="shop-card-header"><span class="shop-card-icon">${item.icon}</span><span class="shop-card-rarity" style="color:${border}">${rarity}</span></div><div class="shop-card-name">${escapeHtml(item.name)}</div><div class="shop-card-type">${item.type}</div>${badge}${btn}</div>`;
+        }).join('')}</div>`;
+      }
+    }
+    container.innerHTML = currencyHtml + tabHtml + gridHtml;
+    this._wireShopButtons();
+  },
+
+  renderLobbyWidget() {
+    const container = document.getElementById('shopLobbyWidget');
+    if (!container) return;
+    const rot = state.shopRotation || [];
+    const preview = rot.slice(0, 3).map(k => shopCatalog[k]).filter(Boolean);
+    container.innerHTML = `
+      <div class="shop-lobby-widget">
+        <div class="shop-lw-header">🛒 Cosmetic Shop — Daily Deals</div>
+        <div class="shop-lw-items">${preview.map(item => `<span class="shop-lw-item" title="${escapeHtml(item.name)}">${item.icon}</span>`).join('')}</div>
+        <button id="goToShop" class="shop-lw-btn">Open Shop</button>
+      </div>
+    `;
+    const btn = container.querySelector('#goToShop');
+    if (btn) btn.addEventListener('click', () => setScreen('shop'));
+  },
+
+  _wireShopButtons() {
+    const container = document.getElementById('shopContent');
+    if (!container) return;
+    container.querySelectorAll('[data-shop-buy]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.shopBuy;
+        if (this.purchase(key)) {
+          this.renderShop();
+          CurrencySystem.renderCurrencyBar();
+        } else {
+          addChat('System', '❌ Purchase failed. Not enough currency or already owned.');
+        }
+      });
+    });
+    container.querySelectorAll('[data-shop-equip]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.equip(btn.dataset.shopEquip);
+        this.renderShop();
+      });
+    });
+    container.querySelectorAll('[data-shop-unequip]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.unequip(btn.dataset.shopUnequip);
+        this.renderShop();
+      });
+    });
+    container.querySelectorAll('[data-shop-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.shopTab = btn.dataset.shopTab;
+        this.renderShop();
+      });
+    });
+  },
+
+  _wireUI() {
+    const btn = document.getElementById('backToLobbyFromShop');
+    if (btn) btn.addEventListener('click', () => setScreen('lobby'));
+  },
+
+  _loadInventory() {
+    try {
+      const saved = localStorage.getItem(this.STORAGE_KEY);
+      if (saved) state.inventory = JSON.parse(saved);
+    } catch (e) {}
+    if (!state.inventory) state.inventory = {};
+  },
+
+  _saveInventory() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state.inventory));
+    } catch (e) {}
+  },
+
+  _hashString(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+      h = ((h << 5) - h) + s.charCodeAt(i);
+      h |= 0;
+    }
+    return Math.abs(h);
+  },
+
+  _shuffleWithSeed(arr, seed) {
+    const a = arr.slice();
+    let s = seed;
+    for (let i = a.length - 1; i > 0; i--) {
+      s = (s * 16807 + 0) % 2147483647;
+      const j = s % (i + 1);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+};
+
+/* ========================== CURRENCY SYSTEM (Phase 8 Task 7) ========================== */
+
+const CurrencySystem = {
+  STORAGE_KEY: 'slv2_currency',
+  TOKENS_PER_MISSION_XP: 0.1, // 10 XP = 1 token
+
+  CREDIT_PACKS: [
+    { amount: 500,  price: '$4.99',  bonus: 0 },
+    { amount: 1100, price: '$9.99',  bonus: 100 },
+    { amount: 2500, price: '$19.99', bonus: 500 },
+    { amount: 6500, price: '$49.99', bonus: 2000 },
+  ],
+
+  init() { this._load(); },
+
+  earnTokens(amount, reason) {
+    state.tokens = (state.tokens || 0) + amount;
+    this._save();
+    ScreenJuice.addKillFeed(`+${amount} \u{1FA99} ${reason}`, '#a0aec0');
+  },
+
+  earnCredits(amount, reason) {
+    state.credits = (state.credits || 0) + amount;
+    this._save();
+    ScreenJuice.addKillFeed(`+${amount} \u{1F48E} ${reason}`, '#ffd965');
+  },
+
+  spend(currency, amount) {
+    if ((state[currency] || 0) < amount) return false;
+    state[currency] -= amount;
+    this._save();
+    return true;
+  },
+
+  // Called at mission end
+  onMissionEnd(xpEarned, score) {
+    const tokens = Math.floor((xpEarned || 0) * this.TOKENS_PER_MISSION_XP);
+    if (tokens > 0) this.earnTokens(tokens, 'Mission Complete');
+    // Small chance of credit drop from high score
+    if (score > 80 && Math.random() < 0.1) {
+      this.earnCredits(10, 'High Score Bonus');
+    }
+  },
+
+  renderCurrencyBar() {
+    const bar = document.getElementById('currencyBar');
+    if (!bar) return;
+    bar.innerHTML = `<span class="currency-tokens" title="Tokens">\u{1FA99} ${(state.tokens || 0).toLocaleString()}</span><span class="currency-divider">|</span><span class="currency-credits" title="Credits">\u{1F48E} ${(state.credits || 0).toLocaleString()}</span>`;
+    bar.classList.remove('hidden');
+  },
+
+  hideCurrencyBar() {
+    const bar = document.getElementById('currencyBar');
+    if (bar) bar.classList.add('hidden');
+  },
+
+  renderBuyCredits() {
+    // Credit pack selection UI (placeholder, no real payment)
+    const modal = document.getElementById('buyCreditsModal');
+    if (!modal) return;
+    const list = modal.querySelector('.buy-credits-list');
+    if (!list) return;
+    list.innerHTML = this.CREDIT_PACKS.map(p => {
+      const total = p.amount + p.bonus;
+      const bonusText = p.bonus > 0 ? ` <span class="credit-bonus">+${p.bonus} bonus</span>` : '';
+      return `<div class="credit-pack-card" data-amount="${total}"><div class="credit-pack-amount">\u{1F48E} ${total.toLocaleString()}</div>${bonusText}<div class="credit-pack-price">${escapeHtml(p.price)}</div><button class="compact-button buy-credits-btn">Buy</button></div>`;
+    }).join('');
+    // Wire buy buttons (placeholder: just add credits)
+    list.querySelectorAll('.buy-credits-btn').forEach((btn, idx) => {
+      btn.onclick = () => {
+        const pack = this.CREDIT_PACKS[idx];
+        if (!pack) return;
+        const total = pack.amount + pack.bonus;
+        this.earnCredits(total, 'Purchase');
+        this.renderCurrencyBar();
+        modal.classList.add('hidden');
+        addChat('System', `\u{1F48E} ${total.toLocaleString()} Credits added (placeholder).`);
+      };
+    });
+    modal.classList.remove('hidden');
+  },
+
+  _load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '{}');
+      state.credits = saved.credits || 0;
+      state.tokens = saved.tokens || 0;
+    } catch (e) {}
+  },
+
+  _save() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify({ credits: state.credits, tokens: state.tokens }));
+    } catch (e) {}
+  }
+};
+
+/* ========================== CHAT SYSTEM ========================== */
+// === PHASE 12.2 CHAT ===
+const ChatSystem = {
+  EMOJIS: {
+    ':)': '😊', ':-)': '😊', ':D': '😄', ':-D': '😄',
+    ':(': '😞', ':-(': '😞', ';)': '😉', ';-)': '😉',
+    ':p': '😛', ':-p': '😛', ':P': '😛', ':-P': '😛',
+    ':fire:': '🔥', ':skull:': '💀', ':warning:': '⚠️',
+    ':check:': '✅', ':x:': '❌', ':heart:': '❤️',
+    ':rocket:': '🚀', ':target:': '🎯', ':shield:': '🛡️',
+    ':sos:': '🆘', ':loot:': '📦', ':radar:': '📡',
+    ':ping:': '📍', ':thumbsup:': '👍', ':thumbsdown:': '👎',
+    ':eyes:': '👀', ':pray:': '🙏', ':clap:': '👏',
+  },
+
+  applyEmojis(text) {
+    let out = text;
+    for (const [code, emoji] of Object.entries(this.EMOJIS)) {
+      out = out.split(code).join(emoji);
+    }
+    return out;
+  },
+
+  formatTime(ts) {
+    const d = new Date(ts);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  },
+
+  isMuted(sender) {
+    const s = (sender || '').toLowerCase();
+    return state.chatMuted.some(m => s.includes(m.toLowerCase()));
+  },
+
+  mute(sender) {
+    const s = (sender || '').toLowerCase();
+    if (!state.chatMuted.includes(s)) state.chatMuted.push(s);
+    saveState();
+  },
+
+  unmute(sender) {
+    const s = (sender || '').toLowerCase();
+    state.chatMuted = state.chatMuted.filter(m => m !== s);
+    saveState();
+  },
+
+  playSound() {
+    if (!state.chatSound) return;
+    SoundFX.play(880, 0.05, 'sine', 0.08);
+    setTimeout(() => SoundFX.play(1100, 0.04, 'sine', 0.06), 80);
+  },
+
+  // Determine which tab a message belongs to
+  _messageTab([name, , , team]) {
+    if (name === 'System' || name === 'Mission Control' || name === 'Score' || name === 'Ping' || name === 'Stealth') return 'system';
+    if (team) return 'team';
+    // Squad = same team as local (no explicit team flag, but from squadmate)
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    const localTeam = local?.team || 'North';
+    const agent = state.agents.find(a => {
+      const display = a.callsign ? `${a.name} (${a.callsign})` : a.name;
+      return display === name || a.name === name;
+    });
+    if (agent && agent.team === localTeam) return 'squad';
+    return 'all';
+  },
+
+  shouldShow(entry) {
+    const [name] = entry;
+    if (this.isMuted(name)) return false;
+    const tab = state.chatActiveTab;
+    if (tab === 'all') return true;
+    const msgTab = this._messageTab(entry);
+    // Team tab shows team + squad + system (operational comms)
+    if (tab === 'team') return msgTab === 'team' || msgTab === 'squad' || msgTab === 'system';
+    if (tab === 'squad') return msgTab === 'squad' || msgTab === 'system';
+    if (tab === 'system') return msgTab === 'system';
+    return true;
+  },
+
+  // Incremental DOM: add a single message element without full re-render
+  addMessage(entry) {
+    const el = $('#chatLog');
+    if (!el) return;
+    if (!this.shouldShow(entry)) return;
+
+    const [name, text, time, team] = entry;
+    const ts = state.chatTimestamps;
+    const timeStr = ts ? `<span class="chat-ts">${this.formatTime(time)}</span>` : '';
+    const safeName = escapeHtml(name);
+    const safeText = escapeHtml(this.applyEmojis(text));
+    const isSystem = name === 'System' || name === 'Mission Control' || name === 'Score' || name === 'Ping' || name === 'Stealth';
+    const muteBtn = isSystem ? '' : `<button class="chat-mute-btn" title="Mute ${safeName}" data-mute="${safeName}">🔇</button>`;
+    let teamBadge = '';
+    if (team && !isSystem) {
+      const teamClass = team === 'North' ? 'team-north' : 'team-south';
+      teamBadge = `<span class="chat-team-badge ${teamClass}">${escapeHtml(team)}</span>`;
+    }
+    // Encryption indicator for team/squad tabs
+    const encryptedIndicator = (state.chatActiveTab === 'team' || state.chatActiveTab === 'squad') && !isSystem
+      ? '<span class="chat-encrypted" title="Encrypted">🔒</span>' : '';
+    // Message type class
+    const msgTab = this._messageTab(entry);
+    const msgClass = msgTab === 'system' ? 'system' : msgTab === 'squad' ? 'squad' : '';
+
+    const p = document.createElement('p');
+    p.className = msgClass;
+    p.dataset.sender = safeName;
+    p.innerHTML = `${timeStr}${teamBadge}<span class="chat-name">${safeName}</span>${encryptedIndicator}${safeText}${muteBtn}`;
+
+    // Wire mute button
+    const muteBtnEl = p.querySelector('.chat-mute-btn');
+    if (muteBtnEl) {
+      muteBtnEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const sender = muteBtnEl.dataset.mute;
+        if (this.isMuted(sender)) {
+          this.unmute(sender);
+          muteBtnEl.title = `Mute ${sender}`;
+          muteBtnEl.textContent = '🔇';
+        } else {
+          this.mute(sender);
+          muteBtnEl.title = `Unmute ${sender}`;
+          muteBtnEl.textContent = '🔊';
+        }
+        this.render();
+      });
+    }
+
+    el.appendChild(p);
+
+    // Pool: keep <30 children
+    while (el.children.length > 30) {
+      el.removeChild(el.firstChild);
+    }
+
+    // Auto-scroll if near bottom
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    if (state.chatAutoFollow || nearBottom) {
+      el.scrollTop = el.scrollHeight;
+    }
+
+    // Update mobile mini-bar
+    const cmb = $('#cmbMsg');
+    if (cmb) {
+      cmb.innerHTML = `<span class="cmb-sender">${safeName}</span>${safeText}`;
+    }
+  },
+
+  render() {
+    const el = $('#chatLog');
+    if (!el) return;
+    const visible = state.chat.filter(m => this.shouldShow(m));
+    const filtered = visible.slice(-50);
+    const ts = state.chatTimestamps;
+    el.innerHTML = filtered.map(([name, text, time, team]) => {
+      const timeStr = ts ? `<span class="chat-ts">${this.formatTime(time)}</span>` : '';
+      const safeName = escapeHtml(name);
+      const safeText = escapeHtml(this.applyEmojis(text));
+      const isSystem = name === 'System' || name === 'Mission Control' || name === 'Score' || name === 'Ping' || name === 'Stealth';
+      const muteBtn = isSystem ? '' : `<button class="chat-mute-btn" title="Mute ${safeName}" data-mute="${safeName}">🔇</button>`;
+      let teamBadge = '';
+      if (team && !isSystem) {
+        const teamClass = team === 'North' ? 'team-north' : 'team-south';
+        teamBadge = `<span class="chat-team-badge ${teamClass}">${escapeHtml(team)}</span>`;
+      }
+      const encryptedIndicator = (state.chatActiveTab === 'team' || state.chatActiveTab === 'squad') && !isSystem
+        ? '<span class="chat-encrypted" title="Encrypted">🔒</span>' : '';
+      const msgTab = this._messageTab([name, text, time, team]);
+      const msgClass = msgTab === 'system' ? 'system' : msgTab === 'squad' ? 'squad' : '';
+      return `<p class="${msgClass}" data-sender="${safeName}">${timeStr}${teamBadge}<span class="chat-name">${safeName}</span>${encryptedIndicator}${safeText}${muteBtn}</p>`;
+    }).join('');
+
+    // Wire mute buttons
+    el.querySelectorAll('.chat-mute-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const sender = btn.dataset.mute;
+        if (this.isMuted(sender)) {
+          this.unmute(sender);
+          btn.title = `Mute ${sender}`;
+          btn.textContent = '🔇';
+        } else {
+          this.mute(sender);
+          btn.title = `Unmute ${sender}`;
+          btn.textContent = '🔊';
+        }
+        this.render();
+      });
+    });
+
+    // Auto-follow
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    if (state.chatAutoFollow || nearBottom) {
+      el.scrollTop = el.scrollHeight;
+    }
+
+    // Update mobile mini-bar
+    const cmb = $('#cmbMsg');
+    if (cmb && visible.length) {
+      const last = visible[visible.length - 1];
+      cmb.innerHTML = `<span class="cmb-sender">${escapeHtml(last[0])}</span>${escapeHtml(last[1])}`;
+    }
+
+    // Update tab badges + active states
+    this.renderTabs();
+  },
+
+  renderTabs() {
+    state.chatTabs.forEach(tab => {
+      const tabEl = $(`#chatTab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+      if (tabEl) tabEl.classList.toggle('active', state.chatActiveTab === tab);
+    });
+    // Update all badge spans
+    state.chatTabs.forEach(tab => {
+      this._updateBadgeDOM(tab);
+    });
+  },
+
+  _updateBadgeDOM(tab) {
+    const badgeEl = $(`#chatBadge${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+    if (!badgeEl) return;
+    const count = state.chatTabBadges[tab] || 0;
+    badgeEl.textContent = String(count);
+    badgeEl.classList.toggle('hidden', count === 0);
+  },
+
+  setTab(tab) {
+    const valid = state.chatTabs.includes(tab) ? tab : 'all';
+    state.chatActiveTab = valid;
+    // clear badge for switched-to tab
+    state.chatTabBadges[valid] = 0;
+    this._updateBadgeDOM(valid);
+    saveState();
+    this.render();
+  },
+
+  // Called when a new message arrives; increments badge on non-active tabs
+  onNewMessage(entry) {
+    const msgTab = this._messageTab(entry);
+    if (msgTab !== state.chatActiveTab) {
+      state.chatTabBadges[msgTab] = (state.chatTabBadges[msgTab] || 0) + 1;
+      this._updateBadgeDOM(msgTab);
+    }
+    // Also increment 'all' badge if not on all
+    if (state.chatActiveTab !== 'all') {
+      state.chatTabBadges.all = (state.chatTabBadges.all || 0) + 1;
+      this._updateBadgeDOM('all');
+    }
+  },
+
+  toggleSound() {
+    state.chatSound = !state.chatSound;
+    saveState();
+    this.renderToolbar();
+  },
+
+  toggleTimestamps() {
+    state.chatTimestamps = !state.chatTimestamps;
+    saveState();
+    this.render();
+  },
+
+  renderToolbar() {
+    const soundBtn = $('#chatSoundToggle');
+    const tsBtn = $('#chatTimestampsToggle');
+    if (soundBtn) {
+      soundBtn.textContent = state.chatSound ? '🔔' : '🔕';
+      soundBtn.title = state.chatSound ? 'Chat sound ON' : 'Chat sound OFF';
+    }
+    if (tsBtn) {
+      tsBtn.textContent = state.chatTimestamps ? '🕒' : '—';
+      tsBtn.title = state.chatTimestamps ? 'Timestamps ON' : 'Timestamps OFF';
+    }
+  }
+};
+// === END PHASE 12.2 CHAT ===
+
+function addChat(speaker, text, opts = {}) {
+  const entry = [speaker, text, Date.now(), opts.team || null];
+  state.chat.push(entry);
+  state.chat = state.chat.slice(-200);
+  ChatSystem.addMessage(entry);   // incremental DOM (Phase 12.2)
+  ChatSystem.onNewMessage(entry); // badge update (Phase 12.2)
+  ChatSystem.playSound();
   saveState();
 }
 
 function renderChat() {
-  const el = $('#chatLog');
-  const filtered = state.chat.slice(-12);
-  el.innerHTML = filtered.map(([name,text])=>`<p><span>${escapeHtml(name)}</span>${escapeHtml(text)}</p>`).join('');
-  el.scrollTop = el.scrollHeight;
+  ChatSystem.render();
+}
 
-  // Update mobile mini-bar with last message
-  const cmb = $('#cmbMsg');
-  if (cmb && state.chat.length) {
-    const last = state.chat[state.chat.length - 1];
-    cmb.innerHTML = `<span class="cmb-sender">${escapeHtml(last[0])}</span>${escapeHtml(last[1])}`;
+/* ========================== REPORT & KICK SYSTEM (Phase 6 Task 8) ========================== */
+
+const ReportKickSystem = {
+  REPORT_COOLDOWN_MS: 300000,   // 5 min between reports
+  VOTE_COOLDOWN_MS: 60000,      // 1 min between votes
+  VOTE_DURATION_MS: 60000,      // 60s vote window
+  REPORT_REASONS: [
+    { id: 'cheating', label: 'Cheating / Exploits', icon: '🎭' },
+    { id: 'griefing', label: 'Griefing / Sabotage', icon: '💥' },
+    { id: 'afk',      label: 'AFK / Inactive',      icon: '💤' },
+    { id: 'toxic',    label: 'Toxic Chat',          icon: '☠️' },
+  ],
+
+  init() {
+    this._wireReportDialog();
+    this._wireVoteBanner();
+  },
+
+  /* ---- Report Player ---- */
+
+  canReport() {
+    const now = Date.now();
+    return now - (state.reportKick.myLastReport || 0) > this.REPORT_COOLDOWN_MS;
+  },
+
+  openReportMenu(targetId) {
+    const agent = state.agents.find(a => a.id === targetId);
+    if (!agent) return;
+    if (!this.canReport()) {
+      addChat('System', `Report cooldown active. Wait ${Math.ceil((this.REPORT_COOLDOWN_MS - (Date.now() - state.reportKick.myLastReport)) / 1000)}s.`);
+      return;
+    }
+    const dialog = $('#reportDialog');
+    const title = $('#reportDialogTitle');
+    const list = $('#reportReasonList');
+    if (!dialog || !title || !list) return;
+    title.textContent = `Report ${escapeHtml(agent.name)} (${escapeHtml(agent.callsign || 'AGENT')})`;
+    list.innerHTML = this.REPORT_REASONS.map(r => `
+      <button class="report-reason-btn" data-reason="${r.id}" data-target="${targetId}">
+        <span class="report-reason-icon">${r.icon}</span>
+        <span class="report-reason-label">${escapeHtml(r.label)}</span>
+      </button>
+    `).join('');
+    dialog.classList.remove('hidden');
+    dialog.dataset.target = targetId;
+    // Wire reason buttons
+    list.querySelectorAll('.report-reason-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const reason = btn.dataset.reason;
+        const tid = btn.dataset.target;
+        this.submitReport(tid, reason);
+        dialog.classList.add('hidden');
+      });
+    });
+  },
+
+  submitReport(targetId, reason) {
+    if (!this.canReport()) return;
+    const agent = state.agents.find(a => a.id === targetId);
+    if (!agent) return;
+    state.reportKick.myLastReport = Date.now();
+    state.reportKick.reports.push({
+      reporterId: state.localAgentId,
+      targetId,
+      reason,
+      timestamp: Date.now()
+    });
+    addChat('System', `Report submitted: ${escapeHtml(agent.name)} — ${this.REPORT_REASONS.find(r => r.id === reason)?.label || reason}.`);
+    // Broadcast to server if connected
+    if (SignalNet.connected && SignalNet.socket) {
+      SignalNet.socket.emit('player-report', { targetId, reason });
+    }
+    saveState();
+  },
+
+  /* ---- Vote Kick ---- */
+
+  canVote() {
+    const now = Date.now();
+    return now - (state.reportKick.myLastVote || 0) > this.VOTE_COOLDOWN_MS;
+  },
+
+  startVoteKick(targetId, reason) {
+    if (!this.canVote()) {
+      addChat('System', `Vote cooldown active. Wait ${Math.ceil((this.VOTE_COOLDOWN_MS - (Date.now() - state.reportKick.myLastVote)) / 1000)}s.`);
+      return;
+    }
+    const agent = state.agents.find(a => a.id === targetId);
+    if (!agent) return;
+    // Prevent duplicate votes on same target
+    if (state.reportKick.votes[targetId]) return;
+    state.reportKick.votes[targetId] = {
+      voters: [state.localAgentId],
+      startedAt: Date.now(),
+      reason: reason || 'griefing',
+      initiatorId: state.localAgentId
+    };
+    state.reportKick.activeVoteTarget = targetId;
+    state.reportKick.myLastVote = Date.now();
+    addChat('System', `Vote kick started against ${escapeHtml(agent.name)}. Reason: ${this.REPORT_REASONS.find(r => r.id === reason)?.label || reason}.`);
+    // Broadcast to server if connected
+    if (SignalNet.connected && SignalNet.socket) {
+      SignalNet.socket.emit('vote-kick-start', { targetId, reason });
+    }
+    this.renderVoteBanner();
+    saveState();
+  },
+
+  castVote(targetId, vote) {
+    if (!this.canVote()) return;
+    const voteRec = state.reportKick.votes[targetId];
+    if (!voteRec) return;
+    if (voteRec.voters.includes(state.localAgentId)) return;
+    voteRec.voters.push(state.localAgentId);
+    state.reportKick.myLastVote = Date.now();
+    const agent = state.agents.find(a => a.id === targetId);
+    if (agent) {
+      addChat('System', `You voted ${vote ? 'YES' : 'NO'} to kick ${escapeHtml(agent.name)}.`);
+    }
+    this._checkVoteMajority(targetId);
+    this.renderVoteBanner();
+    saveState();
+  },
+
+  _checkVoteMajority(targetId) {
+    const voteRec = state.reportKick.votes[targetId];
+    if (!voteRec) return;
+    const totalPlayers = state.agents.filter(a => !a.bot).length;
+    if (totalPlayers <= 1) return;
+    const yesVotes = voteRec.voters.length;
+    const majority = Math.floor(totalPlayers / 2) + 1;
+    if (yesVotes >= majority) {
+      this._executeKick(targetId);
+    }
+  },
+
+  _executeKick(targetId) {
+    const agent = state.agents.find(a => a.id === targetId);
+    if (!agent) return;
+    state.reportKick.kicked.push(targetId);
+    delete state.reportKick.votes[targetId];
+    state.reportKick.activeVoteTarget = null;
+    addChat('System', `🚫 ${escapeHtml(agent.name)} has been vote-kicked from the mission.`);
+    // Remove from local agents if bot; for real players, server handles disconnect
+    if (agent.bot) {
+      state.agents = state.agents.filter(a => a.id !== targetId);
+      removeSquadAgent(targetId);
+    }
+    // Notify server
+    if (SignalNet.connected && SignalNet.socket) {
+      SignalNet.socket.emit('vote-kick-execute', { targetId });
+    }
+    this.renderVoteBanner();
+    saveState();
+  },
+
+  receiveVoteStart({ targetId, reason, initiatorId }) {
+    if (targetId === state.localAgentId) {
+      addChat('System', '⚠️ A vote kick has been started against you.');
+    }
+    if (!state.reportKick.votes[targetId]) {
+      state.reportKick.votes[targetId] = {
+        voters: [initiatorId],
+        startedAt: Date.now(),
+        reason: reason || 'griefing',
+        initiatorId
+      };
+    }
+    state.reportKick.activeVoteTarget = targetId;
+    this.renderVoteBanner();
+  },
+
+  receiveVote({ targetId, voterId }) {
+    const voteRec = state.reportKick.votes[targetId];
+    if (!voteRec) return;
+    if (!voteRec.voters.includes(voterId)) voteRec.voters.push(voterId);
+    this._checkVoteMajority(targetId);
+    this.renderVoteBanner();
+  },
+
+  receiveKick({ targetId }) {
+    if (targetId === state.localAgentId) {
+      addChat('System', '🚫 You have been vote-kicked from the mission.');
+      stopMissionClock();
+      MapModule.stopGPS();
+      state.status = 'Complete';
+      setScreen('results');
+      renderResults();
+      return;
+    }
+    const agent = state.agents.find(a => a.id === targetId);
+    if (agent) {
+      addChat('System', `🚫 ${escapeHtml(agent.name)} has been vote-kicked.`);
+      state.agents = state.agents.filter(a => a.id !== targetId);
+      removeSquadAgent(targetId);
+    }
+    delete state.reportKick.votes[targetId];
+    if (state.reportKick.activeVoteTarget === targetId) state.reportKick.activeVoteTarget = null;
+    this.renderVoteBanner();
+  },
+
+  /* ---- UI ---- */
+
+  renderVoteBanner() {
+    const banner = $('#voteKickBanner');
+    if (!banner) return;
+    const targetId = state.reportKick.activeVoteTarget;
+    if (!targetId || !state.reportKick.votes[targetId]) {
+      banner.classList.add('hidden');
+      return;
+    }
+    const voteRec = state.reportKick.votes[targetId];
+    const elapsed = Date.now() - voteRec.startedAt;
+    if (elapsed > this.VOTE_DURATION_MS) {
+      // Vote expired
+      delete state.reportKick.votes[targetId];
+      state.reportKick.activeVoteTarget = null;
+      banner.classList.add('hidden');
+      addChat('System', 'Vote kick expired — not enough votes.');
+      saveState();
+      return;
+    }
+    const agent = state.agents.find(a => a.id === targetId);
+    if (!agent) {
+      banner.classList.add('hidden');
+      return;
+    }
+    const totalPlayers = state.agents.filter(a => !a.bot).length;
+    const yesVotes = voteRec.voters.length;
+    const majority = Math.floor(totalPlayers / 2) + 1;
+    const remaining = Math.max(0, Math.ceil((this.VOTE_DURATION_MS - elapsed) / 1000));
+    banner.classList.remove('hidden');
+    banner.innerHTML = `
+      <div class="vote-banner-content">
+        <div class="vote-banner-text">
+          <strong>Vote Kick:</strong> ${escapeHtml(agent.name)} (${escapeHtml(agent.callsign || 'AGENT')})<br>
+          <small>Reason: ${escapeHtml(this.REPORT_REASONS.find(r => r.id === voteRec.reason)?.label || voteRec.reason)} · ${yesVotes}/${majority} votes · ${remaining}s</small>
+        </div>
+        <div class="vote-banner-actions">
+          <button class="vote-yes-btn" data-target="${targetId}">✅ Yes</button>
+          <button class="vote-no-btn" data-target="${targetId}">❌ No</button>
+        </div>
+      </div>
+    `;
+    banner.querySelector('.vote-yes-btn').addEventListener('click', () => this.castVote(targetId, true));
+    banner.querySelector('.vote-no-btn').addEventListener('click', () => this.castVote(targetId, false));
+  },
+
+  _wireReportDialog() {
+    const dialog = $('#reportDialog');
+    if (!dialog) return;
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.classList.add('hidden');
+    });
+    const closeBtn = $('#reportDialogClose');
+    if (closeBtn) closeBtn.addEventListener('click', () => dialog.classList.add('hidden'));
+  },
+
+  _wireVoteBanner() {
+    // Banner is rendered dynamically; listeners wired in renderVoteBanner
+  },
+
+  /* ---- Context-menu style report button injection ---- */
+
+  injectReportButton(container, agentId) {
+    if (!container) return;
+    const agent = state.agents.find(a => a.id === agentId);
+    if (!agent || agent.id === state.localAgentId) return;
+    const btn = document.createElement('button');
+    btn.className = 'report-player-btn';
+    btn.title = `Report / Kick ${escapeHtml(agent.name)}`;
+    btn.textContent = '🚩';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.openReportMenu(agentId);
+    });
+    container.appendChild(btn);
+  },
+
+  /* ---- Squad list render hook ---- */
+
+  renderSquadList() {
+    const list = $('#voiceSquadList');
+    if (!list) return;
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    const localTeam = local?.team || 'North';
+    const teammates = state.agents.filter(a => a.id !== state.localAgentId && a.team === localTeam);
+    if (teammates.length === 0) {
+      list.innerHTML = '<div class="voice-squad-item" style="opacity:0.6"><span class="vs-name">No squadmates linked</span></div>';
+      return;
+    }
+    list.innerHTML = teammates.map(a => {
+      const color = roleColors[a.role] || '#9e9e9e';
+      const isKicked = state.reportKick.kicked.includes(a.id);
+      const kickBadge = isKicked ? '<span class="kicked-badge">🚫 KICKED</span>' : '';
+      return `<div class="voice-squad-item" data-agent-id="${a.id}">
+        <span class="vs-dot" style="background:${color}"></span>
+        <span class="vs-name">${escapeHtml(a.name)} ${kickBadge}</span>
+        <span class="vs-role">${escapeHtml(a.role)}</span>
+        <button class="squad-report-btn" data-agent-id="${a.id}" title="Report / Kick">🚩</button>
+      </div>`;
+    }).join('');
+    // Wire report buttons
+    list.querySelectorAll('.squad-report-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openReportMenu(btn.dataset.agentId);
+      });
+    });
+  }
+};
+
+/* ========================== DAILY MISSIONS (Phase 6 Task 5) ========================== */
+
+const DailyMissions = {
+  STORAGE_KEY: 'slv2_daily_missions',
+
+  MISSION_TYPES: [
+    { id: 'decode_objs', type: 'decode_objs', target: 2, description: 'Decode 2 objectives', rewardXP: 50 },
+    { id: 'revive_team', type: 'revive_team', target: 3, description: 'Revive 3 teammates', rewardXP: 75 },
+    { id: 'win_match',   type: 'win_match',   target: 1, description: 'Win a match',        rewardXP: 100 }
+  ],
+
+  init() {
+    this._load();
+    const today = this._today();
+    if (state.dailyMissionsDate !== today) {
+      this._generate(today);
+    }
+  },
+
+  _today() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  },
+
+  _load() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data.date && Array.isArray(data.missions)) {
+          state.dailyMissions = data.missions;
+          state.dailyMissionsDate = data.date;
+        }
+      }
+    } catch { /* ignore corrupt data */ }
+  },
+
+  _save() {
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+      date: state.dailyMissionsDate,
+      missions: state.dailyMissions
+    }));
+  },
+
+  _generate(date) {
+    state.dailyMissionsDate = date;
+    // Pick 3 random missions (shuffle and take first 3)
+    const pool = this.MISSION_TYPES.slice().sort(() => Math.random() - 0.5);
+    state.dailyMissions = pool.slice(0, 3).map(m => ({
+      id: m.id,
+      type: m.type,
+      target: m.target,
+      current: 0,
+      completed: false,
+      rewarded: false,
+      description: m.description,
+      rewardXP: m.rewardXP
+    }));
+    this._save();
+    this.renderLobby();
+  },
+
+  // Track progress
+  track(type, amount = 1) {
+    let changed = false;
+    state.dailyMissions.forEach(m => {
+      if (m.completed || m.type !== type) return;
+      m.current = Math.min(m.current + amount, m.target);
+      if (m.current >= m.target && !m.completed) {
+        m.completed = true;
+        this._reward(m);
+        changed = true;
+      } else {
+        changed = true;
+      }
+    });
+    if (changed) {
+      this._save();
+      this.renderLobby();
+      this.renderHUD();
+    }
+  },
+
+  _reward(mission) {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    const role = local?.role || 'Mission Control';
+    if (typeof RoleProgression !== 'undefined' && RoleProgression.addXP) {
+      RoleProgression.addXP(role, mission.rewardXP, mission.description);
+    }
+    addChat('System', `📋 Daily mission complete: ${mission.description} (+${mission.rewardXP} XP)`);
+    EventLog.add('event', '📋', `<strong>Daily Mission</strong> ${escapeHtml(mission.description)} +${mission.rewardXP} XP`);
+    if (typeof ScreenJuice !== 'undefined' && ScreenJuice.addKillFeed) {
+      ScreenJuice.addKillFeed(`DAILY: ${mission.description.toUpperCase()}`, '#ffd700');
+    }
+    mission.rewarded = true;
+  },
+
+  // Check win condition after mission ends
+  checkWin(won) {
+    if (won) this.track('win_match', 1);
+  },
+
+  getCompletedCount() {
+    return state.dailyMissions.filter(m => m.completed).length;
+  },
+
+  // Render in lobby
+  renderLobby() {
+    const container = document.getElementById('dailyMissionsLobby');
+    if (!container) return;
+    const completed = this.getCompletedCount();
+    const total = state.dailyMissions.length;
+    const html = state.dailyMissions.map(m => {
+      const pct = Math.min(100, Math.round((m.current / m.target) * 100));
+      const status = m.completed ? '✅' : '⬜';
+      return `<div class="daily-mission-row ${m.completed ? 'completed' : ''}">
+        <span class="dm-status">${status}</span>
+        <span class="dm-desc">${escapeHtml(m.description)}</span>
+        <span class="dm-progress">${m.current}/${m.target}</span>
+        <div class="dm-bar"><div class="dm-fill" style="width:${pct}%"></div></div>
+        <span class="dm-reward">+${m.rewardXP} XP</span>
+      </div>`;
+    }).join('');
+    container.innerHTML = `
+      <div class="daily-missions-header">
+        <strong>📋 Daily Missions</strong>
+        <span class="daily-missions-count">${completed}/${total}</span>
+      </div>
+      <div class="daily-missions-list">${html}</div>
+    `;
+  },
+
+  // Small HUD indicator (mission screen)
+  renderHUD() {
+    const el = document.getElementById('dailyMissionsHUD');
+    if (!el) return;
+    const completed = this.getCompletedCount();
+    const total = state.dailyMissions.length;
+    el.innerHTML = `📋 ${completed}/${total}`;
+    el.classList.toggle('all-complete', completed === total && total > 0);
+  }
+};
+
+/* ========================== DOWNED & REVIVE SYSTEM (Phase 4 Task 2) ========================== */
+
+const ReviveSystem = {
+  DOWN_TIME: 60000,          // 60s bleedout
+  REVIVE_RANGE: 5,           // meters
+  MEDIC_REVIVE_TIME: 8000,   // 8s for Medic
+  STANDARD_REVIVE_TIME: 15000, // 15s for non-Medic
+  CRAWL_SPEED_MULT: 0.3,     // 30% move speed when downed
+
+  down(agentId, reason = 'Stamina depleted') {
+    if (state.downedAgents[agentId]) return; // already downed
+    const agent = state.agents.find(a => a.id === agentId);
+    if (!agent) return;
+    state.downedAgents[agentId] = {
+      downedAt: Date.now(),
+      lat: agent.lat,
+      lng: agent.lng,
+      revivedBy: null,
+      eliminated: false,
+      reason,
+      reviveChannel: null
+    };
+    agent.stamina = 0;
+    agent._downed = true;
+    addChat('System', `🚨 ${agent.name} (${agent.callsign}) is DOWN! ${this.DOWN_TIME / 1000}s to revive.`);
+    EventLog.add('alert', '🚨', `<strong>Agent Down</strong> ${escapeHtml(agent.callsign)} needs extraction!`);
+    ScreenJuice.addKillFeed(`${agent.callsign} IS DOWN`, '#e45b4d');
+    SoundFX.play(200, 0.15, 'sawtooth', 0.3);
+    saveState();
+  },
+
+  canRevive(reviverId, targetId) {
+    const reviver = state.agents.find(a => a.id === reviverId);
+    const target = state.downedAgents[targetId];
+    if (!reviver || !target || target.eliminated || target.revivedBy) return false;
+    const dist = haversine(reviver, { lat: target.lat, lng: target.lng });
+    return dist <= this.REVIVE_RANGE;
+  },
+
+  startRevive(reviverId, targetId) {
+    if (!this.canRevive(reviverId, targetId)) return false;
+    const reviver = state.agents.find(a => a.id === reviverId);
+    const isMedic = reviver && reviver.role === 'Medic';
+    const duration = isMedic ? this.MEDIC_REVIVE_TIME : this.STANDARD_REVIVE_TIME;
+    state.downedAgents[targetId].reviveChannel = {
+      reviverId,
+      startedAt: Date.now(),
+      duration
+    };
+    addChat('System', `${escapeHtml(reviver.name)} is reviving ${escapeHtml(targetId)}…`);
+    return true;
+  },
+
+  tick() {
+    const now = Date.now();
+    Object.entries(state.downedAgents).forEach(([agentId, data]) => {
+      if (data.eliminated || data.revivedBy) return;
+      // Check revive channel completion
+      if (data.reviveChannel) {
+        if (now - data.reviveChannel.startedAt >= data.reviveChannel.duration) {
+          this._completeRevive(agentId, data.reviveChannel.reviverId);
+        } else {
+          // Check if reviver moved out of range
+          if (!this.canRevive(data.reviveChannel.reviverId, agentId)) {
+            data.reviveChannel = null;
+            addChat('System', 'Revive interrupted — target moved out of range.');
+          }
+        }
+      }
+      // Check elimination timeout
+      if (now - data.downedAt > this.DOWN_TIME && !data.revivedBy) {
+        this._eliminate(agentId);
+      }
+    });
+  },
+
+  _completeRevive(agentId, reviverId) {
+    const agent = state.agents.find(a => a.id === agentId);
+    const reviver = state.agents.find(a => a.id === reviverId);
+    if (!agent) return;
+    agent.stamina = 40; // revive with partial stamina
+    agent._downed = false;
+    state.downedAgents[agentId].revivedBy = reviverId;
+    state.downedAgents[agentId].reviveChannel = null;
+    addChat('System', `✅ ${agent.name} revived by ${reviver ? reviver.name : 'Unknown'}!`);
+    EventLog.add('ability', '✅', `<strong>Revived</strong> ${escapeHtml(agent.callsign)} is back in the fight`);
+    ScreenJuice.addKillFeed(`${agent.callsign} REVIVED`, '#4caf50');
+    SoundFX.play(523, 0.1, 'sine', 0.15);
+    // XP tracking
+    state.revivesPerformed = (state.revivesPerformed || 0) + 1;
+    DailyMissions.track('revive_team', 1);
+    saveState();
+  },
+
+  _eliminate(agentId) {
+    const agent = state.agents.find(a => a.id === agentId);
+    if (!agent) return;
+    state.downedAgents[agentId].eliminated = true;
+    agent._eliminated = true;
+    addChat('System', `💀 ${agent.name} (${agent.callsign}) has been ELIMINATED.`);
+    EventLog.add('alert', '💀', `<strong>Eliminated</strong> ${escapeHtml(agent.callsign)} is KIA`);
+    ScreenJuice.addKillFeed(`${agent.callsign} ELIMINATED`, '#ff0000');
+    SoundFX.play(150, 0.2, 'sawtooth', 0.4);
+    saveState();
+    // Auto-transition local eliminated player to spectator mode
+    if (agentId === state.localAgentId && state.screen === 'mission' && state.status === 'Live') {
+      setTimeout(() => {
+        state.isSpectator = true;
+        addChat('System', '👁 You are now in Spectator Mode. Use WASD to fly, TAB to cycle players, +/- to zoom.');
+        setScreen('spectator');
+      }, 2000);
+    }
+  },
+
+  isDowned(agentId) {
+    const d = state.downedAgents[agentId];
+    return !!d && !d.eliminated && !d.revivedBy;
+  },
+
+  isEliminated(agentId) {
+    const d = state.downedAgents[agentId];
+    return !!d && d.eliminated;
+  },
+
+  getBleedoutRemaining(agentId) {
+    const d = state.downedAgents[agentId];
+    if (!d || d.eliminated || d.revivedBy) return 0;
+    return Math.max(0, this.DOWN_TIME - (Date.now() - d.downedAt));
+  },
+
+  renderOnMap() {
+    Object.entries(state.downedAgents).forEach(([agentId, data]) => {
+      if (data.eliminated || data.revivedBy) return;
+      const remaining = Math.max(0, this.DOWN_TIME - (Date.now() - data.downedAt));
+      MapModule.addBeacon('downed-' + agentId, data.lat, data.lng, `🚨 DOWN ${Math.ceil(remaining / 1000)}s`);
+    });
+  },
+
+  renderHUD() {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local) return;
+    const alert = document.getElementById('downedAlert');
+    const countdown = document.getElementById('downedCountdown');
+    const revivePrompt = document.getElementById('revivePrompt');
+
+    // Local player downed overlay
+    if (this.isDowned(state.localAgentId)) {
+      if (alert) alert.classList.remove('hidden');
+      if (countdown) {
+        const remaining = Math.ceil(this.getBleedoutRemaining(state.localAgentId) / 1000);
+        countdown.textContent = remaining;
+      }
+    } else {
+      if (alert) alert.classList.add('hidden');
+    }
+
+    // Revive prompt for nearby downed agents
+    let nearbyDowned = null;
+    Object.entries(state.downedAgents).forEach(([agentId, data]) => {
+      if (data.eliminated || data.revivedBy) return;
+      if (agentId === state.localAgentId) return;
+      const dist = haversine(local, { lat: data.lat, lng: data.lng });
+      if (dist <= this.REVIVE_RANGE) {
+        const agent = state.agents.find(a => a.id === agentId);
+        nearbyDowned = { agentId, name: agent ? agent.callsign : agentId, dist };
+      }
+    });
+
+    if (nearbyDowned && revivePrompt) {
+      revivePrompt.classList.remove('hidden');
+      const isMedic = local.role === 'Medic';
+      const time = isMedic ? this.MEDIC_REVIVE_TIME / 1000 : this.STANDARD_REVIVE_TIME / 1000;
+      const reviveKey = SettingsModule.getKeyDisplay('revive');
+      revivePrompt.innerHTML = `<div class="revive-prompt-title">🚨 ${escapeHtml(nearbyDowned.name)} is down!</div><div class="revive-prompt-hold">Hold <strong>${escapeHtml(reviveKey)}</strong> to revive (${time}s)</div>`;
+    } else if (revivePrompt) {
+      revivePrompt.classList.add('hidden');
+    }
+  },
+
+  crawl(agentId, direction) {
+    // direction: 'up' | 'down' | 'left' | 'right'
+    const agent = state.agents.find(a => a.id === agentId);
+    const data = state.downedAgents[agentId];
+    if (!agent || !data || data.eliminated || data.revivedBy) return;
+    const speed = 0.00003; // ~30% of normal crawl speed in lat/lng degrees
+    switch (direction) {
+      case 'up': agent.lat += speed; break;
+      case 'down': agent.lat -= speed; break;
+      case 'left': agent.lng -= speed; break;
+      case 'right': agent.lng += speed; break;
+    }
+    // Sync downed position
+    data.lat = agent.lat;
+    data.lng = agent.lng;
+  },
+
+  handleInput(e) {
+    if (state.screen !== 'mission' || state.status !== 'Live') return;
+    const key = e.key.toLowerCase();
+
+    // Crawl input when downed (WASD / arrow keys)
+    if (this.isDowned(state.localAgentId)) {
+      const crawlDir = { w: 'up', s: 'down', a: 'left', d: 'right', arrowup: 'up', arrowdown: 'down', arrowleft: 'left', arrowright: 'right' }[key];
+      if (crawlDir) {
+        e.preventDefault();
+        this.crawl(state.localAgentId, crawlDir);
+      }
+      return;
+    }
+
+    // Revive key to start reviving nearby downed agent
+    if (SettingsModule.matches(e, 'revive')) {
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      if (!local || this.isDowned(state.localAgentId) || this.isEliminated(state.localAgentId)) return;
+      // Find nearest downed agent in range
+      let targetId = null;
+      let bestDist = Infinity;
+      Object.entries(state.downedAgents).forEach(([agentId, data]) => {
+        if (data.eliminated || data.revivedBy) return;
+        if (agentId === state.localAgentId) return;
+        const dist = haversine(local, { lat: data.lat, lng: data.lng });
+        if (dist <= this.REVIVE_RANGE && dist < bestDist) {
+          bestDist = dist;
+          targetId = agentId;
+        }
+      });
+      if (targetId) {
+        this.startRevive(state.localAgentId, targetId);
+      }
+    }
+  },
+
+  init() {
+    document.addEventListener('keydown', (e) => this.handleInput(e));
+  }
+};
+
+/* ========================== SPECTATOR MODE ========================== */
+
+let spectatorMap = null;
+let spectatorLoopId = null;
+let spectatorLastSnapshot = 0;
+let spectatorFollowIndex = -1; // -1 = free fly, 0+ = follow agent index
+let spectatorFreeFly = { lat: 0, lng: 0, active: false };
+
+function initSpectator() {
+  if (!state.isSpectator) return;
+  ensureSpectatorMap();
+  renderSpectatorMap();
+  renderSpectatorPanels();
+  renderSpectatorHUD();
+  startSpectatorLoop();
+  initSpectatorPanels();
+  initSpectatorInput();
+  DayNightCycle.start();
+}
+
+function ensureSpectatorMap() {
+  if (spectatorMap || !window.L) return;
+  const el = $('#spectatorMap');
+  if (!el) return;
+  spectatorMap = L.map(el, { zoomControl: false, attributionControl: false }).setView(getMissionCenter(), 14);
+  const tileUrl = (typeof DayNightCycle !== 'undefined') ? DayNightCycle.getCurrentTileUrl() : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  L.tileLayer(tileUrl, { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OSM &copy; CARTO' }).addTo(spectatorMap);
+  L.control.zoom({ position: 'bottomright' }).addTo(spectatorMap);
+  setTimeout(() => spectatorMap?.invalidateSize(), 80);
+}
+
+function renderSpectatorMap() {
+  if (!spectatorMap) return;
+  // Clear existing layers (simple approach: remove all except tile)
+  spectatorMap.eachLayer(layer => {
+    if (layer instanceof L.TileLayer) return;
+    spectatorMap.removeLayer(layer);
+  });
+
+  // Draw zone
+  const center = getMissionCenter();
+  L.circle([center[0], center[1]], { color: '#ff5722', fillColor: '#ff5722', fillOpacity: 0.03, weight: 2, dashArray: '8,8', radius: 1000 }).addTo(spectatorMap);
+
+  // Draw objectives
+  (state.objectives || []).forEach(o => {
+    let iconHtml;
+    if (o.found) {
+      iconHtml = `<span style="width:24px;height:24px;background:#4caf50;border:2px solid #81c784;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700;">✓</span>`;
+    } else if (o.decoded) {
+      iconHtml = `<span style="width:24px;height:24px;background:#ff8b1f;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700;">+</span>`;
+    } else {
+      iconHtml = `<span style="width:24px;height:24px;background:#555;border:2px solid #777;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#999;opacity:0.7;">🔒</span>`;
+    }
+    const mk = L.marker([o.lat, o.lng], { icon: L.divIcon({ className: 'sl-map-icon', html: iconHtml, iconSize: [24,24], iconAnchor: [12,12] }) }).addTo(spectatorMap);
+    mk.bindPopup(`<strong>${escapeHtml(o.title)}</strong><br>${escapeHtml(o.type)}`);
+  });
+
+  // Draw extraction if present
+  const extraction = (state.objectives || []).find(o => o.type === 'Extraction');
+  if (extraction) {
+    const exIcon = `<div style="width:28px;height:28px;background:linear-gradient(135deg,#00e676,#00c853);border:2px solid #fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;transform:rotate(45deg);">✈</div>`;
+    L.marker([extraction.lat, extraction.lng], { icon: L.divIcon({ className: 'sl-map-icon', html: exIcon, iconSize: [28,28], iconAnchor: [14,14] }) }).addTo(spectatorMap);
+  }
+
+  // Draw threats
+  (state.threats || []).forEach(t => {
+    const c = L.circleMarker([t.lat, t.lng], {
+      radius: Math.max(6, t.radius / 15),
+      color: '#ef4444', fillColor: '#ef4444',
+      fillOpacity: t.alert ? 0.3 : 0.15,
+      weight: t.alert ? 3 : 2, opacity: 0.8
+    }).addTo(spectatorMap);
+    c.bindPopup(`<strong>${escapeHtml(t.name)}</strong><br>${t.mode === 'hunt' ? 'HUNT' : t.alert ? 'Jamming' : 'Patrolling'}`);
+    // Threat radius ring
+    L.circle([t.lat, t.lng], { color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.02, weight: 1, radius: t.radius || 100, dashArray: '4,4' }).addTo(spectatorMap);
+  });
+
+  // Draw agents (NO local GPS dot — spectators watch from above)
+  (state.agents || []).forEach(a => {
+    const color = a.team === 'North' ? '#4fc3f7' : a.team === 'South' ? '#ff8a65' : '#9e9e9e';
+    const iconHtml = `<div style="width:18px;height:18px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 0 8px ${color}80;"></div>`;
+    const mk = L.marker([a.lat, a.lng], { icon: L.divIcon({ className: 'sl-map-icon', html: iconHtml, iconSize: [18,18], iconAnchor: [9,9] }) }).addTo(spectatorMap);
+    mk.bindPopup(`<strong>${escapeHtml(a.name)} (${escapeHtml(a.callsign || 'AGENT')})</strong><br>${escapeHtml(a.role)} · ${escapeHtml(a.team || '')}<br>SIG ${Math.round(a.signal)}% STA ${Math.round(a.stamina)}%`);
+  });
+
+  // Draw route between decoded objectives
+  const pts = (state.objectives || []).filter(o => o.decoded && !o.found).map(o => [o.lat, o.lng]);
+  if (pts.length >= 2) {
+    L.polyline(pts, { color: '#ff8b1f', opacity: 0.6, weight: 3, dashArray: '8,8', interactive: false }).addTo(spectatorMap);
+  }
+}
+
+function renderSpectatorPanels() {
+  // Agents list
+  const agentList = $('#spectatorAgentList');
+  if (agentList) {
+    agentList.innerHTML = (state.agents || []).map(a => {
+      const color = a.team === 'North' ? '#4fc3f7' : a.team === 'South' ? '#ff8a65' : '#9e9e9e';
+      return `<div class="spectator-agent-item">
+        <span class="sa-dot" style="background:${color}"></span>
+        <span class="sa-name">${escapeHtml(a.name)}</span>
+        <span class="sa-role">${escapeHtml(a.role)} · SIG ${Math.round(a.signal)}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Objectives list
+  const objList = $('#spectatorObjectiveList');
+  const objCount = $('#spectatorObjCount');
+  if (objCount) objCount.textContent = `${(state.objectives || []).filter(o => o.found).length}/${(state.objectives || []).length}`;
+  if (objList) {
+    objList.innerHTML = (state.objectives || []).map(o => `
+      <div class="objective-card ${o.found ? 'found' : ''} ${!o.decoded ? 'locked' : ''}">
+        <strong>${escapeHtml(o.title)}</strong>
+        <small>${o.decoded ? escapeHtml(o.type) : 'Encrypted'}</small>
+        <div class="progress"><b style="width:${o.progress || 0}%"></b></div>
+      </div>
+    `).join('');
+  }
+
+  // Threats list
+  const threatList = $('#spectatorThreatList');
+  if (threatList) {
+    threatList.innerHTML = (state.threats || []).map(t => `
+      <div class="spectator-threat-item">
+        <span class="st-name">${escapeHtml(t.name)}</span>
+        <span class="st-mode">${t.mode === 'hunt' ? '🔴 HUNT' : t.alert ? '⚠ Jamming' : 'Patrol'}</span>
+      </div>
+    `).join('');
+  }
+}
+
+function renderSpectatorHUD() {
+  const timerEl = $('#spectatorTimer');
+  if (timerEl) timerEl.textContent = formatTime(state.remaining);
+  $('#spectatorStatus').textContent = state.status;
+  $('#spectatorCode').textContent = state.code;
+
+  // Extraction overlay for spectator
+  const overlay = $('#extractionOverlay');
+  if (overlay) {
+    if (state.extracting) {
+      overlay.classList.remove('hidden');
+      updateExtractionOverlay();
+    } else {
+      overlay.classList.add('hidden');
+    }
+  }
+}
+
+function startSpectatorLoop() {
+  stopSpectatorLoop();
+  spectatorLoopId = setInterval(() => {
+    if (state.screen !== 'spectator') { stopSpectatorLoop(); return; }
+    // Host sends snapshot; spectators receive via socket. Offline: simulate.
+    if (SignalNet.connected && SignalNet.isHost) {
+      SignalNet.sendSpectatorSnapshot({
+        agents: state.agents.map(a => ({ id: a.id, lat: a.lat, lng: a.lng, signal: a.signal, stamina: a.stamina })),
+        threats: state.threats,
+        objectives: state.objectives,
+        remaining: state.remaining,
+        extracting: state.extracting,
+        extractCountdown: state.extractCountdown
+      });
+    }
+    // Offline / local fallback: simulate world tick for spectators
+    if (!SignalNet.connected) {
+      simulateWorld();
+    }
+    renderSpectatorMap();
+    renderSpectatorPanels();
+    renderSpectatorHUD();
+    spectatorAutoFollow();
+  }, 2500);
+}
+
+function stopSpectatorLoop() {
+  if (spectatorLoopId) { clearInterval(spectatorLoopId); spectatorLoopId = null; }
+}
+
+function spectatorAutoFollow() {
+  if (!spectatorMap) return;
+  // Compute centroid of all agents, or center on nearest objective if no agents
+  const agents = state.agents || [];
+  const objectives = state.objectives || [];
+  let targetLat, targetLng;
+  if (agents.length) {
+    targetLat = agents.reduce((s, a) => s + a.lat, 0) / agents.length;
+    targetLng = agents.reduce((s, a) => s + a.lng, 0) / agents.length;
+  } else if (objectives.length) {
+    const next = objectives.find(o => !o.found) || objectives[0];
+    targetLat = next.lat; targetLng = next.lng;
+  } else {
+    targetLat = getMissionCenter()[0]; targetLng = getMissionCenter()[1];
+  }
+  // Only pan if target is significantly off-center (avoid jitter)
+  const center = spectatorMap.getCenter();
+  const dLat = Math.abs(targetLat - center.lat);
+  const dLng = Math.abs(targetLng - center.lng);
+  if (dLat > 0.002 || dLng > 0.002) {
+    spectatorMap.panTo([targetLat, targetLng], { animate: true, duration: 1.5 });
+  }
+}
+
+function initSpectatorPanels() {
+  // Panel toggle
+  const toggle = $('#spectatorTogglePanels');
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      state.panelsOpen = !state.panelsOpen;
+      document.body.dataset.panels = state.panelsOpen ? 'open' : 'hidden';
+    });
+  }
+
+  // Leave button
+  const leave = $('#spectatorLeave');
+  if (leave) {
+    leave.addEventListener('click', () => {
+      stopSpectatorLoop();
+      state.isSpectator = false;
+      state.status = 'Lobby';
+      if (spectatorMap) { spectatorMap.remove(); spectatorMap = null; }
+      setScreen('lobby');
+    });
+  }
+
+  // Panel tabs
+  $$('[data-spectator-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      $$('[data-spectator-tab]').forEach(t => t.classList.remove('active'));
+      $$('[data-spectator-view]').forEach(v => v.classList.remove('active'));
+      tab.classList.add('active');
+      const view = document.querySelector(`[data-spectator-view="${tab.dataset.spectatorTab}"]`);
+      if (view) view.classList.add('active');
+    });
+  });
+
+  // Spectator chat
+  const chatForm = $('#spectatorChatForm');
+  const chatInput = $('#spectatorChatInput');
+  if (chatForm && chatInput) {
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = chatInput.value.trim();
+      if (!text) return;
+      const log = $('#spectatorChatLog');
+      if (log) {
+        const msg = MemoryPool.acquire('div');
+        msg.className = 'chat-msg';
+        const name = state.agents?.find(a => a.id === state.localAgentId)?.name || 'Spectator';
+        msg.innerHTML = `<strong>${escapeHtml(name)}</strong>: ${escapeHtml(text)}`;
+        log.appendChild(msg);
+        log.scrollTop = log.scrollHeight;
+      }
+      SignalNet.sendChat(text);
+      chatInput.value = '';
+    });
+  }
+}
+
+function updateSpectatorIndicator() {
+  const el = $('#spectatorCountIndicator');
+  if (!el) return;
+  if (state.spectatorCount > 0 && !state.isSpectator) {
+    el.textContent = `👁 ${state.spectatorCount}`;
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
   }
 }
 
@@ -4085,6 +15547,13 @@ function renderReplay() {
 
 function renderResults() {
   const sc = missionScore();
+  MatchHistory.record(sc);
+  const _resultTeams = teamScores();
+  const local = state.agents.find(a => a.id === state.localAgentId);
+  const localTeam = local?.team || '';
+  const isWin = _resultTeams.length > 0 && _resultTeams[0].team === localTeam && _resultTeams[0].score > (_resultTeams[1]?.score || 0);
+  const result = state.status === 'Complete' ? (isWin ? 'win' : 'loss') : 'abandoned';
+  StatsTracker.recordMission(result);
   $('#scoreGrade').textContent = scoreGrade(sc.score);
   $('#scoreValue').textContent = sc.score.toLocaleString();
   $('#scoreSummary').textContent = `${sc.found}/${sc.total} objectives found · ${formatTime(state.remaining)} remaining`;
@@ -4093,28 +15562,157 @@ function renderResults() {
   $('#resTime').textContent = formatTime(state.remaining);
   $('#resThreat').textContent = `-${sc.threatPenalty}`;
 
-  const teams = teamScores();
-  if (teams.length) {
-    const topScore = teams[0].score;
-    // Determine winner message
-    const winner = teams.length > 1 && teams[0].score > (teams[1]?.score || 0) ? `${teams[0].team} Wins!` : 'Tied!';
-    if (teams.length > 1) {
+  if (_resultTeams.length) {
+    const topScore = _resultTeams[0].score;
+    // Use server-finalized scores when available (server-side game state sync)
+    const winner = _resultTeams.length > 1 && _resultTeams[0].score > (_resultTeams[1]?.score || 0) ? `${_resultTeams[0].team} Wins!` : 'Tied!';
+    if (_resultTeams.length > 1) {
       document.querySelector('.results-header h1').textContent = winner;
     }
   }
-  $('#teamList').innerHTML = teams.length
-    ? teams.map(t=>{
-        const isWinner = teams.length > 1 && t.score > 0 && t.score === teams[0].score && t.score > (teams[1]?.score || 0);
+  $('#teamList').innerHTML = _resultTeams.length
+    ? _resultTeams.map(t=>{
+        const isWinner = _resultTeams.length > 1 && t.score > 0 && t.score === _resultTeams[0].score && t.score > (_resultTeams[1]?.score || 0);
         return `<div class="team-item ${isWinner?'leading':''}"><strong>${escapeHtml(t.team)}</strong><span>${t.agents} agents · ${t.score.toLocaleString()} pts${isWinner?' 👑':''}</span></div>`;
       }).join('')
     : '<div class="team-item">No teams yet</div>';
 
+  // Add team score breakdown card if teams exist
+  const scoreBreakdown = document.getElementById('teamScoreBreakdown');
+  if (scoreBreakdown) {
+    scoreBreakdown.innerHTML = _resultTeams.length
+      ? _resultTeams.map(t => {
+          const isWinner = _resultTeams.length > 1 && t.score > 0 && t.score === _resultTeams[0].score && t.score > (_resultTeams[1]?.score || 0);
+          return `<div class="score-breakdown-row ${isWinner ? 'winner' : ''}">
+            <span class="score-team">${escapeHtml(t.team)} ${isWinner ? '👑' : ''}</span>
+            <span class="score-agents">${t.agents} agents</span>
+            <span class="score-val">${t.score.toLocaleString()} pts</span>
+          </div>`;
+        }).join('')
+      : '<div class="score-breakdown-row">No team scores recorded</div>';
+  }
+
   // Trigger animations
   ResultsAnimations.triggerEntranceAnimations();
   ResultsAnimations.animateScoreCounter(sc.score);
-  const isWinner = teams.length > 0 && teams[0].score > 0 && teams[0].team === (state.agents.find(a=>a.id===state.localAgentId)?.team || '');
+  const isWinner = _resultTeams.length > 0 && _resultTeams[0].score > 0 && _resultTeams[0].team === (state.agents.find(a=>a.id===state.localAgentId)?.team || '');
   ResultsAnimations.startConfetti(isWinner);
   ResultsAnimations.playCompleteSound(isWinner);
+
+  // Award role XP and render XP bar
+  const xpGained = RoleProgression.awardMissionXP();
+  // Award tokens/credits based on mission performance
+  CurrencySystem.onMissionEnd(xpGained, sc.score);
+  const xpHTML = RoleProgression.renderResultsXP();
+  const existing = document.getElementById('resultsXPBar');
+  if (existing) existing.outerHTML = xpHTML;
+  else if (xpHTML) {
+    const header = document.querySelector('.results-header');
+    if (header) {
+      const div = MemoryPool.acquire('div');
+      div.id = 'resultsXPBar';
+      div.className = 'results-xp-container';
+      div.innerHTML = xpHTML;
+      header.appendChild(div);
+    }
+  }
+
+  // === PHASE 12.5: RESULTS ENHANCEMENTS ===
+  if (state.designFlags.resultsStatsBreakdown) {
+    renderResultsStatBreakdown(sc);
+  }
+  if (state.designFlags.resultsProgressionPreview) {
+    renderResultsProgressionPreview();
+  }
+  if (state.designFlags.resultsReplayButton && sc.score >= 850) {
+    renderResultsReplayButton();
+  }
+  if (state.designFlags.resultsMVPBadge) {
+    highlightResultsMVP();
+  }
+}
+
+function renderResultsStatBreakdown(sc) {
+  const container = document.getElementById('resultsStatBreakdown');
+  if (!container) return;
+  const combatScore = Math.min(1000, Math.round(sc.score * 0.35));
+  const objectiveScore = Math.min(1000, Math.round(sc.score * 0.30));
+  const supportScore = Math.min(1000, Math.round(sc.score * 0.20));
+  const survivalScore = Math.min(1000, Math.round(sc.score * 0.15));
+  const stats = [
+    { label: 'Combat', icon: '⚔️', value: combatScore, max: 1000 },
+    { label: 'Objective', icon: '📍', value: objectiveScore, max: 1000 },
+    { label: 'Support', icon: '🛡️', value: supportScore, max: 1000 },
+    { label: 'Survival', icon: '❤️', value: survivalScore, max: 1000 }
+  ];
+  container.innerHTML = `
+    <div class="results-stats-grid">
+      ${stats.map(s => `
+        <div class="results-stat-card">
+          <span class="rsc-icon">${s.icon}</span>
+          <span class="rsc-label">${s.label}</span>
+          <span class="rsc-value">${s.value}</span>
+          <div class="rsc-bar">
+            <div class="rsc-bar-fill" style="width: ${(s.value/s.max)*100}%"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderResultsProgressionPreview() {
+  const container = document.getElementById('resultsProgressionPreview');
+  if (!container) return;
+  const nextTier = (state.battlePass?.tier || 0) + 1;
+  const nextReward = getBattlePassReward ? getBattlePassReward(nextTier) : null;
+  if (!nextReward) {
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = `
+    <div class="results-progression-preview">
+      <span class="rpp-label">Next Unlock</span>
+      <div class="rpp-reward">
+        <span class="rpp-icon">${nextReward.icon || '🎁'}</span>
+        <span class="rpp-name">${escapeHtml(nextReward.name || 'Unknown')}</span>
+        <span class="rpp-tier">Tier ${nextTier}</span>
+      </div>
+      <div class="rpp-bar">
+        <div class="rpp-bar-fill" style="width: ${((state.battlePass?.xp || 0) % 1000) / 10}%"></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderResultsReplayButton() {
+  const footer = document.querySelector('.results-footer');
+  if (!footer) return;
+  const btn = document.createElement('button');
+  btn.id = 'saveReplayBtn';
+  btn.className = 'primary-button large';
+  btn.textContent = '📹 Save Replay';
+  btn.addEventListener('click', () => {
+    state.replaySaved = true;
+    showToast('Replay saved!', 'success');
+  });
+  footer.appendChild(btn);
+}
+
+function highlightResultsMVP() {
+  if (!state.agents?.length) return;
+  const sorted = [...state.agents].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const mvp = sorted[0];
+  if (!mvp) return;
+  const mvpEl = document.getElementById('resultsMVP');
+  if (!mvpEl) return;
+  mvpEl.innerHTML = `
+    <div class="results-mvp-badge">
+      <span class="rmvp-icon">👑</span>
+      <span class="rmvp-name">${escapeHtml(mvp.name || mvp.callsign || 'MVP')}</span>
+      <span class="rmvp-score">${mvp.score || 0} pts</span>
+    </div>
+  `;
 }
 
 function missionScore() {
@@ -4159,6 +15757,7 @@ function initResults() {
     state.agents = [];
     state.localAgentId = '';
     state.cooldowns = {};
+    state.activeEffects = [];
     state.extracting = false;
     state.extractCountdown = 0;
     state.chat = [['Mission Control','Create a game, join a role, then start the mission.'],['System','GPS ready. Waiting for mission start.']];
@@ -4169,7 +15768,112 @@ function initResults() {
     setScreen('replay');
     renderReplay();
   });
+  const historyBtn = document.getElementById('viewMatchHistory');
+  if (historyBtn) {
+    historyBtn.addEventListener('click', () => { MatchHistory.show(); });
+  }
+  // Phase 12.5: Return to Lobby
+  const returnBtn = document.getElementById('returnLobbyBtn');
+  if (returnBtn) {
+    returnBtn.addEventListener('click', () => {
+      state.status = 'Lobby';
+      state.objectives = [];
+      state.threats = [];
+      state.agents = [];
+      MapModule.clearGameObjects();
+      if (typeof LobbyChat !== 'undefined') LobbyChat.resetUnread();
+      setScreen('lobby');
+    });
+  }
 }
+
+/* ========================== MATCH HISTORY (Phase 6 Task 10) ========================== */
+
+const MatchHistory = {
+  STORAGE_KEY: 'slv2_match_history',
+  MAX_ENTRIES: 50,
+
+  record(sc) {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    const entry = {
+      id: 'match_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      date: new Date().toISOString(),
+      map: mapCatalog[state.currentMap]?.name || state.city || 'Unknown',
+      team: local?.team || 'Unassigned',
+      score: sc?.score || 0,
+      grade: scoreGrade(sc?.score || 0),
+      xpEarned: RoleProgression.awardMissionXP() || 0,
+      role: local?.role || 'Unknown',
+      objectivesFound: sc?.found || 0,
+      objectivesTotal: sc?.total || 0,
+      durationMin: state.duration || 0,
+      remainingSec: state.remaining || 0,
+      status: state.status || 'Unknown',
+      squadSize: state.agents?.length || 0,
+    };
+    const list = this.load();
+    list.unshift(entry);
+    if (list.length > this.MAX_ENTRIES) list.length = this.MAX_ENTRIES;
+    try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
+  },
+
+  load() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) { /* ignore */ }
+    return [];
+  },
+
+  clear() {
+    try { localStorage.removeItem(this.STORAGE_KEY); } catch (e) { /* ignore */ }
+    this.show();
+  },
+
+  show() {
+    const list = this.load();
+    const container = document.getElementById('matchHistoryList');
+    const countEl = document.getElementById('matchHistoryCount');
+    if (countEl) countEl.textContent = `${list.length} match${list.length !== 1 ? 'es' : ''}`;
+    if (!container) return;
+    if (!list.length) {
+      container.innerHTML = '<div class="match-history-empty">No matches recorded yet. Complete a mission to build your history.</div>';
+    } else {
+      container.innerHTML = list.map((m, i) => {
+        const d = new Date(m.date);
+        const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="match-history-item" data-index="${i}">
+            <div class="match-history-meta">
+              <span class="match-history-grade grade-${m.grade?.toLowerCase() || 'c'}">${m.grade || '--'}</span>
+              <div class="match-history-info">
+                <div class="match-history-title">${escapeHtml(m.map)} · ${escapeHtml(m.role)}</div>
+                <div class="match-history-sub">${dateStr} · ${timeStr} · ${m.objectivesFound}/${m.objectivesTotal} obj</div>
+              </div>
+              <div class="match-history-score">${(m.score || 0).toLocaleString()} pts</div>
+            </div>
+            <div class="match-history-details">
+              <span>Team: ${escapeHtml(m.team)}</span>
+              <span>XP: +${m.xpEarned || 0}</span>
+              <span>Squad: ${m.squadSize}</span>
+              <span>Time left: ${formatTime(m.remainingSec || 0)}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    setScreen('matchHistory');
+  },
+
+  filter(query) {
+    const q = (query || '').toLowerCase();
+    document.querySelectorAll('.match-history-item').forEach(el => {
+      const text = el.textContent.toLowerCase();
+      el.style.display = text.includes(q) ? '' : 'none';
+    });
+  }
+};
 
 /* ========================== PWA INSTALL MODULE (5.2) ========================== */
 
@@ -4203,7 +15907,7 @@ const PWAInstall = {
 
     let hint = document.getElementById('pwaInstallHint');
     if (!hint) {
-      hint = document.createElement('div');
+      hint = MemoryPool.acquire('div');
       hint.id = 'pwaInstallHint';
       hint.className = 'pwa-install-hint';
       hint.innerHTML = `
@@ -4301,15 +16005,150 @@ const SplashScreen = {
   maxDuration: 4500, // ms maximum before auto-dismiss
   dismissed: false,
 
-  // Loading stages for the progress bar
-  _stages: [
-    { at: 0,    pct: 8,  text: 'Booting…' },
-    { at: 250,  pct: 22, text: 'Loading assets…' },
-    { at: 600,  pct: 45, text: 'Connecting…' },
-    { at: 1100, pct: 68, text: 'Syncing comms…' },
-    { at: 1600, pct: 85, text: 'Ready' },
-    { at: 2100, pct: 100, text: 'Press any key or click to continue' }
+  // === PHASE 12.3 LOADING ===
+  // Enriched 5-phase military briefing sequence
+  _phases: [
+    { id: 'connecting',     label: 'CONNECTING',      icon: '📡', pct: 15,  at: 0,    anim: 'anim-pulse' },
+    { id: 'authenticating', label: 'AUTHENTICATING',  icon: '🔐', pct: 35,  at: 500,  anim: 'anim-scan' },
+    { id: 'briefing',       label: 'BRIEFING',        icon: '📋', pct: 55,  at: 1100, anim: 'anim-typewriter' },
+    { id: 'loading',        label: 'LOADING',         icon: '⚙️', pct: 80,  at: 1800, anim: 'anim-gear' },
+    { id: 'ready',          label: 'READY',           icon: '⚡', pct: 100, at: 2600, anim: 'anim-flash' }
   ],
+
+  _getPhaseEl() { return document.getElementById('splashPhaseIcon'); },
+  _getSquadEl() { return document.getElementById('splashSquad'); },
+  _getMapEl()   { return document.getElementById('splashMapPreview'); },
+
+  _setPhase(phase) {
+    const el = this._getPhaseEl();
+    if (!el) return;
+    el.textContent = phase.icon || '';
+    el.className = 'splash-phase-icon ' + (phase.anim || '');
+    if (this._textEl) this._textEl.textContent = phase.label;
+    if (this._fillEl) this._fillEl.style.width = phase.pct + '%';
+
+    // Show/hide squad panel during briefing
+    const squadEl = this._getSquadEl();
+    if (squadEl) {
+      if (phase.id === 'briefing') {
+        squadEl.classList.remove('hidden');
+        this._renderSquad();
+      } else {
+        squadEl.classList.add('hidden');
+        squadEl.innerHTML = '';
+      }
+    }
+
+    // Show/hide map preview during loading
+    const mapEl = this._getMapEl();
+    if (mapEl) {
+      if (phase.id === 'loading') {
+        mapEl.classList.remove('hidden');
+        this._renderMapPreview();
+      } else {
+        mapEl.classList.add('hidden');
+      }
+    }
+
+    // Ready flash
+    const splashEl = document.getElementById('splashScreen');
+    if (splashEl && phase.id === 'ready') {
+      splashEl.classList.remove('splash-ready-flash');
+      void splashEl.offsetWidth; // force reflow
+      splashEl.classList.add('splash-ready-flash');
+    }
+  },
+
+  _renderSquad() {
+    const squadEl = this._getSquadEl();
+    if (!squadEl) return;
+    const agents = (state && state.agents && state.agents.length) ? state.agents : [];
+    // Fallback demo roster if no agents yet
+    const roster = agents.length ? agents : [
+      { name: 'Alpha-1', role: 'Drone', ready: true },
+      { name: 'Bravo-2', role: 'Medic', ready: true },
+      { name: 'Charlie-3', role: 'Navigator', ready: false },
+      { name: 'Delta-4', role: 'Mechanic', ready: true }
+    ];
+    squadEl.innerHTML = roster.map((a, i) => {
+      const emoji = roleEmojis[a.role] || '●';
+      const status = a.ready !== false ? '<span class="ssm-status">✓ READY</span>' : '<span class="ssm-status" style="color:var(--text-dim)">…</span>';
+      return `<div class="splash-squad-member" style="animation-delay:${i * 0.15}s">
+        <span class="ssm-role">${emoji}</span>
+        <span class="ssm-name">${escapeHtml(a.name || a.id || 'Agent')}</span>
+        ${status}
+      </div>`;
+    }).join('');
+  },
+
+  _renderMapPreview() {
+    const canvas = this._getMapEl();
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // Background grid
+    ctx.strokeStyle = 'rgba(124,58,237,0.08)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < w; x += 20) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = 0; y < h; y += 20) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+    const zones = (state && state.terrainZones) ? state.terrainZones : [];
+    const colors = {
+      urban: '#64748b',
+      forest: '#22c55e',
+      industrial: '#a855f7',
+      high_ground: '#eab308',
+      water: '#3b82f6',
+      open: '#94a3b8'
+    };
+
+    if (zones.length) {
+      zones.forEach((z, i) => {
+        const cx = ((z.lng + 180) / 360) * w;
+        const cy = ((90 - z.lat) / 180) * h;
+        const r = Math.max(6, (z.radius || 100) / 500);
+        ctx.fillStyle = (colors[z.type] || '#7c3aed') + '60';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = (colors[z.type] || '#7c3aed') + 'cc';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+    } else {
+      // Procedural fallback zones
+      const fallback = [
+        { x: 0.25, y: 0.35, r: 18, type: 'urban' },
+        { x: 0.65, y: 0.30, r: 22, type: 'forest' },
+        { x: 0.50, y: 0.60, r: 14, type: 'industrial' },
+        { x: 0.80, y: 0.70, r: 16, type: 'water' },
+        { x: 0.35, y: 0.75, r: 12, type: 'high_ground' }
+      ];
+      fallback.forEach(z => {
+        ctx.fillStyle = (colors[z.type] || '#7c3aed') + '50';
+        ctx.beginPath();
+        ctx.arc(z.x * w, z.y * h, z.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = (colors[z.type] || '#7c3aed') + 'aa';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      });
+    }
+
+    // Draw crosshair center
+    ctx.strokeStyle = 'rgba(124,58,237,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.5, h * 0.45);
+    ctx.lineTo(w * 0.5, h * 0.55);
+    ctx.moveTo(w * 0.45, h * 0.5);
+    ctx.lineTo(w * 0.55, h * 0.5);
+    ctx.stroke();
+  },
+  // === END PHASE 12.3 LOADING ===
 
   start() {
     this.dismissed = false;
@@ -4319,14 +16158,15 @@ const SplashScreen = {
     this._fillEl = document.getElementById('splashLoadingFill');
     this._textEl = document.getElementById('splashProgressText');
 
-    // Drive progress bar through stages
-    this._stageTimers = this._stages.map(stage => {
+    // === PHASE 12.3 LOADING ===
+    // Drive enriched phase sequence
+    this._stageTimers = this._phases.map(phase => {
       return setTimeout(() => {
         if (this.dismissed) return;
-        if (this._fillEl) this._fillEl.style.width = stage.pct + '%';
-        if (this._textEl) this._textEl.textContent = stage.text;
-      }, stage.at);
+        this._setPhase(phase);
+      }, phase.at);
     });
+    // === END PHASE 12.3 LOADING ===
 
     // Auto-dismiss after maxDuration
     this._maxTimer = setTimeout(() => this.dismiss(), this.maxDuration);
@@ -4375,36 +16215,3644 @@ const SplashScreen = {
     if (this._fillEl) this._fillEl.style.width = '100%';
     if (this._textEl) this._textEl.textContent = 'Entering…';
 
+    // === PHASE 12.3 LOADING ===
+    // Hide phase extras
+    const phaseEl = this._getPhaseEl();
+    if (phaseEl) { phaseEl.textContent = ''; phaseEl.className = 'splash-phase-icon'; }
+    const squadEl = this._getSquadEl();
+    if (squadEl) { squadEl.classList.add('hidden'); squadEl.innerHTML = ''; }
+    const mapEl = this._getMapEl();
+    if (mapEl) mapEl.classList.add('hidden');
+    const splashEl = document.getElementById('splashScreen');
+    if (splashEl) splashEl.classList.remove('splash-ready-flash');
+    // === END PHASE 12.3 LOADING ===
+
     // Also clear the inline failsafe
     var tapBtn = document.getElementById('splashTapToEnter');
     if (tapBtn) tapBtn.style.display = 'none';
     var keyHint = document.getElementById('splashKeyHint');
     if (keyHint) keyHint.style.display = 'none';
 
-    const splashEl = document.getElementById('splashScreen');
-    if (splashEl) {
-      splashEl.classList.add('transition-out');
+    const splashEl2 = document.getElementById('splashScreen');
+    if (splashEl2) {
+      splashEl2.classList.add('transition-out');
       setTimeout(() => {
-        splashEl.classList.remove('transition-out');
+        splashEl2.classList.remove('transition-out');
+        splashEl2.classList.add('hidden');
         // Only init lobby if not already done (failsafe may have beaten us)
         if (document.body.dataset.screen !== 'lobby' || !window._lobbyInitialized) {
-          state.screen = 'lobby';
-          document.body.dataset.screen = 'lobby';
-          initLobby();
-          renderChat();
+          // Route first-time players through tutorial
+          if (!TutorialSystem.isComplete()) {
+            TutorialSystem.start();
+          } else {
+            state.screen = 'lobby';
+            document.body.dataset.screen = 'lobby';
+            initLobby();
+            renderChat();
+          }
         }
       }, 600);
     } else {
       if (document.body.dataset.screen !== 'lobby' || !window._lobbyInitialized) {
-        state.screen = 'lobby';
-        document.body.dataset.screen = 'lobby';
-        initLobby();
-        renderChat();
-        LobbyChat.render();
+        // Route first-time players through tutorial
+        if (!TutorialSystem.isComplete()) {
+          TutorialSystem.start();
+        } else {
+          state.screen = 'lobby';
+          document.body.dataset.screen = 'lobby';
+          initLobby();
+          renderChat();
+          LobbyChat.render();
+        }
       }
     }
   }
 };
+
+/* ========================== STATS TRACKER (PHASE 5 TASK 7) ========================== */
+
+const StatsTracker = {
+  STORAGE_KEY: 'slv2_match_history',
+  MAX_ENTRIES: 50,
+
+  init() {
+    const saved = localStorage.getItem(this.STORAGE_KEY);
+    if (saved) {
+      try { state.matchHistory = JSON.parse(saved); } catch(e) {}
+    }
+    this._computeSessionStats();
+  },
+
+  save() {
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state.matchHistory.slice(-this.MAX_ENTRIES)));
+  },
+
+  recordMission(result) {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    const sc = missionScore();
+    const entry = {
+      id: 'match-' + Date.now(),
+      date: new Date().toISOString(),
+      result, // 'win' | 'loss' | 'abandoned'
+      score: sc.score,
+      role: local?.role || 'Unknown',
+      team: local?.team || 'Unknown',
+      objectivesFound: state.objectives.filter(o => o.found).length,
+      totalObjectives: state.objectives.length,
+      duration: state.duration * 60 - state.remaining,
+      weather: state.weather?.type || 'clear',
+      threatsEncountered: state.threats?.length || 0,
+      xpGained: RoleProgression?.awardMissionXP?.() || 0,
+      city: state.city,
+      grade: scoreGrade(sc.score)
+    };
+    state.matchHistory.push(entry);
+    this.save();
+    this._computeSessionStats();
+    return entry;
+  },
+
+  _computeSessionStats() {
+    const history = state.matchHistory;
+    if (!history.length) return;
+    const missions = history.length;
+    const wins = history.filter(h => h.result === 'win').length;
+    const avgScore = Math.round(history.reduce((s, h) => s + h.score, 0) / missions);
+    const roleCounts = {};
+    history.forEach(h => { roleCounts[h.role] = (roleCounts[h.role] || 0) + 1; });
+    const favoriteRole = Object.entries(roleCounts).sort((a,b) => b[1] - a[1])[0]?.[0] || null;
+    state.sessionStats = { missions, wins, avgScore, favoriteRole, winRate: Math.round(wins/missions*100) };
+  },
+
+  renderHistoryList(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const history = state.matchHistory.slice().reverse();
+    if (!history.length) {
+      container.innerHTML = '<p class="empty-history">No missions yet. Complete your first mission to see history.</p>';
+      return;
+    }
+    container.innerHTML = history.map(h => `
+      <div class="history-entry">
+        <div class="history-main">
+          <span class="history-grade grade-${h.grade.toLowerCase()}">${h.grade}</span>
+          <span class="history-role">${roleEmojis[h.role] || ''} ${h.role}</span>
+          <span class="history-result result-${h.result}">${h.result}</span>
+        </div>
+        <div class="history-detail">
+          <span>${h.objectivesFound}/${h.totalObjectives} objs</span>
+          <span>${h.score} pts</span>
+          <span>${h.weather} ${h.city}</span>
+          <span>${new Date(h.date).toLocaleDateString()}</span>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  renderStatsDashboard(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const s = state.sessionStats;
+    container.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">${s.missions}</div><div class="stat-label">Missions</div></div>
+        <div class="stat-card"><div class="stat-value">${s.winRate || 0}%</div><div class="stat-label">Win Rate</div></div>
+        <div class="stat-card"><div class="stat-value">${s.avgScore || 0}</div><div class="stat-label">Avg Score</div></div>
+        <div class="stat-card"><div class="stat-value">${s.favoriteRole ? (roleEmojis[s.favoriteRole] || '') + ' ' + s.favoriteRole : '-'}</div><div class="stat-label">Favorite Role</div></div>
+      </div>
+    `;
+  }
+};
+
+// ===== PHASE 12.9: Data Screens =====
+const DataScreen = {
+  _modal: null,
+
+  open() {
+    if (!state.designFlags.agentDossier && !state.designFlags.missionHistory && !state.designFlags.careerStats) return;
+    let modal = document.getElementById('dataScreenModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'dataScreenModal';
+      modal.className = 'modal data-modal hidden';
+      modal.innerHTML = `
+        <div class="modal-backdrop" onclick="DataScreen.close()"></div>
+        <div class="modal-panel data-panel">
+          <header class="modal-header">
+            <h2>📊 Agent Data</h2>
+            <button class="modal-close" onclick="DataScreen.close()">&times;</button>
+          </header>
+          <div class="modal-tabs">
+            <button class="modal-tab active" data-data-tab="dossier">Agent Dossier</button>
+            <button class="modal-tab" data-data-tab="history">Mission History</button>
+            <button class="modal-tab" data-data-tab="career">Career Stats</button>
+          </div>
+          <div class="modal-body" id="dataScreenBody">
+            <div class="tab-panel active" data-data-tab="dossier">
+              <div id="dossierContent"></div>
+            </div>
+            <div class="tab-panel" data-data-tab="history">
+              <div id="historyContent"></div>
+            </div>
+            <div class="tab-panel" data-data-tab="career">
+              <div id="careerContent"></div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      // Wire tab switching
+      modal.querySelectorAll('.modal-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          modal.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+          modal.querySelectorAll('.tab-panel[data-data-tab]').forEach(p => p.classList.remove('active'));
+          tab.classList.add('active');
+          const panel = modal.querySelector('.tab-panel[data-data-tab="' + tab.dataset.dataTab + '"]');
+          if (panel) panel.classList.add('active');
+          this._renderTab(tab.dataset.dataTab);
+        });
+      });
+    }
+    modal.classList.remove('hidden');
+    this._renderTab('dossier');
+  },
+
+  close() {
+    const modal = document.getElementById('dataScreenModal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  _renderTab(tab) {
+    if (tab === 'dossier') this._renderDossier();
+    else if (tab === 'history') this._renderHistory();
+    else if (tab === 'career') this._renderCareer();
+  },
+
+  _renderDossier() {
+    if (!state.designFlags.agentDossier) return;
+    const container = document.getElementById('dossierContent');
+    if (!container) return;
+    const p = state.localProfile || {};
+    const role = state.selectedRole || 'Scout';
+    const tier = state.roleTier?.[role] || 1;
+    const xp = state.roleXP?.[role] || 0;
+    const roleInfo = roleCatalog[role] || {};
+    container.innerHTML = `
+      <div class="dossier-card">
+        <div class="dossier-header">
+          <span class="dossier-avatar">${roleEmojis[role] || '●'}</span>
+          <div class="dossier-id">
+            <span class="dossier-callsign">${escapeHtml(p.callsign || 'Agent')}</span>
+            <span class="dossier-name">${escapeHtml(p.name || 'Unknown')}</span>
+          </div>
+        </div>
+        <div class="dossier-details">
+          <div class="dossier-row"><span>Role</span><b>${role} — ${roleInfo.description || role}</b></div>
+          <div class="dossier-row"><span>Tier</span><b>Tier ${tier}</b></div>
+          <div class="dossier-row"><span>XP</span><b>${xp} / ${RoleProgression.TIERS[tier] || 'MAX'}</b></div>
+        </div>
+        <div class="dossier-xp-bar">
+          <div class="dossier-xp-fill" style="width:${Math.min(100, (xp / (RoleProgression.TIERS[tier] || 1)) * 100)}%"></div>
+        </div>
+      </div>
+      <div class="dossier-roster">
+        <h4>Role Roster</h4>
+        ${Object.entries(roleCatalog).slice(0, 7).map(([id, info]) => `
+          <div class="dossier-role-row ${id === role ? 'active' : ''}">
+            <span class="dossier-role-icon">${roleEmojis[id] || '●'}</span>
+            <span class="dossier-role-name">${info.name || id}</span>
+            <span class="dossier-role-tier">T${state.roleTier?.[id] || 1}</span>
+            <span class="dossier-role-xp">${state.roleXP?.[id] || 0} XP</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  },
+
+  _renderHistory() {
+    if (!state.designFlags.missionHistory) return;
+    const container = document.getElementById('historyContent');
+    if (!container) return;
+    // Use existing StatsTracker to render
+    container.innerHTML = '<div id="dataHistoryList"></div>';
+    StatsTracker.renderHistoryList('dataHistoryList');
+  },
+
+  _renderCareer() {
+    if (!state.designFlags.careerStats) return;
+    const container = document.getElementById('careerContent');
+    if (!container) return;
+    // Use existing StatsTracker dashboard
+    container.innerHTML = '<div id="dataStatsDashboard"></div>';
+    StatsTracker.renderStatsDashboard('dataStatsDashboard');
+
+    // Add role breakdown below
+    const roles = Object.keys(roleCatalog).slice(0, 7);
+    container.innerHTML += '<h4 style="margin:16px 0 8px;font-size:13px">Role XP Breakdown</h4><div class="career-roles">' +
+      roles.map(r => {
+        const xp = state.roleXP?.[r] || 0;
+        const tier = state.roleTier?.[r] || 1;
+        const maxXp = RoleProgression.TIERS[tier] || 1;
+        return `<div class="career-role-row">
+          <span class="career-role-icon">${roleEmojis[r] || '●'}</span>
+          <span class="career-role-name">${roleCatalog[r]?.name || r}</span>
+          <span class="career-role-tier">T${tier}</span>
+          <div class="career-xp-bar"><div class="career-xp-fill" style="width:${Math.min(100, (xp / maxXp) * 100)}%"></div></div>
+          <span class="career-role-xp">${xp} XP</span>
+        </div>`;
+      }).join('') + '</div>';
+  }
+};
+
+window.DataScreen = DataScreen;
+
+/* ========================== ROLE PROGRESSION (PHASE 4 TASK 6) ========================== */
+
+const RoleProgression = {
+  STORAGE_KEY: 'slv2_role_progression',
+  TIERS: [0, 100, 300, 600],
+
+  init() {
+    const saved = localStorage.getItem(this.STORAGE_KEY);
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        state.roleXP = data.xp || {};
+        state.roleTier = data.tier || {};
+      } catch { /* ignore corrupt data */ }
+    }
+    // Ensure all roles have at least tier 1 and 0 XP
+    Object.keys(roleCatalog).forEach(role => {
+      if (!state.roleXP[role]) state.roleXP[role] = 0;
+      if (!state.roleTier[role]) state.roleTier[role] = 1;
+    });
+  },
+
+  save() {
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+      xp: state.roleXP,
+      tier: state.roleTier
+    }));
+  },
+
+  getTier(role) {
+    const xp = state.roleXP[role] || 0;
+    let tier = 1;
+    for (let i = 0; i < this.TIERS.length; i++) {
+      if (xp >= this.TIERS[i]) tier = i + 1;
+    }
+    return Math.min(tier, 4);
+  },
+
+  addXP(role, amount, reason) {
+    if (!state.roleXP[role]) state.roleXP[role] = 0;
+    const oldTier = this.getTier(role);
+    state.roleXP[role] += amount;
+    const newTier = this.getTier(role);
+    this.save();
+    if (newTier > oldTier) {
+      addChat('System', `🎖️ ${role} promoted to Tier ${newTier}!`);
+      EventLog.add('event', '🎖️', `<strong>Promotion</strong> ${role} reached Tier ${newTier}`);
+      ScreenJuice.addKillFeed(`${role.toUpperCase()} PROMOTED TO TIER ${newTier}`, '#ffd700');
+      SoundFX.play(880, 0.1, 'sine', 0.15);
+      setTimeout(() => SoundFX.play(1100, 0.1, 'sine', 0.15), 150);
+    }
+    return { oldTier, newTier, xpGained: amount };
+  },
+
+  // Called at end of mission
+  awardMissionXP() {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local || !local.role) return 0;
+    const role = local.role;
+    let xp = 0;
+    // Base completion XP
+    const completed = state.objectives.filter(o => o.found).length;
+    xp += completed * 10;
+    // Role-specific XP
+    switch (role) {
+      case 'Drone': xp += (state.dronesDeployed || 0) * 15; break;
+      case 'Mechanic': xp += (state.squadBoosts || 0) * 20; break;
+      case 'Medic': xp += (state.revivesPerformed || 0) * 30; break;
+      case 'Decoder': xp += (state.objectivesDecoded || 0) * 25; break;
+      case 'Navigator': xp += (state.waypointsGuided || 0) * 15; break;
+      case 'Courier': xp += (state.deliveries || 0) * 20; break;
+      case 'Mission Control': xp += completed * 10; break;
+    }
+    // Survival bonus
+    const eliminated = state.downedAgents && state.downedAgents[state.localAgentId] && state.downedAgents[state.localAgentId].eliminated;
+    if (!eliminated) xp += 25;
+    this.addXP(role, xp, 'Mission complete');
+    // Check achievements after XP award
+    if (typeof AchievementSystem !== 'undefined') AchievementSystem.checkAll();
+    return xp;
+  },
+
+  // Ability modifiers based on tier
+  getAbilityModifier(role, abilityType) {
+    const tier = this.getTier(role);
+    const mods = {
+      Drone: { cooldownMult: tier >= 2 ? 0.7 : 1.0, radarBonus: tier >= 3 ? 1.1 : 1.0 },
+      Mechanic: { boostStrength: tier >= 2 ? 1.25 : 1.0, passiveSignal: tier >= 3 ? 1.05 : 1.0 },
+      Medic: { reviveTimeMult: tier >= 2 ? 0.5 : 1.0, staminaRegen: tier >= 3 ? 0.5 : 0 },
+      Decoder: { decodeSpeed: tier >= 2 ? 1.3 : 1.0, freeDecode: tier >= 3 ? 1 : 0 },
+      Navigator: { waypointRange: tier >= 2 ? 1.5 : 1.0, stealthBonus: tier >= 3 ? 0.9 : 1.0 },
+      Courier: { deliverySpeed: tier >= 2 ? 1.2 : 1.0, staminaCap: tier >= 3 ? 10 : 0 },
+      'Mission Control': { intelRefresh: tier >= 2 ? 0.8 : 1.0, threatVision: tier >= 3 ? true : false }
+    };
+    return mods[role] || {};
+  },
+
+  // Ultimate abilities (Tier 4)
+  canUseUltimate(role) {
+    return this.getTier(role) >= 4;
+  },
+
+  ultimates: {
+    Drone: { name: 'Orbital Scan', cooldown: 120000, icon: '🛰️', use() {
+      state.objectives.forEach(o => { o._orbitalRevealed = true; });
+      setTimeout(() => state.objectives.forEach(o => { o._orbitalRevealed = false; }), 10000);
+      addChat('System', '🛰️ Orbital Scan active — all objectives revealed for 10s');
+      EventLog.add('ability', '🛰️', '<strong>Orbital Scan</strong> All objectives revealed');
+      ScreenJuice.addKillFeed('ORBITAL SCAN ACTIVE', '#ffd700');
+    }},
+    Mechanic: { name: 'Grid Overcharge', cooldown: 120000, icon: '⚡', use() {
+      state.agents.forEach(a => a.signal = 100);
+      addChat('System', '⚡ Grid Overcharge — squad signal maxed for 15s');
+      EventLog.add('ability', '⚡', '<strong>Grid Overcharge</strong> Full squad signal');
+      ScreenJuice.addKillFeed('GRID OVERCHARGE', '#f0883e');
+      setTimeout(() => { if (state.status === 'Live') renderHUD(); }, 15000);
+    }},
+    Medic: { name: 'Field Hospital', cooldown: 120000, icon: '🏥', use() {
+      if (state.downedAgents) {
+        Object.entries(state.downedAgents).forEach(([agentId, data]) => {
+          if (data.eliminated || data.revivedBy) return;
+          const agent = state.agents.find(a => a.id === agentId);
+          if (agent) { agent.stamina = 60; agent._downed = false; }
+          data.revivedBy = 'field-hospital';
+          data.reviveChannel = null;
+        });
+      }
+      addChat('System', '🏥 Field Hospital — all downed agents revived');
+      EventLog.add('ability', '🏥', '<strong>Field Hospital</strong> All agents revived');
+      ScreenJuice.addKillFeed('FIELD HOSPITAL', '#3fb950');
+    }},
+    Decoder: { name: 'Master Key', cooldown: 120000, icon: '🗝️', use() {
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      if (!local) return;
+      const nearest = state.objectives
+        .filter(o => !o.found)
+        .sort((a, b) => haversine(local, a) - haversine(local, b))[0];
+      if (nearest) { nearest.found = true; nearest.progress = 100; nearest.decoded = true; }
+      addChat('System', '🗝️ Master Key — nearest objective completed');
+      EventLog.add('ability', '🗝️', '<strong>Master Key</strong> Objective completed');
+      ScreenJuice.addKillFeed('MASTER KEY USED', '#d2a8ff');
+    }},
+    Navigator: { name: 'Exfil Call', cooldown: 120000, icon: '🚁', use() {
+      // Shift extraction 200m closer to local agent
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      if (!local) return;
+      const ex = state.objectives.find(o => o.type === 'Extraction');
+      if (!ex) return;
+      const angle = Math.atan2(local.lng - ex.lng, local.lat - ex.lat);
+      const step = 0.0018; // ~200m
+      ex.lat += Math.cos(angle) * step;
+      ex.lng += Math.sin(angle) * step;
+      addChat('System', '🚁 Exfil Call — extraction point moved closer');
+      EventLog.add('ability', '🚁', '<strong>Exfil Call</strong> Extraction shifted');
+      ScreenJuice.addKillFeed('EXFIL CALLED', '#79c0ff');
+    }},
+    Courier: { name: 'Emergency Drop', cooldown: 120000, icon: '📦', use() {
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      if (!local) return;
+      const cacheTypes = [
+        { id: 'stim', name: 'Stim Pack', effect: 'stamina', value: 25, icon: '💉' },
+        { id: 'amp', name: 'Signal Amp', effect: 'signal', value: 15, duration: 30000, icon: '📶' }
+      ];
+      const type = cacheTypes[Math.floor(Math.random() * cacheTypes.length)];
+      state.supplyCaches.push({
+        id: 'cache-ult-' + Date.now(),
+        lat: local.lat, lng: local.lng,
+        type, collected: false,
+        spawnedAt: Date.now(), despawnAt: Date.now() + 60000
+      });
+      addChat('System', '📦 Emergency Drop — supply cache deployed');
+      EventLog.add('ability', '📦', '<strong>Emergency Drop</strong> Cache deployed');
+      ScreenJuice.addKillFeed('EMERGENCY DROP', '#ffa657');
+    }},
+    'Mission Control': { name: 'Airstrike', cooldown: 120000, icon: '💥', use() {
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      if (!local) return;
+      const nearest = state.threats.sort((a, b) => haversine(local, a) - haversine(local, b))[0];
+      if (nearest) {
+        state.threats = state.threats.filter(t => t.id !== nearest.id);
+        ParticleSystem.burst(nearest.lat, nearest.lng, ['#ff4444', '#ff8800', '#ffd700'], 16);
+        addChat('System', '💥 Airstrike — threat eliminated');
+        EventLog.add('ability', '💥', '<strong>Airstrike</strong> Threat eliminated');
+        ScreenJuice.addKillFeed('AIRSTRIKE', '#e45b4d');
+      }
+    }}
+  },
+
+  useUltimate(role) {
+    if (!this.canUseUltimate(role)) return false;
+    const ult = this.ultimates[role];
+    if (!ult) return false;
+    // Power cost check (Phase 7 Task 6)
+    if (!PowerBudget.tryUse('ultimate')) return false;
+    const cdKey = `ultimate:${role}`;
+    const now = Date.now();
+    if (state.cooldowns[cdKey] && now < state.cooldowns[cdKey]) {
+      const remaining = Math.ceil((state.cooldowns[cdKey] - now) / 1000);
+      addChat('System', `${ult.name} on cooldown — ${remaining}s.`);
+      return false;
+    }
+    state.cooldowns[cdKey] = now + ult.cooldown;
+    ult.use();
+    SoundFX.play(660, 0.12, 'sine', 0.2);
+    return true;
+  },
+
+  renderHUD() {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local || !local.role) return;
+    const tier = this.getTier(local.role);
+    const xp = state.roleXP[local.role] || 0;
+    const nextThreshold = this.TIERS[tier] || this.TIERS[this.TIERS.length - 1];
+    const prevThreshold = tier > 1 ? this.TIERS[tier - 2] : 0;
+    const progress = nextThreshold === prevThreshold ? 1 : Math.min(1, (xp - prevThreshold) / (nextThreshold - prevThreshold));
+    const el = document.getElementById('progressionHUD');
+    if (el) {
+      el.innerHTML = `
+        <span class="tier-badge tier-${tier}">T${tier}</span>
+        <span class="xp-bar"><span class="xp-fill" style="width:${progress * 100}%"></span></span>
+        <span class="xp-text">${xp} XP</span>
+      `;
+    }
+  },
+
+  renderRoleSelect() {
+    // Add tier badges to role cards in role selection screen
+    Object.keys(roleCatalog).forEach(role => {
+      const tier = this.getTier(role);
+      const card = document.querySelector(`[data-role="${role}"] .role-tier`);
+      if (card) card.textContent = `T${tier}`;
+    });
+  },
+
+  // XP bar for results screen
+  renderResultsXP() {
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    if (!local || !local.role) return '';
+    const role = local.role;
+    const tier = this.getTier(role);
+    const xp = state.roleXP[role] || 0;
+    const nextThreshold = this.TIERS[tier] || this.TIERS[this.TIERS.length - 1];
+    const prevThreshold = tier > 1 ? this.TIERS[tier - 2] : 0;
+    const progress = nextThreshold === prevThreshold ? 1 : Math.min(1, (xp - prevThreshold) / (nextThreshold - prevThreshold));
+    return `
+      <div class="results-xp-row">
+        <span class="tier-badge tier-${tier}">T${tier}</span>
+        <span class="results-xp-role">${role}</span>
+        <span class="xp-bar results-xp-bar"><span class="xp-fill" style="width:${progress * 100}%"></span></span>
+        <span class="results-xp-val">${xp} / ${nextThreshold} XP</span>
+      </div>
+    `;
+  }
+};
+
+/* ========================== RECONNECT BANNER (PHASE 5 TASK 10) ========================== */
+
+const ReconnectBanner = {
+  el: null,
+  _socketId: null,
+
+  show(socketId) {
+    this._socketId = socketId;
+    if (this.el) { this.el.classList.remove('hidden'); return; }
+    const banner = MemoryPool.acquire('div');
+    banner.id = 'reconnectBanner';
+    banner.className = 'reconnect-banner';
+    banner.innerHTML = `
+      <span class="reconnect-icon">🔌</span>
+      <span class="reconnect-text">Previous session detected. Reconnect to resume?</span>
+      <button class="reconnect-btn primary" id="reconnectYes">Reconnect</button>
+      <button class="reconnect-btn ghost" id="reconnectNo">Dismiss</button>
+    `;
+    document.body.appendChild(banner);
+    this.el = banner;
+    banner.querySelector('#reconnectYes').addEventListener('click', () => this._onReconnect());
+    banner.querySelector('#reconnectNo').addEventListener('click', () => this._onDismiss());
+  },
+
+  hide() {
+    if (this.el) this.el.classList.add('hidden');
+  },
+
+  _onReconnect() {
+    if (!this._socketId) return;
+    SignalNet.reconnect(this._socketId);
+    this.hide();
+    // Show loading indicator on splash
+    const textEl = document.getElementById('splashProgressText');
+    if (textEl) textEl.textContent = 'Reconnecting…';
+  },
+
+  _onDismiss() {
+    this.hide();
+    try { localStorage.removeItem('slv2_lastSocketId'); } catch {}
+  }
+};
+
+/* ========================== ACHIEVEMENT SYSTEM (PHASE 5 TASK 8) ========================== */
+
+const AchievementSystem = {
+  STORAGE_KEY: 'slv2_achievements',
+
+  CATALOG: [
+    { id: 'first_blood',    name: 'First Blood',      desc: 'Complete your first objective.',        icon: '🩸', check: () => AchievementSystem._objectivesCompleted() >= 1 },
+    { id: 'noob_no_more',   name: 'Noob No More',     desc: 'Reach level 5 with any role.',          icon: '🌱', check: () => AchievementSystem._maxRoleTier() >= 2 },
+    { id: 'veteran',        name: 'Veteran',          desc: 'Reach level 10 with any role.',         icon: '🎖️', check: () => AchievementSystem._maxRoleTier() >= 3 },
+    { id: 'master_of_all',  name: 'Master of All',    desc: 'All roles at least level 3.',           icon: '👑', check: () => AchievementSystem._allRolesMinTier(3) },
+  ],
+
+  init() {
+    this._load();
+  },
+
+  _load() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        state.achievements = data || {};
+      }
+    } catch { /* ignore corrupt data */ }
+  },
+
+  _save() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state.achievements));
+    } catch { /* ignore quota errors */ }
+  },
+
+  _objectivesCompleted() {
+    return state.objectives.filter(o => o.found).length;
+  },
+
+  _maxRoleTier() {
+    return Object.keys(roleCatalog).reduce((max, role) => {
+      const t = RoleProgression.getTier(role);
+      return t > max ? t : max;
+    }, 1);
+  },
+
+  _allRolesMinTier(minTier) {
+    const roles = Object.keys(roleCatalog);
+    if (!roles.length) return false;
+    return roles.every(role => RoleProgression.getTier(role) >= minTier);
+  },
+
+  isUnlocked(id) {
+    return !!(state.achievements[id] && state.achievements[id].unlockedAt);
+  },
+
+  unlock(id) {
+    if (this.isUnlocked(id)) return false;
+    const now = Date.now();
+    state.achievements[id] = { unlockedAt: now, notified: false };
+    this._save();
+    return true;
+  },
+
+  checkAll() {
+    let anyNew = false;
+    this.CATALOG.forEach(ach => {
+      if (!this.isUnlocked(ach.id) && ach.check()) {
+        this.unlock(ach.id);
+        this._notify(ach);
+        anyNew = true;
+      }
+    });
+    return anyNew;
+  },
+
+  _notify(ach) {
+    addChat('System', `${ach.icon} Achievement unlocked: ${ach.name} — ${ach.desc}`);
+    EventLog.add('event', ach.icon, `<strong>Achievement</strong> ${escapeHtml(ach.name)} unlocked`);
+    if (typeof ScreenJuice !== 'undefined' && ScreenJuice.addKillFeed) {
+      ScreenJuice.addKillFeed(`ACHIEVEMENT: ${ach.name.toUpperCase()}`, '#ffd700');
+    }
+    if (typeof SoundFX !== 'undefined' && SoundFX.play) {
+      SoundFX.play(880, 0.1, 'sine', 0.15);
+      setTimeout(() => SoundFX.play(1100, 0.1, 'sine', 0.15), 150);
+      setTimeout(() => SoundFX.play(1320, 0.1, 'sine', 0.2), 300);
+    }
+    this._showToast(ach);
+  },
+
+  _showToast(ach) {
+    let toast = document.getElementById('achievementToast');
+    if (!toast) {
+      toast = MemoryPool.acquire('div');
+      toast.id = 'achievementToast';
+      toast.className = 'achievement-toast';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = `
+      <div class="achievement-toast-icon">${ach.icon}</div>
+      <div class="achievement-toast-body">
+        <div class="achievement-toast-title">Achievement Unlocked</div>
+        <div class="achievement-toast-name">${escapeHtml(ach.name)}</div>
+        <div class="achievement-toast-desc">${escapeHtml(ach.desc)}</div>
+      </div>
+    `;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 4000);
+  },
+
+  // Render achievement list for lobby
+  renderLobby() {
+    const container = document.getElementById('achievementsLobby');
+    if (!container) return;
+    const unlockedCount = this.CATALOG.filter(a => this.isUnlocked(a.id)).length;
+    const total = this.CATALOG.length;
+    const html = this.CATALOG.map(a => {
+      const unlocked = this.isUnlocked(a.id);
+      const cls = unlocked ? 'unlocked' : 'locked';
+      const status = unlocked ? '✅' : '🔒';
+      const date = unlocked && state.achievements[a.id].unlockedAt
+        ? new Date(state.achievements[a.id].unlockedAt).toLocaleDateString()
+        : '';
+      return `<div class="achievement-row ${cls}">
+        <span class="ach-icon">${a.icon}</span>
+        <span class="ach-name">${escapeHtml(a.name)}</span>
+        <span class="ach-status">${status}</span>
+        <span class="ach-desc">${escapeHtml(a.desc)}</span>
+        ${date ? `<span class="ach-date">${date}</span>` : ''}
+      </div>`;
+    }).join('');
+    container.innerHTML = `
+      <div class="achievements-header">
+        <strong>🏆 Achievements</strong>
+        <span class="achievements-count">${unlockedCount}/${total}</span>
+      </div>
+      <div class="achievements-list">${html}</div>
+    `;
+  },
+
+  // Render compact HUD indicator
+  renderHUD() {
+    const el = document.getElementById('achievementsHUD');
+    if (!el) return;
+    const unlockedCount = this.CATALOG.filter(a => this.isUnlocked(a.id)).length;
+    const total = this.CATALOG.length;
+    el.innerHTML = `🏆 ${unlockedCount}/${total}`;
+  }
+};
+
+/* ========================== BATTLE PASS SYSTEM (PHASE 8 TASK 6) ========================== */
+
+const battlePassRewards = (() => {
+  const rewards = {};
+  // Tier 1: starter trail + skin
+  rewards[1] = { free: 'trail_phoenix', premium: 'skin_cyber' };
+  // Tier 5: emote
+  rewards[5] = { free: 'emote_salute', premium: null };
+  // Tier 10: credits premium
+  rewards[10] = { free: null, premium: 'credits_200' };
+  // Tiers 15,20,25,30: alternating rewards
+  rewards[15] = { free: 'tokens_100', premium: 'skin_ghost' };
+  rewards[20] = { free: 'emote_laugh', premium: null };
+  rewards[25] = { free: null, premium: 'credits_300' };
+  rewards[30] = { free: 'trail_void', premium: 'theme_neon' };
+  // Tiers 35-50
+  rewards[35] = { free: 'tokens_150', premium: null };
+  rewards[40] = { free: 'emote_salute', premium: 'ping_pulse' };
+  rewards[45] = { free: null, premium: 'credits_400' };
+  rewards[50] = { free: 'title_operative', premium: 'skin_cyber' };
+  // Tiers 55-70
+  rewards[55] = { free: 'tokens_200', premium: null };
+  rewards[60] = { free: 'trail_phoenix', premium: 'emote_laugh' };
+  rewards[65] = { free: null, premium: 'credits_500' };
+  rewards[70] = { free: 'theme_neon', premium: 'skin_ghost' };
+  // Tiers 75-90
+  rewards[75] = { free: 'tokens_250', premium: null };
+  rewards[80] = { free: 'emote_salute', premium: 'ping_pulse' };
+  rewards[85] = { free: null, premium: 'credits_600' };
+  rewards[90] = { free: 'trail_void', premium: 'theme_neon' };
+  // Tiers 95-100: finale
+  rewards[95] = { free: 'tokens_500', premium: null };
+  rewards[100] = { free: 'title_veteran', premium: 'skin_legendary' };
+  return rewards;
+})();
+
+const BattlePass = {
+  TIERS: 100,
+  XP_PER_TIER: 1000,
+  SEASON_WEEKS: 8,
+  STORAGE_KEY: 'slv2_battlepass',
+
+  init() {
+    this._loadProgress();
+    this._checkSeasonReset();
+    this._wireUI();
+  },
+
+  addXP(amount) {
+    let bp = state.battlePass;
+    bp.xp += amount;
+    while (bp.xp >= this.XP_PER_TIER && bp.tier < this.TIERS) {
+      bp.xp -= this.XP_PER_TIER;
+      bp.tier++;
+      ScreenJuice.addKillFeed(`Battle Pass Tier ${bp.tier} reached!`, '#ffd965');
+    }
+    this._saveProgress();
+  },
+
+  claim(tier) {
+    if (tier > state.battlePass.tier) return false;
+    if (state.battlePass.claimed.includes(tier)) return false;
+    const reward = battlePassRewards[tier];
+    if (!reward) return false;
+    const track = state.battlePass.premium ? 'premium' : 'free';
+    const item = reward[track] || reward.free;
+    if (item) {
+      if (item.startsWith('credits_')) state.credits += parseInt(item.split('_')[1], 10);
+      else if (item.startsWith('tokens_')) state.tokens += parseInt(item.split('_')[1], 10);
+      else state.inventory[item] = { acquiredAt: Date.now(), equipped: false };
+    }
+    state.battlePass.claimed.push(tier);
+    this._saveProgress();
+    return true;
+  },
+
+  upgradeToPremium() {
+    state.battlePass.premium = true;
+    ScreenJuice.addKillFeed('Battle Pass Premium activated!', '#ffd965');
+    this._saveProgress();
+  },
+
+  render() {
+    const container = document.getElementById('battlePassTiers');
+    if (!container) return;
+    const bp = state.battlePass;
+    const tiers = [];
+    for (let t = 1; t <= this.TIERS; t++) {
+      const reward = battlePassRewards[t];
+      const reached = t <= bp.tier;
+      const claimed = bp.claimed.includes(t);
+      const current = t === bp.tier;
+      const freeItem = reward?.free || null;
+      const premItem = reward?.premium || null;
+      tiers.push(`
+        <div class="bp-tier ${current ? 'current' : ''} ${reached ? 'reached' : ''}" data-tier="${t}">
+          <div class="bp-tier-num">${t}</div>
+          <div class="bp-tier-tracks">
+            <div class="bp-track free ${claimed && freeItem ? 'claimed' : ''} ${!freeItem ? 'empty' : ''}">
+              ${freeItem ? `<span class="bp-reward-icon">${this._iconForItem(freeItem)}</span>` : '<span class="bp-empty">—</span>'}
+            </div>
+            <div class="bp-track premium ${claimed && premItem ? 'claimed' : ''} ${!premItem ? 'empty' : ''} ${!bp.premium ? 'locked' : ''}">
+              ${premItem ? `<span class="bp-reward-icon">${this._iconForItem(premItem)}</span>` : '<span class="bp-empty">—</span>'}
+            </div>
+          </div>
+          ${reached && !claimed && (freeItem || (bp.premium && premItem)) ? `<button class="bp-claim-btn" data-tier="${t}">Claim</button>` : ''}
+          ${claimed ? `<div class="bp-check">✓</div>` : ''}
+        </div>
+      `);
+    }
+    container.innerHTML = tiers.join('');
+    this._wireClaimButtons();
+    this._updateHeader();
+  },
+
+  renderLobbyWidget() {
+    const container = document.getElementById('battlePassLobbyWidget');
+    if (!container) return;
+    const bp = state.battlePass;
+    const pct = Math.round((bp.xp / this.XP_PER_TIER) * 100);
+    container.innerHTML = `
+      <div class="bp-lobby-widget">
+        <div class="bp-lw-header">
+          <span>🎖️ Battle Pass — ${escapeHtml(bp.seasonName)}</span>
+          <span class="bp-lw-tier">Tier ${bp.tier}</span>
+        </div>
+        <div class="bp-lw-bar"><div class="bp-lw-fill" style="width:${pct}%"></div></div>
+        <div class="bp-lw-xp">${bp.xp} / ${this.XP_PER_TIER} XP</div>
+        <button id="goToBattlePass" class="bp-lw-btn">Open Battle Pass</button>
+      </div>
+    `;
+    const btn = container.querySelector('#goToBattlePass');
+    if (btn) btn.addEventListener('click', () => setScreen('battlepass'));
+  },
+
+  _iconForItem(itemKey) {
+    if (itemKey.startsWith('credits_')) return '💎';
+    if (itemKey.startsWith('tokens_')) return '🪙';
+    if (itemKey.startsWith('trail_')) return '✨';
+    if (itemKey.startsWith('skin_')) return '🤖';
+    if (itemKey.startsWith('emote_')) return '🫡';
+    if (itemKey.startsWith('theme_')) return '🌃';
+    if (itemKey.startsWith('ping_')) return '💓';
+    if (itemKey.startsWith('title_')) return '🏅';
+    return '🎁';
+  },
+
+  _wireClaimButtons() {
+    const container = document.getElementById('battlePassTiers');
+    if (!container) return;
+    container.querySelectorAll('.bp-claim-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const tier = Number(e.target.dataset.tier);
+        if (this.claim(tier)) this.render();
+      });
+    });
+  },
+
+  _wireUI() {
+    const btn = document.getElementById('backToLobbyFromBattlePass');
+    if (btn) btn.addEventListener('click', () => setScreen('lobby'));
+    const upgradeBtn = document.getElementById('bpUpgradeBtn');
+    if (upgradeBtn) upgradeBtn.addEventListener('click', () => this.upgradeToPremium());
+  },
+
+  _updateHeader() {
+    const title = document.getElementById('bpSeasonTitle');
+    const timer = document.getElementById('bpSeasonTimer');
+    const tierLabel = document.getElementById('bpTierLabel');
+    if (title) title.textContent = `${state.battlePass.seasonName} — Season ${state.battlePass.season}`;
+    if (tierLabel) tierLabel.textContent = `Tier ${state.battlePass.tier} · ${state.battlePass.xp} / ${this.XP_PER_TIER} XP`;
+    if (timer) {
+      const remaining = Math.max(0, state.battlePass.seasonEnd - Date.now());
+      timer.textContent = this._formatCountdown(remaining);
+    }
+  },
+
+  _formatCountdown(ms) {
+    if (ms <= 0) return 'Ended';
+    const days = Math.floor(ms / 86400000);
+    const hrs = Math.floor((ms % 86400000) / 3600000);
+    const mins = Math.floor((ms % 3600000) / 60000);
+    return `${days}d ${hrs}h ${mins}m`;
+  },
+
+  _loadProgress() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || 'null');
+      if (saved) {
+        state.battlePass.season = saved.season ?? state.battlePass.season;
+        state.battlePass.seasonName = saved.seasonName ?? state.battlePass.seasonName;
+        state.battlePass.seasonEnd = saved.seasonEnd ?? state.battlePass.seasonEnd;
+        state.battlePass.tier = saved.tier ?? state.battlePass.tier;
+        state.battlePass.xp = saved.xp ?? state.battlePass.xp;
+        state.battlePass.premium = saved.premium ?? state.battlePass.premium;
+        state.battlePass.claimed = saved.claimed ?? state.battlePass.claimed;
+      }
+    } catch { /* ignore corrupt data */ }
+    if (!state.battlePass.seasonEnd) {
+      state.battlePass.seasonEnd = Date.now() + this.SEASON_WEEKS * 7 * 24 * 60 * 60 * 1000;
+    }
+  },
+
+  _saveProgress() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state.battlePass));
+    } catch { /* ignore quota errors */ }
+  },
+
+  _checkSeasonReset() {
+    if (Date.now() > state.battlePass.seasonEnd) {
+      state.battlePass.season++;
+      state.battlePass.tier = 1;
+      state.battlePass.xp = 0;
+      state.battlePass.claimed = [];
+      state.battlePass.premium = false;
+      state.battlePass.seasonEnd = Date.now() + this.SEASON_WEEKS * 7 * 24 * 60 * 60 * 1000;
+      this._saveProgress();
+    }
+  }
+};
+
+/* ========================== TOURNAMENT SYSTEM (PHASE 8 TASK 3) ========================== */
+
+/* ========================== VOICE CHAT SYSTEM (PHASE 8 TASK 4) ========================== */
+
+const VoiceChatSystem = {
+  ICE_SERVERS: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ],
+  ANALYSER_FFT: 256,
+  SPEAKING_THRESHOLD: 0.015,
+  SPEAKING_COOLDOWN: 300,
+
+  init() {
+    this._wireSocket();
+    this._wireUI();
+    this._wireKeyboard();
+  },
+
+  async enable() {
+    if (state.voiceChat.enabled) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      state.voiceChat.localStream = stream;
+      state.voiceChat.enabled = true;
+      state.voiceChat.muted = false;
+      this._setupLocalAnalyser(stream);
+      this._muteTracks(true);
+      this._notifyStatus('Voice chat enabled');
+      this.renderPanel();
+      // Connect to existing teammates
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      const localTeam = local?.team || 'North';
+      state.agents.forEach(a => {
+        if (a.id !== state.localAgentId && a.team === localTeam && !a.bot) {
+          this.connectToPeer(a.id);
+        }
+      });
+    } catch (err) {
+      console.warn('[VoiceChat] Mic permission denied:', err);
+      this._notifyStatus('Mic access denied');
+    }
+  },
+
+  disable() {
+    if (!state.voiceChat.enabled) return;
+    Object.values(state.voiceChat.peers).forEach(pc => {
+      try { pc.close(); } catch (e) {}
+    });
+    state.voiceChat.peers = {};
+    if (state.voiceChat.localStream) {
+      state.voiceChat.localStream.getTracks().forEach(t => t.stop());
+      state.voiceChat.localStream = null;
+    }
+    state.voiceChat.enabled = false;
+    state.voiceChat.speaking = {};
+    state.voiceChat.volumes = {};
+    this._notifyStatus('Voice chat disabled');
+    this.renderPanel();
+  },
+
+  async connectToPeer(playerId) {
+    if (!state.voiceChat.enabled || !state.voiceChat.localStream) return;
+    if (state.voiceChat.peers[playerId]) return;
+    const pc = new RTCPeerConnection({ iceServers: this.ICE_SERVERS });
+    state.voiceChat.peers[playerId] = pc;
+
+    state.voiceChat.localStream.getTracks().forEach(track => {
+      pc.addTrack(track, state.voiceChat.localStream);
+    });
+
+    pc.ontrack = (e) => {
+      this._attachRemoteStream(playerId, e.streams[0]);
+    };
+
+    pc.onicecandidate = (e) => {
+      if (e.candidate) {
+        SignalNet.socket?.emit('webrtc-ice-candidate', { to: playerId, candidate: e.candidate });
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+        this._removePeer(playerId);
+      }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    SignalNet.socket?.emit('webrtc-offer', { to: playerId, offer });
+  },
+
+  async onOffer({ from, offer }) {
+    if (!state.voiceChat.enabled) return;
+    if (state.voiceChat.peers[from]) {
+      try { state.voiceChat.peers[from].close(); } catch (e) {}
+    }
+    const pc = new RTCPeerConnection({ iceServers: this.ICE_SERVERS });
+    state.voiceChat.peers[from] = pc;
+
+    if (state.voiceChat.localStream) {
+      state.voiceChat.localStream.getTracks().forEach(track => {
+        pc.addTrack(track, state.voiceChat.localStream);
+      });
+    }
+
+    pc.ontrack = (e) => {
+      this._attachRemoteStream(from, e.streams[0]);
+    };
+
+    pc.onicecandidate = (e) => {
+      if (e.candidate) {
+        SignalNet.socket?.emit('webrtc-ice-candidate', { to: from, candidate: e.candidate });
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+        this._removePeer(from);
+      }
+    };
+
+    await pc.setRemoteDescription(offer);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    SignalNet.socket?.emit('webrtc-answer', { to: from, answer });
+  },
+
+  async onAnswer({ from, answer }) {
+    const pc = state.voiceChat.peers[from];
+    if (!pc) return;
+    await pc.setRemoteDescription(answer);
+  },
+
+  async onIceCandidate({ from, candidate }) {
+    const pc = state.voiceChat.peers[from];
+    if (!pc) return;
+    try {
+      await pc.addIceCandidate(candidate);
+    } catch (e) {
+      console.warn('[VoiceChat] Failed to add ICE candidate:', e);
+    }
+  },
+
+  _attachRemoteStream(playerId, stream) {
+    const audio = document.createElement('audio');
+    audio.id = 'voice-audio-' + playerId;
+    audio.srcObject = stream;
+    audio.autoplay = true;
+    audio.volume = state.voiceChat.volumes[playerId] ?? 1.0;
+    document.body.appendChild(audio);
+    // Detect speaking on remote stream
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = this.ANALYSER_FFT;
+    src.connect(analyser);
+    this._monitorRemoteSpeaking(playerId, analyser);
+  },
+
+  _monitorRemoteSpeaking(playerId, analyser) {
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let lastSpeaking = false;
+    let lastChange = 0;
+    const check = () => {
+      if (!state.voiceChat.peers[playerId]) return;
+      analyser.getByteFrequencyData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i];
+      const avg = sum / data.length / 255;
+      const now = Date.now();
+      const isSpeaking = avg > this.SPEAKING_THRESHOLD;
+      if (isSpeaking !== lastSpeaking && now - lastChange > this.SPEAKING_COOLDOWN) {
+        lastSpeaking = isSpeaking;
+        lastChange = now;
+        state.voiceChat.speaking[playerId] = isSpeaking;
+        this._updateSpeakingIndicators();
+      }
+      requestAnimationFrame(check);
+    };
+    check();
+  },
+
+  _setupLocalAnalyser(stream) {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = this.ANALYSER_FFT;
+    src.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let lastSpeaking = false;
+    let lastChange = 0;
+    const check = () => {
+      if (!state.voiceChat.enabled) return;
+      analyser.getByteFrequencyData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i];
+      const avg = sum / data.length / 255;
+      const now = Date.now();
+      const isSpeaking = avg > this.SPEAKING_THRESHOLD;
+      if (isSpeaking !== lastSpeaking && now - lastChange > this.SPEAKING_COOLDOWN) {
+        lastSpeaking = isSpeaking;
+        lastChange = now;
+        SignalNet.socket?.emit('voice-speaking', { speaking: isSpeaking });
+        this._updateSpeakingIndicators();
+      }
+      requestAnimationFrame(check);
+    };
+    check();
+  },
+
+  _muteTracks(muted) {
+    if (!state.voiceChat.localStream) return;
+    state.voiceChat.localStream.getAudioTracks().forEach(t => {
+      t.enabled = !muted;
+    });
+  },
+
+  startTalking() {
+    if (!state.voiceChat.enabled || state.voiceChat.muted) return;
+    if (state.voiceChat.pushToTalk) {
+      this._muteTracks(false);
+    }
+  },
+
+  stopTalking() {
+    if (!state.voiceChat.enabled) return;
+    if (state.voiceChat.pushToTalk) {
+      this._muteTracks(true);
+    }
+  },
+
+  toggleMute() {
+    state.voiceChat.muted = !state.voiceChat.muted;
+    if (state.voiceChat.muted) {
+      this._muteTracks(true);
+    } else if (!state.voiceChat.pushToTalk) {
+      this._muteTracks(false);
+    }
+    this.renderPanel();
+    this._notifyStatus(state.voiceChat.muted ? 'Muted' : 'Unmuted');
+  },
+
+  togglePTT() {
+    state.voiceChat.pushToTalk = !state.voiceChat.pushToTalk;
+    if (!state.voiceChat.pushToTalk && !state.voiceChat.muted) {
+      this._muteTracks(false);
+    } else {
+      this._muteTracks(true);
+    }
+    this.renderPanel();
+    this._notifyStatus(state.voiceChat.pushToTalk ? 'Push-to-Talk ON' : 'Voice Activation ON');
+  },
+
+  setVolume(playerId, vol) {
+    state.voiceChat.volumes[playerId] = vol;
+    const audio = document.getElementById('voice-audio-' + playerId);
+    if (audio) audio.volume = vol;
+  },
+
+  _removePeer(playerId) {
+    const pc = state.voiceChat.peers[playerId];
+    if (pc) { try { pc.close(); } catch (e) {} }
+    delete state.voiceChat.peers[playerId];
+    delete state.voiceChat.speaking[playerId];
+    delete state.voiceChat.volumes[playerId];
+    const audio = document.getElementById('voice-audio-' + playerId);
+    if (audio) audio.remove();
+    this._updateSpeakingIndicators();
+  },
+
+  _wireSocket() {
+    if (!SignalNet.socket) return;
+    SignalNet.socket.on('webrtc-offer', (data) => this.onOffer(data));
+    SignalNet.socket.on('webrtc-answer', (data) => this.onAnswer(data));
+    SignalNet.socket.on('webrtc-ice-candidate', (data) => this.onIceCandidate(data));
+    SignalNet.socket.on('voice-speaking', ({ from, speaking }) => {
+      state.voiceChat.speaking[from] = speaking;
+      this._updateSpeakingIndicators();
+    });
+    SignalNet.socket.on('player-joined', ({ playerId }) => {
+      const local = state.agents.find(a => a.id === state.localAgentId);
+      const peer = state.agents.find(a => a.id === playerId);
+      if (local && peer && local.team === peer.team && state.voiceChat.enabled) {
+        this.connectToPeer(playerId);
+      }
+    });
+  },
+
+  _wireUI() {
+    const btn = document.getElementById('toggleVoice');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (state.voiceChat.enabled) this.disable();
+        else this.enable();
+      });
+    }
+  },
+
+  _wireKeyboard() {
+    document.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      const pttKey = state.voiceChat.pttKey || 'v';
+      if (e.key.toLowerCase() === pttKey && state.voiceChat.enabled && state.voiceChat.pushToTalk) {
+        this.startTalking();
+      }
+    });
+    document.addEventListener('keyup', (e) => {
+      const pttKey = state.voiceChat.pttKey || 'v';
+      if (e.key.toLowerCase() === pttKey && state.voiceChat.enabled && state.voiceChat.pushToTalk) {
+        this.stopTalking();
+      }
+    });
+  },
+
+  _updateSpeakingIndicators() {
+    const bar = document.getElementById('voiceIndicatorBar');
+    if (!bar) return;
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    const localTeam = local?.team || 'North';
+    const teammates = state.agents.filter(a => a.id !== state.localAgentId && a.team === localTeam);
+    if (!teammates.length) {
+      bar.innerHTML = '';
+      return;
+    }
+    bar.innerHTML = teammates.map(a => {
+      const isSpeaking = state.voiceChat.speaking[a.id];
+      return `<span class="voice-indicator ${isSpeaking ? 'speaking' : ''}" title="${escapeHtml(a.name)}"></span>`;
+    }).join('');
+    // Also update squad list dots
+    const list = document.getElementById('voiceSquadList');
+    if (list) {
+      teammates.forEach(a => {
+        const item = list.querySelector(`[data-agent-id="${a.id}"]`);
+        if (item) {
+          const dot = item.querySelector('.vs-dot');
+          if (dot) dot.classList.toggle('speaking', !!state.voiceChat.speaking[a.id]);
+        }
+      });
+    }
+  },
+
+  renderPanel() {
+    const list = document.getElementById('voiceSquadList');
+    if (!list) return;
+    const local = state.agents.find(a => a.id === state.localAgentId);
+    const localTeam = local?.team || 'North';
+    const teammates = state.agents.filter(a => a.id !== state.localAgentId && a.team === localTeam);
+
+    let html = '';
+    // Voice controls header
+    html += `<div class="voice-panel-header">`;
+    html += `<button class="voice-toggle-btn ${state.voiceChat.enabled ? 'active' : ''}" id="voiceEnableBtn">${state.voiceChat.enabled ? '🎙️ ON' : '🎙️ OFF'}</button>`;
+    if (state.voiceChat.enabled) {
+      html += `<button class="voice-toggle-btn ${state.voiceChat.muted ? 'muted' : ''}" id="voiceMuteBtn">${state.voiceChat.muted ? '🔇' : '🔊'}</button>`;
+      html += `<button class="voice-toggle-btn ${state.voiceChat.pushToTalk ? 'active' : ''}" id="voicePttBtn">PTT</button>`;
+    }
+    html += `</div>`;
+
+    if (teammates.length === 0) {
+      html += '<div class="voice-squad-item" style="opacity:0.6"><span class="vs-name">No squadmates linked</span></div>';
+    } else {
+      html += teammates.map(a => {
+        const color = roleColors[a.role] || '#9e9e9e';
+        const isSpeaking = state.voiceChat.speaking[a.id];
+        const vol = state.voiceChat.volumes[a.id] ?? 1.0;
+        return `<div class="voice-squad-item" data-agent-id="${a.id}">
+          <span class="vs-dot ${isSpeaking ? 'speaking' : ''}" style="background:${color}"></span>
+          <span class="vs-name">${escapeHtml(a.name)}</span>
+          <span class="vs-role">${escapeHtml(a.role)}</span>
+          <input type="range" min="0" max="1" step="0.1" value="${vol}" class="voice-vol-slider" data-player-id="${a.id}" title="Volume">
+        </div>`;
+      }).join('');
+    }
+
+    list.innerHTML = html;
+
+    // Wire controls
+    const enableBtn = document.getElementById('voiceEnableBtn');
+    if (enableBtn) {
+      enableBtn.addEventListener('click', () => {
+        if (state.voiceChat.enabled) this.disable();
+        else this.enable();
+      });
+    }
+    const muteBtn = document.getElementById('voiceMuteBtn');
+    if (muteBtn) muteBtn.addEventListener('click', () => this.toggleMute());
+    const pttBtn = document.getElementById('voicePttBtn');
+    if (pttBtn) pttBtn.addEventListener('click', () => this.togglePTT());
+
+    // Wire volume sliders
+    list.querySelectorAll('.voice-vol-slider').forEach(slider => {
+      slider.addEventListener('input', (e) => {
+        this.setVolume(e.target.dataset.playerId, parseFloat(e.target.value));
+      });
+    });
+
+    this._updateSpeakingIndicators();
+  },
+
+  _notifyStatus(text) {
+    addChat('System', `🎙️ ${text}`);
+    if (typeof ScreenJuice !== 'undefined' && ScreenJuice.addKillFeed) {
+      ScreenJuice.addKillFeed(`VOICE: ${text.toUpperCase()}`, '#4caf50');
+    }
+  }
+};
+
+/* ========================== GLOBAL LEADERBOARD SYSTEM (Phase 8 Task 2) ========================== */
+
+const LeaderboardSystem = {
+  CATEGORIES: ['overall', 'role', 'clan', 'weekly'],
+  CACHE_TTL: 5 * 60 * 1000, // 5 minutes
+  ROLES: ['Drone', 'Mechanic', 'Medic', 'Decoder', 'Navigator', 'Courier', 'Mission Control'],
+
+  init() {
+    this._wireSocket();
+  },
+
+  _wireSocket() {
+    if (!SignalNet.socket) return;
+    SignalNet.socket.on('leaderboard-data', (payload) => {
+      this.onData(payload);
+    });
+  },
+
+  fetch(category, roleName) {
+    const cached = state.leaderboards[category];
+    const hasCache = Array.isArray(cached) && cached.length > 0;
+    const fresh = Date.now() - state.leaderboards.lastFetch < this.CACHE_TTL;
+    if (hasCache && fresh) {
+      this.render(category, roleName);
+      return;
+    }
+    if (SignalNet.connected && SignalNet.socket) {
+      SignalNet.socket.emit('leaderboard-fetch', { category, role: roleName });
+    } else {
+      // Offline fallback: render mock data
+      this._renderMock(category, roleName);
+    }
+  },
+
+  onData({ category, data, myRank }) {
+    state.leaderboards[category] = data || [];
+    if (myRank !== undefined) state.leaderboards.myRanks[category] = myRank;
+    state.leaderboards.lastFetch = Date.now();
+    this.render(category);
+  },
+
+  render(category, roleName) {
+    const container = document.getElementById('leaderboardContent');
+    if (!container) return;
+
+    const data = this._getDataForCategory(category, roleName);
+    const myRank = state.leaderboards.myRanks[category] || null;
+
+    // Tabs
+    const tabsHtml = this.CATEGORIES.map(cat => {
+      const label = cat === 'role' ? 'Role Mastery' : (cat.charAt(0).toUpperCase() + cat.slice(1));
+      const active = cat === category ? 'active' : '';
+      return `<button class="lb-tab ${active}" data-lb-cat="${cat}">${label}</button>`;
+    }).join('');
+
+    // Role selector for role tab
+    let roleSelector = '';
+    if (category === 'role') {
+      const roleOptions = this.ROLES.map(r => `<option value="${r}" ${r === (roleName || state.localProfile?.role || 'Drone') ? 'selected' : ''}>${r}</option>`).join('');
+      roleSelector = `<div class="lb-role-select"><select id="lbRoleSelect">${roleOptions}</select></div>`;
+    }
+
+    // Table header
+    let headerCols = '';
+    if (category === 'overall') headerCols = '<th>Rank</th><th>Agent</th><th>Callsign</th><th>Role</th><th>XP</th>';
+    else if (category === 'role') headerCols = '<th>Rank</th><th>Agent</th><th>Callsign</th><th>XP</th>';
+    else if (category === 'clan') headerCols = '<th>Rank</th><th>Clan</th><th>Tag</th><th>XP</th>';
+    else if (category === 'weekly') headerCols = '<th>Rank</th><th>Agent</th><th>Wins</th><th>Score</th>';
+
+    // Rows
+    const rows = data.slice(0, 100).map((entry, idx) => {
+      const rank = entry.rank || (idx + 1);
+      let rankBadge = rank;
+      if (rank === 1) rankBadge = '🥇';
+      else if (rank === 2) rankBadge = '🥈';
+      else if (rank === 3) rankBadge = '🥉';
+      else rankBadge = `<span class="lb-rank-num">${rank}</span>`;
+
+      const isMe = entry.name === state.localProfile.name;
+      const rowClass = isMe ? 'lb-row me' : 'lb-row';
+
+      let cells = '';
+      if (category === 'overall') {
+        cells = `<td class="lb-rank">${rankBadge}</td><td>${escapeHtml(entry.name || '-')}</td><td>${escapeHtml(entry.callsign || '-')}</td><td>${escapeHtml(entry.role || '-')}</td><td class="lb-xp">${(entry.xp || 0).toLocaleString()}</td>`;
+      } else if (category === 'role') {
+        cells = `<td class="lb-rank">${rankBadge}</td><td>${escapeHtml(entry.name || '-')}</td><td>${escapeHtml(entry.callsign || '-')}</td><td class="lb-xp">${(entry.xp || 0).toLocaleString()}</td>`;
+      } else if (category === 'clan') {
+        const emblem = entry.emblem || 'shield';
+        cells = `<td class="lb-rank">${rankBadge}</td><td><span class="lb-clan-emblem">${emblem}</span> ${escapeHtml(entry.clanName || entry.name || '-')}</td><td>[${escapeHtml(entry.tag || '-')}]</td><td class="lb-xp">${(entry.xp || 0).toLocaleString()}</td>`;
+      } else if (category === 'weekly') {
+        cells = `<td class="lb-rank">${rankBadge}</td><td>${escapeHtml(entry.name || '-')}</td><td>${entry.wins || 0}</td><td class="lb-xp">${(entry.score || 0).toLocaleString()}</td>`;
+      }
+      return `<tr class="${rowClass}">${cells}</tr>`;
+    }).join('');
+
+    const emptyState = data.length === 0 ? '<div class="lb-empty">No data yet. Complete missions to appear on the leaderboard.</div>' : '';
+
+    // My rank footer
+    let myRankHtml = '';
+    if (myRank) {
+      myRankHtml = `<div class="lb-my-rank">Your rank: <strong>#${myRank}</strong> in ${category === 'role' ? (roleName || 'selected role') : category}</div>`;
+    } else if (data.length > 0) {
+      myRankHtml = `<div class="lb-my-rank">Your rank: <span class="lb-unranked">Unranked</span></div>`;
+    }
+
+    container.innerHTML = `
+      <div class="lb-tabs">${tabsHtml}</div>
+      ${roleSelector}
+      <table class="lb-table">
+        <thead><tr>${headerCols}</tr></thead>
+        <tbody>${rows || '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-dim)">No entries</td></tr>'}</tbody>
+      </table>
+      ${emptyState}
+      <div class="lb-footer">${myRankHtml}</div>
+    `;
+
+    // Wire tab clicks
+    container.querySelectorAll('.lb-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cat = btn.dataset.lbCat;
+        this.fetch(cat);
+      });
+    });
+
+    // Wire role selector
+    const roleSel = document.getElementById('lbRoleSelect');
+    if (roleSel) {
+      roleSel.addEventListener('change', () => {
+        this.fetch('role', roleSel.value);
+      });
+    }
+  },
+
+  _getDataForCategory(category, roleName) {
+    if (category === 'role' && roleName) {
+      return state.leaderboards.role[roleName] || [];
+    }
+    return state.leaderboards[category] || [];
+  },
+
+  _renderMock(category, roleName) {
+    // Generate deterministic mock data for offline/demo
+    const mock = [];
+    const count = 20;
+    const roles = this.ROLES;
+    for (let i = 0; i < count; i++) {
+      const rank = i + 1;
+      if (category === 'overall') {
+        mock.push({ rank, name: `Agent_${100 + i}`, callsign: `Ghost${i + 1}`, role: roles[i % roles.length], xp: Math.max(1000, 50000 - i * 2200) });
+      } else if (category === 'role') {
+        mock.push({ rank, name: `Agent_${100 + i}`, callsign: `Ghost${i + 1}`, xp: Math.max(500, 30000 - i * 1400) });
+      } else if (category === 'clan') {
+        mock.push({ rank, clanName: `Clan ${String.fromCharCode(65 + i)}lpha`, tag: `C${i + 1}`, emblem: 'shield', xp: Math.max(1000, 80000 - i * 3500) });
+      } else if (category === 'weekly') {
+        mock.push({ rank, name: `Agent_${100 + i}`, wins: Math.max(0, 15 - i), score: Math.max(100, 5000 - i * 220) });
+      }
+    }
+    state.leaderboards[category] = mock;
+    state.leaderboards.lastFetch = Date.now();
+    this.render(category, roleName);
+  },
+
+  renderLobbyWidget() {
+    const container = document.getElementById('leaderboardLobbyWidget');
+    if (!container) return;
+    const myOverall = state.leaderboards.myRanks.overall;
+    const rankText = myOverall ? `#${myOverall}` : 'Unranked';
+    container.innerHTML = `
+      <div class="lb-lobby-widget">
+        <span>🏆 Leaderboards</span>
+        <span class="lb-lw-rank">${rankText}</span>
+        <button id="goToLeaderboards" class="compact-button">View</button>
+      </div>
+    `;
+    const btn = container.querySelector('#goToLeaderboards');
+    if (btn) btn.addEventListener('click', () => { setScreen('leaderboard'); this.fetch('overall'); });
+  }
+};
+
+const TournamentSystem = {
+  STORAGE_KEY: 'slv2_tournaments',
+  FORMATS: { single: 'Single Elimination', double: 'Double Elimination', roundrobin: 'Round Robin' },
+
+  init() {
+    this._load();
+  },
+
+  _load() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data.myRegistrations) state.tournaments.myRegistrations = data.myRegistrations;
+      }
+    } catch { /* ignore corrupt data */ }
+  },
+
+  _save() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+        myRegistrations: state.tournaments.myRegistrations
+      }));
+    } catch { /* ignore quota errors */ }
+  },
+
+  _wireSocket() {
+    if (!SignalNet.socket) return;
+    SignalNet.socket.on('tournament-list', (list) => {
+      state.tournaments.active = list || [];
+      if (state.screen === 'tournament') this.renderList();
+    });
+    SignalNet.socket.on('tournament-created', (t) => {
+      state.tournaments.active.push(t);
+      addChat('System', `🏆 Tournament "${escapeHtml(t.name)}" created.`);
+      if (state.screen === 'tournament') this.renderList();
+    });
+    SignalNet.socket.on('tournament-joined', ({ tournamentId }) => {
+      if (!state.tournaments.myRegistrations.includes(tournamentId)) {
+        state.tournaments.myRegistrations.push(tournamentId);
+        this._save();
+      }
+      addChat('System', '✅ Registered for tournament.');
+      if (state.screen === 'tournament') this.renderList();
+    });
+    SignalNet.socket.on('tournament-bracket', (data) => {
+      const t = state.tournaments.active.find(x => x.id === data.tournamentId);
+      if (t) t.bracket = data.bracket;
+      if (state.screen === 'tournament') this.renderBracket(data.bracket);
+    });
+    SignalNet.socket.on('tournament-match-ready', ({ tournamentId, matchId, opponent }) => {
+      state.tournaments.currentMatch = { tournamentId, matchId, opponent, scheduledAt: Date.now() };
+      addChat('System', `🏆 Tournament match vs ${escapeHtml(opponent?.name || 'opponent')} starting…`);
+      EventLog.add('system', '🏆', `<strong>Tournament Match</strong> vs ${escapeHtml(opponent?.name || 'opponent')}`);
+      if (typeof ScreenJuice !== 'undefined' && ScreenJuice.addKillFeed) {
+        ScreenJuice.addKillFeed('TOURNAMENT MATCH READY', '#ffd965');
+      }
+    });
+  },
+
+  create(name, format, maxTeams, startTime) {
+    const n = String(name || '').trim();
+    if (!n || n.length < 3) { addChat('System', 'Tournament name must be at least 3 characters.'); return; }
+    if (!this.FORMATS[format]) { addChat('System', 'Invalid tournament format.'); return; }
+    const max = Math.max(2, Math.min(64, parseInt(maxTeams, 10) || 8));
+    const start = parseInt(startTime, 10) || (Date.now() + 300000);
+    SignalNet.socket?.emit('tournament-create', { name: n, format, maxTeams: max, startTime: start });
+  },
+
+  join(tournamentId) {
+    SignalNet.socket?.emit('tournament-join', { tournamentId });
+  },
+
+  reportWin(tournamentId, matchId) {
+    SignalNet.socket?.emit('tournament-report-match', { tournamentId, matchId, result: 'win' });
+  },
+
+  fetchList() {
+    SignalNet.socket?.emit('tournament-list');
+    // Offline fallback: render from cache immediately
+    if (!SignalNet.connected && state.screen === 'tournament') this.renderList();
+  },
+
+  fetchBracket(tournamentId) {
+    const t = state.tournaments.active.find(x => x.id === tournamentId);
+    if (t?.bracket) {
+      this.renderBracket(t.bracket);
+      return;
+    }
+    SignalNet.socket?.emit('tournament-bracket', { tournamentId });
+  },
+
+  isRegistered(tournamentId) {
+    return state.tournaments.myRegistrations.includes(tournamentId);
+  },
+
+  _formatCountdown(startTime) {
+    const diff = startTime - Date.now();
+    if (diff <= 0) return 'Starting now';
+    const m = Math.floor(diff / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    return `${m}m ${s}s`;
+  },
+
+  renderList() {
+    const container = document.getElementById('tournamentList');
+    if (!container) return;
+    const list = state.tournaments.active || [];
+    if (!list.length) {
+      container.innerHTML = `<div class="tournament-empty">No active tournaments. Create one below.</div>`;
+      this._renderCreateForm();
+      return;
+    }
+    const html = list.map(t => {
+      const registered = this.isRegistered(t.id);
+      const count = (t.registered || []).length;
+      const fmt = this.FORMATS[t.format] || t.format;
+      return `<div class="tournament-card ${t.status}" data-tid="${escapeHtml(t.id)}">
+        <div class="tc-header">
+          <span class="tc-name">${escapeHtml(t.name)}</span>
+          <span class="tc-format">${escapeHtml(fmt)}</span>
+        </div>
+        <div class="tc-meta">
+          <span>Teams: ${count}/${t.maxTeams}</span>
+          <span class="tc-countdown">⏳ ${escapeHtml(this._formatCountdown(t.startTime))}</span>
+        </div>
+        <div class="tc-actions">
+          <button class="tc-btn ${registered ? 'secondary' : 'primary'}" data-action="${registered ? 'view' : 'join'}" data-tid="${escapeHtml(t.id)}">
+            ${registered ? 'View Bracket' : 'Register'}
+          </button>
+          ${registered ? `<button class="tc-btn secondary" data-action="bracket" data-tid="${escapeHtml(t.id)}">Bracket</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    container.innerHTML = html;
+    this._renderCreateForm();
+    this._wireListButtons();
+  },
+
+  _renderCreateForm() {
+    const form = document.getElementById('tournamentCreateForm');
+    if (!form) return;
+    form.innerHTML = `
+      <h3>Create Tournament</h3>
+      <div class="tc-form-row">
+        <input id="tcName" type="text" placeholder="Tournament name" maxlength="32">
+        <select id="tcFormat">
+          <option value="single">Single Elimination</option>
+          <option value="double">Double Elimination</option>
+          <option value="roundrobin">Round Robin</option>
+        </select>
+        <select id="tcMaxTeams">
+          <option value="4">4 teams</option>
+          <option value="8" selected>8 teams</option>
+          <option value="16">16 teams</option>
+          <option value="32">32 teams</option>
+        </select>
+      </div>
+      <button id="tcCreateBtn" class="primary-button">Create</button>
+    `;
+    const btn = form.querySelector('#tcCreateBtn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const name = document.getElementById('tcName')?.value;
+        const format = document.getElementById('tcFormat')?.value;
+        const maxTeams = document.getElementById('tcMaxTeams')?.value;
+        const startTime = Date.now() + 300000; // 5 min from now default
+        this.create(name, format, maxTeams, startTime);
+      });
+    }
+  },
+
+  _wireListButtons() {
+    const container = document.getElementById('tournamentList');
+    if (!container) return;
+    container.querySelectorAll('.tc-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const action = e.currentTarget.dataset.action;
+        const tid = e.currentTarget.dataset.tid;
+        if (action === 'join') this.join(tid);
+        if (action === 'view' || action === 'bracket') this.fetchBracket(tid);
+      });
+    });
+  },
+
+  renderBracket(bracketData) {
+    const container = document.getElementById('tournamentBracket');
+    if (!container) return;
+    if (!bracketData || !bracketData.rounds) {
+      container.innerHTML = `<div class="tournament-empty">Bracket not available yet.</div>`;
+      return;
+    }
+    const rounds = bracketData.rounds;
+    const html = `<div class="bracket-grid">` + rounds.map((round, rIdx) => `
+      <div class="bracket-round">
+        <div class="bracket-round-title">Round ${rIdx + 1}</div>
+        ${round.matches.map(m => `
+          <div class="bracket-match ${m.winner ? 'resolved' : ''} ${m.byTeam ? 'by-team' : ''}">
+            <div class="bracket-team ${m.winner === m.teamA ? 'winner' : ''}">${escapeHtml(m.teamA || 'TBD')}</div>
+            <div class="bracket-vs">vs</div>
+            <div class="bracket-team ${m.winner === m.teamB ? 'winner' : ''}">${escapeHtml(m.teamB || 'TBD')}</div>
+            ${m.winner ? `<div class="bracket-winner-label">🏆 ${escapeHtml(m.winner)}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `).join('') + `</div>`;
+    container.innerHTML = html;
+  },
+
+  renderLobbyWidget() {
+    const container = document.getElementById('tournamentLobbyWidget');
+    if (!container) return;
+    const regs = state.tournaments.myRegistrations.length;
+    const upcoming = state.tournaments.active.filter(t => state.tournaments.myRegistrations.includes(t.id) && t.status === 'upcoming').length;
+    container.innerHTML = `
+      <div class="tournament-lobby-widget">
+        <strong>🏆 Tournaments</strong>
+        <span>${regs} registered · ${upcoming} upcoming</span>
+        <button id="goToTournaments" class="compact-button">View</button>
+      </div>
+    `;
+    const btn = container.querySelector('#goToTournaments');
+    if (btn) btn.addEventListener('click', () => setScreen('tournament'));
+  }
+};
+
+/* ========================== TUTORIAL SYSTEM (PHASE 5 TASK 3) ========================== */
+
+const TutorialSystem = {
+  STORAGE_KEY: 'slv2_tutorial',
+  STEPS: [
+    { id: 'welcome', text: 'Welcome to Signal Lost. Tap anywhere to begin your training.', target: null, action: 'tap' },
+    { id: 'move', text: 'Your position is the blue dot. Move in real life to navigate the map.', target: '#missionMap', action: 'move' },
+    { id: 'radar', text: 'This radar shows nearby threats (red) and objectives (green).', target: '#missionRadarWrap', action: 'none' },
+    { id: 'signal', text: 'Keep your signal strength high. Low signal makes you vulnerable.', target: '#hudSignalBar', action: 'none' },
+    { id: 'stamina', text: 'Stamina drains over time and from threat contact. Find caches to recover.', target: '#hudStaminaBar', action: 'none' },
+    { id: 'abilities', text: 'Your role gives you unique abilities. Tap the hotbar to use them.', target: '#abilityHotbar', action: 'tap' },
+    { id: 'objectives', text: 'Reach the green circles to complete objectives. Work with your squad.', target: null, action: 'reach' },
+    { id: 'threats', text: 'Red markers are threats. Avoid them or use abilities to escape.', target: null, action: 'avoid' },
+    { id: 'extraction', text: 'When all objectives are complete, head to the extraction point.', target: null, action: 'none' },
+    { id: 'complete', text: 'Training complete! You are ready for your first mission.', target: null, action: 'done' }
+  ],
+
+  init() {
+    const saved = localStorage.getItem(this.STORAGE_KEY);
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        state.tutorial.completed = !!data.completed;
+        state.tutorial.step = typeof data.step === 'number' ? data.step : 0;
+      } catch (e) { /* ignore corrupt data */ }
+    }
+  },
+
+  save() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state.tutorial));
+    } catch (e) { /* ignore quota errors */ }
+  },
+
+  isComplete() {
+    return state.tutorial.completed;
+  },
+
+  start(training = false) {
+    state.tutorial.inProgress = true;
+    state.tutorial.step = 0;
+    state.tutorial.trainingMode = training;
+    this.save();
+    this._showStep();
+    if (training) {
+      state.isHost = true;
+      state.maxPlayers = 1;
+      state.duration = 10;
+      state.city = 'oslo';
+      state.agents = [{
+        id: 'local-' + Date.now(),
+        name: state.localProfile.name || 'Trainee',
+        callsign: state.localProfile.callsign || 'Rookie',
+        role: 'Drone',
+        team: 'North',
+        lat: cities.oslo.center[0],
+        lng: cities.oslo.center[1],
+        signal: 100,
+        stamina: 100,
+        online: true
+      }];
+      state.localAgentId = state.agents[0].id;
+      startMissionClock();
+    }
+  },
+
+  _showStep() {
+    const step = this.STEPS[state.tutorial.step];
+    if (!step) { this.complete(); return; }
+
+    let overlay = document.getElementById('tutorialOverlay');
+    if (!overlay) {
+      overlay = MemoryPool.acquire('div');
+      overlay.id = 'tutorialOverlay';
+      overlay.className = 'tutorial-overlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.classList.remove('hidden');
+
+    if (step.target) {
+      const el = document.querySelector(step.target);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        overlay.innerHTML = `
+          <div class="tutorial-spotlight" style="top:${rect.top - 8}px;left:${rect.left - 8}px;width:${rect.width + 16}px;height:${rect.height + 16}px"></div>
+          <div class="tutorial-bubble" style="top:${rect.bottom + 16}px;left:${rect.left}px">
+            <div class="tutorial-text">${escapeHtml(step.text)}</div>
+            <button class="tutorial-next" id="tutorialNextBtn">${state.tutorial.step === 0 ? 'Start' : 'Next'}</button>
+          </div>
+        `;
+      } else {
+        overlay.innerHTML = `<div class="tutorial-bubble center"><div class="tutorial-text">${escapeHtml(step.text)}</div><button class="tutorial-next" id="tutorialNextBtn">Next</button></div>`;
+      }
+    } else {
+      overlay.innerHTML = `<div class="tutorial-bubble center"><div class="tutorial-text">${escapeHtml(step.text)}</div><button class="tutorial-next" id="tutorialNextBtn">Next</button></div>`;
+    }
+
+    const btn = document.getElementById('tutorialNextBtn');
+    if (btn) btn.addEventListener('click', () => this.next());
+  },
+
+  next() {
+    state.tutorial.step++;
+    this.save();
+    if (state.tutorial.step >= this.STEPS.length) {
+      this.complete();
+    } else {
+      this._showStep();
+    }
+  },
+
+  complete() {
+    state.tutorial.completed = true;
+    state.tutorial.inProgress = false;
+    this.save();
+    const overlay = document.getElementById('tutorialOverlay');
+    if (overlay) overlay.classList.add('hidden');
+    if (state.tutorial.trainingMode) {
+      state.tutorial.trainingMode = false;
+      stopMissionClock();
+      setScreen('lobby');
+    }
+    EventLog.add('system', '🎓', '<strong>Tutorial Complete</strong> Welcome to Signal Lost');
+  },
+
+  skip() {
+    state.tutorial.completed = true;
+    state.tutorial.inProgress = false;
+    this.save();
+    const overlay = document.getElementById('tutorialOverlay');
+    if (overlay) overlay.classList.add('hidden');
+    if (state.tutorial.trainingMode) {
+      state.tutorial.trainingMode = false;
+      stopMissionClock();
+    }
+  },
+
+  destroy() {
+    const overlay = document.getElementById('tutorialOverlay');
+    if (overlay) overlay.classList.add('hidden');
+    state.tutorial.inProgress = false;
+  }
+};
+
+/* ========================== SETTINGS MENU (PHASE 5 TASK 5) ========================== */
+
+const SettingsMenu = {
+  STORAGE_KEY: 'slv2_settings_menu',
+
+  init() {
+    const saved = localStorage.getItem(this.STORAGE_KEY);
+    if (saved) {
+      try { Object.assign(state.settings, JSON.parse(saved)); } catch(e) {}
+    }
+    this._applySettings();
+  },
+
+  save() {
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state.settings));
+    this._applySettings();
+  },
+
+  _applySettings() {
+    if (typeof MusicSystem !== 'undefined' && MusicSystem.setVolume) {
+      MusicSystem.setVolume(state.settings.musicEnabled ? (state.settings.masterVolume / 100) * 0.7 : 0);
+    }
+    if (state.settings.theme && themePalettes[state.settings.theme]) {
+      setTheme(state.settings.theme);
+    }
+    if (typeof PerfMonitor !== 'undefined') {
+      PerfMonitor.targetFPS = state.settings.fpsCap || 30;
+    }
+    const fpsOverlay = document.getElementById('fpsDebugOverlay');
+    if (fpsOverlay) {
+      fpsOverlay.classList.toggle('hidden', !state.settings.showFPS);
+    }
+    document.body.dataset.reducedMotion = state.settings.reducedMotion ? 'true' : 'false';
+    document.body.dataset.highContrast = state.settings.highContrast ? 'true' : 'false';
+  },
+
+  open() {
+    let modal = document.getElementById('settingsModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'settingsModal';
+      modal.className = 'modal settings-modal hidden';
+      modal.innerHTML = `
+        <div class="modal-backdrop" onclick="SettingsMenu.close()"></div>
+        <div class="modal-panel">
+          <header class="modal-header">
+            <h2>Settings</h2>
+            <button class="modal-close" onclick="SettingsMenu.close()">&times;</button>
+          </header>
+          <div class="modal-tabs">
+            <button class="modal-tab active" data-tab="audio">Audio</button>
+            <button class="modal-tab" data-tab="graphics">Graphics</button>
+            <button class="modal-tab" data-tab="performance">Performance</button>
+            <button class="modal-tab" data-tab="controls">Controls</button>
+            <button class="modal-tab" data-tab="interface">Interface</button>
+          </div>
+          <div class="modal-body">
+            <div class="tab-panel active" data-tab="audio">
+              <label class="setting-row">
+                <span>Master Volume</span>
+                <input type="range" id="setMasterVol" min="0" max="100" value="70">
+              </label>
+              <label class="setting-row">
+                <span>Music</span>
+                <input type="checkbox" id="setMusic" checked>
+              </label>
+              <label class="setting-row">
+                <span>Sound Effects</span>
+                <input type="checkbox" id="setSFX" checked>
+              </label>
+            </div>
+            <div class="tab-panel" data-tab="graphics">
+              <label class="setting-row">
+                <span>Theme</span>
+                <select id="setTheme">
+                  <option value="classic">Classic Signal</option>
+                  <option value="sunset">Tangerine Static</option>
+                  <option value="signal">Signal Candy</option>
+                  <option value="night">Night Static</option>
+                </select>
+              </label>
+              <label class="setting-row">
+                <span>FPS Cap</span>
+                <select id="setFPS">
+                  <option value="60">60 FPS</option>
+                  <option value="30">30 FPS</option>
+                  <option value="15">15 FPS (battery save)</option>
+                </select>
+              </label>
+              <label class="setting-row">
+                <span>Show FPS</span>
+                <input type="checkbox" id="setShowFPS">
+              </label>
+              <label class="setting-row">
+                <span>Reduced Motion</span>
+                <input type="checkbox" id="setReducedMotion">
+              </label>
+              <label class="setting-row">
+                <span>High Contrast</span>
+                <input type="checkbox" id="setHighContrast">
+              </label>
+            </div>
+            <div class="tab-panel" data-tab="performance">
+              <label class="setting-row">
+                <span>Performance Profile</span>
+                <div id="perfProfileSettings" class="perf-profile-group"></div>
+              </label>
+              <p class="setting-hint">Power Saver reduces particles, radar detail, and GPS polling to extend battery life.</p>
+            </div>
+            <div class="tab-panel" data-tab="controls">
+              <div class="keybind-list">
+                <div class="keybind-row"><kbd>1-3</kbd><span>Abilities</span></div>
+                <div class="keybind-row"><kbd>T</kbd><span>Place Trap</span></div>
+                <div class="keybind-row"><kbd>U</kbd><span>Ultimate</span></div>
+                <div class="keybind-row"><kbd>S</kbd><span>Stealth Toggle</span></div>
+                <div class="keybind-row"><kbd>R</kbd><span>Radar Toggle</span></div>
+                <div class="keybind-row"><kbd>M</kbd><span>Map Focus</span></div>
+                <div class="keybind-row"><kbd>C</kbd><span>Command Wheel</span></div>
+                <div class="keybind-row"><kbd>Tab</kbd><span>Panels Toggle</span></div>
+              </div>
+              <p class="setting-hint">Key rebinding coming in a future update.</p>
+            </div>
+            <div class="tab-panel" data-tab="interface">
+              <div class="settings-section">
+                <h3>Radar Display</h3>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagRadarHealthRings" ${state.designFlags.radarHealthRings ? 'checked' : ''} onchange="SettingsModule.toggleFlag('radarHealthRings', this.checked)">
+                  <span>Health rings on squad</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagRadarMovementTrails" ${state.designFlags.radarMovementTrails ? 'checked' : ''} onchange="SettingsModule.toggleFlag('radarMovementTrails', this.checked)">
+                  <span>Movement trails</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagRadarTerrainContours" ${state.designFlags.radarTerrainContours ? 'checked' : ''} onchange="SettingsModule.toggleFlag('radarTerrainContours', this.checked)">
+                  <span>Terrain contours (performance impact)</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagRadarMinimalMode" ${state.designFlags.radarMinimalMode ? 'checked' : ''} onchange="SettingsModule.toggleFlag('radarMinimalMode', this.checked)">
+                  <span>Minimal radar mode</span>
+                </label>
+              </div>
+              <div class="settings-section">
+                <h3>Results</h3>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagResultsStatsBreakdown" ${state.designFlags.resultsStatsBreakdown ? 'checked' : ''} onchange="SettingsModule.toggleFlag('resultsStatsBreakdown', this.checked)">
+                  <span>Detailed results breakdown</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagResultsProgressionPreview" ${state.designFlags.resultsProgressionPreview ? 'checked' : ''} onchange="SettingsModule.toggleFlag('resultsProgressionPreview', this.checked)">
+                  <span>Progression preview</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagResultsReplayButton" ${state.designFlags.resultsReplayButton ? 'checked' : ''} onchange="SettingsModule.toggleFlag('resultsReplayButton', this.checked)">
+                  <span>Replay button on results</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagResultsMVPBadge" ${state.designFlags.resultsMVPBadge ? 'checked' : ''} onchange="SettingsModule.toggleFlag('resultsMVPBadge', this.checked)">
+                  <span>MVP badge</span>
+                </label>
+              </div>
+              <div class="settings-section">
+                <h3>Loadout</h3>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagPhase12Loadout" ${state.designFlags.phase12Loadout ? 'checked' : ''} onchange="SettingsModule.toggleFlag('phase12Loadout', this.checked)">
+                  <span>Enhanced loadout (stat bars, presets)</span>
+                </label>
+              </div>
+              <div class="settings-section">
+                <h3>Menu Screens</h3>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagMenuAnimatedBg" ${state.designFlags.menuAnimatedBg ? 'checked' : ''} onchange="SettingsModule.toggleFlag('menuAnimatedBg', this.checked)">
+                  <span>Animated background particles</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagMenuAnimatedLogo" ${state.designFlags.menuAnimatedLogo ? 'checked' : ''} onchange="SettingsModule.toggleFlag('menuAnimatedLogo', this.checked)">
+                  <span>Animated logo (shimmer effect)</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagMenuShortcutBar" ${state.designFlags.menuShortcutBar ? 'checked' : ''} onchange="SettingsModule.toggleFlag('menuShortcutBar', this.checked)">
+                  <span>Enhanced shortcut bar</span>
+                </label>
+              </div>
+              <div class="settings-section">
+                <h3>Mini-Games</h3>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagTrainingRangeEnabled" ${state.designFlags.trainingRangeEnabled ? 'checked' : ''} onchange="SettingsModule.toggleFlag('trainingRangeEnabled', this.checked)">
+                  <span>Training range</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagScanningPuzzleEnabled" ${state.designFlags.scanningPuzzleEnabled ? 'checked' : ''} onchange="SettingsModule.toggleFlag('scanningPuzzleEnabled', this.checked)">
+                  <span>Scanning puzzle practice</span>
+                </label>
+              </div>
+              <div class="settings-section">
+                <h3>Puzzles</h3>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagCipherPuzzleEnabled" ${state.designFlags.cipherPuzzleEnabled ? 'checked' : ''} onchange="SettingsModule.toggleFlag('cipherPuzzleEnabled', this.checked)">
+                  <span>Cipher decode</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagSignalInterceptEnabled" ${state.designFlags.signalInterceptEnabled ? 'checked' : ''} onchange="SettingsModule.toggleFlag('signalInterceptEnabled', this.checked)">
+                  <span>Signal intercept</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagTriangulationGridEnabled" ${state.designFlags.triangulationGridEnabled ? 'checked' : ''} onchange="SettingsModule.toggleFlag('triangulationGridEnabled', this.checked)">
+                  <span>Triangulation grid</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagRelaySequenceEnabled" ${state.designFlags.relaySequenceEnabled ? 'checked' : ''} onchange="SettingsModule.toggleFlag('relaySequenceEnabled', this.checked)">
+                  <span>Relay sequence</span>
+                </label>
+              </div>
+              <div class="settings-section">
+                <h3>Data Screens</h3>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagAgentDossier" ${state.designFlags.agentDossier ? 'checked' : ''} onchange="SettingsModule.toggleFlag('agentDossier', this.checked)">
+                  <span>Agent dossier</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagMissionHistory" ${state.designFlags.missionHistory ? 'checked' : ''} onchange="SettingsModule.toggleFlag('missionHistory', this.checked)">
+                  <span>Mission history</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagCareerStats" ${state.designFlags.careerStats ? 'checked' : ''} onchange="SettingsModule.toggleFlag('careerStats', this.checked)">
+                  <span>Career stats</span>
+                </label>
+              </div>
+              <div class="settings-section">
+                <h3>Era Themes</h3>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagEraRetroTheme" ${state.designFlags.eraRetroTheme ? 'checked' : ''} onchange="SettingsModule.toggleFlag('eraRetroTheme', this.checked)">
+                  <span>Retro theme</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagEraCyberTheme" ${state.designFlags.eraCyberTheme ? 'checked' : ''} onchange="SettingsModule.toggleFlag('eraCyberTheme', this.checked)">
+                  <span>Cyber theme</span>
+                </label>
+                <label class="setting-toggle">
+                  <input type="checkbox" id="flagEraStealthTheme" ${state.designFlags.eraStealthTheme ? 'checked' : ''} onchange="SettingsModule.toggleFlag('eraStealthTheme', this.checked)">
+                  <span>Stealth theme</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <footer class="modal-footer">
+            <button class="primary-button" onclick="SettingsMenu.saveAndClose()">Save</button>
+            <button class="ghost-button" onclick="SettingsMenu.reset()">Reset Defaults</button>
+          </footer>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      this._wireListeners();
+    }
+    modal.classList.remove('hidden');
+    this._loadValues();
+  },
+
+  _wireListeners() {
+    const modal = document.getElementById('settingsModal');
+    if (!modal) return;
+    modal.querySelectorAll('.modal-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        modal.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+        modal.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        const panel = modal.querySelector('.tab-panel[data-tab="' + tab.dataset.tab + '"]');
+        if (panel) panel.classList.add('active');
+      });
+    });
+  },
+
+  _loadValues() {
+    const s = state.settings;
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    const setChecked = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+    setVal('setMasterVol', Math.round((s.masterVolume !== undefined ? s.masterVolume : 70)));
+    setChecked('setMusic', s.musicEnabled !== false);
+    setChecked('setSFX', s.sfxEnabled !== false);
+    setVal('setTheme', s.theme || 'classic');
+    setVal('setFPS', String(s.fpsCap || 30));
+    setChecked('setShowFPS', !!s.showFPS);
+    setChecked('setReducedMotion', !!s.reducedMotion);
+    setChecked('setHighContrast', !!s.highContrast);
+    if (typeof PerformanceProfile !== 'undefined') PerformanceProfile.renderProfileSelector();
+  },
+
+  saveAndClose() {
+    const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
+    const getChecked = (id) => { const el = document.getElementById(id); return el ? el.checked : false; };
+    const rawVol = parseInt(getVal('setMasterVol'), 10);
+    state.settings.masterVolume = Number.isFinite(rawVol) ? rawVol : 70;
+    state.settings.musicEnabled = getChecked('setMusic');
+    state.settings.sfxEnabled = getChecked('setSFX');
+    state.settings.theme = getVal('setTheme') || 'classic';
+    state.settings.fpsCap = parseInt(getVal('setFPS'), 10) || 30;
+    state.settings.showFPS = getChecked('setShowFPS');
+    state.settings.reducedMotion = getChecked('setReducedMotion');
+    state.settings.highContrast = getChecked('setHighContrast');
+    this.save();
+    this.close();
+  },
+
+  reset() {
+    state.settings = {
+      graphics: 'high',
+      masterVolume: 70,
+      musicEnabled: true,
+      sfxEnabled: true,
+      theme: 'classic',
+      fpsCap: 30,
+      gpsInterval: null,
+      showFPS: false,
+      reducedMotion: false,
+      highContrast: false,
+      sensitivity: 5,
+      language: 'en',
+      keybinds: {
+        commandWheel: 'c',
+        waypointPing: 'p',
+        trapSelector: 't',
+        ultimate: 'u',
+        ability1: 'q',
+        ability2: 'w',
+        ability3: 'e',
+        revive: 'r',
+        ready: 'Space',
+      }
+    };
+    this.save();
+    this._loadValues();
+  },
+
+  close() {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.add('hidden');
+  }
+};
+
+/* ========================== SETTINGS MODULE (PHASE 5 TASK 7) ========================== */
+
+const SettingsModule = {
+  STORAGE_KEY: 'slv2_settings',
+  DEFAULTS: {
+    graphics: 'high',
+    masterVolume: 80,
+    sensitivity: 5,
+    language: 'en',
+    keybinds: {
+      commandWheel: 'c',
+      waypointPing: 'p',
+      trapSelector: 't',
+      ultimate: 'u',
+      ability1: 'q',
+      ability2: 'w',
+      ability3: 'e',
+      revive: 'r',
+      ready: 'Space',
+    }
+  },
+  _listeningRow: null,
+  _listenHandler: null,
+
+  init() {
+    this.load();
+    this._wireUI();
+    this._applyGraphics();
+  },
+
+  load() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        state.settings.graphics = saved.graphics || this.DEFAULTS.graphics;
+        state.settings.masterVolume = typeof saved.masterVolume === 'number' ? saved.masterVolume : this.DEFAULTS.masterVolume;
+        state.settings.sensitivity = typeof saved.sensitivity === 'number' ? saved.sensitivity : this.DEFAULTS.sensitivity;
+        state.settings.language = saved.language || this.DEFAULTS.language;
+        if (saved.keybinds) {
+          Object.assign(state.settings.keybinds, saved.keybinds);
+        }
+      }
+    } catch { /* ignore corrupt data */ }
+  },
+
+  save() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state.settings));
+    } catch { /* ignore quota errors */ }
+    saveState();
+  },
+
+  resetDefaults() {
+    state.settings.graphics = this.DEFAULTS.graphics;
+    state.settings.masterVolume = this.DEFAULTS.masterVolume;
+    state.settings.sensitivity = this.DEFAULTS.sensitivity;
+    state.settings.language = this.DEFAULTS.language;
+    state.settings.keybinds = { ...this.DEFAULTS.keybinds };
+    this.save();
+    this._syncUI();
+    this._applyGraphics();
+  },
+
+  getKey(action) {
+    return state.settings.keybinds[action] || this.DEFAULTS.keybinds[action];
+  },
+
+  getKeyDisplay(action) {
+    const k = this.getKey(action);
+    return k === ' ' ? 'Space' : k;
+  },
+
+  matches(e, action) {
+    const bound = this.getKey(action);
+    if (bound === 'Space') return e.code === 'Space';
+    return e.key.toLowerCase() === bound.toLowerCase();
+  },
+
+  // PHASE 12: Toggle a design flag and save state
+  toggleFlag(name, value) {
+    state.designFlags[name] = value;
+    saveState();
+  },
+
+  _wireUI() {
+    const backBtn = document.getElementById('settingsBack');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        const prev = state.screenBeforeSettings || 'lobby';
+        setScreen(prev);
+      });
+    }
+
+    const gfx = document.getElementById('settingsGraphics');
+    if (gfx) {
+      gfx.addEventListener('change', () => {
+        state.settings.graphics = gfx.value;
+        this.save();
+        this._applyGraphics();
+      });
+    }
+
+    const vol = document.getElementById('settingsVolume');
+    const volVal = document.getElementById('settingsVolumeVal');
+    if (vol) {
+      vol.addEventListener('input', () => {
+        state.settings.masterVolume = parseInt(vol.value, 10);
+        if (volVal) volVal.textContent = vol.value + '%';
+        this.save();
+      });
+    }
+
+    const sens = document.getElementById('settingsSensitivity');
+    const sensVal = document.getElementById('settingsSensitivityVal');
+    if (sens) {
+      sens.addEventListener('input', () => {
+        state.settings.sensitivity = parseInt(sens.value, 10);
+        if (sensVal) sensVal.textContent = sens.value;
+        this.save();
+      });
+    }
+
+    const lang = document.getElementById('settingsLanguage');
+    if (lang) {
+      lang.addEventListener('change', () => {
+        state.settings.language = lang.value;
+        this.save();
+      });
+    }
+
+    const resetKeys = document.getElementById('settingsResetKeys');
+    if (resetKeys) {
+      resetKeys.addEventListener('click', () => this.resetDefaults());
+    }
+
+    this._wireKeybindGrid();
+    this._syncUI();
+  },
+
+  _wireKeybindGrid() {
+    const grid = document.getElementById('keybindGrid');
+    if (!grid) return;
+    grid.addEventListener('click', (e) => {
+      const btn = e.target.closest('.keybind-btn');
+      if (!btn) return;
+      const row = btn.closest('.keybind-row');
+      if (!row) return;
+      this._startListening(row, btn);
+    });
+  },
+
+  _startListening(row, btn) {
+    if (this._listeningRow) {
+      this._listeningRow.classList.remove('listening');
+      if (this._listenHandler) {
+        document.removeEventListener('keydown', this._listenHandler);
+      }
+    }
+    this._listeningRow = row;
+    row.classList.add('listening');
+    const hint = document.getElementById('keybindHint');
+    if (hint) hint.textContent = 'Press any key to bind…';
+
+    this._listenHandler = (e) => {
+      e.preventDefault();
+      const action = row.dataset.keybind;
+      if (!action) return;
+      // Disallow modifier-only keys and some reserved keys
+      const reserved = ['Escape', 'Tab', 'F12'];
+      if (reserved.includes(e.key)) {
+        if (hint) hint.textContent = `'${e.key}' is reserved. Choose another key.`;
+        return;
+      }
+      let key = e.key;
+      if (key === ' ') key = 'Space';
+      // Check for duplicates
+      const dup = Object.entries(state.settings.keybinds).find(([a, k]) => a !== action && k.toLowerCase() === key.toLowerCase());
+      if (dup) {
+        if (hint) hint.textContent = `'${key}' already bound to ${dup[0]}. Choose another key.`;
+        return;
+      }
+      state.settings.keybinds[action] = key;
+      btn.textContent = key === ' ' ? 'Space' : key.toUpperCase();
+      btn.dataset.key = key;
+      this.save();
+      row.classList.remove('listening');
+      document.removeEventListener('keydown', this._listenHandler);
+      this._listeningRow = null;
+      this._listenHandler = null;
+      if (hint) hint.textContent = 'Click a key to rebind. Press any key to set.';
+    };
+    document.addEventListener('keydown', this._listenHandler);
+  },
+
+  _syncUI() {
+    const gfx = document.getElementById('settingsGraphics');
+    if (gfx) gfx.value = state.settings.graphics;
+    const vol = document.getElementById('settingsVolume');
+    const volVal = document.getElementById('settingsVolumeVal');
+    if (vol) vol.value = state.settings.masterVolume;
+    if (volVal) volVal.textContent = state.settings.masterVolume + '%';
+    const sens = document.getElementById('settingsSensitivity');
+    const sensVal = document.getElementById('settingsSensitivityVal');
+    if (sens) sens.value = state.settings.sensitivity;
+    if (sensVal) sensVal.textContent = state.settings.sensitivity;
+    const lang = document.getElementById('settingsLanguage');
+    if (lang) lang.value = state.settings.language;
+
+    // Sync keybind buttons
+    const grid = document.getElementById('keybindGrid');
+    if (grid) {
+      grid.querySelectorAll('.keybind-row').forEach(row => {
+        const action = row.dataset.keybind;
+        const btn = row.querySelector('.keybind-btn');
+        if (action && btn) {
+          const k = state.settings.keybinds[action] || this.DEFAULTS.keybinds[action];
+          btn.textContent = k === ' ' ? 'Space' : k.toUpperCase();
+          btn.dataset.key = k;
+        }
+      });
+    }
+  },
+
+  _applyGraphics() {
+    const q = state.settings.graphics;
+    document.body.dataset.quality = q;
+    // Reduce particle count for low quality
+    if (q === 'low') {
+      ParticleSystem.maxParticles = 30;
+    } else if (q === 'medium') {
+      ParticleSystem.maxParticles = 80;
+    } else {
+      ParticleSystem.maxParticles = 150;
+    }
+  },
+
+  open(fromScreen) {
+    state.screenBeforeSettings = fromScreen || state.screen;
+    this._syncUI();
+    setScreen('settings');
+  }
+};
+
+// ===== PHASE 12.7: Menu Screens =====
+const MenuSystem = {
+  _particles: [],
+  _rafId: null,
+
+  init() {
+    this._setupAnimatedBg();
+    this._setupAnimatedLogo();
+    this._setupShortcutBar();
+  },
+
+  /* ---- Animated Background ---- */
+  _setupAnimatedBg() {
+    if (!state.designFlags.menuAnimatedBg) return;
+    const canvas = document.getElementById('menuBgCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    this._resizeCanvas(canvas);
+    this._particles = [];
+
+    // Create 60 floating particles
+    for (let i = 0; i < 60; i++) {
+      this._particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: -Math.random() * 0.2 - 0.05,
+        r: 1 + Math.random() * 2,
+        alpha: 0.15 + Math.random() * 0.4,
+        speed: 0.2 + Math.random() * 0.3
+      });
+    }
+
+    window.addEventListener('resize', () => this._resizeCanvas(canvas));
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      this._particles.forEach(p => {
+        p.x += p.vx * p.speed;
+        p.y += p.vy * p.speed;
+        // Wrap around
+        if (p.y < -5) { p.y = canvas.height + 5; p.x = Math.random() * canvas.width; }
+        if (p.x < -5) p.x = canvas.width + 5;
+        if (p.x > canvas.width + 5) p.x = -5;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 139, 31, ${p.alpha})`;
+        ctx.fill();
+      });
+      // Draw connecting lines between nearby particles
+      for (let i = 0; i < this._particles.length; i++) {
+        for (let j = i + 1; j < this._particles.length; j++) {
+          const dx = this._particles[i].x - this._particles[j].x;
+          const dy = this._particles[i].y - this._particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(this._particles[i].x, this._particles[i].y);
+            ctx.lineTo(this._particles[j].x, this._particles[j].y);
+            ctx.strokeStyle = `rgba(255, 139, 31, ${0.04 * (1 - dist / 120)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+      this._rafId = requestAnimationFrame(animate);
+    };
+    animate();
+  },
+
+  _resizeCanvas(canvas) {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  },
+
+  /* ---- Animated Logo ---- */
+  _setupAnimatedLogo() {
+    if (!state.designFlags.menuAnimatedLogo) return;
+    const title = document.querySelector('.lobby-header h1');
+    if (!title) return;
+    // Add signal pulse class
+    title.classList.add('menu-animated-logo');
+    // Add scan line overlay that periodically sweeps
+    const scan = document.createElement('div');
+    scan.className = 'logo-scan-line';
+    title.parentElement.appendChild(scan);
+  },
+
+  /* ---- Shortcut Bar ---- */
+  _setupShortcutBar() {
+    if (!state.designFlags.menuShortcutBar) return;
+    const footer = document.querySelector('.lobby-footer');
+    if (!footer) return;
+    footer.classList.add('menu-shortcut-bar');
+    // Group existing buttons into labeled sections
+    const themeBar = footer.querySelector('.theme-bar');
+    if (!themeBar) return;
+    // Add separator before action buttons
+    const themeChips = themeBar.querySelectorAll('.theme-chip');
+    let lastStandardIdx = -1;
+    themeChips.forEach((chip, i) => {
+      if (!chip.id) return;
+      lastStandardIdx = i;
+    });
+    // The theme chips with IDs are the action buttons (stats, settings, training, etc.)
+    // They're already styled nicely — just add tooltips via data attributes
+    themeChips.forEach(chip => {
+      if (chip.id) {
+        const labels = {
+          statsBtn: 'View career stats',
+          lobbySettingsBtn: 'Open settings',
+          lobbyTrainingBtn: 'Training ground',
+          lobbyShopBtn: 'Cosmetic shop',
+          lobbyClanBtn: 'Clan management',
+          lobbyMapEditorBtn: 'Map editor'
+        };
+        if (labels[chip.id]) {
+          chip.title = labels[chip.id];
+        }
+      }
+    });
+  },
+
+  destroy() {
+    if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
+    this._particles = [];
+  }
+};
+
+window.MenuSystem = MenuSystem;
+
+// ===== PHASE 12.8: Minigames =====
+const MinigameSystem = {
+  _active: null,
+  _timer: null,
+  _interval: null,
+  _score: 0,
+  _targets: [],
+  _games: {
+    signalPulse: {
+      name: 'Signal Pulse',
+      duration: 30,
+      spawnInterval: 800,
+      targetCount: 0,
+      hits: 0,
+      misses: 0
+    },
+    scanPuzzle: {
+      name: 'Scan Decode',
+      rounds: 5,
+      round: 0,
+      score: 0
+    },
+    triangulation: {
+      name: 'Triangulation Practice',
+      rounds: 5,
+      round: 0,
+      score: 0
+    },
+    // Phase 13 Puzzle Minigames
+    cipherPuzzle: {
+      name: 'Cipher Decode',
+      score: 0,
+      round: 0,
+      rounds: 5,
+      solved: 0
+    },
+    signalIntercept: {
+      name: 'Signal Intercept',
+      score: 0,
+      round: 0,
+      rounds: 5,
+      solved: 0
+    },
+    triangulationGrid: {
+      name: 'Triangulation Grid',
+      score: 0,
+      round: 0,
+      rounds: 5,
+      solved: 0
+    },
+    relaySequence: {
+      name: 'Relay Sequence',
+      score: 0,
+      round: 0,
+      rounds: 5,
+      solved: 0
+    }
+  },
+
+  renderMenu() {
+    const badge = document.getElementById('trainingScoreBadge');
+    if (badge) {
+      const total = (state.statsTracker?.minigameHighScores) || 0;
+      badge.textContent = `Best: ${total}`;
+    }
+  },
+
+  start(game) {
+    if (!state.designFlags[{
+      signalPulse: 'trainingRangeEnabled',
+      scanPuzzle: 'scanningPuzzleEnabled',
+      triangulation: 'scanningPuzzleEnabled',
+      cipherPuzzle: 'cipherPuzzleEnabled',
+      signalIntercept: 'signalInterceptEnabled',
+      triangulationGrid: 'triangulationGridEnabled',
+      relaySequence: 'relaySequenceEnabled'
+    }[game]]) return;
+    this._active = game;
+    this._score = 0;
+    document.getElementById('minigameOverlay').classList.remove('hidden');
+    document.getElementById('minigameResult').classList.add('hidden');
+    document.getElementById('minigameContent').classList.remove('hidden');
+    document.getElementById('minigameScore').textContent = 'Score: 0';
+    this[game].start();
+  },
+
+  end() {
+    if (this._timer) { clearInterval(this._timer); this._timer = null; }
+    if (this._interval) { clearInterval(this._interval); this._interval = null; }
+    document.getElementById('minigameOverlay').classList.add('hidden');
+    this._active = null;
+  },
+
+  retry() {
+    if (!this._active) return;
+    document.getElementById('minigameResult').classList.add('hidden');
+    document.getElementById('minigameContent').classList.remove('hidden');
+    this._score = 0;
+    this[this._active].start();
+  },
+
+  _showResult(title, text) {
+    document.getElementById('minigameContent').classList.add('hidden');
+    const panel = document.getElementById('minigameResult');
+    panel.classList.remove('hidden');
+    document.getElementById('minigameResultTitle').textContent = title;
+    document.getElementById('minigameResultText').textContent = text;
+    // Save high score
+    if (state.statsTracker) {
+      const key = 'minigame_' + this._active;
+      if (!state.statsTracker.minigameHighScores) state.statsTracker.minigameHighScores = {};
+      const prev = state.statsTracker.minigameHighScores[key] || 0;
+      if (this._score > prev) {
+        state.statsTracker.minigameHighScores[key] = this._score;
+        saveState();
+      }
+    }
+  },
+
+  /* ====== Signal Pulse ====== */
+  signalPulse: {
+    start() {
+      const sys = MinigameSystem;
+      const g = sys._games.signalPulse;
+      g.targetCount = 0;
+      g.hits = 0;
+      g.misses = 0;
+
+      const content = document.getElementById('minigameContent');
+      content.innerHTML = '<div id="pulseGrid" class="pulse-grid"></div>';
+      document.getElementById('minigameTitle').textContent = 'Signal Pulse — Hit targets!';
+      document.getElementById('minigameTimer').textContent = '30s';
+
+      sys._score = 0;
+      const grid = document.getElementById('pulseGrid');
+      // Create 5x5 grid of cells
+      for (let i = 0; i < 25; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'pulse-cell';
+        cell.dataset.idx = i;
+        cell.addEventListener('click', () => {
+          if (cell.classList.contains('pulse-active')) {
+            cell.classList.remove('pulse-active');
+            cell.classList.add('pulse-hit');
+            sys._score += 10;
+            g.hits++;
+            document.getElementById('minigameScore').textContent = `Score: ${sys._score}`;
+          }
+        });
+        grid.appendChild(cell);
+      }
+
+      // Timer countdown
+      let remaining = g.duration;
+      sys._timer = setInterval(() => {
+        remaining--;
+        document.getElementById('minigameTimer').textContent = remaining + 's';
+        if (remaining <= 0) {
+          clearInterval(sys._timer);
+          sys._timer = null;
+          clearInterval(sys._interval);
+          sys._interval = null;
+          sys._showResult('Training Complete',
+            `Targets hit: ${g.hits}/${g.targetCount} | Score: ${sys._score}`);
+        }
+      }, 1000);
+
+      // Spawn targets
+      sys._interval = setInterval(() => {
+        if (!sys._active) return;
+        // Clear any remaining active
+        grid.querySelectorAll('.pulse-active').forEach(el => {
+          el.classList.remove('pulse-active');
+          g.misses++;
+        });
+        // Spawn 1-3 new targets
+        const count = 1 + Math.floor(Math.random() * 3);
+        for (let c = 0; c < count; c++) {
+          const cells = grid.querySelectorAll('.pulse-cell:not(.pulse-hit)');
+          if (cells.length === 0) break;
+          const idx = Math.floor(Math.random() * cells.length);
+          cells[idx].classList.add('pulse-active');
+          g.targetCount++;
+        }
+      }, g.spawnInterval);
+    }
+  },
+
+  /* ====== Scan Decode Puzzle ====== */
+  scanPuzzle: {
+    _patterns: [
+      [1,0,1,0,1],
+      [0,1,1,0,0],
+      [1,1,0,1,1],
+      [0,0,1,1,0],
+      [1,0,0,0,1],
+      [0,1,0,1,0],
+      [1,1,1,0,0],
+      [0,0,0,1,1],
+    ],
+
+    start() {
+      const sys = MinigameSystem;
+      const g = sys._games.scanPuzzle;
+      g.round = 0;
+      g.score = 0;
+      this._nextRound();
+    },
+
+    _nextRound() {
+      const sys = MinigameSystem;
+      const g = sys._games.scanPuzzle;
+      g.round++;
+      if (g.round > g.rounds) {
+        sys._showResult('Decoding Complete!',
+          `Rounds solved: ${g.score}/${g.rounds} | Score: ${sys._score}`);
+        return;
+      }
+
+      document.getElementById('minigameTitle').textContent = `Scan Decode — Round ${g.round}/${g.rounds}`;
+      document.getElementById('minigameTimer').textContent = '';
+
+      // Pick a random pattern
+      const pattern = this._patterns[Math.floor(Math.random() * this._patterns.length)];
+      const content = document.getElementById('minigameContent');
+
+      // Generate 4 options (1 correct, 3 wrong)
+      const options = [pattern];
+      while (options.length < 4) {
+        const alt = this._generateAlt(pattern);
+        if (!options.some(o => JSON.stringify(o) === JSON.stringify(alt))) {
+          options.push(alt);
+        }
+      }
+      // Shuffle
+      for (let i = options.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [options[i], options[j]] = [options[j], options[i]];
+      }
+
+      content.innerHTML = `
+        <div class="scan-puzzle">
+          <div class="scan-reference">
+            <span class="scan-label">Reference Signal:</span>
+            <div class="scan-pattern">${pattern.map(b => `<span class="scan-bit ${b ? 'scan-bit-on' : 'scan-bit-off'}"></span>`).join('')}</div>
+          </div>
+          <div class="scan-options">
+            ${options.map((opt, i) => `
+              <button class="scan-option" data-correct="${JSON.stringify(opt) === JSON.stringify(pattern) ? 'true' : 'false'}">
+                ${opt.map(b => `<span class="scan-bit ${b ? 'scan-bit-on' : 'scan-bit-off'}"></span>`).join('')}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      // Wire click handlers
+      content.querySelectorAll('.scan-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (btn.dataset.correct === 'true') {
+            g.score++;
+            sys._score += 25;
+            btn.classList.add('scan-correct');
+          } else {
+            btn.classList.add('scan-wrong');
+          }
+          document.getElementById('minigameScore').textContent = `Score: ${sys._score}`;
+          setTimeout(() => this._nextRound(), 600);
+        });
+      });
+    },
+
+    _generateAlt(pattern) {
+      const alt = pattern.slice();
+      const idx = Math.floor(Math.random() * alt.length);
+      alt[idx] = alt[idx] ? 0 : 1;
+      return alt;
+    }
+  },
+
+  /* ====== Triangulation Practice ====== */
+  triangulation: {
+    start() {
+      const sys = MinigameSystem;
+      const g = sys._games.triangulation;
+      g.round = 0;
+      g.score = 0;
+      this._nextRound();
+    },
+
+    _nextRound() {
+      const sys = MinigameSystem;
+      const g = sys._games.triangulation;
+      g.round++;
+      if (g.round > g.rounds) {
+        sys._showResult('Triangulation Complete!',
+          `Accurate bearings: ${g.score}/${g.rounds} | Score: ${sys._score}`);
+        return;
+      }
+
+      document.getElementById('minigameTitle').textContent = `Triangulation — Round ${g.round}/${g.rounds}`;
+      document.getElementById('minigameTimer').textContent = '';
+
+      // Generate a target bearing + options
+      const targetDeg = Math.floor(Math.random() * 360);
+      const options = [targetDeg];
+      while (options.length < 4) {
+        const alt = (targetDeg + Math.floor(Math.random() * 60) - 30 + 360) % 360;
+        if (!options.includes(alt) && Math.abs(alt - targetDeg) > 5) {
+          options.push(alt);
+        }
+      }
+      for (let i = options.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [options[i], options[j]] = [options[j], options[i]];
+      }
+
+      // Draw compass with a target direction indicator
+      const content = document.getElementById('minigameContent');
+      content.innerHTML = `
+        <div class="tri-practice">
+          <p class="tri-prompt">Estimate the bearing (in degrees) to the signal source:</p>
+          <div class="tri-compass">
+            <canvas id="triCompassCanvas" width="160" height="160"></canvas>
+          </div>
+          <div class="tri-options">
+            ${options.map(o => `
+              <button class="tri-option" data-bearing="${o}" data-correct="${o === targetDeg ? 'true' : 'false'}">${o}°</button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      // Draw compass with arrow
+      const canvas = document.getElementById('triCompassCanvas');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        const cx = 80, cy = 80, r = 60;
+        // Circle
+        ctx.clearRect(0, 0, 160, 160);
+        ctx.strokeStyle = '#1e2a38';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+        // Tick marks every 30 degrees
+        for (let deg = 0; deg < 360; deg += 30) {
+          const rad = deg * Math.PI / 180;
+          const inner = deg % 90 === 0 ? r - 12 : r - 6;
+          ctx.beginPath();
+          ctx.moveTo(cx + Math.cos(rad) * inner, cy + Math.sin(rad) * inner);
+          ctx.lineTo(cx + Math.cos(rad) * r, cy + Math.sin(rad) * r);
+          ctx.strokeStyle = deg % 90 === 0 ? '#8aa3bf' : '#1e2a38';
+          ctx.stroke();
+        }
+        // Arrow at target bearing
+        const arrowRad = (targetDeg - 90) * Math.PI / 180;
+        ctx.strokeStyle = '#ff8b1f';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(arrowRad) * (r - 5), cy + Math.sin(arrowRad) * (r - 5));
+        ctx.stroke();
+        // Label N
+        ctx.fillStyle = '#8aa3bf';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('N', cx, cy - r - 5);
+        ctx.fillText('S', cx, cy + r + 12);
+        ctx.fillText('W', cx - r - 10, cy + 4);
+        ctx.fillText('E', cx + r + 10, cy + 4);
+      }
+
+      // Wire clicks
+      content.querySelectorAll('.tri-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (btn.dataset.correct === 'true') {
+            g.score++;
+            sys._score += 20;
+            btn.classList.add('tri-correct');
+          } else {
+            btn.classList.add('tri-wrong');
+          }
+          document.getElementById('minigameScore').textContent = `Score: ${sys._score}`;
+          setTimeout(() => this._nextRound(), 600);
+        });
+      });
+    }
+  },
+
+  /* ====== Cipher Puzzle (Phase 13) ====== */
+  cipherPuzzle: {
+    _cipherTexts: [
+      'THE EAGLE IS IN PURSUIT',
+      'I LOVE PROGRAMMING',
+      'SECRET MESSAGE FOR DECODER',
+      'TARGET LOCATED AT CENTRAL',
+      'ENEMY ON THE MOVE',
+    ],
+
+    start() {
+      const sys = MinigameSystem;
+      const g = sys._games.cipherPuzzle;
+      g.round = 0;
+      g.solved = 0;
+      g.score = 0;
+      this._nextRound();
+    },
+
+    _nextRound() {
+      const sys = MinigameSystem;
+      const g = sys._games.cipherPuzzle;
+      g.round++;
+      if (g.round > g.rounds) {
+        sys._showResult('Cipher Complete!', `Messages decoded: ${g.solved}/${g.rounds} | Score: ${sys._score}`);
+        return;
+      }
+      document.getElementById('minigameTitle').textContent = `Cipher Decode — Round ${g.round}/${g.rounds}`;
+      document.getElementById('minigameTimer').textContent = '';
+
+      // Pick a cipher text and compute the answer
+      const idx = Math.floor(Math.random() * this._cipherTexts.length);
+      const plaintext = this._cipherTexts[idx];
+      const shift = 3;
+      const ciphertext = plaintext.split('').map(ch => {
+        if (ch < 'A' || ch > 'Z') return ch;
+        const code = ch.charCodeAt(0) - 65;
+        const shifted = (code - shift + 26) % 26;
+        return String.fromCharCode(shifted + 65);
+      }).join('');
+
+      // Generate plausible wrong answers via different shifts
+      const wrongSet = new Set();
+      wrongSet.add(this._shiftText(plaintext, 5));
+      wrongSet.add(this._shiftText(plaintext, 7));
+      wrongSet.add(this._shiftText(plaintext, 1));
+      wrongSet.add(this._shiftText(plaintext, 10));
+      const wrongArr = Array.from(wrongSet).filter(w => w !== ciphertext).slice(0, 3);
+      const options = [ciphertext].concat(wrongArr);
+      for (let i = options.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [options[i], options[j]] = [options[j], options[i]];
+      }
+
+      const content = $('#minigameContent');
+      content.innerHTML = `
+        <div class="cipher-puzzle">
+          <p class="cipher-prompt">Decode the Caesar cipher (shift=3):</p>
+          <div class="cipher-encoded">${escapeHtml(ciphertext)}</div>
+          <div class="cipher-hint">
+            <span class="cipher-hint-label">Hint: Try shifting each letter back by 3</span>
+          </div>
+          <div class="cipher-options">
+            ${options.map((opt, i) => {
+              const display = opt.split('').map(ch => {
+                if (ch < 'A' || ch > 'Z') return ch;
+                return ch;
+              }).join('');
+              return `<button class="cipher-option" data-correct="${opt === ciphertext ? 'true' : 'false'}">${escapeHtml(display.toLowerCase())}</button>`;
+            }).join('')}
+          </div>
+          <div class="cipher-freq">
+            <span class="cipher-freq-label">Frequency Analysis:</span>
+            <div class="cipher-freq-bars">
+              ${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => {
+                const count = ciphertext.split('').filter(ch => ch === letter).length;
+                const freqs = {};
+                ciphertext.split('').forEach(ch => { if (ch >= 'A' && ch <= 'Z') freqs[ch] = (freqs[ch] || 0) + 1; });
+                const vals = Object.keys(freqs).map(k => freqs[k]);
+                const maxCount = vals.length > 0 ? Math.max(1, Math.max.apply(null, vals)) : 1;
+                const barH = count > 0 ? Math.round((count / maxCount) * 100) : 0;
+                return `<div class="cipher-freq-bar-wrap"><span class="cipher-freq-letter">${letter}</span><div class="cipher-freq-bar" style="height:${barH}px"></div><span class="cipher-freq-count">${count}</span></div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+
+      content.querySelectorAll('.cipher-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (btn.dataset.correct === 'true') {
+            g.solved++;
+            sys._score += 30;
+            btn.classList.add('cipher-correct');
+          } else {
+            btn.classList.add('cipher-wrong');
+          }
+          document.getElementById('minigameScore').textContent = `Score: ${sys._score}`;
+          setTimeout(() => this._nextRound(), 700);
+        });
+      });
+    },
+
+    _shiftText(text, shift) {
+      return text.split('').map(ch => {
+        if (ch < 'A' || ch > 'Z') return ch;
+        const code = ch.charCodeAt(0) - 65;
+        const shifted = (code - shift + 26) % 26;
+        return String.fromCharCode(shifted + 65);
+      }).join('');
+    }
+  },
+
+  /* ====== Signal Intercept (Phase 13) ====== */
+  signalIntercept: {
+    start() {
+      const sys = MinigameSystem;
+      const g = sys._games.signalIntercept;
+      g.round = 0;
+      g.solved = 0;
+      g.score = 0;
+      this._nextRound();
+    },
+
+    _nextRound() {
+      const sys = MinigameSystem;
+      const g = sys._games.signalIntercept;
+      g.round++;
+      if (g.round > g.rounds) {
+        sys._showResult('Intercept Complete!', `Signals locked: ${g.solved}/${g.rounds} | Score: ${sys._score}`);
+        return;
+      }
+      document.getElementById('minigameTitle').textContent = `Signal Intercept — Round ${g.round}/${g.rounds}`;
+      document.getElementById('minigameTimer').textContent = '';
+
+      // Target frequency (100-2000 Hz)
+      const targetFreq = 100 + Math.floor(Math.random() * 1900);
+      let currentFreq = 50;
+      let isLocked = false;
+
+      const content = $('#minigameContent');
+      content.innerHTML = `
+        <div class="intercept-puzzle">
+          <p class="intercept-prompt">Tune the frequency to intercept the signal (target: ??? Hz)</p>
+          <div class="intercept-wave">
+            <canvas id="interceptCanvas" width="320" height="120"></canvas>
+          </div>
+          <div class="intercept-slider-wrap">
+            <input type="range" id="interceptSlider" class="intercept-slider" min="50" max="2100" value="50" step="1">
+            <span id="interceptFreqDisplay" class="intercept-freq">50 Hz</span>
+          </div>
+          <div id="interceptIndicator" class="intercept-indicator">Tuning...</div>
+          <button id="interceptLockBtn" class="intercept-lock-btn" disabled>Lock Frequency</button>
+        </div>
+      `;
+
+      // Draw waveform canvas
+      const drawWave = (freq) => {
+        const canvas = document.getElementById('interceptCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const w = 320, h = 120;
+        ctx.clearRect(0, 0, w, h);
+        const cx = 160, cy = 60;
+        // Draw target wave (faint)
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255,139,31,0.25)';
+        ctx.lineWidth = 2;
+        for (let x = 0; x < w; x++) {
+          const y = cy + Math.sin(x * targetFreq / 3000) * 30;
+          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        // Draw current wave (bright)
+        ctx.beginPath();
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 2;
+        for (let x = 0; x < w; x++) {
+          const y = cy + Math.sin(x * freq / 2000) * 40 * (1 + 0.3 * Math.sin(x / 20));
+          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      };
+      drawWave(currentFreq);
+
+      // Slider handler
+      const slider = document.getElementById('interceptSlider');
+      const indicator = document.getElementById('interceptIndicator');
+      const lockBtn = document.getElementById('interceptLockBtn');
+      const freqDisplay = document.getElementById('interceptFreqDisplay');
+
+      slider.addEventListener('input', () => {
+        currentFreq = parseInt(slider.value);
+        freqDisplay.textContent = currentFreq + ' Hz';
+        drawWave(currentFreq);
+        const diff = Math.abs(currentFreq - targetFreq);
+        if (diff < 30) {
+          indicator.textContent = 'Signal locked! Press Lock.';
+          indicator.className = 'intercept-indicator intercept-locked';
+          lockBtn.disabled = false;
+        } else if (diff < 80) {
+          indicator.textContent = 'Getting close...';
+          indicator.className = 'intercept-indicator intercept-warm';
+          lockBtn.disabled = true;
+        } else if (diff < 200) {
+          indicator.textContent = 'Warm...';
+          indicator.className = 'intercept-indicator intercept-warm';
+          lockBtn.disabled = true;
+        } else {
+          indicator.textContent = 'Tuning...';
+          indicator.className = 'intercept-indicator intercept-cold';
+          lockBtn.disabled = true;
+        }
+      });
+
+      lockBtn.addEventListener('click', () => {
+        if (isLocked) return;
+        isLocked = true;
+        const diff = Math.abs(currentFreq - targetFreq);
+        if (diff < 30) {
+          g.solved++;
+          sys._score += Math.max(10, 50 - diff);
+          indicator.textContent = 'Intercepted! +' + (Math.max(10, 50 - diff)) + ' pts';
+          indicator.className = 'intercept-indicator intercept-locked';
+        } else {
+          indicator.textContent = `Miss! Target was ${targetFreq} Hz`;
+          indicator.className = 'intercept-indicator intercept-cold';
+        }
+        document.getElementById('minigameScore').textContent = `Score: ${sys._score}`;
+        slider.disabled = true;
+        lockBtn.disabled = true;
+        setTimeout(() => this._nextRound(), 1000);
+      });
+    }
+  },
+
+  /* ====== Triangulation Grid (Phase 13) ====== */
+  triangulationGrid: {
+    start() {
+      const sys = MinigameSystem;
+      const g = sys._games.triangulationGrid;
+      g.round = 0;
+      g.solved = 0;
+      g.score = 0;
+      this._nextRound();
+    },
+
+    _nextRound() {
+      const sys = MinigameSystem;
+      const g = sys._games.triangulationGrid;
+      g.round++;
+      if (g.round > g.rounds) {
+        sys._showResult('Triangulation Complete!', `Grids solved: ${g.solved}/${g.rounds} | Score: ${sys._score}`);
+        return;
+      }
+      document.getElementById('minigameTitle').textContent = `Triangulation Grid — Round ${g.round}/${g.rounds}`;
+      document.getElementById('minigameTimer').textContent = '';
+
+      // Generate 3 signal towers + a target convergence point
+      const gridW = 320, gridH = 240;
+      const margin = 50;
+      const towers = [
+        { x: margin + Math.random() * (gridW/2 - margin), y: margin + Math.random() * (gridH - margin*2) },
+        { x: gridW/2 + Math.random() * (gridW/2 - margin), y: margin + Math.random() * (gridH/2 - margin) },
+        { x: gridW/2 + Math.random() * (gridW/2 - margin), y: gridH/2 + Math.random() * (gridH/2 - margin) }
+      ];
+      // Target = a point within a bounded region where players must click
+      const targetX = gridW/2 + (Math.random() - 0.5) * 60;
+      const targetY = gridH/2 + (Math.random() - 0.5) * 60;
+      const radii = towers.map(t => {
+        const dx = t.x - targetX;
+        const dy = t.y - targetY;
+        return Math.sqrt(dx*dx + dy*dy);
+      });
+
+      const content = $('#minigameContent');
+      content.innerHTML = `
+        <div class="tri-grid-puzzle">
+          <p class="tri-grid-prompt">Click where the 3 signal circles converge:</p>
+          <div class="tri-grid-map">
+            <canvas id="triGridCanvas" width="${gridW}" height="${gridH}"></canvas>
+          </div>
+          <p id="triGridFeedback" class="tri-grid-feedback">Click a point on the grid.</p>
+        </div>
+      `;
+
+      const canvas = document.getElementById('triGridCanvas');
+      const ctx = canvas.getContext('2d');
+      let clicked = false;
+
+      const drawGrid = (hoverX, hoverY) => {
+        ctx.clearRect(0, 0, gridW, gridH);
+        // Background
+        ctx.fillStyle = '#0d1520';
+        ctx.fillRect(0, 0, gridW, gridH);
+        // Grid lines
+        ctx.strokeStyle = 'rgba(30,42,56,0.4)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < gridW; x += 20) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, gridH); ctx.stroke();
+        }
+        for (let y = 0; y < gridH; y += 20) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(gridW, y); ctx.stroke();
+        }
+        // Tower labels A, B, C
+        ['A', 'B', 'C'].forEach((label, i) => {
+          const t = towers[i];
+          // Signal circle
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, radii[i], 0, Math.PI * 2);
+          ctx.strokeStyle = ['#ff6b35', '#00e5ff', '#ffeb3b'][i];
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          // Tower marker
+          ctx.fillStyle = ['#ff6b35', '#00e5ff', '#ffeb3b'][i];
+          ctx.beginPath(); ctx.arc(t.x, t.y, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, t.x, t.y - 12);
+        });
+        // Hover crosshair
+        if (hoverX !== undefined && hoverX !== null && !clicked) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(hoverX - 8, hoverY); ctx.lineTo(hoverX + 8, hoverY);
+          ctx.moveTo(hoverX, hoverY - 8); ctx.lineTo(hoverX, hoverY + 8);
+          ctx.stroke();
+          // Distance indicator — show how close
+          const dx = hoverX - targetX;
+          const dy = hoverY - targetY;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          ctx.fillStyle = dist < 20 ? '#4caf50' : dist < 40 ? '#ffeb3b' : '#ff6b35';
+          ctx.font = '11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${Math.round(dist)}px`, hoverX, hoverY + 20);
+        }
+        // Target marker (show after click)
+        if (clicked) {
+          ctx.fillStyle = '#ff6b35';
+          ctx.beginPath(); ctx.arc(targetX, targetY, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('TARGET', targetX, targetY - 10);
+        }
+      };
+
+      drawGrid(null, null);
+
+      // Track mouse for crosshair
+      canvas.addEventListener('mousemove', (e) => {
+        if (clicked) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = gridW / rect.width;
+        const scaleY = gridH / rect.height;
+        const mx = (e.clientX - rect.left) * scaleX;
+        const my = (e.clientY - rect.top) * scaleY;
+        drawGrid(Math.max(0, Math.min(gridW, mx)), Math.max(0, Math.min(gridH, my)));
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        if (!clicked) drawGrid(null, null);
+      });
+
+      canvas.addEventListener('click', (e) => {
+        if (clicked) return;
+        clicked = true;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = gridW / rect.width;
+        const scaleY = gridH / rect.height;
+        const cx = (e.clientX - rect.left) * scaleX;
+        const cy = (e.clientY - rect.top) * scaleY;
+        const dx = cx - targetX;
+        const dy = cy - targetY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        const fb = document.getElementById('triGridFeedback');
+        if (dist < 20) {
+          g.solved++;
+          sys._score += Math.max(10, 50 - Math.round(dist));
+          fb.textContent = `Perfect! +${Math.max(10, 50 - Math.round(dist))} pts`;
+          fb.className = 'tri-grid-feedback tri-grid-correct';
+        } else {
+          fb.textContent = `Miss (${Math.round(dist)}px off). Target was at ${Math.round(targetX)},${Math.round(targetY)}`;
+          fb.className = 'tri-grid-feedback tri-grid-wrong';
+        }
+        drawGrid(targetX, targetY);
+        document.getElementById('minigameScore').textContent = `Score: ${sys._score}`;
+        setTimeout(() => this._nextRound(), 1200);
+      });
+
+      // Touch support
+      canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (clicked) return;
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = gridW / rect.width;
+        const scaleY = gridH / rect.height;
+        const cx = (touch.clientX - rect.left) * scaleX;
+        const cy = (touch.clientY - rect.top) * scaleY;
+        clicked = true;
+        const dx = cx - targetX;
+        const dy = cy - targetY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const fb = document.getElementById('triGridFeedback');
+        if (dist < 20) {
+          g.solved++;
+          sys._score += Math.max(10, 50 - Math.round(dist));
+          fb.textContent = `Perfect! +${Math.max(10, 50 - Math.round(dist))} pts`;
+          fb.className = 'tri-grid-feedback tri-grid-correct';
+        } else {
+          fb.textContent = `Miss (${Math.round(dist)}px off)`;
+          fb.className = 'tri-grid-feedback tri-grid-wrong';
+        }
+        drawGrid(targetX, targetY);
+        document.getElementById('minigameScore').textContent = `Score: ${sys._score}`;
+        setTimeout(() => this._nextRound(), 1200);
+      }, { passive: false });
+    }
+  },
+
+  /* ====== Relay Sequence (Phase 13) ====== */
+  relaySequence: {
+    start() {
+      const sys = MinigameSystem;
+      const g = sys._games.relaySequence;
+      g.round = 0;
+      g.solved = 0;
+      g.score = 0;
+      this._nextRound();
+    },
+
+    _nextRound() {
+      const sys = MinigameSystem;
+      const g = sys._games.relaySequence;
+      g.round++;
+      if (g.round > g.rounds) {
+        sys._showResult('Relay Complete!', `Sequences matched: ${g.solved}/${g.rounds} | Score: ${sys._score}`);
+        return;
+      }
+
+      // Increasing difficulty: more nodes, faster sequence
+      const nodeCount = Math.min(3 + g.round, 7);
+      const seqLength = Math.min(2 + g.round, 5);
+      const displayTime = Math.max(400, 1200 - g.round * 150);
+      const nodes = [];
+      for (let i = 0; i < nodeCount; i++) {
+        const angle = (i / nodeCount) * Math.PI * 2 - Math.PI / 2;
+        const radius = 80;
+        nodes.push({
+          x: 150 + Math.cos(angle) * radius,
+          y: 110 + Math.sin(angle) * radius,
+          id: i
+        });
+      }
+      // Generate sequence
+      const sequence = [];
+      for (let i = 0; i < seqLength; i++) {
+        sequence.push(Math.floor(Math.random() * nodeCount));
+      }
+
+      document.getElementById('minigameTitle').textContent = `Relay Sequence — Round ${g.round}/${g.rounds}`;
+      document.getElementById('minigameTimer').textContent = '';
+
+      const content = $('#minigameContent');
+      content.innerHTML = `
+        <div class="relay-puzzle">
+          <p class="relay-prompt">Watch the sequence, then repeat it!</p>
+          <div class="relay-grid">
+            <canvas id="relayCanvas" width="300" height="220"></canvas>
+          </div>
+          <p id="relayStatus" class="relay-status">Watching...</p>
+        </div>
+      `;
+
+      const canvas = document.getElementById('relayCanvas');
+      const ctx = canvas.getContext('2d');
+      const statusEl = document.getElementById('relayStatus');
+      let sequenceStep = 0;
+      let playerStep = 0;
+      let showingSequence = true;
+      let playerClickEnabled = false;
+      let currentStepNode = -1;
+      let playing = false;
+
+      const drawRelay = (highlightId, highlightColor) => {
+        ctx.clearRect(0, 0, 300, 220);
+        // Background
+        ctx.fillStyle = '#0d1520';
+        ctx.fillRect(0, 0, 300, 220);
+        // Connection lines
+        ctx.strokeStyle = 'rgba(30,42,56,0.3)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            ctx.beginPath();
+            ctx.moveTo(nodes[i].x, nodes[i].y);
+            ctx.lineTo(nodes[j].x, nodes[j].y);
+            ctx.stroke();
+          }
+        }
+        // Draw nodes
+        nodes.forEach((n, idx) => {
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, 14, 0, Math.PI * 2);
+          if (idx === highlightId && highlightColor) {
+            ctx.fillStyle = highlightColor;
+          } else if (playerClickEnabled && playerStep < seqLength && sequence[playerStep] === idx && !showingSequence) {
+            // Highlight expected next node fainter
+            ctx.fillStyle = 'rgba(76,175,80,0.2)';
+          } else {
+            ctx.fillStyle = '#1a2a3a';
+          }
+          ctx.fill();
+          ctx.strokeStyle = idx === highlightId ? (highlightColor || '#00e5ff') : '#2a3a4a';
+          ctx.lineWidth = idx === highlightId ? 3 : 1;
+          ctx.stroke();
+          // Node number
+          ctx.fillStyle = idx === highlightId ? '#fff' : '#5a7a9a';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(idx + 1, n.x, n.y);
+        });
+        ctx.textBaseline = 'alphabetic';
+      };
+
+      drawRelay(-1, null);
+
+      // Play the sequence with delays
+      const playSequence = () => {
+        playing = true;
+        showingSequence = true;
+        statusEl.textContent = 'Watching...';
+        playerClickEnabled = false;
+        sequenceStep = 0;
+
+        const showStep = () => {
+          if (sequenceStep >= sequence.length) {
+            // Sequence done, enable player input
+            showingSequence = false;
+            playerClickEnabled = true;
+            playerStep = 0;
+            statusEl.textContent = 'Your turn! Click the nodes in order.';
+            drawRelay(-1, null);
+            canvas.style.cursor = 'pointer';
+            return;
+          }
+          const nodeIdx = sequence[sequenceStep];
+          const colors = ['#ff6b35', '#00e5ff', '#ffeb3b', '#4caf50', '#e040fb', '#ff4081', '#7c4dff'];
+          drawRelay(nodeIdx, colors[nodeIdx]);
+          sequenceStep++;
+          setTimeout(() => {
+            drawRelay(-1, null);
+            setTimeout(showStep, displayTime * 0.3);
+          }, displayTime);
+        };
+        setTimeout(showStep, 500);
+      };
+
+      setTimeout(playSequence, 500);
+
+      // Click handler
+      const handleClick = (e) => {
+        if (!playerClickEnabled || playing) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = 300 / rect.width;
+        const scaleY = 220 / rect.height;
+        const cx = ('touches' in e ? e.touches[0].clientX : e.clientX - rect.left) * scaleX;
+        const cy = ('touches' in e ? e.touches[0].clientY : e.clientY - rect.top) * scaleY;
+
+        // Find which node was clicked
+        let hitIdx = -1;
+        for (let i = 0; i < nodes.length; i++) {
+          const dx = cx - nodes[i].x;
+          const dy = cy - nodes[i].y;
+          if (dx*dx + dy*dy < 18*18) {
+            hitIdx = i;
+            break;
+          }
+        }
+        if (hitIdx < 0) return;
+
+        if (hitIdx === sequence[playerStep]) {
+          // Correct
+          drawRelay(hitIdx, '#4caf50');
+          playerStep++;
+          statusEl.textContent = `Correct! (${playerStep}/${sequence.length})`;
+          if (playerStep >= sequence.length) {
+            playerClickEnabled = false;
+            g.solved++;
+            sys._score += 20 + (5 - g.round) * 2;
+            statusEl.textContent = 'Sequence complete!';
+            document.getElementById('minigameScore').textContent = `Score: ${sys._score}`;
+            setTimeout(() => this._nextRound(), 800);
+          }
+        } else {
+          // Wrong
+          drawRelay(hitIdx, '#ff1744');
+          statusEl.textContent = `Wrong! Expected node ${sequence[playerStep] + 1}`;
+          playerClickEnabled = false;
+          setTimeout(() => this._nextRound(), 1200);
+        }
+        document.getElementById('minigameScore').textContent = `Score: ${sys._score}`;
+      };
+
+      canvas.addEventListener('click', handleClick);
+      canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleClick(e);
+      }, { passive: false });
+    }
+  }
+};
+
+window.MinigameSystem = MinigameSystem;
 
 function init() {
   loadProfile();
@@ -4416,11 +19864,46 @@ function init() {
   initMission();
   initResults();
   LobbyChat.init();
+  FriendSystem.init();
   ServiceWorkerModule.init();
   PWAInstall.init();
   BatteryAwareGPS.init();
+  PerfMonitor.init();
+  PerformanceProfile.init();
+  MemoryPool.prewarm({ div: 50, span: 30, particle: 100 });
+  CommandWheel.init('commandWheel');
+  DroneSystem.init();
+  RoleProgression.init();
+  ReviveSystem.init();
+  SettingsModule.init();
+  SettingsMenu.init();
+  MusicSystem.init();
+  TutorialSystem.init();
+  StatsTracker.init();
+  TournamentSystem.init();
+  MapEditor.init();
+  BattlePass.init();
+  VoiceChatSystem.init();
+  CurrencySystem.init();
+  LeaderboardSystem.init();
+  ClanSystem.init();
+  MenuSystem.init();
+  // AssetLoader & MemoryPool lifecycle events (Phase 8 Task 9)
+  window.addEventListener('pagehide', () => { MemoryPool.clear(); AssetLoader.onMemoryPressure(); });
+  if ('onfreeze' in document) {
+    document.addEventListener('freeze', () => { MemoryPool.clear(); AssetLoader.onMemoryPressure(); });
+  }
   setTheme(state.themePalette);
   document.body.dataset.panels = state.panelsOpen ? 'open' : 'hidden';
+
+  // Performance Profile visibility handling (Phase 8 Task 10)
+  document.addEventListener('visibilitychange', () => PerformanceProfile.onVisibilityChange());
+
+  // Reconnection & Recovery: check for previous session (Phase 5 Task 10)
+  const lastSocketId = (() => {
+    try { return localStorage.getItem('slv2_lastSocketId'); } catch { return null; }
+  })();
+  const hasReconnect = !!lastSocketId && lastSocketId.length > 5;
 
   // Start with splash screen on fresh load; skip if restoring into a game
   const shouldSkipSplash = state.screen && state.screen !== 'splash' && state.screen !== 'lobby';
@@ -4430,8 +19913,804 @@ function init() {
   } else {
     SplashScreen._startTime = Date.now();
     SplashScreen.start();
+    // If we have a previous socket ID, show reconnect banner on splash
+    if (hasReconnect) {
+      setTimeout(() => ReconnectBanner.show(lastSocketId), 400);
+    }
   }
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
 else init();
+/* ========================== MAP EDITOR MODULE (Phase 7 Task 10) ========================== */
+
+const MapEditor = {
+  STORAGE_KEY: 'slv2_custom_maps',
+  editorMap: null,
+  editorMarkers: [],
+  editorZones: [],
+  editorLayers: { terrain: true, labels: true, radii: true },
+
+  // Tool state
+  tool: 'objective', // objective | threat | extraction | supply | terrain
+  terrainBrush: 'urban', // urban | forest | industrial | open | high_ground | water
+  weatherPreset: 'clear',
+  selectedItem: null,
+
+  // Map data being edited
+  draft: null,
+
+  init() {
+    this._loadCustomMaps();
+    this._wireUI();
+  },
+
+  /* ---- Storage ---- */
+
+  _loadCustomMaps() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        state.customMaps = Array.isArray(data) ? data : [];
+      } else {
+        state.customMaps = [];
+      }
+    } catch {
+      state.customMaps = [];
+    }
+  },
+
+  _saveCustomMaps() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state.customMaps));
+    } catch { /* ignore quota errors */ }
+  },
+
+  /* ---- Draft Management ---- */
+
+  newDraft() {
+    const center = getMissionCenter();
+    this.draft = {
+      id: 'map-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      name: 'Untitled Map',
+      author: state.localProfile.name || 'Anonymous',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      center: { lat: center[0], lng: center[1] },
+      weather: 'clear',
+      objectives: [],
+      threats: [],
+      supplyCaches: [],
+      extraction: null,
+      terrainZones: [],
+      ratings: { up: 0, down: 0 },
+      version: 1
+    };
+    this.selectedItem = null;
+    this._renderProperties();
+    this._renderItemList();
+    this._renderValidation();
+  },
+
+  loadDraft(mapId) {
+    const map = state.customMaps.find(m => m.id === mapId);
+    if (!map) return false;
+    this.draft = JSON.parse(JSON.stringify(map));
+    this.selectedItem = null;
+    this._renderProperties();
+    this._renderItemList();
+    this._renderValidation();
+    this._renderEditorMap();
+    return true;
+  },
+
+  /* ---- Editor Map ---- */
+
+  ensureEditorMap() {
+    if (!this.editorMap && window.L) {
+      const el = document.getElementById('editorMap');
+      if (!el) return null;
+      const center = this.draft ? [this.draft.center.lat, this.draft.center.lng] : getMissionCenter();
+      this.editorMap = L.map(el, { zoomControl: false, attributionControl: false }).setView(center, 14);
+      const tileUrl = (typeof DayNightCycle !== 'undefined') ? DayNightCycle.getCurrentTileUrl() : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+      L.tileLayer(tileUrl, { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OSM &copy; CARTO' }).addTo(this.editorMap);
+      L.control.zoom({ position: 'bottomright' }).addTo(this.editorMap);
+
+      this.editorMap.on('click', (e) => {
+        this._onMapClick(e.latlng.lat, e.latlng.lng);
+      });
+
+      setTimeout(() => this.editorMap?.invalidateSize(), 80);
+    }
+    return this.editorMap;
+  },
+
+  destroyEditorMap() {
+    if (this.editorMap) {
+      this.editorMap.remove();
+      this.editorMap = null;
+    }
+    this.editorMarkers = [];
+    this.editorZones = [];
+  },
+
+  _onMapClick(lat, lng) {
+    if (!this.draft) return;
+    switch (this.tool) {
+      case 'objective':
+        this._addObjective(lat, lng);
+        break;
+      case 'threat':
+        this._addThreat(lat, lng);
+        break;
+      case 'extraction':
+        this._setExtraction(lat, lng);
+        break;
+      case 'supply':
+        this._addSupply(lat, lng);
+        break;
+      case 'terrain':
+        this._paintTerrain(lat, lng);
+        break;
+    }
+    this._renderEditorMap();
+    this._renderItemList();
+    this._renderValidation();
+  },
+
+  /* ---- Item Creation ---- */
+
+  _addObjective(lat, lng) {
+    const idx = this.draft.objectives.length + 1;
+    this.draft.objectives.push({
+      id: 'obj-' + Date.now(),
+      lat, lng,
+      title: `Objective ${idx}`,
+      type: 'Waypoint',
+      radius: 50,
+      decoded: true,
+      found: false,
+      progress: 0
+    });
+    this.draft.updatedAt = Date.now();
+  },
+
+  _addThreat(lat, lng) {
+    const idx = this.draft.threats.length + 1;
+    this.draft.threats.push({
+      id: 'threat-' + Date.now(),
+      name: `Threat ${idx}`,
+      lat, lng,
+      radius: 100,
+      speed: 0.0003,
+      mode: 'patrol',
+      alert: false,
+      hits: 0
+    });
+    this.draft.updatedAt = Date.now();
+  },
+
+  _setExtraction(lat, lng) {
+    this.draft.extraction = {
+      id: 'extract-' + Date.now(),
+      lat, lng,
+      title: 'Extraction',
+      type: 'Extraction',
+      radius: 50,
+      decoded: true,
+      found: false,
+      progress: 0
+    };
+    this.draft.updatedAt = Date.now();
+  },
+
+  _addSupply(lat, lng) {
+    this.draft.supplyCaches.push({
+      id: 'supply-' + Date.now(),
+      lat, lng,
+      type: { id: 'signal', name: 'Signal Cache', effect: 'signal', icon: '📶', weight: 0.25, desc: '+25% signal boost 60s', duration: 60000, value: 25 }
+    });
+    this.draft.updatedAt = Date.now();
+  },
+
+  _paintTerrain(lat, lng) {
+    // Remove existing zone at this approximate location
+    this.draft.terrainZones = this.draft.terrainZones.filter(z => {
+      return haversine({ lat, lng }, z) > 80;
+    });
+    if (this.terrainBrush !== 'open') {
+      this.draft.terrainZones.push({
+        lat, lng,
+        type: this.terrainBrush,
+        radius: 0.0018 * 0.55 // ~100m
+      });
+    }
+    this.draft.updatedAt = Date.now();
+  },
+
+  /* ---- Item Editing ---- */
+
+  deleteItem(id) {
+    if (!this.draft) return;
+    this.draft.objectives = this.draft.objectives.filter(o => o.id !== id);
+    this.draft.threats = this.draft.threats.filter(t => t.id !== id);
+    this.draft.supplyCaches = this.draft.supplyCaches.filter(s => s.id !== id);
+    if (this.draft.extraction && this.draft.extraction.id === id) {
+      this.draft.extraction = null;
+    }
+    this.draft.terrainZones = this.draft.terrainZones.filter(z => z.lat + '-' + z.lng !== id);
+    if (this.selectedItem && this.selectedItem.id === id) {
+      this.selectedItem = null;
+    }
+    this._renderEditorMap();
+    this._renderItemList();
+    this._renderProperties();
+    this._renderValidation();
+  },
+
+  updateSelected(updates) {
+    if (!this.selectedItem || !this.draft) return;
+    const id = this.selectedItem.id;
+    const obj = this.draft.objectives.find(o => o.id === id);
+    if (obj) Object.assign(obj, updates);
+    const threat = this.draft.threats.find(t => t.id === id);
+    if (threat) Object.assign(threat, updates);
+    if (this.draft.extraction && this.draft.extraction.id === id) {
+      Object.assign(this.draft.extraction, updates);
+    }
+    this._renderEditorMap();
+    this._renderItemList();
+    this._renderValidation();
+  },
+
+  /* ---- Rendering ---- */
+
+  _renderEditorMap() {
+    if (!this.editorMap || !this.draft) return;
+    // Clear non-tile layers
+    this.editorMap.eachLayer(layer => {
+      if (layer instanceof L.TileLayer) return;
+      this.editorMap.removeLayer(layer);
+    });
+
+    const center = [this.draft.center.lat, this.draft.center.lng];
+
+    // Draw mission zone
+    L.circle(center, { color: '#ff5722', fillColor: '#ff5722', fillOpacity: 0.03, weight: 2, dashArray: '8,8', radius: 1000 }).addTo(this.editorMap);
+
+    // Draw terrain zones
+    if (this.editorLayers.terrain) {
+      this.draft.terrainZones.forEach(z => {
+        const color = {
+          urban: 'rgba(100,120,140,0.15)',
+          forest: 'rgba(80,140,80,0.12)',
+          industrial: 'rgba(180,140,60,0.12)',
+          high_ground: 'rgba(255,255,200,0.10)',
+          water: 'rgba(80,140,200,0.15)'
+        }[z.type] || 'rgba(100,100,100,0.1)';
+        L.circle([z.lat, z.lng], { color: 'transparent', fillColor: color, fillOpacity: 0.6, weight: 0, radius: z.radius * 5550 }).addTo(this.editorMap);
+      });
+    }
+
+    // Draw objectives
+    this.draft.objectives.forEach((o, i) => {
+      const colors = ['#ff5722','#ff9800','#ffc107','#e91e63','#9c27b0'];
+      const c = colors[i % colors.length];
+      const icon = L.divIcon({ className: 'sl-map-icon', html: `<div style="width:24px;height:24px;background:${c};border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700;box-shadow:0 0 16px ${c}99;">${i+1}</div>`, iconSize: [24,24], iconAnchor: [12,12] });
+      const mk = L.marker([o.lat, o.lng], { icon }).addTo(this.editorMap);
+      if (this.editorLayers.labels) {
+        mk.bindTooltip(o.title, { permanent: true, direction: 'top', offset: [0, -14], className: 'editor-label-tooltip' });
+      }
+      mk.on('click', (e) => { L.DomEvent.stopPropagation(e); this.selectedItem = o; this._renderProperties(); this._renderItemList(); });
+      L.circle([o.lat, o.lng], { color: c, fillColor: c, fillOpacity: 0.05, weight: 1, radius: o.radius || 50 }).addTo(this.editorMap);
+    });
+
+    // Draw threats
+    this.draft.threats.forEach((t, i) => {
+      const icon = L.divIcon({ className: 'sl-map-icon', html: `<div style="width:20px;height:20px;background:#ef4444;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700;">⚠</div>`, iconSize: [20,20], iconAnchor: [10,10] });
+      const mk = L.marker([t.lat, t.lng], { icon }).addTo(this.editorMap);
+      if (this.editorLayers.labels) {
+        mk.bindTooltip(t.name, { permanent: true, direction: 'top', offset: [0, -12], className: 'editor-label-tooltip' });
+      }
+      mk.on('click', (e) => { L.DomEvent.stopPropagation(e); this.selectedItem = t; this._renderProperties(); this._renderItemList(); });
+      if (this.editorLayers.radii) {
+        L.circle([t.lat, t.lng], { color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.03, weight: 1, dashArray: '4,4', radius: t.radius || 100 }).addTo(this.editorMap);
+      }
+    });
+
+    // Draw extraction
+    if (this.draft.extraction) {
+      const ex = this.draft.extraction;
+      const icon = L.divIcon({ className: 'sl-map-icon', html: `<div style="width:32px;height:32px;background:linear-gradient(135deg,#00e676,#00c853);border:3px solid #fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;transform:rotate(45deg);">✈</div>`, iconSize: [32,32], iconAnchor: [16,16] });
+      const mk = L.marker([ex.lat, ex.lng], { icon }).addTo(this.editorMap);
+      if (this.editorLayers.labels) {
+        mk.bindTooltip('Extraction', { permanent: true, direction: 'top', offset: [0, -18], className: 'editor-label-tooltip' });
+      }
+      mk.on('click', (e) => { L.DomEvent.stopPropagation(e); this.selectedItem = ex; this._renderProperties(); this._renderItemList(); });
+    }
+
+    // Draw supply caches
+    this.draft.supplyCaches.forEach(s => {
+      const icon = L.divIcon({ className: 'sl-map-icon', html: `<div style="width:18px;height:18px;background:#ffd700;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;">📦</div>`, iconSize: [18,18], iconAnchor: [9,9] });
+      const mk = L.marker([s.lat, s.lng], { icon }).addTo(this.editorMap);
+      mk.on('click', (e) => { L.DomEvent.stopPropagation(e); this.selectedItem = s; this._renderProperties(); this._renderItemList(); });
+    });
+  },
+
+  _renderItemList() {
+    const el = document.getElementById('editorItemList');
+    if (!el || !this.draft) return;
+    let html = '';
+
+    if (this.draft.objectives.length) {
+      html += `<div class="editor-list-section"><strong>Objectives</strong>`;
+      this.draft.objectives.forEach((o, i) => {
+        const sel = this.selectedItem && this.selectedItem.id === o.id ? 'selected' : '';
+        html += `<div class="editor-list-item ${sel}" data-id="${o.id}"><span>${i+1}. ${escapeHtml(o.title)}</span><button class="editor-del-btn" data-id="${o.id}">✕</button></div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (this.draft.threats.length) {
+      html += `<div class="editor-list-section"><strong>Threats</strong>`;
+      this.draft.threats.forEach(t => {
+        const sel = this.selectedItem && this.selectedItem.id === t.id ? 'selected' : '';
+        html += `<div class="editor-list-item ${sel}" data-id="${t.id}"><span>${escapeHtml(t.name)}</span><button class="editor-del-btn" data-id="${t.id}">✕</button></div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (this.draft.extraction) {
+      const ex = this.draft.extraction;
+      const sel = this.selectedItem && this.selectedItem.id === ex.id ? 'selected' : '';
+      html += `<div class="editor-list-section"><strong>Extraction</strong><div class="editor-list-item ${sel}" data-id="${ex.id}"><span>✈ Extraction</span><button class="editor-del-btn" data-id="${ex.id}">✕</button></div></div>`;
+    }
+
+    if (this.draft.supplyCaches.length) {
+      html += `<div class="editor-list-section"><strong>Supply Caches</strong>`;
+      this.draft.supplyCaches.forEach(s => {
+        const sel = this.selectedItem && this.selectedItem.id === s.id ? 'selected' : '';
+        html += `<div class="editor-list-item ${sel}" data-id="${s.id}"><span>📦 ${escapeHtml(s.type.name)}</span><button class="editor-del-btn" data-id="${s.id}">✕</button></div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (this.draft.terrainZones.length) {
+      html += `<div class="editor-list-section"><strong>Terrain Zones</strong>`;
+      this.draft.terrainZones.forEach(z => {
+        const icon = TerrainSystem.icon(z.type);
+        html += `<div class="editor-list-item"><span>${icon} ${TerrainSystem.label(z.type)}</span></div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (!html) html = '<div class="editor-empty">Click on the map to place items.</div>';
+    el.innerHTML = html;
+
+    // Wire item selection
+    el.querySelectorAll('.editor-list-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        if (e.target.classList.contains('editor-del-btn')) return;
+        const id = item.dataset.id;
+        const obj = this.draft.objectives.find(o => o.id === id)
+          || this.draft.threats.find(t => t.id === id)
+          || this.draft.supplyCaches.find(s => s.id === id)
+          || (this.draft.extraction && this.draft.extraction.id === id ? this.draft.extraction : null);
+        if (obj) { this.selectedItem = obj; this._renderProperties(); this._renderItemList(); }
+      });
+    });
+
+    // Wire delete buttons
+    el.querySelectorAll('.editor-del-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.deleteItem(btn.dataset.id);
+      });
+    });
+  },
+
+  _renderProperties() {
+    const el = document.getElementById('editorProperties');
+    if (!el) return;
+    if (!this.selectedItem) {
+      el.innerHTML = `<div class="editor-empty">Select an item to edit its properties.</div>`;
+      return;
+    }
+
+    const item = this.selectedItem;
+    let html = `<div class="editor-prop-header">${escapeHtml(item.title || item.name || 'Item')}</div>`;
+
+    if (item.type === 'Waypoint' || item.type === 'Extraction') {
+      html += `
+        <div class="editor-prop-row"><label>Title</label><input type="text" id="propTitle" value="${escapeHtml(item.title || '')}" maxlength="32"></div>
+        <div class="editor-prop-row"><label>Radius (m)</label><input type="number" id="propRadius" value="${item.radius || 50}" min="10" max="500"></div>
+      `;
+    } else if (item.radius && item.mode !== undefined) {
+      // Threat
+      html += `
+        <div class="editor-prop-row"><label>Name</label><input type="text" id="propName" value="${escapeHtml(item.name || '')}" maxlength="32"></div>
+        <div class="editor-prop-row"><label>Radius (m)</label><input type="number" id="propRadius" value="${item.radius || 100}" min="10" max="500"></div>
+        <div class="editor-prop-row"><label>Mode</label><select id="propMode"><option value="patrol" ${item.mode==='patrol'?'selected':''}>Patrol</option><option value="hunt" ${item.mode==='hunt'?'selected':''}>Hunt</option></select></div>
+      `;
+    }
+
+    html += `<button id="propApply" class="compact-button primary">Apply</button>`;
+    el.innerHTML = html;
+
+    const applyBtn = document.getElementById('propApply');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', () => {
+        const updates = {};
+        const titleIn = document.getElementById('propTitle');
+        const nameIn = document.getElementById('propName');
+        const radiusIn = document.getElementById('propRadius');
+        const modeIn = document.getElementById('propMode');
+        if (titleIn) updates.title = titleIn.value.trim();
+        if (nameIn) updates.name = nameIn.value.trim();
+        if (radiusIn) updates.radius = parseInt(radiusIn.value, 10) || 50;
+        if (modeIn) updates.mode = modeIn.value;
+        this.updateSelected(updates);
+      });
+    }
+  },
+
+  _renderValidation() {
+    const el = document.getElementById('editorValidation');
+    if (!el || !this.draft) return;
+    const v = this.validate(this.draft);
+    const statusClass = v.valid ? 'valid' : v.warnings.length ? 'warning' : 'invalid';
+    const statusIcon = v.valid ? '✅' : v.warnings.length ? '⚠️' : '❌';
+    el.innerHTML = `
+      <div class="editor-validation ${statusClass}">
+        <strong>${statusIcon} ${v.valid ? 'Map Valid' : v.warnings.length ? 'Warnings' : 'Invalid'}</strong>
+        ${v.errors.length ? `<ul class="editor-val-list">${v.errors.map(e => `<li>❌ ${escapeHtml(e)}</li>`).join('')}</ul>` : ''}
+        ${v.warnings.length ? `<ul class="editor-val-list">${v.warnings.map(w => `<li>⚠️ ${escapeHtml(w)}</li>`).join('')}</ul>` : ''}
+      </div>
+    `;
+  },
+
+  _renderBrowser() {
+    const el = document.getElementById('editorBrowser');
+    if (!el) return;
+    const maps = state.customMaps || [];
+    if (!maps.length) {
+      el.innerHTML = `<div class="editor-empty">No custom maps yet. Create one to get started.</div>`;
+      return;
+    }
+    el.innerHTML = maps.map(m => {
+      const objCount = (m.objectives || []).length;
+      const threatCount = (m.threats || []).length;
+      const rating = (m.ratings?.up || 0) - (m.ratings?.down || 0);
+      return `
+        <div class="editor-browser-card" data-id="${m.id}">
+          <div class="eb-name">${escapeHtml(m.name)}</div>
+          <div class="eb-meta">by ${escapeHtml(m.author)} · ${objCount} obj · ${threatCount} threats</div>
+          <div class="eb-actions">
+            <button class="eb-btn edit" data-id="${m.id}">Edit</button>
+            <button class="eb-btn test" data-id="${m.id}">Test</button>
+            <button class="eb-btn export" data-id="${m.id}">Export</button>
+            <button class="eb-btn delete" data-id="${m.id}">Delete</button>
+            <span class="eb-rating">
+              <button class="eb-rate-btn up" data-id="${m.id}">👍 ${m.ratings?.up || 0}</button>
+              <button class="eb-rate-btn down" data-id="${m.id}">👎 ${m.ratings?.down || 0}</button>
+            </span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Wire buttons
+    el.querySelectorAll('.eb-btn.edit').forEach(btn => {
+      btn.addEventListener('click', () => { this.loadDraft(btn.dataset.id); this._showTab('editor'); });
+    });
+    el.querySelectorAll('.eb-btn.test').forEach(btn => {
+      btn.addEventListener('click', () => this.testRun(btn.dataset.id));
+    });
+    el.querySelectorAll('.eb-btn.export').forEach(btn => {
+      btn.addEventListener('click', () => this.exportMap(btn.dataset.id));
+    });
+    el.querySelectorAll('.eb-btn.delete').forEach(btn => {
+      btn.addEventListener('click', () => this.deleteMap(btn.dataset.id));
+    });
+    el.querySelectorAll('.eb-rate-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const map = state.customMaps.find(m => m.id === btn.dataset.id);
+        if (!map) return;
+        if (!map.ratings) map.ratings = { up: 0, down: 0 };
+        if (btn.classList.contains('up')) map.ratings.up++;
+        else map.ratings.down++;
+        this._saveCustomMaps();
+        this._renderBrowser();
+      });
+    });
+  },
+
+  /* ---- Tabs ---- */
+
+  _showTab(tab) {
+    document.querySelectorAll('[data-editor-tab]').forEach(t => t.classList.toggle('active', t.dataset.editorTab === tab));
+    document.querySelectorAll('[data-editor-view]').forEach(v => v.classList.toggle('active', v.dataset.editorView === tab));
+    if (tab === 'browser') this._renderBrowser();
+    if (tab === 'editor') {
+      setTimeout(() => { this.ensureEditorMap(); this._renderEditorMap(); }, 50);
+    }
+  },
+
+  /* ---- UI Wiring ---- */
+
+  _wireUI() {
+    // Tool palette
+    const palette = document.getElementById('editorToolPalette');
+    if (palette) {
+      palette.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-tool]');
+        if (!btn) return;
+        this.tool = btn.dataset.tool;
+        palette.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === this.tool));
+      });
+    }
+
+    // Terrain brush
+    const brushSel = document.getElementById('editorTerrainBrush');
+    if (brushSel) {
+      brushSel.addEventListener('change', () => { this.terrainBrush = brushSel.value; });
+    }
+
+    // Weather preset
+    const weatherSel = document.getElementById('editorWeatherPreset');
+    if (weatherSel) {
+      weatherSel.addEventListener('change', () => {
+        this.weatherPreset = weatherSel.value;
+        if (this.draft) this.draft.weather = this.weatherPreset;
+      });
+    }
+
+    // Layer toggles
+    document.querySelectorAll('[data-editor-layer]').forEach(chk => {
+      chk.addEventListener('change', () => {
+        this.editorLayers[chk.dataset.editorLayer] = chk.checked;
+        this._renderEditorMap();
+      });
+    });
+
+    // Tab switching
+    document.querySelectorAll('[data-editor-tab]').forEach(tab => {
+      tab.addEventListener('click', () => this._showTab(tab.dataset.editorTab));
+    });
+
+    // Action buttons
+    const newBtn = document.getElementById('editorNewMap');
+    if (newBtn) newBtn.addEventListener('click', () => { this.newDraft(); this._showTab('editor'); });
+
+    const saveBtn = document.getElementById('editorSaveMap');
+    if (saveBtn) saveBtn.addEventListener('click', () => this.saveDraft());
+
+    const testBtn = document.getElementById('editorTestRun');
+    if (testBtn) testBtn.addEventListener('click', () => this.testRun());
+
+    const importBtn = document.getElementById('editorImportMap');
+    if (importBtn) importBtn.addEventListener('click', () => this.importFromPrompt());
+
+    const backBtn = document.getElementById('backToLobbyFromEditor');
+    if (backBtn) backBtn.addEventListener('click', () => {
+      this.destroyEditorMap();
+      setScreen('lobby');
+    });
+
+    // Map name input
+    const nameInput = document.getElementById('editorMapName');
+    if (nameInput) {
+      nameInput.addEventListener('input', () => {
+        if (this.draft) this.draft.name = nameInput.value.trim() || 'Untitled Map';
+      });
+    }
+  },
+
+  /* ---- Save / Export / Import ---- */
+
+  saveDraft() {
+    if (!this.draft) return;
+    const v = this.validate(this.draft);
+    if (!v.valid) {
+      addChat('System', `Cannot save: ${v.errors[0]}`);
+      return;
+    }
+    this.draft.updatedAt = Date.now();
+    const idx = state.customMaps.findIndex(m => m.id === this.draft.id);
+    if (idx >= 0) state.customMaps[idx] = JSON.parse(JSON.stringify(this.draft));
+    else state.customMaps.push(JSON.parse(JSON.stringify(this.draft)));
+    this._saveCustomMaps();
+    addChat('System', `Map "${escapeHtml(this.draft.name)}" saved.`);
+    this._renderBrowser();
+  },
+
+  exportMap(mapId) {
+    const map = state.customMaps.find(m => m.id === mapId) || this.draft;
+    if (!map) return;
+    try {
+      const json = JSON.stringify(map);
+      const code = btoa(json);
+      navigator.clipboard?.writeText(code);
+      addChat('System', `Map code copied to clipboard (${code.length} chars).`);
+    } catch {
+      addChat('System', 'Failed to export map.');
+    }
+  },
+
+  importFromPrompt() {
+    const code = prompt('Paste map share code:');
+    if (!code || !code.trim()) return;
+    const result = this.importMap(code.trim());
+    if (result) {
+      addChat('System', `Imported map: "${escapeHtml(result.name)}"`);
+      this._renderBrowser();
+    } else {
+      addChat('System', 'Invalid map code. Import failed.');
+    }
+  },
+
+  importMap(code) {
+    try {
+      const json = atob(code);
+      const map = JSON.parse(json);
+      const v = this.validate(map);
+      if (!v.valid) return null;
+      // Assign new ID to avoid collisions
+      map.id = 'map-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+      map.importedAt = Date.now();
+      if (!state.customMaps) state.customMaps = [];
+      state.customMaps.push(map);
+      this._saveCustomMaps();
+      return map;
+    } catch {
+      return null;
+    }
+  },
+
+  deleteMap(mapId) {
+    if (!confirm('Delete this map?')) return;
+    state.customMaps = state.customMaps.filter(m => m.id !== mapId);
+    this._saveCustomMaps();
+    this._renderBrowser();
+  },
+
+  /* ---- Validation ---- */
+
+  validate(map) {
+    const errors = [];
+    const warnings = [];
+    const objectives = map.objectives || [];
+    const threats = map.threats || [];
+    const extraction = map.extraction;
+    const center = map.center;
+
+    if (objectives.length < 3) errors.push(`Need at least 3 objectives (have ${objectives.length})`);
+    if (!extraction) errors.push('Need 1 extraction point');
+    if (threats.length < 1) errors.push('Need at least 1 threat');
+    if (threats.length > 6) errors.push(`Too many threats: max 6 (have ${threats.length})`);
+
+    // Distance checks
+    if (center) {
+      objectives.forEach(o => {
+        const d = haversine({ lat: center.lat, lng: center.lng }, o);
+        if (d > 1500) warnings.push(`Objective "${o.title}" is ${Math.round(d)}m from center (>1500m)`);
+      });
+      if (extraction) {
+        const d = haversine({ lat: center.lat, lng: center.lng }, extraction);
+        if (d > 1500) warnings.push(`Extraction is ${Math.round(d)}m from center (>1500m)`);
+      }
+    }
+
+    // Objective proximity
+    for (let i = 0; i < objectives.length; i++) {
+      for (let j = i + 1; j < objectives.length; j++) {
+        const d = haversine(objectives[i], objectives[j]);
+        if (d < 50) warnings.push(`Objectives "${objectives[i].title}" and "${objectives[j].title}" are only ${Math.round(d)}m apart (<50m)`);
+      }
+    }
+
+    return { valid: errors.length === 0, errors, warnings };
+  },
+
+  /* ---- Test Run ---- */
+
+  testRun(mapId) {
+    let map;
+    if (mapId) {
+      map = state.customMaps.find(m => m.id === mapId);
+    } else {
+      map = this.draft;
+    }
+    if (!map) return;
+    const v = this.validate(map);
+    if (!v.valid) {
+      addChat('System', `Cannot test: ${v.errors[0]}`);
+      return;
+    }
+
+    // Populate mission state from custom map
+    state.isHost = true;
+    state.maxPlayers = 1;
+    state.duration = 60;
+    state.city = 'custom';
+    state.customLocation = { lat: map.center.lat, lng: map.center.lng, label: map.name };
+    state.status = 'Live';
+    state.remaining = state.duration * 60;
+
+    // Build objectives: include extraction as last objective
+    state.objectives = [];
+    map.objectives.forEach(o => {
+      state.objectives.push({ ...o, decoded: true, found: false, progress: 0 });
+    });
+    if (map.extraction) {
+      state.objectives.push({ ...map.extraction, decoded: true, found: false, progress: 0 });
+    }
+
+    // Build threats
+    state.threats = map.threats.map(t => ({ ...t, alert: false, hits: 0, _alertState: 'idle', _alertTimer: 0, retreatUntil: 0, evadedAt: 0, respawnAt: 0 }));
+
+    // Terrain zones
+    state.terrainZones = map.terrainZones ? map.terrainZones.map(z => ({ ...z })) : [];
+
+    // Weather
+    state.weather = {
+      type: map.weather || 'clear',
+      startedAt: Date.now(),
+      nextChangeAt: 0,
+      effects: WeatherSystem._buildEffects ? WeatherSystem._buildEffects(map.weather || 'clear') : { signalMult: 1.0, visionMult: 1.0, threatDetectMult: 1.0, threatSpeedMult: 1.0 }
+    };
+
+    // Single agent
+    const agentId = 'local-' + Date.now();
+    state.agents = [{
+      id: agentId,
+      name: state.localProfile.name || 'Agent',
+      callsign: state.localProfile.callsign || 'Solo',
+      role: 'Drone',
+      team: 'North',
+      lat: map.center.lat,
+      lng: map.center.lng,
+      signal: 100,
+      stamina: 100,
+      online: true
+    }];
+    state.localAgentId = agentId;
+    state.scores = { North: 0, South: 0 };
+    state.chat = [['Mission Control', 'Custom map test run started. Good luck.']];
+    state.cooldowns = {};
+    state.activeEffects = [];
+    state.extracting = false;
+    state.extractCountdown = 0;
+    state.playerPath = [];
+    state.downedAgents = {};
+    state.traps = [];
+    state.trapCharges = {};
+    state.supplyCaches = (map.supplyCaches || []).map(s => ({ ...s, collected: false, spawnedAt: Date.now(), despawnAt: Date.now() + 300000, dropProgress: 1 }));
+
+    TrapSystem.initMission();
+    MapModule.clearGameObjects();
+    setScreen('mission');
+    startMissionClock();
+    showCountdown();
+    DynamicEvents.start();
+    SupplyCacheSystem.start();
+    WeatherSystem._applyVisuals?.();
+    DayNightCycle.start();
+    FogOfWar.init();
+    RadarModule.init();
+    ParticleSystem.init();
+    ThreatProximity.start();
+    TimerWarnings.start();
+    ScreenJuice.start();
+    addChat('System', `Testing custom map: "${escapeHtml(map.name)}"`);
+  },
+
+  /* ---- Open Editor ---- */
+
+  open() {
+    this._loadCustomMaps();
+    this._showTab('browser');
+    setScreen('mapEditor');
+  }
+};

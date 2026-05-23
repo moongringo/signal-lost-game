@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Signal Lost v2 — Loading Screen Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+  }
+  #loading-screen {
+    position: absolute;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    background: rgba(10, 10, 15, 0.85);
+    backdrop-filter: blur(4px);
+  }
+  #three-container {
+    position: absolute;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+  }
+  .logo {
+    font-size: 28px;
+    font-weight: bold;
+    letter-spacing: 6px;
+    color: #00ff88;
+    text-shadow: 0 0 20px rgba(0,255,136,0.3);
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 10;
+    text-align: center;
+  }
+  .logo small {
+    display: block;
+    font-size: 11px;
+    color: #556655;
+    letter-spacing: 3px;
+    margin-top: 4px;
+  }
+  .progress-container {
+    width: 280px;
+    height: 4px;
+    background: #1a2a1a;
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+    z-index: 10;
+  }
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #00ff88, #00cc66);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(0,255,136,0.3);
+  }
+  .progress-text {
+    position: relative;
+    z-index: 10;
+    font-size: 11px;
+    color: #556655;
+    margin-top: 10px;
+  }
+  .status-text {
+    position: relative;
+    z-index: 10;
+    font-size: 10px;
+    color: #446644;
+    margin-top: 6px;
+    letter-spacing: 1px;
+  }
+  .tip-box {
+    position: absolute;
+    bottom: 60px;
+    z-index: 10;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid #1a2a1a;
+    padding: 10px 16px;
+    border-radius: 4px;
+    max-width: 300px;
+    text-align: center;
+  }
+  .tip-box .tip-label {
+    font-size: 9px;
+    color: #446644;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .tip-box .tip-text {
+    font-size: 11px;
+    color: #889988;
+    line-height: 1.4;
+  }
+  .skip-btn {
+    position: absolute;
+    bottom: 20px;
+    z-index: 10;
+    background: transparent;
+    border: 1px solid #334433;
+    color: #556655;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 6px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .skip-btn:active {
+    border-color: #00ff88;
+    color: #00ff88;
+  }
+</style>
+</head>
+<body>
+<div id="three-container"></div>
+<div id="loading-screen">
+  <div class="logo">
+    SIGNAL LOST
+    <small>TACTICAL SHADOW OPS</small>
+  </div>
+  <div class="progress-container">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+  <div class="progress-text" id="progress-text">0%</div>
+  <div class="status-text" id="status-text">INITIALIZING SYSTEMS...</div>
+</div>
+<div class="tip-box" id="tip-box">
+  <div class="tip-label">TACTICAL TIP</div>
+  <div class="tip-text" id="tip-text">Use cover to break line-of-sight from enemy scouts.</div>
+</div>
+<button class="skip-btn" id="skip-btn">SKIP &gt;</button>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// --- Loading tips ---
+const tips = [
+  "Use cover to break line-of-sight from enemy scouts.",
+  "The extraction point activates 90s after mission start.",
+  "Stick together — lone operatives are easy targets.",
+  "Radar pings reveal enemy positions for 3 seconds.",
+  "Save your smoke grenades for open field crossings.",
+  "Objectives are marked on your tactical map.",
+  "Communication is key — use the command wheel.",
+  "Ammo crates respawn at capture points every 60s.",
+  "Watch your six — enemies flank wide.",
+  "Elevation gives you a tactical advantage.",
+  "Suppressive fire keeps enemy heads down.",
+  "Medical kits restore 40% HP over 5 seconds.",
+  "Night vision mode helps in dark zones.",
+  "Enemy AI adapts to your tactics over time.",
+  "The best ambushes use natural terrain features."
+];
+
+let tipIndex = Math.floor(Math.random() * tips.length);
+document.getElementById('tip-text').textContent = tips[tipIndex];
+
+// --- Three.js Background ---
+const container = document.getElementById('three-container');
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0);
+container.appendChild(renderer.domElement);
+
+// --- Particle System (Signal Lost themed — floating signal waves) ---
+const particleCount = 800;
+const geometry = new THREE.BufferGeometry();
+const positions = new Float32Array(particleCount * 3);
+const sizes = new Float32Array(particleCount);
+const speeds = new Float32Array(particleCount);
+
+for (let i = 0; i < particleCount; i++) {
+  positions[i * 3] = (Math.random() - 0.5) * 80;
+  positions[i * 3 + 1] = (Math.random() - 0.5) * 40;
+  positions[i * 3 + 2] = (Math.random() - 0.5) * 80 - 20;
+  sizes[i] = 0.5 + Math.random() * 2;
+  speeds[i] = 0.2 + Math.random() * 0.8;
+}
+
+geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+geometry.setAttribute('speed', new THREE.BufferAttribute(speeds, 1));
+
+// Create custom texture for particles
+const canvas = document.createElement('canvas');
+canvas.width = 32;
+canvas.height = 32;
+const ctx = canvas.getContext('2d');
+const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+gradient.addColorStop(0, 'rgba(0, 255, 136, 1)');
+gradient.addColorStop(0.3, 'rgba(0, 200, 100, 0.8)');
+gradient.addColorStop(1, 'rgba(0, 100, 50, 0)');
+ctx.fillStyle = gradient;
+ctx.fillRect(0, 0, 32, 32);
+
+const particleTexture = new THREE.CanvasTexture(canvas);
+
+const material = new THREE.PointsMaterial({
+  color: 0x00ff88,
+  size: 1.2,
+  map: particleTexture,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  opacity: 0.6
+});
+
+const particles = new THREE.Points(geometry, material);
+scene.add(particles);
+
+// --- Signal wave rings ---
+const ringGroup = new THREE.Group();
+scene.add(ringGroup);
+
+function createSignalRing(yPos, delay) {
+  const ringGeo = new THREE.RingGeometry(0.2, 0.8, 32);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0x00ff88,
+    transparent: true,
+    opacity: 0.3,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.position.set(0, yPos, -15);
+  ring.rotation.x = -Math.PI / 2;
+  ring.userData = { delay: delay, time: 0 };
+  ringGroup.add(ring);
+}
+
+// Multiple signal rings at different heights and delays
+for (let i = 0; i < 5; i++) {
+  createSignalRing(-5 + i * 3, i * 0.8);
+}
+
+// --- Camera drift ---
+camera.position.set(0, 0, 30);
+let cameraAngle = 0;
+
+// --- Progress simulation ---
+let progress = 0;
+const progressBar = document.getElementById('progress-bar');
+const progressText = document.getElementById('progress-text');
+const statusText = document.getElementById('status-text');
+
+const statusMessages = [
+  { at: 0, msg: "INITIALIZING SYSTEMS..." },
+  { at: 10, msg: "CALIBRATING SENSORS..." },
+  { at: 20, msg: "LOADING TACTICAL MAP..." },
+  { at: 30, msg: "SYNCING GPS NETWORK..." },
+  { at: 40, msg: "ESTABLISHING COMMS..." },
+  { at: 50, msg: "DEPLOYING ASSETS..." },
+  { at: 60, msg: "ANALYZING TERRAIN..." },
+  { at: 70, msg: "LOADING WEAPON PROFILES..." },
+  { at: 80, msg: "FINALIZING OPERATION..." },
+  { at: 90, msg: "STANDBY..." }
+];
+
+function updateProgress() {
+  if (progress < 100) {
+    progress += 0.3 + Math.random() * 0.5;
+    if (progress > 100) progress = 100;
+    progressBar.style.width = progress + '%';
+    progressText.textContent = Math.floor(progress) + '%';
+
+    // Update status message
+    for (let i = statusMessages.length - 1; i >= 0; i--) {
+      if (progress >= statusMessages[i].at) {
+        statusText.textContent = statusMessages[i].msg;
+        break;
+      }
+    }
+
+    if (progress < 100) {
+      setTimeout(updateProgress, 80 + Math.random() * 120);
+    } else {
+      statusText.textContent = "MISSION READY";
+      document.getElementById('skip-btn').textContent = 'LAUNCH >>';
+    }
+  }
+}
+
+// --- Animation loop ---
+function animate() {
+  requestAnimationFrame(animate);
+
+  // Rotate particles slowly
+  particles.rotation.y += 0.0005;
+
+  // Drift particles vertically
+  const pos = particles.geometry.attributes.position.array;
+  for (let i = 0; i < particleCount; i++) {
+    pos[i * 3 + 1] += Math.sin(Date.now() * 0.0005 + i * 0.1) * 0.002;
+  }
+  particles.geometry.attributes.position.needsUpdate = true;
+
+  // Animate signal rings
+  ringGroup.children.forEach(ring => {
+    const t = (Date.now() * 0.001 - ring.userData.delay) % 3;
+    const scale = 0.5 + t * 3;
+    const opacity = Math.max(0, 1 - t / 3);
+    ring.scale.set(scale, scale, scale);
+    ring.material.opacity = opacity * 0.3;
+  });
+
+  // Camera subtle drift
+  cameraAngle += 0.002;
+  camera.position.x = Math.sin(cameraAngle) * 3;
+  camera.lookAt(0, 0, -5);
+
+  renderer.render(scene, camera);
+}
+
+// --- Start ---
+animate();
+updateProgress();
+
+// --- Skip button ---
+document.getElementById('skip-btn').addEventListener('click', () => {
+  progress = 100;
+  progressBar.style.width = '100%';
+  progressText.textContent = '100%';
+  statusText.textContent = 'MISSION READY';
+  document.getElementById('skip-btn').textContent = 'LAUNCH >>';
+});
+
+// --- Tip cycling ---
+setInterval(() => {
+  tipIndex = (tipIndex + 1) % tips.length;
+  document.getElementById('tip-text').style.opacity = 0;
+  setTimeout(() => {
+    document.getElementById('tip-text').textContent = tips[tipIndex];
+    document.getElementById('tip-text').style.opacity = 1;
+  }, 300);
+}, 5000);
+
+// --- Resize ---
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

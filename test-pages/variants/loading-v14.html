@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loading V14 — Heartbeat Monitor</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a1a0a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+  }
+  .monitor-case {
+    position: relative;
+    width: 900px;
+    height: 600px;
+    background: #1a2e1a;
+    border-radius: 30px;
+    padding: 25px;
+    box-shadow:
+      inset 0 0 40px rgba(0,0,0,0.6),
+      0 0 60px rgba(0,255,80,0.08),
+      0 20px 50px rgba(0,0,0,0.5);
+  }
+  .monitor-bezel {
+    width: 100%;
+    height: 100%;
+    background: #0d1f0d;
+    border-radius: 20px;
+    border: 3px solid #2a4a2a;
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.7);
+    position: relative;
+    overflow: hidden;
+  }
+  .screen-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: 17px;
+    box-shadow: inset 0 0 80px rgba(0,255,80,0.06);
+    pointer-events: none;
+    z-index: 10;
+  }
+  .scanline {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.15) 2px,
+      rgba(0,0,0,0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 9;
+    opacity: 0.4;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 17px;
+  }
+  .hud-overlay {
+    position: absolute;
+    top: 12px;
+    left: 18px;
+    color: #00ff55;
+    font-size: 11px;
+    letter-spacing: 2px;
+    opacity: 0.7;
+    z-index: 11;
+    text-shadow: 0 0 6px rgba(0,255,85,0.4);
+  }
+  .hud-overlay .title {
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 2px;
+  }
+  .corner-bracket {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: #00ff55;
+    border-style: solid;
+    opacity: 0.5;
+    z-index: 11;
+  }
+  .corner-tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+  .corner-tr { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
+  .corner-bl { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
+  .corner-br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+</style>
+</head>
+<body>
+
+<div class="monitor-case">
+  <div class="monitor-bezel">
+    <div class="screen-glow"></div>
+    <div class="scanline"></div>
+    <div class="corner-bracket corner-tl"></div>
+    <div class="corner-bracket corner-tr"></div>
+    <div class="corner-bracket corner-bl"></div>
+    <div class="corner-bracket corner-br"></div>
+    <canvas id="monitorCanvas" width="850" height="550"></canvas>
+  </div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('monitorCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Loading state
+  let progress = 0;
+  let loadingComplete = false;
+  const loadSpeedBase = 0.12;
+
+  // Heartbeat / ECG state
+  let heartRate = 0; // BPM
+  let targetHeartRate = 0;
+  let beatPhase = 0; // 0..1 within a beat
+  let timeSinceLastBeat = 0;
+  let beatInterval = Infinity; // ms between beats
+  let ecgPoints = [];
+  const maxEcgPoints = 700;
+  let ecgSpeed = 1.5;
+
+  // Beep
+  let audioCtx = null;
+  let lastBeepTime = -9999;
+
+  // Body organs lighting up
+  const organs = [
+    { name: 'brain', x: 0, y: -118, r: 22, label: 'CEREBRAL' },
+    { name: 'heart', x: 16, y: -22, r: 18, label: 'CARDIAC' },
+    { name: 'lungs', x: -22, y: -32, r: 20, label: 'PULMONARY' },
+    { name: 'liver', x: -14, y: 32, r: 17, label: 'HEPATIC' },
+    { name: 'stomach', x: 16, y: 42, r: 15, label: 'GASTRIC' },
+    { name: 'kidneys', x: 0, y: 62, r: 14, label: 'RENAL' },
+  ];
+  const organThresholds = [5, 25, 45, 65, 82, 95];
+
+  // Vitals
+  let bpSys = 0, bpDia = 0;
+  let o2sat = 0;
+  let coreTemp = 0;
+
+  function initAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  }
+
+  function beep() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(440, now + 0.08);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.12);
+  }
+
+  function update(dt) {
+    // Progress
+    if (!loadingComplete) {
+      const speed = loadSpeedBase * (1 + progress * 0.02);
+      progress += speed;
+      if (progress >= 100) {
+        progress = 100;
+        loadingComplete = true;
+      }
+    }
+
+    // Target heart rate ramps from 0 to 72 as progress goes 0..100
+    targetHeartRate = Math.min(72, Math.max(0, progress * 0.85));
+    heartRate += (targetHeartRate - heartRate) * 0.03;
+
+    // Beat interval
+    if (heartRate > 5) {
+      beatInterval = 60000 / heartRate;
+    } else {
+      beatInterval = Infinity;
+    }
+
+    // Beat phase
+    if (beatInterval < Infinity) {
+      timeSinceLastBeat += dt;
+      if (timeSinceLastBeat >= beatInterval) {
+        timeSinceLastBeat -= beatInterval;
+        beatPhase = 0;
+        // Beep on beat
+        const now = performance.now();
+        if (now - lastBeepTime > 200) {
+          initAudio();
+          beep();
+          lastBeepTime = now;
+        }
+      }
+      beatPhase = Math.min(1, timeSinceLastBeat / beatInterval);
+    } else {
+      beatPhase = 0;
+      timeSinceLastBeat = 0;
+    }
+
+    // Vitals
+    const hrFactor = heartRate / 72;
+    bpSys = Math.round(70 + hrFactor * 50 + Math.sin(Date.now() / 800) * 3);
+    bpDia = Math.round(40 + hrFactor * 40 + Math.sin(Date.now() / 900) * 2);
+    o2sat = Math.min(100, Math.round(85 + hrFactor * 14 + Math.sin(Date.now() / 600) * 1));
+    coreTemp = (34.0 + hrFactor * 3.2 + Math.sin(Date.now() / 1200) * 0.15).toFixed(1);
+
+    // ECG points
+    ecgSpeed = 1.2 + hrFactor * 2.5;
+    const y = ecgValue(beatPhase, heartRate);
+    ecgPoints.push(y);
+    while (ecgPoints.length > maxEcgPoints) ecgPoints.shift();
+  }
+
+  function ecgValue(phase, hr) {
+    // Flatline when hr very low
+    if (hr < 3) return 0;
+    // PQRST waveform based on phase
+    let v = 0;
+    if (phase < 0.05) {
+      v = 0;
+    } else if (phase < 0.10) {
+      v = -0.3 * Math.sin((phase - 0.05) / 0.05 * Math.PI);
+    } else if (phase < 0.14) {
+      v = 0;
+    } else if (phase < 0.18) {
+      v = -0.6 * Math.sin((phase - 0.14) / 0.04 * Math.PI);
+    } else if (phase < 0.22) {
+      v = 0;
+    } else if (phase < 0.30) {
+      // QRS complex
+      const t = (phase - 0.22) / 0.08;
+      if (t < 0.2) v = -0.8 * (t / 0.2);
+      else if (t < 0.5) v = -0.8 + 4.5 * ((t - 0.2) / 0.3);
+      else if (t < 0.7) v = 3.7 - 4.0 * ((t - 0.5) / 0.2);
+      else v = -0.3 * (1 - (t - 0.7) / 0.3);
+    } else if (phase < 0.38) {
+      v = 0;
+    } else if (phase < 0.55) {
+      v = 0.8 * Math.sin((phase - 0.38) / 0.17 * Math.PI);
+    } else {
+      v = 0;
+    }
+    return v;
+  }
+
+  function drawBody(cx, cy, scale) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+
+    // Body outline - wireframe
+    ctx.strokeStyle = 'rgba(0, 255, 85, 0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    // Head (slightly oval, more proportional)
+    ctx.ellipse(0, -118, 25, 28, 0, 0, Math.PI * 2);
+    // Neck
+    ctx.moveTo(-10, -90); ctx.lineTo(-12, -74);
+    ctx.moveTo(10, -90); ctx.lineTo(12, -74);
+    // Shoulders / torso (wider, less hourglass)
+    ctx.moveTo(-12, -74); ctx.lineTo(-52, -60);
+    ctx.lineTo(-60, -15);
+    ctx.lineTo(-58, 35);
+    ctx.lineTo(-50, 85);
+    ctx.lineTo(-38, 125);
+    ctx.lineTo(-28, 150);
+    ctx.lineTo(0, 155);
+    ctx.lineTo(28, 150);
+    ctx.lineTo(38, 125);
+    ctx.lineTo(50, 85);
+    ctx.lineTo(58, 35);
+    ctx.lineTo(60, -15);
+    ctx.lineTo(52, -60);
+    ctx.lineTo(12, -74);
+    // Arms
+    ctx.moveTo(-52, -60); ctx.lineTo(-78, -20); ctx.lineTo(-74, 36);
+    ctx.moveTo(52, -60); ctx.lineTo(78, -20); ctx.lineTo(74, 36);
+    // Legs (thicker, more proportional)
+    ctx.moveTo(-28, 150); ctx.lineTo(-32, 200); ctx.lineTo(-30, 248);
+    ctx.moveTo(28, 150); ctx.lineTo(32, 200); ctx.lineTo(30, 248);
+    ctx.stroke();
+
+    // Organs lighting up
+    for (let i = 0; i < organs.length; i++) {
+      const o = organs[i];
+      const threshold = organThresholds[i];
+      const lit = progress >= threshold;
+      const alpha = lit ? (0.4 + 0.6 * Math.sin(Date.now() / 300 + i)) : 0.08;
+      const glow = lit ? (8 + 6 * Math.sin(Date.now() / 250 + i)) : 0;
+
+      ctx.shadowColor = '#00ff55';
+      ctx.shadowBlur = glow;
+      ctx.fillStyle = `rgba(0, 255, 85, ${alpha})`;
+      ctx.strokeStyle = `rgba(0, 255, 85, ${lit ? 0.9 : 0.15})`;
+      ctx.lineWidth = 1.2;
+
+      ctx.beginPath();
+      if (o.name === 'brain') {
+        ctx.ellipse(o.x, o.y, o.r, o.r * 0.88, 0, 0, Math.PI * 2);
+      } else if (o.name === 'lungs') {
+        ctx.ellipse(o.x - 11, o.y, o.r, o.r * 1.25, -0.1, 0, Math.PI * 2);
+        ctx.ellipse(o.x + 11, o.y, o.r, o.r * 1.25, 0.1, 0, Math.PI * 2);
+      } else if (o.name === 'kidneys') {
+        ctx.ellipse(o.x - 9, o.y, o.r * 0.8, o.r * 1.05, 0.2, 0, Math.PI * 2);
+        ctx.ellipse(o.x + 9, o.y, o.r * 0.8, o.r * 1.05, -0.2, 0, Math.PI * 2);
+      } else {
+        ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      // Label when lit
+      if (lit) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = `rgba(0, 255, 85, ${0.5 + 0.5 * Math.sin(Date.now() / 400 + i)})`;
+        ctx.font = '9px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillText(o.label, o.x, o.y + o.r + 14);
+      }
+    }
+
+    ctx.restore();
+  }
+
+  function drawECG() {
+    const ecgYBase = H * 0.78;
+    const ecgHeight = 70;
+    const ecgX = 60;
+    const ecgW = W - 120;
+
+    // Grid
+    ctx.strokeStyle = 'rgba(0, 255, 85, 0.08)';
+    ctx.lineWidth = 1;
+    for (let x = ecgX; x <= ecgX + ecgW; x += 20) {
+      ctx.beginPath(); ctx.moveTo(x, ecgYBase - ecgHeight); ctx.lineTo(x, ecgYBase + ecgHeight); ctx.stroke();
+    }
+    for (let y = ecgYBase - ecgHeight; y <= ecgYBase + ecgHeight; y += 20) {
+      ctx.beginPath(); ctx.moveTo(ecgX, y); ctx.lineTo(ecgX + ecgW, y); ctx.stroke();
+    }
+
+    // Trace
+    ctx.strokeStyle = '#00ff55';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#00ff55';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    const step = ecgW / maxEcgPoints;
+    for (let i = 0; i < ecgPoints.length; i++) {
+      const x = ecgX + (ecgW - (ecgPoints.length - 1 - i) * step);
+      const y = ecgYBase - ecgPoints[i] * ecgHeight * 0.35;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Flatline indicator when HR near 0
+    if (heartRate < 3) {
+      ctx.strokeStyle = 'rgba(0, 255, 85, 0.3)';
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(ecgX, ecgYBase);
+      ctx.lineTo(ecgX + ecgW, ecgYBase);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Lead label
+    ctx.fillStyle = 'rgba(0, 255, 85, 0.6)';
+    ctx.font = 'bold 12px Courier New';
+    ctx.textAlign = 'left';
+    ctx.fillText('LEAD II', ecgX, ecgYBase - ecgHeight - 8);
+  }
+
+  function drawVitals() {
+    const x = 30;
+    const yStart = 55;
+    const lineH = 46;
+
+    ctx.textAlign = 'left';
+
+    const vitals = [
+      { label: 'HR', value: heartRate < 1 ? '---' : Math.round(heartRate).toString(), unit: 'BPM', alarm: heartRate > 120 || (heartRate > 10 && heartRate < 40) },
+      { label: 'BP', value: bpSys < 1 ? '---/---' : `${bpSys}/${bpDia}`, unit: 'mmHg', alarm: bpSys > 180 || bpSys < 60 },
+      { label: 'O2 SAT', value: o2sat < 1 ? '---' : o2sat.toString(), unit: '%', alarm: o2sat < 90 && o2sat > 0 },
+      { label: 'CORE TEMP', value: coreTemp < 30 ? '---' : coreTemp, unit: '°C', alarm: parseFloat(coreTemp) > 39.5 || parseFloat(coreTemp) < 35 },
+    ];
+
+    for (let i = 0; i < vitals.length; i++) {
+      const v = vitals[i];
+      const y = yStart + i * lineH;
+      const pulse = v.alarm ? (0.6 + 0.4 * Math.sin(Date.now() / 200)) : 1;
+      const isMissing = v.value.includes('---');
+      const color = v.alarm ? `rgba(255, 60, 60, ${Math.max(0.5, pulse)})` : (isMissing ? 'rgba(0, 255, 85, 0.35)' : 'rgba(0, 255, 85, 0.95)');
+
+      ctx.fillStyle = 'rgba(0, 255, 85, 0.5)';
+      ctx.font = '10px Courier New';
+      ctx.fillText(v.label, x, y);
+
+      ctx.fillStyle = color;
+      ctx.font = 'bold 22px Courier New';
+      ctx.fillText(v.value, x, y + 24);
+
+      ctx.fillStyle = isMissing ? 'rgba(0, 255, 85, 0.25)' : 'rgba(0, 255, 85, 0.5)';
+      ctx.font = '10px Courier New';
+      const valWidth = ctx.measureText(v.value).width;
+      ctx.fillText(v.unit, x + valWidth + 8, y + 24);
+    }
+
+    // Progress bar
+    const pbX = x;
+    const pbY = yStart + 4 * lineH + 10;
+    const pbW = 150;
+    const pbH = 10;
+    ctx.strokeStyle = 'rgba(0, 255, 85, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pbX, pbY, pbW, pbH);
+    ctx.fillStyle = 'rgba(0, 255, 85, 0.75)';
+    ctx.fillRect(pbX + 1, pbY + 1, (pbW - 2) * (progress / 100), pbH - 2);
+
+    ctx.fillStyle = 'rgba(0, 255, 85, 0.6)';
+    ctx.font = '10px Courier New';
+    ctx.fillText(`LOADING ${Math.floor(progress)}%`, pbX, pbY + 24);
+  }
+
+  function drawHUD() {
+    // Top left title
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(0, 255, 85, 0.7)';
+    ctx.font = 'bold 13px Courier New';
+    ctx.fillText('LOADING V14', 30, 28);
+    ctx.fillStyle = 'rgba(0, 255, 85, 0.45)';
+    ctx.font = '10px Courier New';
+    ctx.fillText('SYS: ONLINE', 30, 42);
+    ctx.fillText('MODE: CARDIAC MONITOR', 30, 55);
+
+    // Top right info
+    const x = W - 20;
+    const y = 28;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(0, 255, 85, 0.4)';
+    ctx.font = '10px Courier New';
+    ctx.fillText('V14.0.2', x, y);
+    ctx.fillText('SIGNAL LOST GAME', x, y + 14);
+
+    // Time
+    const now = new Date();
+    const timeStr = now.toISOString().substr(11, 8);
+    ctx.fillText(timeStr, x, y + 30);
+
+    // Bottom status line
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(0, 255, 85, 0.35)';
+    ctx.font = '10px Courier New';
+    let status = 'STANDBY';
+    if (progress > 10) status = 'INITIALIZING...';
+    if (progress > 40) status = 'SYSTEM CHECK...';
+    if (progress > 70) status = 'CALIBRATING...';
+    if (progress >= 100) status = 'SYSTEM READY';
+    ctx.fillText(status, W / 2, H - 12);
+  }
+
+  function draw() {
+    // Clear with CRT fade
+    ctx.fillStyle = 'rgba(13, 31, 13, 0.35)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle vignette
+    const grad = ctx.createRadialGradient(W/2, H/2, 150, W/2, H/2, 450);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.4)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    drawBody(W * 0.58, H * 0.40, 0.80);
+    drawECG();
+    drawVitals();
+    drawHUD();
+  }
+
+  let lastTime = performance.now();
+  function loop() {
+    const now = performance.now();
+    const dt = now - lastTime;
+    lastTime = now;
+
+    update(dt);
+    draw();
+
+    requestAnimationFrame(loop);
+  }
+
+  // Start on first interaction to allow audio
+  let started = false;
+  function start() {
+    if (started) return;
+    started = true;
+    initAudio();
+    loop();
+  }
+  document.addEventListener('click', start);
+  document.addEventListener('keydown', start);
+  // Auto-start visual, audio on interaction
+  loop();
+})();
+</script>
+</body>
+</html>

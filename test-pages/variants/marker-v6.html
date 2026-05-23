@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MARKER V6 — COMMS</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0f0a;
+      color: #8fbc8f;
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* HUD Header */
+    .hud-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(10, 15, 10, 0.95);
+      border-bottom: 1px solid #2d4a2d;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+
+    .hud-title {
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      color: #6b8e6b;
+      text-shadow: 0 0 10px rgba(107, 142, 107, 0.3);
+    }
+
+    .hud-status {
+      font-size: 11px;
+      color: #4a6b4a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hud-status::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: #4a8c4a;
+      border-radius: 50%;
+      animation: hudPulse 2s infinite;
+    }
+
+    @keyframes hudPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Main Content */
+    .main-content {
+      padding-top: 80px;
+      padding-bottom: 60px;
+    }
+
+    /* Section */
+    .section {
+      max-width: 900px;
+      margin: 0 auto 48px;
+      padding: 0 24px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      letter-spacing: 4px;
+      color: #5a7a5a;
+      margin-bottom: 20px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #1a2a1a;
+      text-transform: uppercase;
+    }
+
+    /* Marker Grid */
+    .marker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    /* Marker Card */
+    .marker-card {
+      background: rgba(15, 25, 15, 0.8);
+      border: 1px solid #1f2f1f;
+      border-radius: 4px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .marker-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #3a5a3a, transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .marker-card:hover {
+      border-color: #3a5a3a;
+      box-shadow: 0 0 20px rgba(58, 90, 58, 0.15);
+    }
+
+    .marker-card:hover::before {
+      opacity: 1;
+    }
+
+    /* Marker Icon Container */
+    .marker-icon {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Signal Strength Bars */
+    .signal-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 32px;
+    }
+
+    .signal-bar {
+      width: 6px;
+      background: #2a3a2a;
+      border-radius: 1px;
+      transition: background 0.3s;
+    }
+
+    .signal-bar.active {
+      background: #6b8e6b;
+      box-shadow: 0 0 6px rgba(107, 142, 107, 0.4);
+    }
+
+    .signal-bar:nth-child(1) { height: 20%; }
+    .signal-bar:nth-child(2) { height: 40%; }
+    .signal-bar:nth-child(3) { height: 60%; }
+    .signal-bar:nth-child(4) { height: 80%; }
+    .signal-bar:nth-child(5) { height: 100%; }
+
+    /* Speaker Icon */
+    .speaker-icon {
+      position: relative;
+      width: 32px;
+      height: 28px;
+    }
+
+    .speaker-body {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 16px;
+      background: #6b8e6b;
+      border-radius: 2px;
+    }
+
+    .speaker-cone {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-top: 14px solid transparent;
+      border-bottom: 14px solid transparent;
+      border-left: 18px solid #6b8e6b;
+    }
+
+    .speaker-waves {
+      position: absolute;
+      right: -4px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .speaker-wave {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 16px;
+      border: 2px solid #6b8e6b;
+      border-left: none;
+      border-radius: 0 50% 50% 0;
+      opacity: 0;
+      animation: wavePulse 1.2s infinite;
+    }
+
+    .speaker-wave:nth-child(1) {
+      right: 0;
+      animation-delay: 0s;
+    }
+
+    .speaker-wave:nth-child(2) {
+      right: -6px;
+      width: 12px;
+      height: 24px;
+      animation-delay: 0.2s;
+    }
+
+    .speaker-wave:nth-child(3) {
+      right: -12px;
+      width: 16px;
+      height: 32px;
+      animation-delay: 0.4s;
+    }
+
+    @keyframes wavePulse {
+      0%, 100% { opacity: 0; }
+      50% { opacity: 1; }
+    }
+
+    /* Radio Silence (Slashed Speaker) */
+    .silence-icon {
+      position: relative;
+      width: 32px;
+      height: 28px;
+    }
+
+    .silence-icon .speaker-body {
+      background: #5a4a4a;
+    }
+
+    .silence-icon .speaker-cone {
+      border-left-color: #5a4a4a;
+    }
+
+    .silence-slash {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 40px;
+      height: 2px;
+      background: #8b5a5a;
+      transform: translate(-50%, -50%) rotate(-45deg);
+      box-shadow: 0 0 4px rgba(139, 90, 90, 0.5);
+    }
+
+    /* Lock Icon */
+    .lock-icon {
+      position: relative;
+      width: 28px;
+      height: 32px;
+    }
+
+    .lock-shackle {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 18px;
+      height: 14px;
+      border: 3px solid #8a9a6a;
+      border-bottom: none;
+      border-radius: 9px 9px 0 0;
+    }
+
+    .lock-body {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 24px;
+      height: 18px;
+      background: #8a9a6a;
+      border-radius: 3px;
+    }
+
+    .lock-keyhole {
+      position: absolute;
+      bottom: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 4px;
+      height: 8px;
+      background: #0a0f0a;
+      border-radius: 2px 2px 1px 1px;
+    }
+
+    .lock-keyhole::before {
+      content: '';
+      position: absolute;
+      top: -3px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 6px;
+      height: 6px;
+      background: #0a0f0a;
+      border-radius: 50%;
+    }
+
+    /* Radio Waves */
+    .broadcast-icon {
+      position: relative;
+      width: 32px;
+      height: 32px;
+    }
+
+    .broadcast-tower {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 4px;
+      height: 16px;
+      background: #6b8e8e;
+    }
+
+    .broadcast-tower::before {
+      content: '';
+      position: absolute;
+      top: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 8px;
+      height: 8px;
+      background: #6b8e8e;
+      border-radius: 50%;
+    }
+
+    .broadcast-wave {
+      position: absolute;
+      top: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 20px;
+      border: 2px solid #6b8e8e;
+      border-bottom: none;
+      border-radius: 50% 50% 0 0;
+      opacity: 0;
+      animation: broadcastWave 1.5s infinite;
+    }
+
+    .broadcast-wave:nth-child(2) {
+      width: 28px;
+      height: 14px;
+      animation-delay: 0.3s;
+    }
+
+    .broadcast-wave:nth-child(3) {
+      width: 16px;
+      height: 8px;
+      animation-delay: 0.6s;
+    }
+
+    @keyframes broadcastWave {
+      0%, 100% { opacity: 0; transform: translateX(-50%) scale(0.8); }
+      50% { opacity: 0.8; transform: translateX(-50%) scale(1); }
+    }
+
+    /* Incoming Arrow */
+    .receiving-icon {
+      position: relative;
+      width: 32px;
+      height: 32px;
+    }
+
+    .receiving-arrow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 16px solid #7a9a6a;
+      animation: receivingPulse 0.8s infinite;
+    }
+
+    .receiving-line {
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20px;
+      height: 3px;
+      background: #7a9a6a;
+      border-radius: 2px;
+    }
+
+    @keyframes receivingPulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+      50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+    }
+
+    /* Jammed Static X */
+    .jammed-icon {
+      position: relative;
+      width: 32px;
+      height: 32px;
+    }
+
+    .jammed-x {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 28px;
+      height: 3px;
+      background: #8b5a5a;
+      box-shadow: 0 0 6px rgba(139, 90, 90, 0.6);
+    }
+
+    .jammed-x:first-child {
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .jammed-x:last-child {
+      transform: translate(-50%, -50%) rotate(-45deg);
+    }
+
+    .jammed-static {
+      position: absolute;
+      inset: 0;
+      opacity: 0.3;
+      animation: staticFlicker 0.1s infinite;
+    }
+
+    .jammed-static::before,
+    .jammed-static::after {
+      content: '';
+      position: absolute;
+      background: #5a3a3a;
+    }
+
+    .jammed-static::before {
+      top: 20%;
+      left: 10%;
+      width: 60%;
+      height: 2px;
+    }
+
+    .jammed-static::after {
+      top: 60%;
+      left: 30%;
+      width: 50%;
+      height: 2px;
+    }
+
+    @keyframes staticFlicker {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Clock Icon */
+    .clock-icon {
+      position: relative;
+      width: 32px;
+      height: 32px;
+      border: 2px solid #7a8a6a;
+      border-radius: 50%;
+    }
+
+    .clock-face {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .clock-hand {
+      position: absolute;
+      background: #7a8a6a;
+      border-radius: 1px;
+      transform-origin: bottom center;
+    }
+
+    .clock-hand.hour {
+      width: 2px;
+      height: 8px;
+      top: -8px;
+      left: -1px;
+      transform: rotate(45deg);
+    }
+
+    .clock-hand.minute {
+      width: 2px;
+      height: 11px;
+      top: -11px;
+      left: -1px;
+      transform: rotate(-30deg);
+    }
+
+    .clock-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 4px;
+      height: 4px;
+      background: #7a8a6a;
+      border-radius: 50%;
+    }
+
+    /* Status Dots */
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: rgba(15, 25, 15, 0.6);
+      border: 1px solid #1f2f1f;
+      border-radius: 4px;
+      transition: border-color 0.3s;
+    }
+
+    .status-indicator:hover {
+      border-color: #3a5a3a;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.online {
+      background: #4a9a4a;
+      box-shadow: 0 0 8px rgba(74, 154, 74, 0.5);
+      animation: statusPulse 2s infinite;
+    }
+
+    .status-dot.away {
+      background: #9a9a4a;
+      box-shadow: 0 0 8px rgba(154, 154, 74, 0.3);
+      animation: statusPulse 3s infinite;
+    }
+
+    .status-dot.busy {
+      background: #9a4a4a;
+      box-shadow: 0 0 8px rgba(154, 74, 74, 0.5);
+    }
+
+    .status-dot.offline {
+      background: #3a3a3a;
+      box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5);
+    }
+
+    @keyframes statusPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .status-text {
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: #7a9a7a;
+    }
+
+    /* Marker Label */
+    .marker-label {
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: #8fbc8f;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    /* Marker Description */
+    .marker-desc {
+      font-size: 10px;
+      color: #5a7a5a;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    /* Status Grid */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    /* Last Seen Section */
+    .last-seen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .last-seen-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: rgba(15, 25, 15, 0.6);
+      border: 1px solid #1f2f1f;
+      border-radius: 4px;
+      transition: border-color 0.3s;
+    }
+
+    .last-seen-item:hover {
+      border-color: #3a5a3a;
+    }
+
+    .last-seen-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .last-seen-label {
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: #6a8a6a;
+      text-transform: uppercase;
+    }
+
+    .last-seen-time {
+      font-size: 12px;
+      color: #8fbc8f;
+    }
+
+    /* Footer */
+    .hud-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(10, 15, 10, 0.95);
+      border-top: 1px solid #2d4a2d;
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+      font-size: 10px;
+      color: #3a5a3a;
+      letter-spacing: 1px;
+    }
+
+    /* Scanline Effect */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+      );
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .marker-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .status-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Scanlines Overlay -->
+  <div class="scanlines"></div>
+
+  <!-- HUD Header -->
+  <header class="hud-header">
+    <div class="hud-title">MARKER V6 — COMMS</div>
+    <div class="hud-status">SYSTEM ACTIVE</div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Signal Markers Section -->
+    <section class="section">
+      <h2 class="section-title">Signal Markers</h2>
+      <div class="marker-grid">
+        <!-- Signal Strength -->
+        <div class="marker-card">
+          <div class="marker-icon">
+            <div class="signal-bars">
+              <div class="signal-bar active"></div>
+              <div class="signal-bar active"></div>
+              <div class="signal-bar active"></div>
+              <div class="signal-bar active"></div>
+              <div class="signal-bar"></div>
+            </div>
+          </div>
+          <div class="marker-label">Signal Strength</div>
+          <div class="marker-desc">Bars 0-5 indicating connection quality</div>
+        </div>
+
+        <!-- Voice Active -->
+        <div class="marker-card">
+          <div class="marker-icon">
+            <div class="speaker-icon">
+              <div class="speaker-body"></div>
+              <div class="speaker-cone"></div>
+              <div class="speaker-waves">
+                <div class="speaker-wave"></div>
+                <div class="speaker-wave"></div>
+                <div class="speaker-wave"></div>
+              </div>
+            </div>
+          </div>
+          <div class="marker-label">Voice Active</div>
+          <div class="marker-desc">Speaker icon with volume animation</div>
+        </div>
+
+        <!-- Radio Silence -->
+        <div class="marker-card">
+          <div class="marker-icon">
+            <div class="silence-icon">
+              <div class="speaker-body"></div>
+              <div class="speaker-cone"></div>
+              <div class="silence-slash"></div>
+            </div>
+          </div>
+          <div class="marker-label">Radio Silence</div>
+          <div class="marker-desc">Slashed speaker — no transmission</div>
+        </div>
+
+        <!-- Encrypted -->
+        <div class="marker-card">
+          <div class="marker-icon">
+            <div class="lock-icon">
+              <div class="lock-shackle"></div>
+              <div class="lock-body"></div>
+              <div class="lock-keyhole"></div>
+            </div>
+          </div>
+          <div class="marker-label">Encrypted</div>
+          <div class="marker-desc">Secure channel — lock icon</div>
+        </div>
+
+        <!-- Broadcasting -->
+        <div class="marker-card">
+          <div class="marker-icon">
+            <div class="broadcast-icon">
+              <div class="broadcast-wave"></div>
+              <div class="broadcast-wave"></div>
+              <div class="broadcast-wave"></div>
+              <div class="broadcast-tower"></div>
+            </div>
+          </div>
+          <div class="marker-label">Broadcasting</div>
+          <div class="marker-desc">Radio waves emanating outward</div>
+        </div>
+
+        <!-- Receiving -->
+        <div class="marker-card">
+          <div class="marker-icon">
+            <div class="receiving-icon">
+              <div class="receiving-arrow"></div>
+              <div class="receiving-line"></div>
+            </div>
+          </div>
+          <div class="marker-label">Receiving</div>
+          <div class="marker-desc">Incoming signal — downward arrow</div>
+        </div>
+
+        <!-- Jammed -->
+        <div class="marker-card">
+          <div class="marker-icon">
+            <div class="jammed-icon">
+              <div class="jammed-static"></div>
+              <div class="jammed-x"></div>
+              <div class="jammed-x"></div>
+            </div>
+          </div>
+          <div class="marker-label">Jammed</div>
+          <div class="marker-desc">Static X — interference detected</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Status Indicators Section -->
+    <section class="section">
+      <h2 class="section-title">Status Indicators</h2>
+      <div class="status-grid">
+        <div class="status-indicator">
+          <div class="status-dot online"></div>
+          <span class="status-text">ONLINE</span>
+        </div>
+        <div class="status-indicator">
+          <div class="status-dot away"></div>
+          <span class="status-text">AWAY</span>
+        </div>
+        <div class="status-indicator">
+          <div class="status-dot busy"></div>
+          <span class="status-text">BUSY</span>
+        </div>
+        <div class="status-indicator">
+          <div class="status-dot offline"></div>
+          <span class="status-text">OFFLINE</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Last Seen Section -->
+    <section class="section">
+      <h2 class="section-title">Last Seen</h2>
+      <div class="last-seen-grid">
+        <div class="last-seen-item">
+          <div class="clock-icon">
+            <div class="clock-face">
+              <div class="clock-hand hour"></div>
+              <div class="clock-hand minute"></div>
+              <div class="clock-center"></div>
+            </div>
+          </div>
+          <div class="last-seen-info">
+            <span class="last-seen-label">Operator Alpha</span>
+            <span class="last-seen-time">2 min ago</span>
+          </div>
+        </div>
+        <div class="last-seen-item">
+          <div class="clock-icon">
+            <div class="clock-face">
+              <div class="clock-hand hour"></div>
+              <div class="clock-hand minute"></div>
+              <div class="clock-center"></div>
+            </div>
+          </div>
+          <div class="last-seen-info">
+            <span class="last-seen-label">Operator Bravo</span>
+            <span class="last-seen-time">15 min ago</span>
+          </div>
+        </div>
+        <div class="last-seen-item">
+          <div class="clock-icon">
+            <div class="clock-face">
+              <div class="clock-hand hour"></div>
+              <div class="clock-hand minute"></div>
+              <div class="clock-center"></div>
+            </div>
+          </div>
+          <div class="last-seen-info">
+            <span class="last-seen-label">Operator Charlie</span>
+            <span class="last-seen-time">1 hr ago</span>
+          </div>
+        </div>
+        <div class="last-seen-item">
+          <div class="clock-icon">
+            <div class="clock-face">
+              <div class="clock-hand hour"></div>
+              <div class="clock-hand minute"></div>
+              <div class="clock-center"></div>
+            </div>
+          </div>
+          <div class="last-seen-info">
+            <span class="last-seen-label">Operator Delta</span>
+            <span class="last-seen-time">3 hrs ago</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- HUD Footer -->
+  <footer class="hud-footer">
+    <span>COMMS MARKER SYSTEM v6.0.1</span>
+    <span>SECURE CHANNEL</span>
+  </footer>
+</body>
+</html>

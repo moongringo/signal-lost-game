@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHAT V7 — Tactical Grid</title>
+<style>
+  :root {
+    --bg: #0b0f0b;
+    --panel: #111811;
+    --border: #2a3a2a;
+    --accent: #4ade80;
+    --accent2: #22c55e;
+    --text: #d4e8d4;
+    --muted: #6b8f6b;
+    --danger: #ef4444;
+    --warn: #eab308;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', Courier, monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    flex-shrink: 0;
+  }
+
+  .header-cell {
+    padding: 10px 14px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header-cell:last-child { border-right: none; }
+
+  .hud-tag {
+    background: var(--accent);
+    color: #000;
+    padding: 2px 8px;
+    font-weight: bold;
+    font-size: 10px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  .status-dot.warn { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+  .status-dot.danger { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ===== MAIN ===== */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* Chat panel */
+  .chat-panel {
+    width: 40%;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+  }
+
+  .chat-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .msg {
+    background: rgba(74, 222, 128, 0.06);
+    border-left: 3px solid var(--accent);
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    position: relative;
+  }
+
+  .msg.system {
+    border-left-color: var(--warn);
+    background: rgba(234, 179, 8, 0.06);
+  }
+
+  .msg.danger {
+    border-left-color: var(--danger);
+    background: rgba(239, 68, 68, 0.06);
+  }
+
+  .msg-time {
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 4px;
+  }
+
+  .msg-sender {
+    color: var(--accent);
+    font-weight: bold;
+    margin-right: 6px;
+  }
+
+  .msg-body { color: var(--text); }
+
+  /* Tactical map */
+  .map-panel {
+    width: 60%;
+    position: relative;
+    background: #0a0f0a;
+    overflow: hidden;
+  }
+
+  .map-canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  .map-overlay {
+    position: absolute;
+    top: 10px; left: 10px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .map-legend {
+    position: absolute;
+    bottom: 10px; right: 10px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    font-size: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+
+  /* ===== INPUT BAR ===== */
+  .input-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+    flex-shrink: 0;
+  }
+
+  .cmd-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 12px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+  }
+
+  .cmd-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .input-field {
+    flex: 1;
+    background: #0a0f0a;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 12px;
+    outline: none;
+  }
+
+  .input-field:focus { border-color: var(--accent); }
+
+  .send-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 8px 18px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 1px;
+  }
+
+  .send-btn:hover { background: var(--accent2); }
+
+  /* Command wheel */
+  .cmd-wheel {
+    position: relative;
+  }
+
+  .wheel-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    display: none;
+    flex-direction: column;
+    min-width: 160px;
+    z-index: 10;
+  }
+
+  .wheel-menu.open { display: flex; }
+
+  .wheel-item {
+    padding: 10px 14px;
+    font-size: 11px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+
+  .wheel-item:last-child { border-bottom: none; }
+
+  .wheel-item:hover {
+    background: rgba(74, 222, 128, 0.1);
+    color: var(--accent);
+  }
+
+  /* ===== MOBILE ===== */
+  .map-toggle {
+    display: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 12px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  @media (max-width: 768px) {
+    .header-cell { padding: 8px 10px; font-size: 10px; }
+
+    .chat-panel {
+      width: 100%;
+      border-right: none;
+    }
+
+    .map-panel {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100%;
+      z-index: 5;
+      display: none;
+    }
+
+    .map-panel.open { display: block; }
+
+    .map-toggle { display: block; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-cell">
+    <span class="status-dot"></span>
+    <span>LZ STATUS</span>
+    <span style="margin-left:auto;color:var(--accent)">SECURE</span>
+  </div>
+  <div class="header-cell">
+    <span>TEAM</span>
+    <span style="margin-left:auto">ALPHA-4</span>
+  </div>
+  <div class="header-cell">
+    <span>COMMS</span>
+    <span class="hud-tag" style="margin-left:auto">CHAT V7</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- Chat -->
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-feed" id="chatFeed">
+      <div class="msg system">
+        <div class="msg-time">00:00:00</div>
+        <span class="msg-sender">[SYSTEM]</span>
+        <span class="msg-body">Tactical grid initialized. All units check in.</span>
+      </div>
+      <div class="msg">
+        <div class="msg-time">00:02:14</div>
+        <span class="msg-sender">RAVEN-1:</span>
+        <span class="msg-body">LZ is clear. No hostile contacts on thermal.</span>
+      </div>
+      <div class="msg">
+        <div class="msg-time">00:03:41</div>
+        <span class="msg-sender">GHOST-2:</span>
+        <span class="msg-body">Moving to waypoint Bravo. ETA 4 minutes.</span>
+      </div>
+      <div class="msg danger">
+        <div class="msg-time">00:05:09</div>
+        <span class="msg-sender">WATCH-3:</span>
+        <span class="msg-body">DRONE SPOTTED — bearing 240, altitude 300ft. Take cover.</span>
+      </div>
+      <div class="msg">
+        <div class="msg-time">00:05:33</div>
+        <span class="msg-sender">RAVEN-1:</span>
+        <span class="msg-body">Copy. Deploying countermeasures.</span>
+      </div>
+      <div class="msg">
+        <div class="msg-time">00:07:12</div>
+        <span class="msg-sender">GHOST-2:</span>
+        <span class="msg-body">Bravo reached. Setting overwatch position.</span>
+      </div>
+      <div class="msg system">
+        <div class="msg-time">00:08:00</div>
+        <span class="msg-sender">[SYSTEM]</span>
+        <span class="msg-body">Supply drop inbound — coordinates 34.052, -118.243.</span>
+      </div>
+      <div class="msg">
+        <div class="msg-time">00:09:27</div>
+        <span class="msg-sender">WATCH-3:</span>
+        <span class="msg-body">Drone evaded. Resuming patrol pattern.</span>
+      </div>
+      <div class="msg">
+        <div class="msg-time">00:11:05</div>
+        <span class="msg-sender">RAVEN-1:</span>
+        <span class="msg-body">Requesting exfil at grid echo-7. Two wounded, priority.</span>
+      </div>
+      <div class="msg danger">
+        <div class="msg-time">00:11:48</div>
+        <span class="msg-sender">[COMMAND]</span>
+        <span class="msg-body">Exfil denied — airspace hot. Hold position and await QRF.</span>
+      </div>
+      <div class="msg">
+        <div class="msg-time">00:12:30</div>
+        <span class="msg-sender">GHOST-2:</span>
+        <span class="msg-body">Roger that. Digging in at Bravo. Need ammo count from all units.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div class="map-panel" id="mapPanel">
+    <canvas class="map-canvas" id="mapCanvas"></canvas>
+    <div class="map-overlay">
+      <div>GRID: ECHO-7</div>
+      <div>SCALE: 1:25,000</div>
+    </div>
+    <div class="map-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div> FRIENDLY</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div> HOSTILE</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div> UNKNOWN</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> OBJECTIVE</div>
+    </div>
+  </div>
+</div>
+
+<!-- INPUT BAR -->
+<div class="input-bar">
+  <div class="cmd-wheel">
+    <button class="cmd-btn" id="cmdBtn">CMDS ▲</button>
+    <div class="wheel-menu" id="wheelMenu">
+      <div class="wheel-item" data-cmd="/status">/status — Unit status</div>
+      <div class="wheel-item" data-cmd="/grid">/grid — Send grid ref</div>
+      <div class="wheel-item" data-cmd="/mark">/mark — Mark target</div>
+      <div class="wheel-item" data-cmd="/cas">/cas — Request air support</div>
+      <div class="wheel-item" data-cmd="/med">/med — Medical evac</div>
+      <div class="wheel-item" data-cmd="/hold">/hold — Hold position</div>
+    </div>
+  </div>
+  <button class="map-toggle" id="mapToggle">MAP</button>
+  <input type="text" class="input-field" id="inputField" placeholder="Enter message or command...">
+  <button class="send-btn" id="sendBtn">SEND</button>
+</div>
+
+<script>
+  /* ===== COMMAND WHEEL ===== */
+  const cmdBtn = document.getElementById('cmdBtn');
+  const wheelMenu = document.getElementById('wheelMenu');
+  const inputField = document.getElementById('inputField');
+
+  cmdBtn.addEventListener('click', () => {
+    wheelMenu.classList.toggle('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.cmd-wheel')) wheelMenu.classList.remove('open');
+  });
+
+  wheelMenu.querySelectorAll('.wheel-item').forEach(item => {
+    item.addEventListener('click', () => {
+      inputField.value = item.dataset.cmd + ' ';
+      inputField.focus();
+      wheelMenu.classList.remove('open');
+    });
+  });
+
+  /* ===== MAP TOGGLE (MOBILE) ===== */
+  const mapToggle = document.getElementById('mapToggle');
+  const mapPanel = document.getElementById('mapPanel');
+
+  mapToggle.addEventListener('click', () => {
+    mapPanel.classList.toggle('open');
+  });
+
+  /* ===== TACTICAL MAP ===== */
+  const canvas = document.getElementById('mapCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  const units = [
+    { id: 'RAVEN-1', x: 0.3, y: 0.4, color: '#4ade80', type: 'friendly', dx: 0.0003, dy: 0.0002 },
+    { id: 'GHOST-2', x: 0.7, y: 0.3, color: '#4ade80', type: 'friendly', dx: -0.0002, dy: 0.0004 },
+    { id: 'WATCH-3', x: 0.5, y: 0.6, color: '#4ade80', type: 'friendly', dx: 0.0004, dy: -0.0001 },
+    { id: 'ENEMY-A', x: 0.2, y: 0.2, color: '#ef4444', type: 'hostile', dx: 0.0001, dy: 0.0003 },
+    { id: 'ENEMY-B', x: 0.8, y: 0.7, color: '#ef4444', type: 'hostile', dx: -0.0003, dy: -0.0002 },
+    { id: 'UNKNOWN', x: 0.6, y: 0.5, color: '#eab308', type: 'unknown', dx: 0.0002, dy: 0.0002 },
+    { id: 'OBJ-BRAVO', x: 0.7, y: 0.3, color: '#3b82f6', type: 'objective', dx: 0, dy: 0 },
+    { id: 'LZ', x: 0.3, y: 0.4, color: '#22c55e', type: 'objective', dx: 0, dy: 0 },
+  ];
+
+  function drawGrid() {
+    const w = canvas.width;
+    const h = canvas.height;
+    const step = 40;
+
+    ctx.strokeStyle = 'rgba(42, 58, 42, 0.5)';
+    ctx.lineWidth = 1;
+
+    for (let x = 0; x < w; x += step) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += step) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // Axis labels
+    ctx.fillStyle = 'rgba(107, 143, 107, 0.4)';
+    ctx.font = '9px Courier New';
+    for (let x = 0; x < w; x += step * 3) {
+      ctx.fillText(String.fromCharCode(65 + Math.floor(x / (step * 3)) % 26), x + 2, h - 4);
+    }
+    for (let y = 0; y < h; y += step * 3) {
+      ctx.fillText((Math.floor(y / (step * 3)) + 1).toString(), 4, y + 10);
+    }
+  }
+
+  function drawUnit(unit) {
+    const x = unit.x * canvas.width;
+    const y = unit.y * canvas.height;
+    const radius = unit.type === 'objective' ? 6 : 5;
+
+    // Pulse ring for moving units
+    if (unit.type !== 'objective') {
+      const pulse = (Math.sin(Date.now() / 500) + 1) / 2;
+      ctx.beginPath();
+      ctx.arc(x, y, radius + 4 + pulse * 4, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${unit.color === '#4ade80' ? '74,222,128' : unit.color === '#ef4444' ? '239,68,68' : '234,179,8'}, ${0.15 + pulse * 0.15})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Core dot
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = unit.color;
+    ctx.fill();
+
+    // Inner dot
+    if (unit.type !== 'objective') {
+      ctx.beginPath();
+      ctx.arc(x, y, 2, 0, Math.PI * 2);
+      ctx.fillStyle = '#000';
+      ctx.fill();
+    }
+
+    // Label
+    ctx.fillStyle = 'rgba(212, 232, 212, 0.8)';
+    ctx.font = '9px Courier New';
+    ctx.fillText(unit.id, x + 10, y + 3);
+  }
+
+  function updateUnits() {
+    units.forEach(unit => {
+      if (unit.type === 'objective') return;
+      unit.x += unit.dx;
+      unit.y += unit.dy;
+      if (unit.x < 0.05 || unit.x > 0.95) unit.dx *= -1;
+      if (unit.y < 0.05 || unit.y > 0.95) unit.dy *= -1;
+    });
+  }
+
+  function drawMap() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawGrid();
+    units.forEach(drawUnit);
+  }
+
+  function animate() {
+    updateUnits();
+    drawMap();
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  /* ===== SEND MESSAGE ===== */
+  const chatFeed = document.getElementById('chatFeed');
+  const sendBtn = document.getElementById('sendBtn');
+
+  function addMessage(sender, body, type = '') {
+    const now = new Date();
+    const time = now.toTimeString().split(' ')[0];
+    const div = document.createElement('div');
+    div.className = 'msg' + (type ? ' ' + type : '');
+    div.innerHTML = `
+      <div class="msg-time">${time}</div>
+      <span class="msg-sender">${sender}:</span>
+      <span class="msg-body">${body}</span>
+    `;
+    chatFeed.appendChild(div);
+    chatFeed.scrollTop = chatFeed.scrollHeight;
+  }
+
+  function handleSend() {
+    const text = inputField.value.trim();
+    if (!text) return;
+
+    if (text.startsWith('/')) {
+      addMessage('[CMD]', `Executed: ${text}`, 'system');
+    } else {
+      addMessage('OPERATOR', text);
+    }
+    inputField.value = '';
+  }
+
+  sendBtn.addEventListener('click', handleSend);
+  inputField.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleSend();
+  });
+</script>
+</body>
+</html>

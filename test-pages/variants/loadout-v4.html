@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>LOADOUT V4 — SKILL TREE</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #050505;
+    color: #e0e0e0;
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #hud {
+    position: absolute; top: 0; left: 0; width: 100%;
+    padding: 12px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(0,0,0,0.6);
+    border-bottom: 1px solid #333;
+    z-index: 10;
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+  #hud .title { color: #fff; font-weight: bold; font-size: 16px; }
+  #hud .points { color: #0f0; }
+  #canvas { display: block; width: 100%; height: 100%; }
+  #tooltip {
+    position: absolute;
+    left: 50%; bottom: 24px;
+    transform: translateX(-50%);
+    max-width: 320px;
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid #555;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-size: 13px;
+    line-height: 1.5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 10;
+    text-align: center;
+  }
+  #tooltip .name { font-weight: bold; margin-bottom: 4px; color: #fff; }
+  #tooltip .desc { color: #ccc; }
+  #tooltip .cost { color: #0f0; margin-top: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="title">LOADOUT V4</div>
+  <div class="points" id="pointsDisplay">POINTS: 0</div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div id="tooltip">
+  <div class="name" id="ttName"></div>
+  <div class="desc" id="ttDesc"></div>
+  <div class="cost" id="ttCost"></div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const pointsDisplay = document.getElementById('pointsDisplay');
+  const tooltip = document.getElementById('tooltip');
+  const ttName = document.getElementById('ttName');
+  const ttDesc = document.getElementById('ttDesc');
+  const ttCost = document.getElementById('ttCost');
+
+  let W, H;
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Skill data
+  const branches = [
+    {
+      name: 'COMBAT',
+      color: '#ff4444',
+      nodes: [
+        { name: 'MARKSMAN', desc: 'Increased accuracy with rifles and precision weapons.', xRel: 0.5, yRel: 0.15 },
+        { name: 'SHOTGUN', desc: 'Devastating close-range damage with spread weapons.', xRel: 0.35, yRel: 0.35 },
+        { name: 'EXPLOSIVES', desc: 'Larger blast radius and extra grenade capacity.', xRel: 0.65, yRel: 0.35 },
+        { name: 'FLANK', desc: 'Bonus damage when attacking enemies from behind.', xRel: 0.5, yRel: 0.6 },
+        { name: 'BERSERKER', desc: 'Melee damage and speed increase as health drops.', xRel: 0.5, yRel: 0.85 }
+      ],
+      connections: [[0,1],[0,2],[1,3],[2,3],[3,4]]
+    },
+    {
+      name: 'STEALTH',
+      color: '#44ff44',
+      nodes: [
+        { name: 'SILENT STEP', desc: 'Move silently. Footstep noise reduced by 80%.', xRel: 0.5, yRel: 0.15 },
+        { name: 'SHADOW', desc: 'Stay hidden in low light for longer durations.', xRel: 0.35, yRel: 0.35 },
+        { name: 'POISON', desc: 'Silent takedowns leave no trace and spread toxins.', xRel: 0.65, yRel: 0.35 },
+        { name: 'DECOY', desc: 'Deploy a holographic decoy to distract enemies.', xRel: 0.5, yRel: 0.6 },
+        { name: 'GHOST', desc: 'Become briefly invisible after a silent kill.', xRel: 0.5, yRel: 0.85 }
+      ],
+      connections: [[0,1],[0,2],[1,3],[2,3],[3,4]]
+    },
+    {
+      name: 'TECH',
+      color: '#4488ff',
+      nodes: [
+        { name: 'HACK', desc: 'Bypass electronic locks and disable security systems.', xRel: 0.5, yRel: 0.15 },
+        { name: 'DRONE', desc: 'Deploy a recon drone to tag enemies.', xRel: 0.35, yRel: 0.35 },
+        { name: 'TURRET', desc: 'Place an automated turret for area denial.', xRel: 0.65, yRel: 0.35 },
+        { name: 'OVERCLOCK', desc: 'Temporarily boost weapon fire rate and reload speed.', xRel: 0.5, yRel: 0.6 },
+        { name: 'OVERLOAD', desc: 'EMP burst disables all electronics in a wide radius.', xRel: 0.5, yRel: 0.85 }
+      ],
+      connections: [[0,1],[0,2],[1,3],[2,3],[3,4]]
+    }
+  ];
+
+  // State
+  let skillPoints = 0;
+  let playerLevel = 1;
+  const unlocked = new Set(); // "branchIndex-nodeIndex"
+  const nodeRadius = 22;
+  const nodeRadiusHover = 26;
+  let hoveredKey = null;
+  let selectedKey = null;
+  let time = 0;
+
+  // Compute absolute positions
+  function getBranchX(branchIndex) {
+    const margin = W * 0.12;
+    const usable = W - margin * 2;
+    return margin + (usable / 2) * branchIndex + (usable / 4);
+  }
+
+  function getNodePos(branchIndex, nodeIndex) {
+    const b = branches[branchIndex];
+    const node = b.nodes[nodeIndex];
+    const bx = getBranchX(branchIndex);
+    const by = H * 0.12; // top offset for HUD
+    const usableH = H * 0.78;
+    return {
+      x: bx + (node.xRel - 0.5) * (W * 0.22),
+      y: by + node.yRel * usableH
+    };
+  }
+
+  function keyFor(bi, ni) { return bi + '-' + ni; }
+
+  function isUnlocked(bi, ni) { return unlocked.has(keyFor(bi, ni)); }
+
+  function canUnlock(bi, ni) {
+    if (isUnlocked(bi, ni)) return false;
+    const conns = branches[bi].connections;
+    // Root nodes (index 0) are always available if you have points
+    if (ni === 0) return skillPoints > 0;
+    // Otherwise need at least one parent unlocked
+    for (let [from, to] of conns) {
+      if (to === ni && isUnlocked(bi, from)) return true;
+    }
+    return false;
+  }
+
+  function unlockNode(bi, ni) {
+    if (skillPoints <= 0) return false;
+    if (!canUnlock(bi, ni)) return false;
+    unlocked.add(keyFor(bi, ni));
+    skillPoints--;
+    updateHUD();
+    return true;
+  }
+
+  function updateHUD() {
+    pointsDisplay.textContent = 'POINTS: ' + skillPoints;
+  }
+
+  function showTooltip(bi, ni) {
+    const b = branches[bi];
+    const n = b.nodes[ni];
+    ttName.textContent = n.name;
+    ttName.style.color = b.color;
+    ttDesc.textContent = n.desc;
+    if (isUnlocked(bi, ni)) {
+      ttCost.textContent = 'UNLOCKED';
+      ttCost.style.color = '#0f0';
+    } else if (canUnlock(bi, ni)) {
+      ttCost.textContent = 'TAP TO UNLOCK (1 POINT)';
+      ttCost.style.color = '#0f0';
+    } else {
+      ttCost.textContent = 'LOCKED — UNLOCK PREVIOUS NODE';
+      ttCost.style.color = '#888';
+    }
+    tooltip.style.opacity = '1';
+  }
+
+  function hideTooltip() {
+    tooltip.style.opacity = '0';
+  }
+
+  // Drawing helpers
+  function drawLine(x1, y1, x2, y2, color, active) {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.lineWidth = active ? 3 : 1.5;
+    ctx.strokeStyle = active ? color : '#333';
+    ctx.stroke();
+  }
+
+  function drawNode(x, y, name, color, state, hover, t) {
+    const r = hover ? nodeRadiusHover : nodeRadius;
+    const isUnlocked = state === 'unlocked';
+    const isAvailable = state === 'available';
+
+    // Glow for available nodes
+    if (isAvailable) {
+      const glow = 8 + Math.sin(t * 3) * 3;
+      const grad = ctx.createRadialGradient(x, y, r, x, y, r + glow);
+      grad.addColorStop(0, color + '66');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, r + glow, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.lineWidth = isUnlocked ? 3 : 2;
+    ctx.strokeStyle = isUnlocked ? color : (isAvailable ? color + 'aa' : '#444');
+    ctx.stroke();
+
+    // Fill
+    ctx.beginPath();
+    ctx.arc(x, y, r - 2, 0, Math.PI * 2);
+    if (isUnlocked) {
+      ctx.fillStyle = color + '33';
+      ctx.fill();
+    } else if (isAvailable) {
+      ctx.fillStyle = color + '18';
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#111';
+      ctx.fill();
+    }
+
+    // Inner dot for unlocked
+    if (isUnlocked) {
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    // Label
+    ctx.font = 'bold 11px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = isUnlocked ? '#fff' : (isAvailable ? '#ccc' : '#555');
+    ctx.fillText(name, x, y + r + 14);
+  }
+
+  function drawBranchLabel(x, y, name, color) {
+    ctx.font = 'bold 14px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = color;
+    ctx.fillText(name, x, y);
+  }
+
+  function getNodeState(bi, ni) {
+    if (isUnlocked(bi, ni)) return 'unlocked';
+    if (canUnlock(bi, ni)) return 'available';
+    return 'locked';
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    time += 0.016;
+
+    // Background grid
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1;
+    const gridSize = 40;
+    for (let x = 0; x < W; x += gridSize) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += gridSize) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    branches.forEach((b, bi) => {
+      const bx = getBranchX(bi);
+      drawBranchLabel(bx, H * 0.08, b.name, b.color);
+
+      // Draw connections first
+      b.connections.forEach(([from, to]) => {
+        const p1 = getNodePos(bi, from);
+        const p2 = getNodePos(bi, to);
+        const active = isUnlocked(bi, from) && isUnlocked(bi, to);
+        drawLine(p1.x, p1.y, p2.x, p2.y, b.color, active);
+      });
+
+      // Draw nodes
+      b.nodes.forEach((n, ni) => {
+        const pos = getNodePos(bi, ni);
+        const k = keyFor(bi, ni);
+        const hover = (hoveredKey === k);
+        const state = getNodeState(bi, ni);
+        drawNode(pos.x, pos.y, n.name, b.color, state, hover, time);
+      });
+    });
+
+    requestAnimationFrame(draw);
+  }
+
+  // Input handling
+  function getPointerPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const cy = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+    return { x: cx - rect.left, y: cy - rect.top };
+  }
+
+  function findNodeAt(px, py) {
+    for (let bi = 0; bi < branches.length; bi++) {
+      for (let ni = 0; ni < branches[bi].nodes.length; ni++) {
+        const pos = getNodePos(bi, ni);
+        const dx = px - pos.x;
+        const dy = py - pos.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist <= nodeRadiusHover + 4) {
+          return { bi, ni };
+        }
+      }
+    }
+    return null;
+  }
+
+  function onPointerMove(e) {
+    const p = getPointerPos(e);
+    const hit = findNodeAt(p.x, p.y);
+    if (hit) {
+      hoveredKey = keyFor(hit.bi, hit.ni);
+      canvas.style.cursor = 'pointer';
+    } else {
+      hoveredKey = null;
+      canvas.style.cursor = 'default';
+    }
+  }
+
+  function onPointerDown(e) {
+    const p = getPointerPos(e);
+    const hit = findNodeAt(p.x, p.y);
+    if (hit) {
+      selectedKey = keyFor(hit.bi, hit.ni);
+      if (isUnlocked(hit.bi, hit.ni)) {
+        showTooltip(hit.bi, hit.ni);
+      } else if (canUnlock(hit.bi, hit.ni)) {
+        unlockNode(hit.bi, hit.ni);
+        showTooltip(hit.bi, hit.ni);
+      } else {
+        showTooltip(hit.bi, hit.ni);
+      }
+    } else {
+      selectedKey = null;
+      hideTooltip();
+    }
+  }
+
+  canvas.addEventListener('mousemove', onPointerMove);
+  canvas.addEventListener('mousedown', onPointerDown);
+  canvas.addEventListener('touchstart', (e) => { onPointerMove(e); onPointerDown(e); }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => { onPointerMove(e); }, { passive: false });
+
+  // Keyboard: press L to level up (gain a point)
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'l' || e.key === 'L') {
+      playerLevel++;
+      skillPoints++;
+      updateHUD();
+    }
+  });
+
+  // Initial HUD
+  updateHUD();
+
+  // Start loop
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

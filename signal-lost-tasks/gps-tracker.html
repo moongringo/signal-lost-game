@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Signal Lost — GPS Location Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --cream-soft: #fff8dc;
+      --peach: #ffc0a0;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --display-font: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+      --body-font: 'Inter', 'Bookman Old Style', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { background: var(--cream); font-family: var(--body-font); -webkit-font-smoothing: antialiased; }
+    body { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--cream); color: var(--ink); }
+
+    .phone-frame {
+      max-width: 430px;
+      margin: 2rem auto;
+      border: 12px solid #333;
+      border-radius: 40px;
+      overflow: hidden;
+      background: var(--cream);
+      box-shadow: 0 24px 48px rgba(0,0,0,0.3);
+    }
+
+    .mobile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: rgba(255, 248, 220, 0.15);
+      backdrop-filter: blur(20px) saturate(150%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .mobile-header .brand { display: flex; align-items: center; gap: 0.5rem; }
+    .mobile-header .brand-icon {
+      width: 36px; height: 36px; background: linear-gradient(135deg, var(--teal), var(--blue));
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      color: var(--cream); font-family: var(--mono-font); font-weight: 700; font-size: 0.85rem;
+    }
+    .mobile-header .brand-text { font-family: var(--display-font); font-weight: 700; font-size: 1rem; }
+
+    /* GPS Status Bar */
+    .gps-status {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(0, 200, 83, 0.08);
+      border-bottom: 1px solid rgba(0, 200, 83, 0.15);
+    }
+
+    .gps-status .gps-dot {
+      width: 12px; height: 12px; background: #00c853; border-radius: 50%;
+      box-shadow: 0 0 8px #00c853; animation: gpsPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes gpsPulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px #00c853; }
+      50% { opacity: 0.6; box-shadow: 0 0 16px #00c853; }
+    }
+
+    .gps-status .gps-text {
+      flex: 1;
+    }
+
+    .gps-status .gps-text strong {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--ink);
+    }
+
+    .gps-status .gps-text span {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-family: var(--mono-font);
+    }
+
+    .gps-status .gps-accuracy {
+      padding: 0.25rem 0.5rem;
+      background: rgba(0, 200, 83, 0.15);
+      border-radius: 6px;
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      color: #008c5a;
+      font-weight: 600;
+    }
+
+    /* Map Container - FIXED: No grey tiles */
+    .map-container {
+      position: relative;
+      height: 300px;
+      background: var(--blue);
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: var(--blue);
+    }
+
+    /* Fix for grey tiles: Custom tile layer with fallback */
+    .leaflet-container {
+      background: var(--blue) !important;
+    }
+
+    .leaflet-tile {
+      background: var(--blue) !important;
+    }
+
+    /* Map overlay info */
+    .map-overlay {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 500;
+    }
+
+    .map-overlay .info-pill {
+      padding: 0.4rem 0.75rem;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      color: var(--cream);
+      font-size: 0.75rem;
+      font-family: var(--mono-font);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Location Details */
+    .location-details {
+      padding: 1rem;
+    }
+
+    .coord-card {
+      background: rgba(255, 255, 255, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 14px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .coord-card:hover {
+      background: rgba(255, 255, 255, 0.6);
+      transform: translateX(4px);
+    }
+
+    .coord-card .label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .coord-card .value {
+      font-family: var(--mono-font);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--teal);
+    }
+
+    /* Speed & Movement */
+    .movement-card {
+      background: rgba(0, 140, 148, 0.08);
+      border: 1px solid rgba(0, 140, 148, 0.15);
+      border-radius: 14px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .movement-card .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .movement-card .header span {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .speed-display {
+      display: flex;
+      align-items: baseline;
+      gap: 0.25rem;
+    }
+
+    .speed-display .number {
+      font-family: var(--mono-font);
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: var(--teal);
+      line-height: 1;
+    }
+
+    .speed-display .unit {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    /* Track History */
+    .track-list {
+      padding: 1rem;
+    }
+
+    .track-list h3 {
+      font-family: var(--display-font);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .track-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      margin-bottom: 0.5rem;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .track-item:hover {
+      background: rgba(255, 255, 255, 0.5);
+      transform: translateX(4px);
+    }
+
+    .track-item .time {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--muted);
+      min-width: 50px;
+    }
+
+    .track-item .coords {
+      flex: 1;
+      font-family: var(--mono-font);
+      font-size: 0.8rem;
+      color: var(--ink);
+    }
+
+    .track-item .accuracy {
+      font-size: 0.7rem;
+      color: var(--teal);
+      font-weight: 600;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      display: block;
+      width: calc(100% - 2rem);
+      margin: 1rem;
+      padding: 1rem;
+      background: linear-gradient(135deg, var(--teal), var(--blue));
+      color: var(--cream);
+      border: none;
+      border-radius: 14px;
+      font-family: var(--body-font);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 140, 148, 0.4);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .demo-label {
+      text-align: center;
+      padding: 1rem;
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+  </style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="gps-tracker" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>GPS Location Tracker</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <div class="phone-frame">
+    <header class="mobile-header">
+      <div class="brand">
+        <div class="brand-icon">SL</div>
+        <div class="brand-text">GPS Tracker</div>
+      </div>
+    </header>
+
+    <div class="gps-status">
+      <div class="gps-dot"></div>
+      <div class="gps-text">
+        <strong>GPS Active</strong>
+        <span>59.9139°N, 10.7522°E</span>
+      </div>
+      <div class="gps-accuracy">±3.2m</div>
+    </div>
+
+    <div class="map-container">
+      <div id="map"></div>
+      <div class="map-overlay">
+        <div class="info-pill">📍 Oslo, Norway</div>
+        <div class="info-pill">🛰️ 8 sats</div>
+        <div class="info-pill">⏱️ 1s ago</div>
+      </div>
+    </div>
+
+    <div class="location-details">
+      <div class="coord-card">
+        <div>
+          <div class="label">Latitude</div>
+          <div class="value" id="lat">59.9139° N</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="label">Longitude</div>
+          <div class="value" id="lng">10.7522° E</div>
+        </div>
+      </div>
+
+      <div class="coord-card">
+        <div>
+          <div class="label">Altitude</div>
+          <div class="value">23m</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="label">Heading</div>
+          <div class="value">NE 45°</div>
+        </div>
+      </div>
+
+      <div class="movement-card">
+        <div class="header">
+          <span>Movement Speed</span>
+          <span style="font-family: var(--mono-font); font-size: 0.75rem; color: var(--teal);">Live</span>
+        </div>
+        <div class="speed-display">
+          <div class="number" id="speed">4.2</div>
+          <div class="unit">km/h</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="track-list">
+      <h3>📍 Location History</h3>
+      <div class="track-item">
+        <div class="time">06:45</div>
+        <div class="coords">59.9139°N, 10.7522°E</div>
+        <div class="accuracy">±2.8m</div>
+      </div>
+      <div class="track-item">
+        <div class="time">06:30</div>
+        <div class="coords">59.9141°N, 10.7518°E</div>
+        <div class="accuracy">±3.5m</div>
+      </div>
+      <div class="track-item">
+        <div class="time">06:15</div>
+        <div class="coords">59.9145°N, 10.7512°E</div>
+        <div class="accuracy">±4.1m</div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="refreshBtn">🔄 Refresh Location</button>
+  </div>
+
+  <div class="demo-label">GPS Tracker — 430px viewport</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    // Initialize map with dark theme tiles to avoid grey areas
+    const map = L.map('map', {
+      zoomControl: false,
+      attributionControl: false
+    }).setView([59.9139, 10.7522], 15);
+
+    // Use CartoDB Dark Matter tiles — no grey areas, consistent dark theme
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20,
+      subdomains: 'abcd',
+      attribution: '',
+      tileSize: 256,
+      // Fallback color if tiles fail to load
+      className: 'dark-tiles'
+    }).addTo(map);
+
+    // Custom marker icon
+    const playerIcon = L.divIcon({
+      className: 'custom-marker',
+      html: '<div style="width: 24px; height: 24px; background: linear-gradient(135deg, #008c94, #18364b); border: 3px solid #ffd965; border-radius: 50%; box-shadow: 0 0 12px rgba(0, 140, 148, 0.6);"></div>',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+
+    // Add player marker
+    const marker = L.marker([59.9139, 10.7522], { icon: playerIcon }).addTo(map);
+    marker.bindPopup('<b>Your Position</b><br>Oslo, Norway').openPopup();
+
+    // Add accuracy circle
+    const circle = L.circle([59.9139, 10.7522], {
+      color: '#008c94',
+      fillColor: '#008c94',
+      fillOpacity: 0.1,
+      radius: 50
+    }).addTo(map);
+
+    // Simulate GPS updates
+    let lat = 59.9139;
+    let lng = 10.7522;
+    let speed = 4.2;
+
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      // Simulate location change
+      lat += (Math.random() - 0.5) * 0.001;
+      lng += (Math.random() - 0.5) * 0.001;
+      speed = Math.max(0, speed + (Math.random() - 0.5) * 2);
+
+      // Update map
+      marker.setLatLng([lat, lng]);
+      circle.setLatLng([lat, lng]);
+      map.panTo([lat, lng]);
+
+      // Update UI
+      document.getElementById('lat').textContent = lat.toFixed(4) + '° N';
+      document.getElementById('lng').textContent = lng.toFixed(4) + '° E';
+      document.getElementById('speed').textContent = speed.toFixed(1);
+
+      // Animate button
+      const btn = document.getElementById('refreshBtn');
+      btn.style.transform = 'scale(0.95)';
+      setTimeout(() => btn.style.transform = '', 150);
+    });
+
+    // Auto-update speed simulation
+    setInterval(() => {
+      speed = Math.max(0, speed + (Math.random() - 0.5) * 0.5);
+      document.getElementById('speed').textContent = speed.toFixed(1);
+    }, 3000);
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

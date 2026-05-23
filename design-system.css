@@ -1,0 +1,298 @@
+/* ============================================
+   Signal Lost — Production Design System
+   Apply these CSS custom properties + classes
+   to any page for instant high-fidelity effects
+   ============================================ */
+
+/* ----- CSS Custom Properties ----- */
+:root {
+  --ink: #201116;
+  --muted: #704a41;
+  --cream: #fff0c7;
+  --cream-soft: #fff8dc;
+  --peach: #ffc0a0;
+  --gold: #ffd965;
+  --orange: #ff8b1f;
+  --pink: #e82663;
+  --teal: #008c94;
+  --blue: #18364b;
+  
+  --display-font: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --body-font: 'Inter', 'Bookman Old Style', system-ui, sans-serif;
+  --mono-font: 'JetBrains Mono', monospace;
+  
+  --glass-bg: rgba(255, 248, 220, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --glass-hover: rgba(255, 248, 220, 0.25);
+  
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ----- Reduced Motion ----- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ----- Glassmorphism Panel ----- */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  transition: all 0.3s var(--ease-out);
+}
+
+.glass-panel:hover {
+  background: var(--glass-hover);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.glass-panel.lift:hover {
+  transform: translateY(-4px);
+}
+
+/* ----- Cursor Spotlight (add empty div with class) ----- */
+.cursor-spotlight {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(
+    circle 400px at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  opacity: 0.5;
+}
+
+/* ----- Buttons ----- */
+.btn {
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-family: var(--body-font);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-out);
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--teal), var(--blue));
+  color: var(--cream);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 140, 148, 0.4);
+}
+
+.btn-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  color: var(--ink);
+  border: 1px solid var(--glass-border);
+}
+
+.btn-glass:hover {
+  background: var(--glass-hover);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-liquid {
+  background: transparent;
+  color: var(--teal);
+  border: 2px solid var(--teal);
+  transition: color 0.4s var(--ease-out);
+}
+
+.btn-liquid::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 0%;
+  background: var(--teal);
+  transition: height 0.4s var(--ease-out);
+  z-index: -1;
+}
+
+.btn-liquid:hover { color: var(--cream); }
+.btn-liquid:hover::before { height: 100%; }
+
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold), var(--orange));
+  color: var(--ink);
+}
+
+.btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 217, 101, 0.4);
+}
+
+.btn-pink {
+  background: var(--pink);
+  color: var(--cream);
+}
+
+.btn-pink:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(232, 38, 99, 0.4);
+}
+
+/* ----- Animations ----- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+@keyframes radarSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes glitch {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-3px, 2px); }
+  40% { transform: translate(3px, -2px); }
+  60% { transform: translate(-2px, -1px); }
+  80% { transform: translate(2px, 1px); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 5px currentColor; }
+  50% { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
+}
+
+/* ----- Utility Classes ----- */
+.animate-fade-in {
+  animation: fadeInUp 0.6s var(--ease-out) forwards;
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.animate-radar {
+  animation: radarSpin 3s linear infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}
+
+/* ----- Scroll Reveal (JS adds .revealed) ----- */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: all 0.6s var(--ease-out);
+}
+
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.6s var(--ease-spring);
+}
+
+.reveal-scale.revealed {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ----- Status Indicators ----- */
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.active {
+  background: var(--teal);
+  box-shadow: 0 0 8px rgba(0, 140, 148, 0.6);
+}
+
+.status-dot.warning {
+  background: var(--orange);
+  box-shadow: 0 0 8px rgba(255, 139, 31, 0.6);
+}
+
+.status-dot.danger {
+  background: var(--pink);
+  box-shadow: 0 0 8px rgba(232, 38, 99, 0.6);
+}
+
+/* ----- Progress Bars ----- */
+.progress-bar {
+  height: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar .fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--gold));
+  border-radius: 4px;
+  transition: width 0.6s var(--ease-out);
+}
+
+/* ----- Typography Utilities ----- */
+.font-display { font-family: var(--display-font); }
+.font-body { font-family: var(--body-font); }
+.font-mono { font-family: var(--mono-font); }
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--teal), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ----- Mobile Safe Area ----- */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost Flow Design - Mission Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="./design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head>
+<body data-flow-page="control" data-background="psychedelic-waves" class="grid-bg">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <section class="mc-shell" aria-label="Mission control reference layout option">
+      <header class="mc-topbar">
+        <div class="mc-brand">
+          <span class="mc-emblem">SL</span>
+          <div><strong>Signal Lost</strong><small>Mission Control</small></div>
+        </div>
+        <nav class="mc-nav" aria-label="Flow design pages">
+          <a href="./design-flow-setup.html">Setup</a>
+          <a href="./design-flow-roles.html">Roles</a>
+          <a href="./design-flow-control.html" aria-current="page">Control</a>
+          <a href="./action-center.html">Action Center</a>
+        </nav>
+        <div class="mc-stat"><span>System Status</span><b>Online</b></div>
+        <div class="mc-stat"><span>Sat Link</span><b>Active</b></div>
+        <div class="mc-stat"><span>Mission Time</span><b>02:46:18</b></div>
+        <div class="compact-audio" aria-label="Theme song controls">
+          <button id="audioToggle" type="button">Play</button>
+          <label><span>Vol</span><input id="volumeControl" type="range" min="0" max="100" value="70" /></label>
+          <span id="audioStatus">Idle</span>
+          <audio id="themeAudio" src="./assets/retro-heist-run.mp3" preload="metadata" loop></audio>
+        </div>
+      </header>
+
+      <div class="mc-grid">
+        <aside class="mc-panel glass-panel team-panel reveal">
+          <p class="kicker">Team Status</p>
+          <div class="oxygen-readout">
+            <div>
+              <span>Squad Signal</span>
+              <strong>72%</strong>
+              <small>Stable</small>
+            </div>
+            <i aria-hidden="true"><b></b></i>
+          </div>
+          <div class="crew-list">
+            <article><span>M</span><div><b>Maverick</b><small>Team leader / online</small></div><i></i></article>
+            <article><span>R</span><div><b>Ripper</b><small>Tech specialist / online</small></div><i></i></article>
+            <article><span>V</span><div><b>Vortex</b><small>Field operative / online</small></div><i></i></article>
+            <article><span>P</span><div><b>Phantom</b><small>Recon expert / online</small></div><i></i></article>
+          </div>
+          <div class="system-log">
+            <p class="kicker">System Log</p>
+            <span>02:43:12 satellite link established</span>
+            <span>02:44:02 unknown signal detected</span>
+            <span class="alert">02:45:09 signal lost</span>
+            <span>02:45:10 attempting reconnection</span>
+          </div>
+        </aside>
+
+        <section class="mc-panel glass-panel radar-panel reveal">
+          <p class="kicker">Radar Scan</p>
+          <div class="reference-radar" role="img" aria-label="Large circular radar scan with range rings and blips">
+            <span class="bearing north">0</span>
+            <span class="bearing east">90</span>
+            <span class="bearing south">180</span>
+            <span class="bearing west">270</span>
+            <i class="scan-line"></i>
+            <span class="radar-target target-one"><b>Ripper</b><small>RNG 180m</small></span>
+            <span class="radar-target target-two"><b>Maverick</b><small>RNG 320m</small></span>
+            <span class="radar-target target-three"><b>Phantom</b><small>RNG 210m</small></span>
+          </div>
+          <div class="radar-metrics">
+            <span><b>Scan Mode</b>360</span>
+            <span><b>Range</b>500m</span>
+            <span><b>Resolution</b>0.1m</span>
+            <span><b>Refresh Rate</b>60hz</span>
+          </div>
+        </section>
+
+        <aside class="mc-panel glass-panel comms-panel reveal">
+          <p class="kicker">Communications</p>
+          <div class="comms-tabs" role="group" aria-label="Communication channels">
+            <button class="is-active" type="button">Chat</button>
+            <button type="button">Voice</button>
+            <button type="button">Broadcast</button>
+          </div>
+          <div class="voice-status">
+            <strong>Voice Relay</strong>
+            <span>Open channel / squad loop armed</span>
+          </div>
+          <div class="chat-stack">
+            <article><span>Decoder</span><b>Packet A17 opened</b><small>02:43:26</small></article>
+            <article><span>AI Watch</span><b>Hunter crossing east grid</b><small>02:44:02</small></article>
+            <article><span>Navigator</span><b>Route shift through river sector</b><small>02:44:18</small></article>
+            <article><span>Mission Control</span><b>Hold south bridge until signal clears</b><small>02:45:10</small></article>
+          </div>
+          <div class="comms-compose">
+            <label><span>Operator Message</span><input value="Reroute through river sector" /></label>
+            <button class="btn btn-primary" data-magnetic type="button">Send</button>
+          </div>
+          <p class="kicker">Cipher Key</p>
+          <div class="cipher-row"><span>7A3F</span><span>9C2B</span><span>1D8E</span><span>4F6A</span></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script src="./design-flow.js?v=3"></script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+</body>
+</html>

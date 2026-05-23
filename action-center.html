@@ -1,0 +1,3301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signal Lost — Action Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="space-age-buttons.css">
+  <link rel="stylesheet" href="./design-flow.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <style>
+    /* ==========================================================
+       MISSION SETUP DESIGN SYSTEM — Action Center
+       Warm cream, peach, gold, retro serif, soft shadows
+       ========================================================== */
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --cream-soft: #fff8dc;
+      --peach: #ffc0a0;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --panel-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.58), inset 0 -24px 34px rgba(116, 45, 17, 0.13), 0 12px 0 rgba(0, 140, 148, 0.56), 0 24px 48px rgba(58, 24, 13, 0.28);
+      --display-font: "Cooper Black", "Cooper Std Black", "Bookman Old Style", Georgia, serif;
+      --body-font: "Bookman Old Style", "Trebuchet MS", Georgia, serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      min-height: 100%;
+      background: var(--cream);
+    }
+
+    body {
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: var(--body-font);
+      overflow: hidden;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* Animated Pattern Canvas Background */
+    #patternCanvas {
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+    }
+
+    /* Flow Noise Overlay */
+    .flow-noise {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+      opacity: 0.18;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 4px),
+        radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.32), transparent 20%),
+        radial-gradient(circle at 82% 16%, rgba(255, 217, 101, 0.3), transparent 24%);
+      mix-blend-mode: screen;
+    }
+
+    /* Main Grid Layout */
+    .action-grid {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: 300px 1fr 340px;
+      grid-template-rows: 80px 1fr 220px;
+      gap: 16px;
+      padding: 16px;
+      padding-top: calc(80px + 16px);
+      height: 100vh;
+      grid-template-areas:
+        "header header header"
+        "teams radar chat"
+        "teams stats chat";
+    }
+
+    /* Panel Style — Warm Retro */
+    .panel {
+      border: 2px solid rgba(255, 250, 224, 0.82);
+      background:
+        radial-gradient(circle at 24% 10%, rgba(255, 255, 255, 0.48), transparent 24%),
+        linear-gradient(140deg, var(--gold), var(--peach) 48%, #ffb172);
+      box-shadow: var(--panel-shadow);
+      border-radius: 24px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 14px 18px;
+      background: rgba(255, 255, 255, 0.25);
+      border-bottom: 1px solid rgba(255, 250, 224, 0.5);
+      font-family: var(--display-font);
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--teal);
+    }
+
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+    }
+
+    .panel-body::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .panel-body::-webkit-scrollbar-track {
+      background: rgba(255, 217, 101, 0.2);
+      border-radius: 3px;
+    }
+
+    .panel-body::-webkit-scrollbar-thumb {
+      background: var(--orange);
+      border-radius: 3px;
+    }
+
+    /* Header */
+    .header-bar {
+      grid-area: header;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      border: 2px solid rgba(255, 250, 224, 0.82);
+      background:
+        radial-gradient(circle at 24% 10%, rgba(255, 255, 255, 0.48), transparent 24%),
+        linear-gradient(140deg, var(--gold), var(--peach) 48%, #ffb172);
+      box-shadow: var(--panel-shadow);
+      border-radius: 30px;
+    }
+
+    .header-title {
+      font-family: var(--display-font);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--ink);
+      letter-spacing: 0.02em;
+    }
+
+    .header-title::before {
+      content: '⚡ ';
+    }
+
+    .match-timer {
+      font-family: 'SF Mono', 'Courier New', monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--teal);
+      background: rgba(255, 255, 255, 0.4);
+      padding: 6px 16px;
+      border-radius: 16px;
+      border: 2px solid rgba(255, 250, 224, 0.6);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .sim-controls {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    /* Teams Panel */
+    .teams-panel {
+      grid-area: teams;
+    }
+
+    .team-card {
+      background: rgba(255, 255, 255, 0.35);
+      border: 2px solid rgba(255, 250, 224, 0.6);
+      border-radius: 18px;
+      padding: 14px;
+      margin-bottom: 10px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .team-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--team-color, var(--orange));
+      border-radius: 18px 0 0 18px;
+    }
+
+    .team-card.active {
+      border-color: var(--orange);
+      box-shadow: 0 4px 20px rgba(255, 139, 31, 0.3);
+    }
+
+    .team-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding-left: 8px;
+    }
+
+    .team-name {
+      font-family: var(--display-font);
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--ink);
+    }
+
+    .team-status {
+      font-size: 0.65rem;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 2px solid;
+    }
+
+    .team-status.alive { background: rgba(0, 200, 136, 0.15); color: #008c5a; border-color: rgba(0, 200, 136, 0.3); }
+    .team-status.dead { background: rgba(232, 38, 99, 0.15); color: var(--pink); border-color: rgba(232, 38, 99, 0.3); }
+    .team-status.wounded { background: rgba(255, 139, 31, 0.15); color: var(--orange); border-color: rgba(255, 139, 31, 0.3); }
+
+    .team-stats-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+      padding-left: 8px;
+    }
+
+    .stat-box {
+      text-align: center;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 250, 224, 0.5);
+    }
+
+    .stat-value {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: var(--teal);
+      font-family: 'SF Mono', monospace;
+    }
+
+    .stat-label {
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 4px;
+    }
+
+    .hp-bar-container {
+      padding-left: 8px;
+    }
+
+    .hp-bar {
+      height: 8px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 6px;
+      border: 1px solid rgba(255, 250, 224, 0.5);
+    }
+
+    .hp-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    .hp-text {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 4px;
+      font-family: 'SF Mono', monospace;
+    }
+
+    /* Radar Panel */
+    .radar-panel {
+      grid-area: radar;
+      position: relative;
+    }
+
+    /* Map background inside radar */
+    .radar-map-bg {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      overflow: hidden;
+      z-index: 0;
+    }
+
+    .radar-map-bg .leaflet-container {
+      background: #0a1a2a !important;
+    }
+
+    /* Mission Control Reference Radar — exact from design-flow.css */
+    .reference-radar {
+      position: relative;
+      width: min(100%, 560px);
+      aspect-ratio: 1;
+      min-height: 0;
+      margin: 0 auto;
+      overflow: hidden;
+      border: 10px solid rgba(255, 248, 220, 0.86);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255, 217, 101, 0.4) 0 2%, transparent 3%),
+        repeating-radial-gradient(circle at 50% 50%, transparent 0 13%, rgba(255, 217, 101, 0.34) 13.4% 13.9%, transparent 14.3% 26%),
+        linear-gradient(145deg, rgba(0, 140, 148, 0.94), rgba(24, 54, 75, 0.96)),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 28px),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 28px);
+      box-shadow: inset 0 0 0 2px rgba(36, 20, 20, 0.18), inset 0 0 38px rgba(255, 248, 220, 0.18), 0 12px 0 rgba(113, 48, 17, 0.12);
+    }
+
+    .reference-radar::before,
+    .reference-radar::after {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      content: "";
+      background: rgba(255, 240, 199, 0.46);
+      transform: translate(-50%, -50%);
+    }
+
+    .reference-radar::before {
+      width: 1px;
+      height: 90%;
+    }
+
+    .reference-radar::after {
+      width: 90%;
+      height: 1px;
+    }
+
+    .scan-line {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 1;
+      width: 46%;
+      height: 46%;
+      transform-origin: 0 0;
+      clip-path: polygon(0 0, 100% 28%, 100% 78%);
+      background:
+        radial-gradient(circle at 0 0, rgba(255, 240, 199, 0.95), rgba(255, 217, 101, 0.46) 38%, rgba(255, 217, 101, 0.12) 68%, transparent 100%);
+      filter: blur(0.35px);
+      opacity: 0.9;
+      animation: sweep 4.8s linear infinite;
+    }
+
+    .bearing,
+    .radar-target {
+      position: absolute;
+      z-index: 3;
+    }
+
+    .bearing {
+      color: rgba(255, 240, 199, 0.76);
+      font-weight: 900;
+    }
+
+    .bearing.north { left: 50%; top: 10px; }
+    .bearing.east { right: 12px; top: 50%; }
+    .bearing.south { left: 50%; bottom: 10px; }
+    .bearing.west { left: 12px; top: 50%; }
+
+    .radar-target {
+      display: grid;
+      gap: 2px;
+      border-left: 2px solid #37f06f;
+      padding-left: 10px;
+      color: var(--cream);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+    }
+
+    .radar-target::before {
+      position: absolute;
+      left: -18px;
+      top: 8px;
+      width: 12px;
+      height: 12px;
+      content: "";
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 0 5px rgba(255, 217, 101, 0.26), 0 0 18px rgba(255, 217, 101, 0.82);
+    }
+
+    .target-one { left: 24%; top: 48%; }
+    .target-two { right: 18%; top: 38%; }
+    .target-three { left: 42%; bottom: 18%; }
+
+    .radar-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid rgba(36, 20, 20, 0.12);
+      border-top: 0;
+    }
+
+    .radar-metrics span {
+      display: grid;
+      gap: 8px;
+      padding: 16px;
+      border-right: 1px solid rgba(255, 217, 101, 0.14);
+      color: #007a86;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .radar-metrics b {
+      color: var(--muted);
+      font-size: 0.7rem;
+    }
+
+    @keyframes sweep {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Radar Toggle Off State */
+    .action-grid.radar-off .reference-radar {
+      opacity: 0.3;
+      transition: opacity 0.5s ease;
+    }
+
+    .action-grid.radar-off .scan-line {
+      animation: none;
+    }
+
+    /* Chat Panel */
+    .chat-panel {
+      grid-area: chat;
+    }
+
+    .chat-log {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px;
+    }
+
+    .chat-log::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-log::-webkit-scrollbar-track {
+      background: rgba(255, 217, 101, 0.2);
+      border-radius: 3px;
+    }
+
+    .chat-log::-webkit-scrollbar-thumb {
+      background: var(--orange);
+      border-radius: 3px;
+    }
+
+    .chat-entry {
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.4);
+      border-left: 4px solid var(--gold);
+      font-size: 0.82rem;
+      animation: slideIn 0.35s ease;
+    }
+
+    .chat-entry.planning {
+      border-left-color: var(--orange);
+      background: rgba(255, 139, 31, 0.08);
+    }
+
+    .chat-entry.combat {
+      border-left-color: var(--pink);
+      background: rgba(232, 38, 99, 0.08);
+    }
+
+    .chat-entry.alert {
+      border-left-color: var(--teal);
+      background: rgba(0, 140, 148, 0.08);
+    }
+
+    .chat-sender {
+      font-family: var(--display-font);
+      font-weight: 700;
+      font-size: 0.75rem;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chat-time {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-left: auto;
+      font-family: 'SF Mono', monospace;
+    }
+
+    .chat-text {
+      line-height: 1.5;
+      color: var(--ink);
+    }
+
+    /* Stats Panel */
+    .stats-panel {
+      grid-area: stats;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.4);
+      border: 2px solid rgba(255, 250, 224, 0.6);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      border-color: var(--orange);
+      box-shadow: 0 4px 16px rgba(255, 139, 31, 0.25);
+    }
+
+    .stat-card-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--teal);
+      font-family: 'SF Mono', monospace;
+    }
+
+    .stat-card-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 4px;
+    }
+
+    .threat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 0 14px 14px;
+    }
+
+    .threat-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255, 139, 31, 0.08);
+      border: 2px solid rgba(255, 139, 31, 0.2);
+      border-radius: 10px;
+      font-size: 0.8rem;
+      transition: all 0.2s ease;
+    }
+
+    .threat-item:hover {
+      border-color: var(--orange);
+      box-shadow: 0 2px 10px rgba(255, 139, 31, 0.2);
+    }
+
+    .threat-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-15px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Radar Toggle Off State */
+    .action-grid.radar-off {
+      /* Map stays visible, scan animation toggled separately */
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .action-grid, .action-grid.radar-off {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        grid-template-areas:
+          "header"
+          "radar"
+          "teams"
+          "stats"
+          "chat";
+      }
+      .radar-panel { display: flex !important; min-height: 400px; }
+    }
+
+    /* ==========================================================
+       DEATH SCREEN OVERLAY
+       ========================================================== */
+    .death-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(20,0,0,0.98) 100%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      animation: fadeIn 1s ease;
+    }
+
+    .death-screen.active {
+      display: flex;
+    }
+
+    .death-screen h1 {
+      font-family: var(--display-font);
+      font-size: 4rem;
+      color: var(--pink);
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      margin-bottom: 20px;
+      text-shadow: 0 0 40px rgba(232, 38, 99, 0.6);
+    }
+
+    .death-screen .kia-badge {
+      font-size: 1.2rem;
+      color: var(--gold);
+      border: 2px solid var(--gold);
+      padding: 8px 24px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      letter-spacing: 0.2em;
+    }
+
+    .death-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+      margin: 30px 0;
+    }
+
+    .death-stat {
+      text-align: center;
+    }
+
+    .death-stat-value {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--cream);
+      font-family: 'SF Mono', monospace;
+    }
+
+    .death-stat-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 8px;
+    }
+
+    .death-cause {
+      font-size: 1.1rem;
+      color: var(--peach);
+      margin-bottom: 40px;
+      font-style: italic;
+    }
+
+    .death-screen .sa-btn {
+      margin: 8px;
+      font-size: 1rem;
+      padding: 14px 40px;
+    }
+
+    /* ==========================================================
+       GAS FIELD / HAZARD ZONES
+       ========================================================== */
+    .gas-field-legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .gas-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .gas-legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid;
+    }
+
+    .gas-toxic { background: rgba(0, 255, 128, 0.3); border-color: #00ff80; }
+    .gas-fire { background: rgba(255, 69, 0, 0.3); border-color: #ff4500; }
+    .gas-radiation { background: rgba(255, 255, 0, 0.3); border-color: #ffff00; }
+    .gas-ice { background: rgba(0, 191, 255, 0.3); border-color: #00bfff; }
+
+    /* ==========================================================
+       KILL FEED
+       ========================================================== */
+    .kill-feed {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 280px;
+      pointer-events: none;
+    }
+
+    .kill-feed-item {
+      background: rgba(0, 0, 0, 0.75);
+      border-left: 3px solid var(--pink);
+      padding: 8px 14px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.78rem;
+      color: var(--cream);
+      animation: slideInRight 0.5s ease, fadeOut 0.5s ease 4.5s forwards;
+      backdrop-filter: blur(4px);
+    }
+
+    .kill-feed-item .killer { color: var(--gold); font-weight: 700; }
+    .kill-feed-item .victim { color: var(--pink); font-weight: 700; }
+    .kill-feed-item .weapon { color: var(--muted); font-size: 0.7rem; }
+
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; transform: translateX(30px); }
+    }
+
+    /* ==========================================================
+       SAFE ZONE INDICATOR
+       ========================================================== */
+    .safe-zone-indicator {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid var(--gold);
+      border-radius: 12px;
+      padding: 10px 24px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(4px);
+    }
+
+    .safe-zone-indicator.active {
+      display: flex;
+    }
+
+    .safe-zone-timer {
+      font-family: 'SF Mono', monospace;
+      font-size: 1.2rem;
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .safe-zone-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .safe-zone-bar {
+      width: 120px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .safe-zone-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--orange));
+      border-radius: 3px;
+      transition: width 1s linear;
+    }
+
+    /* ==========================================================
+       SPECTATOR MODE
+       ========================================================== */
+    .spectator-banner {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid var(--teal);
+      border-radius: 12px;
+      padding: 10px 24px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(4px);
+    }
+
+    .spectator-banner.active {
+      display: flex;
+    }
+
+    .spectator-banner span {
+      color: var(--teal);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .spectator-target {
+      color: var(--gold);
+      font-family: 'SF Mono', monospace;
+    }
+
+    /* ==========================================================
+       WEAPON LOADOUT SYSTEM
+       ========================================================== */
+    .loadout-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .loadout-slot {
+      background: rgba(255, 255, 255, 0.4);
+      border: 2px solid rgba(255, 250, 224, 0.6);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .loadout-slot:hover {
+      border-color: var(--gold);
+      box-shadow: 0 4px 16px rgba(255, 217, 101, 0.25);
+    }
+
+    .loadout-slot.selected {
+      border-color: var(--gold);
+      background: rgba(255, 217, 101, 0.15);
+      box-shadow: 0 4px 16px rgba(255, 217, 101, 0.3);
+    }
+
+    .loadout-slot .icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .loadout-slot .name {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .loadout-slot .stats {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* ==========================================================
+       PERK SYSTEM
+       ========================================================== */
+    .perk-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .perk-card {
+      background: rgba(255, 255, 255, 0.4);
+      border: 2px solid rgba(255, 250, 224, 0.6);
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .perk-card:hover {
+      border-color: var(--gold);
+    }
+
+    .perk-card.selected {
+      border-color: var(--gold);
+      background: rgba(255, 217, 101, 0.15);
+    }
+
+    .perk-card .perk-icon {
+      font-size: 1.5rem;
+    }
+
+    .perk-card .perk-info {
+      flex: 1;
+    }
+
+    .perk-card .perk-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .perk-card .perk-desc {
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+
+    /* ==========================================================
+       DAILY CHALLENGE BADGE
+       ========================================================== */
+    .challenge-badge {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 100;
+      background: linear-gradient(145deg, rgba(255, 139, 31, 0.9), rgba(232, 38, 99, 0.9));
+      border: 2px solid var(--gold);
+      border-radius: 12px;
+      padding: 10px 18px;
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      backdrop-filter: blur(4px);
+    }
+
+    .challenge-badge.active {
+      display: flex;
+    }
+
+    .challenge-badge .challenge-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--cream);
+      letter-spacing: 0.1em;
+    }
+
+    .challenge-badge .challenge-desc {
+      font-size: 0.8rem;
+      color: var(--cream);
+      font-weight: 700;
+    }
+
+    /* ==========================================================
+       DIFFICULTY SELECTOR
+       ========================================================== */
+    .diff-selector {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .diff-btn {
+      flex: 1;
+      padding: 10px;
+      border: 2px solid rgba(255, 250, 224, 0.6);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .diff-btn:hover {
+      border-color: var(--gold);
+    }
+
+    .diff-btn.selected {
+      border-color: var(--gold);
+      background: rgba(255, 217, 101, 0.2);
+      box-shadow: 0 4px 12px rgba(255, 217, 101, 0.2);
+    }
+
+    /* ==========================================================
+       WEATHER OVERLAY
+       ========================================================== */
+    .weather-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      pointer-events: none;
+      display: none;
+    }
+
+    .weather-overlay.active {
+      display: block;
+    }
+
+    .weather-overlay.fog {
+      background: rgba(200, 200, 200, 0.3);
+      backdrop-filter: blur(2px);
+    }
+
+    .weather-overlay.rain {
+      background: repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(100, 150, 200, 0.1) 2px, rgba(100, 150, 200, 0.1) 4px);
+    }
+
+    /* ==========================================================
+       AIRDROP MARKER
+       ========================================================== */
+    .airdrop-marker {
+      animation: airdropPulse 2s infinite;
+    }
+
+    @keyframes airdropPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.7; }
+    }
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(8px);
+    }
+
+    .loot-modal.active {
+      display: flex;
+    }
+
+    .loot-panel {
+      background: linear-gradient(145deg, rgba(255, 240, 199, 0.95), rgba(255, 248, 220, 0.9));
+      border: 4px solid var(--gold);
+      border-radius: 24px;
+      padding: 30px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+    }
+
+    .loot-panel h2 {
+      font-family: var(--display-font);
+      color: var(--ink);
+      margin-bottom: 20px;
+      font-size: 1.4rem;
+    }
+
+    .loot-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 2px solid rgba(255, 217, 101, 0.3);
+      border-radius: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .loot-item:hover {
+      border-color: var(--gold);
+      background: rgba(255, 217, 101, 0.15);
+      transform: translateX(4px);
+    }
+
+    .loot-item-name {
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .loot-item-rarity {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .rarity-common { background: rgba(128, 128, 128, 0.2); color: #888; }
+    .rarity-rare { background: rgba(0, 140, 148, 0.2); color: var(--teal); }
+    .rarity-epic { background: rgba(255, 139, 31, 0.2); color: var(--orange); }
+    .rarity-legendary { background: rgba(255, 217, 101, 0.3); color: #b8860b; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head><body data-flow-page="action-center" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Action Center</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./design-flow-setup.html">Setup</a>
+        <a href="./design-flow-roles.html">Roles</a>
+        <a href="./design-flow-control.html">Control</a>
+
+        <a href="./design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="./login.html">Login</a>
+              <a href="./server-browser.html">Server Browser</a>
+              <a href="./map-selection.html">Map Selection</a>
+              <a href="./role-selection.html">Role Selection</a>
+              <a href="./matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="./player-profile.html">Player Profile</a>
+              <a href="./career-stats.html">Career Stats</a>
+              <a href="./match-result.html">Match Result</a>
+              <a href="./post-match-report.html">Post-Match Report</a>
+              <a href="./kill-cam.html">Kill Cam</a>
+              <a href="./death-recap.html">Death Recap</a>
+              <a href="./spectator-mode.html">Spectator Mode</a>
+              <a href="./replay-viewer.html">Replay Viewer</a>
+              <a href="./tournament-bracket.html">Tournament</a>
+              <a href="./emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="./store.html">Store</a>
+              <a href="./friends.html">Friends</a>
+              <a href="./squad.html">Squad</a>
+              <a href="./clan-wars.html">Clan Wars</a>
+              <a href="./patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="./token-dashboard.html">Token Dashboard</a>
+              <a href="./daily-challenges.html">Daily Challenges</a>
+              <a href="./inventory.html">Inventory</a>
+              <a href="./loadout-builder.html">Loadout Builder</a>
+              <a href="./battle-pass.html">Battle Pass</a>
+              <a href="./loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="./R&D-INDEX.html">R&D Index</a>
+              <a href="./ai-battle-arena.html">AI Battle Arena</a>
+              <a href="./admin-dashboard.html">Admin Dashboard</a>
+              <a href="./leaderboard.html">Leaderboard</a>
+              <a href="./settings.html">Settings</a>
+              <a href="./design-system.html">Design System</a>
+              <a href="./design-flow-setup.html">Setup Page</a>
+              <a href="./design-flow-roles.html">Roles Page</a>
+              <a href="./design-flow-control.html">Control Page</a>
+              <a href="./action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="./mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="./mobile-radar.html">Mobile Radar</a>
+              <a href="./gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="./design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <!-- Animated Pattern Canvas -->
+  <!-- Shared Flow Header -->
+  <!-- Pre-Match Customization Screen -->
+  <div id="customizeScreen" style="position: fixed; inset: 0; z-index: 5000; background: linear-gradient(145deg, rgba(0,0,0,0.95), rgba(24,54,75,0.98)); display: flex; align-items: center; justify-content: center; overflow-y: auto; padding: 20px;">
+    <div style="background: linear-gradient(145deg, rgba(255,240,199,0.95), rgba(255,248,220,0.9)); border: 4px solid var(--gold); border-radius: 24px; padding: 40px; max-width: 700px; width: 90%; box-shadow: 0 24px 48px rgba(0,0,0,0.5);">
+      <h2 style="font-family: var(--display-font); color: var(--ink); margin-bottom: 24px; text-align: center;">⚔️ Squad Setup</h2>
+      
+      <div style="display: grid; gap: 20px;">
+        <!-- Squad Name + Strategy -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+          <label style="display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase;">Squad Name</span>
+            <input id="customName" type="text" value="Alpha Squad" style="padding: 12px; border: 2px solid var(--gold); border-radius: 10px; font-size: 1rem; background: rgba(255,255,255,0.5);">
+          </label>
+          
+          <label style="display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase;">Strategy</span>
+            <select id="customStrategy" style="padding: 12px; border: 2px solid var(--gold); border-radius: 10px; font-size: 1rem; background: rgba(255,255,255,0.5);">
+              <option value="aggressive">🔥 Aggressive</option>
+              <option value="defensive">🛡️ Defensive</option>
+              <option value="stealth">👤 Stealth</option>
+              <option value="support">🚑 Support</option>
+            </select>
+          </label>
+        </div>
+        
+        <!-- Color -->
+        <label style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase;">Squad Color</span>
+          <div style="display: flex; gap: 10px; justify-content: center;">
+            <button class="color-btn" data-color="#e82663" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; background: #e82663; cursor: pointer;"></button>
+            <button class="color-btn" data-color="#ff8b1f" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; background: #ff8b1f; cursor: pointer;"></button>
+            <button class="color-btn" data-color="#ffd965" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; background: #ffd965; cursor: pointer;"></button>
+            <button class="color-btn" data-color="#008c94" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; background: #008c94; cursor: pointer;"></button>
+            <button class="color-btn" data-color="#7b1fa2" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid white; background: #7b1fa2; cursor: pointer;"></button>
+          </div>
+        </label>
+        
+        <!-- Weapon Loadout -->
+        <div style="border-top: 2px solid rgba(255, 217, 101, 0.3); padding-top: 16px;">
+          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 10px;">🔫 Weapon Loadout</div>
+          <div class="loadout-grid" id="loadoutGrid">
+            <div class="loadout-slot selected" data-weapon="assault">
+              <div class="icon">🔫</div>
+              <div class="name">Assault Rifle</div>
+              <div class="stats">DMG 15 | RNG Med</div>
+            </div>
+            <div class="loadout-slot" data-weapon="sniper">
+              <div class="icon">🎯</div>
+              <div class="name">Sniper</div>
+              <div class="stats">DMG 30 | RNG Long</div>
+            </div>
+            <div class="loadout-slot" data-weapon="shotgun">
+              <div class="icon">💥</div>
+              <div class="name">Shotgun</div>
+              <div class="stats">DMG 25 | RNG Short</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Perk Selection -->
+        <div style="border-top: 2px solid rgba(255, 217, 101, 0.3); padding-top: 16px;">
+          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 10px;">⭐ Select Perk</div>
+          <div class="perk-grid" id="perkGrid">
+            <div class="perk-card selected" data-perk="healer">
+              <div class="perk-icon">🚑</div>
+              <div class="perk-info">
+                <div class="perk-name">Fast Healer</div>
+                <div class="perk-desc">+50% healing speed</div>
+              </div>
+            </div>
+            <div class="perk-card" data-perk="stealth">
+              <div class="perk-icon">👤</div>
+              <div class="perk-info">
+                <div class="perk-name">Ghost Walker</div>
+                <div class="perk-desc">Harder to detect on radar</div>
+              </div>
+            </div>
+            <div class="perk-card" data-perk="heavy">
+              <div class="perk-icon">💪</div>
+              <div class="perk-info">
+                <div class="perk-name">Heavy Hitter</div>
+                <div class="perk-desc">+30% damage output</div>
+              </div>
+            </div>
+            <div class="perk-card" data-perk="scout">
+              <div class="perk-icon">🔭</div>
+              <div class="perk-info">
+                <div class="perk-name">Eagle Eye</div>
+                <div class="perk-desc">+40% radar range</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Bot Difficulty -->
+        <div style="border-top: 2px solid rgba(255, 217, 101, 0.3); padding-top: 16px;">
+          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 10px;">🤖 Bot Difficulty</div>
+          <div class="diff-selector" id="diffSelector">
+            <button class="diff-btn selected" data-diff="easy">😊 Easy</button>
+            <button class="diff-btn" data-diff="normal">😐 Normal</button>
+            <button class="diff-btn" data-diff="hard">😠 Hard</button>
+            <button class="diff-btn" data-diff="insane">💀 Insane</button>
+          </div>
+        </div>
+        
+        <div style="margin-top: 24px; text-align: center;">
+          <button class="sa-btn sa-btn--teal" id="btnDeploy" style="font-size: 1.1rem; padding: 16px 48px;">🚀 Deploy Squad</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily Challenge Badge -->
+  <div class="challenge-badge" id="challengeBadge">
+    <div class="challenge-title">📅 Daily Challenge</div>
+    <div class="challenge-desc" id="challengeDesc">Sniper Only — All teams use sniper strategy</div>
+  </div>
+
+  <!-- Weather Overlay -->
+  <div class="weather-overlay" id="weatherOverlay"></div>
+
+  <!-- Main Grid -->
+  <div class="action-grid">
+    <!-- Header -->
+    <div class="header-bar">
+      <div class="header-title">Action Center</div>
+      <div class="match-timer" id="matchTimer">00:00</div>
+      <div class="match-phase" id="matchPhase" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--gold); background: rgba(0,0,0,0.3); padding: 4px 12px; border-radius: 8px;">Setup</div>
+      <div class="sim-controls">
+        <button class="sa-btn sa-btn--teal sa-btn--sm" id="btnStart">Start</button>
+        <button class="sa-btn sa-btn--coral sa-btn--sm" id="btnPause">Pause</button>
+        <button class="sa-btn sa-btn--charcoal sa-btn--sm" id="btnReset">Reset</button>
+        <button class="sa-btn sa-btn--teal sa-btn--sm" id="btnSpeed">⏩ 1x</button>
+        <button class="sa-btn sa-btn--teal sa-btn--sm" id="btnSpawn">👾 Spawn</button>
+        <button class="sa-btn sa-btn--teal sa-btn--sm" id="btnRadarToggle">🗺️ Radar</button>
+      </div>
+      <div style="display: flex; gap: 8px; margin-left: auto;">
+        <a href="./design-flow-setup.html" style="text-decoration: none;"><button class="sa-btn sa-btn--sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">📝 Setup</button></a>
+        <a href="./index.html" style="text-decoration: none;"><button class="sa-btn sa-btn--sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">🏠 Home</button></a>
+      </div>
+    </div>
+
+    <!-- Teams Panel -->
+    <div class="panel teams-panel glass-panel reveal">
+      <div class="panel-header">
+        <span style="color: var(--orange);">●</span> Active Teams
+      </div>
+      <div class="panel-body" id="teamsContainer">
+        <!-- Teams injected by JS -->
+      </div>
+    </div>
+
+    <!-- Radar Panel -->
+    <div class="panel radar-panel glass-panel reveal">
+      <div class="panel-header">
+        <span style="color: var(--pink);">●</span> Live Radar
+      </div>
+      <div class="reference-radar" id="radarDisplay" role="img" aria-label="Large circular radar scan with range rings and blips">
+        <div class="radar-map-bg" id="radarMap"></div>
+        <span class="bearing north">0</span>
+        <span class="bearing east">90</span>
+        <span class="bearing south">180</span>
+        <span class="bearing west">270</span>
+        <i class="scan-line"></i>
+        <span class="radar-target target-one" id="target1"><b>Alpha</b><small>RNG 180m</small></span>
+        <span class="radar-target target-two" id="target2"><b>Bravo</b><small>RNG 320m</small></span>
+        <span class="radar-target target-three" id="target3"><b>Threat</b><small>RNG 210m</small></span>
+      </div>
+      <div class="radar-metrics">
+        <span><b>Scan Mode</b>360</span>
+        <span><b>Range</b>500m</span>
+        <span><b>Resolution</b>0.1m</span>
+        <span><b>Refresh Rate</b>60hz</span>
+      </div>
+    </div>
+
+    <!-- Chat Panel -->
+    <div class="panel chat-panel glass-panel reveal">
+      <div class="panel-header">
+        <span style="color: #4ECDC4;">●</span> Comms Log
+      </div>
+      <div class="chat-log" id="chatLog">
+        <!-- Chat injected by JS -->
+      </div>
+    </div>
+
+    <!-- Stats Panel -->
+    <div class="panel stats-panel glass-panel reveal">
+      <div class="panel-header">
+        <span style="color: var(--orange);">●</span> Battle Stats
+      </div>
+      <div class="panel-body">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-card-value" id="statKills">0</div>
+            <div class="stat-card-label">Eliminations</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-value" id="statThreats">0</div>
+            <div class="stat-card-label">Threats Neutralized</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-value" id="statLoot">0</div>
+            <div class="stat-card-label">Loot Secured</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-value" id="statAlive">16</div>
+            <div class="stat-card-label">Agents Alive</div>
+          </div>
+        </div>
+        <!-- Match History -->
+        <div style="margin-top: 16px; border-top: 2px solid rgba(255, 217, 101, 0.2); padding-top: 16px;">
+          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; letter-spacing: 1px;">Recent Matches</div>
+          <div id="matchHistory">
+            <div style="padding: 12px; color: var(--muted); font-size: 0.8rem; text-align: center;">No matches yet. Start a simulation! 🎮</div>
+          </div>
+        </div>
+        <div class="threat-list" id="threatList">
+          <!-- Threats injected by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Replay Panel -->
+    <div class="panel" style="grid-area: replay; display: none;" id="replayPanel">
+      <div class="panel-header">
+        <span style="color: var(--teal);">●</span> Match Replay
+      </div>
+      <div class="panel-body" style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; gap: 8px; justify-content: center;">
+          <button class="sa-btn sa-btn--sm" id="btnReplayPlay">▶️ Play</button>
+          <button class="sa-btn sa-btn--sm" id="btnReplayPause">⏸️ Pause</button>
+          <button class="sa-btn sa-btn--sm" id="btnReplayRewind">⏪ Rewind</button>
+        </div>
+        <input type="range" id="replaySlider" min="0" max="100" value="0" style="width: 100%;">
+        <div style="font-size: 0.7rem; color: var(--muted); text-align: center;" id="replayStatus">No replay recorded</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kill Feed Overlay -->
+  <div class="kill-feed" id="killFeed"></div>
+
+  <!-- Safe Zone Indicator -->
+  <div class="safe-zone-indicator" id="safeZoneIndicator">
+    <div class="safe-zone-label">Safe Zone Shrinks In</div>
+    <div class="safe-zone-timer" id="safeZoneTimer">02:00</div>
+    <div class="safe-zone-bar">
+      <div class="safe-zone-bar-fill" id="safeZoneBar" style="width: 100%;"></div>
+    </div>
+  </div>
+
+  <!-- Spectator Mode Banner -->
+  <div class="spectator-banner" id="spectatorBanner">
+    <span>👁️ Spectating:</span>
+    <span class="spectator-target" id="spectatorTarget">Alpha Squad</span>
+    <button class="sa-btn sa-btn--sm sa-btn--teal" id="btnNextSpectate">Next →</button>
+  </div>
+
+  <!-- Death Screen Overlay -->
+  <div class="death-screen" id="deathScreen">
+    <div class="kia-badge">Killed In Action</div>
+    <h1 id="deathTitle">ELIMINATED</h1>
+    <div class="death-cause" id="deathCause">Neutralized by Patrol Drone in Sector 7</div>
+    <div class="death-stats">
+      <div class="death-stat">
+        <div class="death-stat-value" id="deathTime">02:34</div>
+        <div class="death-stat-label">Time Survived</div>
+      </div>
+      <div class="death-stat">
+        <div class="death-stat-value" id="deathKills">3</div>
+        <div class="death-stat-label">Eliminations</div>
+      </div>
+      <div class="death-stat">
+        <div class="death-stat-value" id="deathRank">#5</div>
+        <div class="death-stat-label">Match Rank</div>
+      </div>
+    </div>
+    <div style="margin-top: 20px;">
+      <button class="sa-btn sa-btn--teal" id="btnSpectate">👁️ Spectate Remaining</button>
+      <button class="sa-btn sa-btn--gold" id="btnViewReplay">📺 View Replay</button>
+      <button class="sa-btn sa-btn--charcoal" id="btnReturnMenu">🏠 Main Menu</button>
+    </div>
+  </div>
+
+  <!-- Corpse Looting Modal -->
+  <div class="loot-modal" id="lootModal">
+    <div class="loot-panel">
+      <h2>📦 Scavenge Gear</h2>
+      <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 16px;">
+        Looting <span id="lootCorpseName" style="color: var(--ink); font-weight: 700;">Alpha Squad</span>'s remains
+      </div>
+      <div id="lootItemsContainer">
+        <!-- Loot items injected by JS -->
+      </div>
+      <div style="margin-top: 20px; text-align: center;">
+        <button class="sa-btn sa-btn--coral sa-btn--sm" id="btnCloseLoot">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================================
+    // ANIMATED PATTERN BACKGROUND (Psychedelic Waves)
+    // ==========================================================
+    const canvas = document.getElementById('patternCanvas');
+    const ctx = canvas.getContext('2d');
+    let time = 0;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawPattern() {
+      time += 0.005;
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // Cream base
+      ctx.fillStyle = '#fff0c7';
+      ctx.fillRect(0, 0, w, h);
+
+      // Animated waves
+      for (let i = 0; i < 6; i++) {
+        const offset = i * 0.8;
+        const alpha = 0.03 + (i * 0.01);
+
+        ctx.beginPath();
+        for (let x = 0; x < w; x += 4) {
+          const y = h / 2 +
+            Math.sin(x * 0.003 + time + offset) * 80 +
+            Math.sin(x * 0.007 + time * 1.3 + offset) * 40 +
+            Math.sin(x * 0.015 + time * 0.7 + offset) * 20;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = i % 2 === 0 ? `rgba(255, 192, 160, ${alpha})` : `rgba(255, 217, 101, ${alpha})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Radial gradients
+      const gradient1 = ctx.createRadialGradient(w * 0.3, h * 0.3, 0, w * 0.3, h * 0.3, w * 0.4);
+      gradient1.addColorStop(0, 'rgba(255, 217, 101, 0.15)');
+      gradient1.addColorStop(1, 'transparent');
+      ctx.fillStyle = gradient1;
+      ctx.fillRect(0, 0, w, h);
+
+      const gradient2 = ctx.createRadialGradient(w * 0.7, h * 0.6, 0, w * 0.7, h * 0.6, w * 0.35);
+      gradient2.addColorStop(0, 'rgba(255, 192, 160, 0.1)');
+      gradient2.addColorStop(1, 'transparent');
+      ctx.fillStyle = gradient2;
+      ctx.fillRect(0, 0, w, h);
+
+      requestAnimationFrame(drawPattern);
+    }
+    drawPattern();
+
+    // ==========================================================
+    // ACTION CENTER — AI Team Battle Simulation
+    // ==========================================================
+
+    const TEAMS = [
+      { id: 'alpha', name: 'Alpha Squad', color: '#008c94', strategy: 'aggressive', members: 4 },
+      { id: 'bravo', name: 'Bravo Squad', color: '#ff8b1f', strategy: 'defensive', members: 4 },
+      { id: 'charlie', name: 'Charlie Squad', color: '#9B7FD0', strategy: 'stealth', members: 4 },
+      { id: 'delta', name: 'Delta Squad', color: '#4ECDC4', strategy: 'support', members: 4 }
+    ];
+
+    const THREAT_TYPES = [
+      { type: 'drone', name: 'Patrol Drone', icon: '🛸', danger: 2 },
+      { type: 'sniper', name: 'Sniper Nest', icon: '🔴', danger: 4 },
+      { type: 'mine', name: 'Proximity Mine', icon: '💣', danger: 3 },
+      { type: 'turret', name: 'Auto Turret', icon: '🔫', danger: 3 }
+    ];
+
+    const CHAT_MESSAGES = {
+      alpha: [
+        'Moving to sector 7, engaging hostiles.',
+        'Contact! Taking fire from northeast.',
+        'Pushing forward, cover me!',
+        'Target down. Sector clear.',
+        'Requesting backup at my position.'
+      ],
+      bravo: [
+        'Holding position at checkpoint.',
+        'Setting up defensive perimeter.',
+        'All clear on the western front.',
+        'Medkit deployed for wounded.',
+        'Fortifying our position.'
+      ],
+      charlie: [
+        'Infiltrating from the shadows.',
+        'Enemy patrol spotted, avoiding.',
+        'Sneaking past their line.',
+        'Silent takedown complete.',
+        'Disappearing into cover.'
+      ],
+      delta: [
+        'Supply drop incoming.',
+        'Providing overwatch for Alpha.',
+        'Jamming enemy comms now.',
+        'Deploying drone for recon.',
+        'Healing up wounded squad member.'
+      ]
+    };
+
+    let simulation = {
+      running: false,
+      time: 0,
+      teams: [],
+      threats: [],
+      loot: [],
+      gasFields: [],
+      safeZone: { center: [59.9139, 10.7522], radius: 0.05, targetRadius: 0.05, shrinkTime: 120, nextShrink: 120 },
+      gravestones: [],
+      droppedLoot: [],
+      map: null,
+      markers: {},
+      kills: 0,
+      threatsKilled: 0,
+      lootCollected: 0,
+      speed: 1,
+      interval: null,
+      spectatorTarget: null,
+      playerTeam: null
+    function initTeams() {
+      simulation.teams = TEAMS.map(team => ({
+        ...team,
+        hp: 100,
+        maxHp: 100,
+        kills: 0,
+        deaths: 0,
+        loot: 0,
+        status: 'alive',
+        x: 59.9139 + (Math.random() - 0.5) * 0.02,
+        y: 10.7522 + (Math.random() - 0.5) * 0.04,
+        targetX: null,
+        targetY: null,
+        lastMove: 0
+      }));
+    }
+
+    function initThreats() {
+      simulation.threats = [];
+      for (let i = 0; i < 8; i++) {
+        const threatType = THREAT_TYPES[Math.floor(Math.random() * THREAT_TYPES.length)];
+        simulation.threats.push({
+          ...threatType,
+          id: `threat-${i}`,
+          hp: threatType.danger * 25,
+          maxHp: threatType.danger * 25,
+          x: 59.9139 + (Math.random() - 0.5) * 0.03,
+          y: 10.7522 + (Math.random() - 0.5) * 0.06,
+          active: true,
+          patrolRadius: 0.002 + Math.random() * 0.003,
+          patrolAngle: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    function initLoot() {
+      simulation.loot = [];
+      for (let i = 0; i < 6; i++) {
+        simulation.loot.push({
+          id: `loot-${i}`,
+          type: ['medkit', 'ammo', 'armor', 'weapon'][Math.floor(Math.random() * 4)],
+          x: 59.9139 + (Math.random() - 0.5) * 0.025,
+          y: 10.7522 + (Math.random() - 0.5) * 0.05,
+          collected: false
+        });
+      }
+    }
+
+    function moveTeam(team) {
+      if (team.status !== 'alive') return;
+      const now = Date.now();
+      if (now - team.lastMove < 2000) return;
+      team.lastMove = now;
+
+      const aliveTeams = simulation.teams.filter(t => t.id !== team.id && t.status === 'alive');
+      const nearestEnemy = findNearest(team, aliveTeams);
+      const nearestThreat = findNearest(team, simulation.threats.filter(t => t.active && t.hp > 0));
+      const nearestLoot = findNearest(team, simulation.loot.filter(l => !l.collected));
+
+      switch (team.strategy) {
+        case 'aggressive':
+          // Aggressive teams hunt enemies first, threats second
+          if (nearestEnemy && getDistance(team, nearestEnemy) < 0.008) {
+            team.x += (nearestEnemy.x - team.x) * 0.12;
+            team.y += (nearestEnemy.y - team.y) * 0.12;
+          } else if (nearestThreat) {
+            team.x += (nearestThreat.x - team.x) * 0.15;
+            team.y += (nearestThreat.y - team.y) * 0.15;
+          }
+          break;
+        case 'defensive':
+          // Defensive teams hold ground, only move if threatened
+          if (nearestThreat && getDistance(team, nearestThreat) < 0.005) {
+            // Retreat from threat
+            team.x -= (nearestThreat.x - team.x) * 0.08;
+            team.y -= (nearestThreat.y - team.y) * 0.08;
+          } else {
+            team.x += (Math.random() - 0.5) * 0.0005;
+            team.y += (Math.random() - 0.5) * 0.0005;
+          }
+          break;
+        case 'stealth':
+          // Stealth teams avoid everyone, collect loot
+          if (nearestThreat && getDistance(team, nearestThreat) < 0.006) {
+            // Run away from threats
+            team.x -= (nearestThreat.x - team.x) * 0.1;
+            team.y -= (nearestThreat.y - team.y) * 0.1;
+          } else if (nearestEnemy && getDistance(team, nearestEnemy) < 0.004) {
+            // Avoid other teams too
+            team.x -= (nearestEnemy.x - team.x) * 0.06;
+            team.y -= (nearestEnemy.y - team.y) * 0.06;
+          } else if (nearestLoot) {
+            team.x += (nearestLoot.x - team.x) * 0.08;
+            team.y += (nearestLoot.y - team.y) * 0.08;
+          }
+          break;
+        case 'support':
+          // Support teams follow wounded allies and avoid combat
+          const wounded = simulation.teams.find(t => t.id !== team.id && t.hp < t.maxHp * 0.5 && t.status === 'alive');
+          if (wounded) {
+            team.x += (wounded.x - team.x) * 0.1;
+            team.y += (wounded.y - team.y) * 0.1;
+            // Heal nearby wounded
+            if (getDistance(team, wounded) < 0.002) {
+              wounded.hp = Math.min(wounded.maxHp, wounded.hp + 5);
+            }
+          } else if (nearestLoot) {
+            team.x += (nearestLoot.x - team.x) * 0.06;
+            team.y += (nearestLoot.y - team.y) * 0.06;
+          }
+          break;
+      }
+    }
+
+    function moveThreats() {
+      simulation.threats.forEach(threat => {
+        if (!threat.active || threat.hp <= 0) return;
+
+        // Threats hunt nearest alive team
+        const aliveTeams = simulation.teams.filter(t => t.status === 'alive');
+        const nearestTeam = findNearest(threat, aliveTeams);
+
+        if (nearestTeam && getDistance(threat, nearestTeam) < 0.01) {
+          // Hunt mode: move toward nearest team
+          const huntSpeed = threat.patrolRadius * 0.15;
+          threat.x += (nearestTeam.x - threat.x) * huntSpeed;
+          threat.y += (nearestTeam.y - threat.y) * huntSpeed;
+        } else {
+          // Patrol mode
+          threat.patrolAngle += 0.02;
+          threat.x += Math.cos(threat.patrolAngle) * threat.patrolRadius * 0.1;
+          threat.y += Math.sin(threat.patrolAngle) * threat.patrolRadius * 0.1;
+        }
+      });
+    }
+
+    function resolveCombat() {
+      const aliveTeams = simulation.teams.filter(t => t.status === 'alive');
+
+      // Team vs Threat combat
+      simulation.teams.forEach(team => {
+        if (team.status !== 'alive') return;
+
+        simulation.threats.forEach(threat => {
+          if (!threat.active || threat.hp <= 0) return;
+          const dist = getDistance(team, threat);
+
+          if (dist < 0.003) {
+            const damage = Math.floor(Math.random() * 15) + 5;
+            threat.hp -= damage;
+            team.hp -= Math.floor(Math.random() * 10) + 2;
+
+            if (threat.hp <= 0) {
+              threat.active = false;
+              team.kills++;
+              simulation.threatsKilled++;
+              playSound('combat');
+              addChat(team.id, `Neutralized ${threat.name}!`, 'combat');
+            }
+
+            if (team.hp <= 0) {
+              team.hp = 0;
+              team.status = 'dead';
+              team.deaths++;
+              addChat(team.id, `Team wiped out by ${threat.name}!`, 'alert');
+            }
+          }
+        });
+
+        // Team vs Team combat (if enabled by strategy or close proximity)
+        aliveTeams.forEach(enemy => {
+          if (enemy.id === team.id || enemy.status !== 'alive') return;
+          const dist = getDistance(team, enemy);
+
+          // Teams fight if very close and one is aggressive
+          if (dist < 0.002 && (team.strategy === 'aggressive' || enemy.strategy === 'aggressive')) {
+            const teamDmg = Math.floor(Math.random() * 12) + 3;
+            const enemyDmg = Math.floor(Math.random() * 12) + 3;
+            enemy.hp -= teamDmg;
+            team.hp -= enemyDmg;
+
+            addChat(team.id, `Engaging ${enemy.name}! Exchange of fire!`, 'combat');
+
+            if (enemy.hp <= 0) {
+              enemy.hp = 0;
+              enemy.status = 'dead';
+              enemy.deaths++;
+              team.kills++;
+              addChat(team.id, `Eliminated ${enemy.name}!`, 'alert');
+            }
+
+            if (team.hp <= 0) {
+              team.hp = 0;
+              team.status = 'dead';
+              team.deaths++;
+              enemy.kills++;
+              addChat(team.id, `Wiped out by ${enemy.name}!`, 'alert');
+            }
+          }
+        });
+
+        simulation.loot.forEach(item => {
+          if (item.collected) return;
+          const dist = getDistance(team, item);
+          if (dist < 0.002) {
+            item.collected = true;
+            team.loot++;
+            simulation.lootCollected++;
+            team.hp = Math.min(team.maxHp, team.hp + 15);
+            addChat(team.id, `Secured ${item.type}!`, 'alert');
+          }
+        });
+      });
+
+      // Check victory condition
+      checkVictory();
+    }
+
+    function checkVictory() {
+      const alive = simulation.teams.filter(t => t.status === 'alive');
+      if (alive.length === 1 && simulation.running) {
+        simulation.running = false;
+        clearInterval(simulation.interval);
+        const winner = alive[0];
+        addChat('system', `🏆 MATCH END — ${winner.name} wins! Kills: ${winner.kills}, Loot: ${winner.loot}`, 'alert');
+        document.getElementById('btnStart').textContent = '▶ Restart';
+      } else if (alive.length === 0 && simulation.running) {
+        simulation.running = false;
+        clearInterval(simulation.interval);
+        addChat('system', '💀 MATCH END — All teams eliminated! No winner.', 'alert');
+        document.getElementById('btnStart').textContent = '▶ Restart';
+      }
+    }
+
+    function findNearest(entity, targets) {
+      let nearest = null;
+      let minDist = Infinity;
+      targets.forEach(t => {
+        const dist = getDistance(entity, t);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = t;
+        }
+      });
+      return nearest;
+    }
+
+    function getDistance(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function addChat(teamId, message, type = 'normal') {
+      const team = TEAMS.find(t => t.id === teamId);
+      const entry = document.createElement('div');
+      entry.className = `chat-entry ${type}`;
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      entry.innerHTML = `
+        <div class="chat-sender" style="color: ${team ? team.color : 'var(--teal)'}">
+          ${team ? team.name : 'System'}
+          <span class="chat-time">${time}</span>
+        </div>
+        <div class="chat-text">${message}</div>
+      `;
+      const chatLog = document.getElementById('chatLog');
+      chatLog.appendChild(entry);
+      chatLog.scrollTop = chatLog.scrollHeight;
+
+      while (chatLog.children.length > 50) {
+        chatLog.removeChild(chatLog.firstChild);
+      }
+    }
+
+    function generateRandomChat() {
+      const team = TEAMS[Math.floor(Math.random() * TEAMS.length)];
+      const messages = CHAT_MESSAGES[team.id];
+      const message = messages[Math.floor(Math.random() * messages.length)];
+      addChat(team.id, message, 'planning');
+    }
+
+    function updateTeamsUI() {
+      const container = document.getElementById('teamsContainer');
+      container.innerHTML = '';
+
+      simulation.teams.forEach(team => {
+        const card = document.createElement('div');
+        card.className = `team-card ${team.status === 'alive' ? 'active' : ''}`;
+        card.style.setProperty('--team-color', team.color);
+        const hpPercent = (team.hp / team.maxHp) * 100;
+        const hpColor = hpPercent > 60 ? '#008c5a' : hpPercent > 30 ? '#ff8b1f' : '#e82663';
+
+        card.innerHTML = `
+          <div class="team-header">
+            <div class="team-name" style="color: ${team.color}">${team.name}</div>
+            <div class="team-status ${team.status}">${team.status.toUpperCase()}</div>
+          </div>
+          <div class="team-stats-bar">
+            <div class="stat-box">
+              <div class="stat-value">${team.kills}</div>
+              <div class="stat-label">Kills</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${team.deaths}</div>
+              <div class="stat-label">Deaths</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${team.loot}</div>
+              <div class="stat-label">Loot</div>
+            </div>
+          </div>
+          <div class="hp-bar-container">
+            <div class="hp-text">HP ${team.hp}/${team.maxHp}</div>
+            <div class="hp-bar">
+              <div class="hp-fill" style="width: ${hpPercent}%; background: ${hpColor};"></div>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function updateStatsUI() {
+      document.getElementById('statKills').textContent = simulation.teams.reduce((a, t) => a + t.kills, 0);
+      document.getElementById('statThreats').textContent = simulation.threatsKilled;
+      document.getElementById('statLoot').textContent = simulation.lootCollected;
+      document.getElementById('statAlive').textContent = simulation.teams.filter(t => t.status === 'alive').length * 4;
+    }
+
+    function updateThreatList() {
+      const container = document.getElementById('threatList');
+      container.innerHTML = '';
+
+      const activeThreats = simulation.threats.filter(t => t.active && t.hp > 0);
+      activeThreats.forEach(threat => {
+        const item = document.createElement('div');
+        item.className = 'threat-item';
+        const hpPercent = (threat.hp / threat.maxHp) * 100;
+        item.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="threat-indicator" style="background: var(--pink);"></div>
+            <span>${threat.icon} ${threat.name}</span>
+          </div>
+          <span style="font-family: monospace; color: var(--pink);">${Math.round(hpPercent)}%</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function updateTimer() {
+      const mins = Math.floor(simulation.time / 60);
+      const secs = simulation.time % 60;
+      document.getElementById('matchTimer').textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function updateRadarStatus() {
+      const alive = simulation.teams.filter(t => t.status === 'alive').length;
+      const threats = simulation.threats.filter(t => t.active && t.hp > 0).length;
+      const status = simulation.running ? 'Active' : 'Paused';
+      // Update radar metrics if needed
+    }
+
+    // Match History System
+    function saveMatchResult() {
+      const alive = simulation.teams.filter(t => t.status === 'alive');
+      const winner = alive.length === 1 ? alive[0] : null;
+      const match = {
+        date: new Date().toISOString(),
+        time: simulation.time,
+        winner: winner ? { name: winner.name, id: winner.id, kills: winner.kills, loot: winner.loot } : null,
+        teams: simulation.teams.map(t => ({
+          name: t.name,
+          id: t.id,
+          status: t.status,
+          kills: t.kills,
+          deaths: t.deaths,
+          loot: t.loot,
+          hp: t.hp
+        })),
+        threatsKilled: simulation.threatsKilled,
+        lootCollected: simulation.lootCollected
+      };
+      
+      let history = JSON.parse(localStorage.getItem('sl_match_history') || '[]');
+      history.unshift(match);
+      if (history.length > 20) history = history.slice(0, 20);
+      localStorage.setItem('sl_match_history', JSON.stringify(history));
+      updateMatchHistoryUI();
+    }
+
+    function loadMatchHistory() {
+      updateMatchHistoryUI();
+    }
+
+    function updateMatchHistoryUI() {
+      const history = JSON.parse(localStorage.getItem('sl_match_history') || '[]');
+      const container = document.getElementById('matchHistory');
+      if (!container) return;
+      
+      if (history.length === 0) {
+        container.innerHTML = '<div style="padding: 12px; color: var(--muted); font-size: 0.8rem; text-align: center;">No matches yet. Start a simulation! 🎮</div>';
+        return;
+      }
+      
+      container.innerHTML = history.slice(0, 5).map((match, i) => {
+        const winnerText = match.winner ? `🏆 ${match.winner.name}` : '💀 No winner';
+        const duration = `${Math.floor(match.time / 60)}m ${match.time % 60}s`;
+        const date = new Date(match.date).toLocaleDateString();
+        return `
+          <div style="padding: 10px 14px; background: rgba(255,255,255,0.3); border-radius: 10px; margin-bottom: 8px; font-size: 0.8rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-weight: 700;">${winnerText}</span>
+              <span style="color: var(--muted);">${duration}</span>
+            </div>
+            <div style="display: flex; gap: 12px; color: var(--muted); font-size: 0.7rem;">
+              <span>💀 ${match.threatsKilled} threats</span>
+              <span>📦 ${match.lootCollected} loot</span>
+              <span>${date}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Audio Feedback System (Web Audio API)
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      switch(type) {
+        case 'start':
+          osc.frequency.value = 440;
+          osc.type = 'sine';
+          gain.gain.value = 0.1;
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.3);
+          break;
+        case 'combat':
+          osc.frequency.value = 200;
+          osc.type = 'square';
+          gain.gain.value = 0.05;
+          osc.start();
+          osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.1);
+          osc.stop(audioCtx.currentTime + 0.1);
+          break;
+        case 'alert':
+          osc.frequency.value = 800;
+          osc.type = 'sawtooth';
+          gain.gain.value = 0.08;
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.15);
+          setTimeout(() => {
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.frequency.value = 600;
+            osc2.type = 'sawtooth';
+            gain2.gain.value = 0.08;
+            osc2.start();
+            osc2.stop(audioCtx.currentTime + 0.15);
+          }, 150);
+          break;
+        case 'victory':
+          const notes = [523, 659, 784, 1047];
+          notes.forEach((freq, i) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.frequency.value = freq;
+            o.type = 'sine';
+            g.gain.value = 0.1;
+            o.start(audioCtx.currentTime + i * 0.15);
+            o.stop(audioCtx.currentTime + i * 0.15 + 0.3);
+          });
+          break;
+      }
+    }
+
+    function tick() {
+      if (!simulation.running) return;
+
+      // Apply speed multiplier
+      const speed = simulation.speed || 1;
+      for (let i = 0; i < speed; i++) {
+        simulation.time++;
+        simulation.teams.forEach(moveTeam);
+        moveThreats();
+        resolveCombat();
+
+        if (simulation.time % (5 + Math.floor(Math.random() * 10)) === 0) {
+          generateRandomChat();
+        }
+      }
+
+      updateTeamsUI();
+      updateStatsUI();
+      updateThreatList();
+      updateTimer();
+      updateRadarStatus();
+
+      const aliveTeams = simulation.teams.filter(t => t.status === 'alive');
+      if (aliveTeams.length <= 1 && simulation.time > 60) {
+        simulation.running = false;
+        clearInterval(simulation.interval);
+        saveMatchResult();
+        playSound('victory');
+        addChat('system', `🏆 ${aliveTeams[0]?.name || 'No one'} wins the match!`, 'alert');
+        document.getElementById('matchPhase').textContent = 'Complete';
+        document.getElementById('btnStart').textContent = '▶ Restart';
+      } else {
+        // Update phase based on time
+        const phase = simulation.time < 30 ? 'Setup' : simulation.time < 120 ? 'Battle' : 'Endgame';
+        document.getElementById('matchPhase').textContent = phase;
+      }
+    }
+
+    // Controls
+    document.getElementById('btnStart').addEventListener('click', () => {
+      if (!simulation.running) {
+        simulation.running = true;
+        simulation.interval = setInterval(tick, 1000);
+        playSound('start');
+        addChat('system', 'Simulation started! All teams deployed.', 'alert');
+      }
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      simulation.running = !simulation.running;
+      addChat('system', simulation.running ? 'Simulation resumed.' : 'Simulation paused.', 'alert');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      simulation.running = false;
+      clearInterval(simulation.interval);
+      simulation.time = 0;
+      simulation.kills = 0;
+      simulation.threatsKilled = 0;
+      simulation.lootCollected = 0;
+      initTeams();
+      initThreats();
+      initLoot();
+      document.getElementById('chatLog').innerHTML = '';
+      addChat('system', 'Simulation reset. Ready to start.', 'alert');
+      updateTeamsUI();
+      updateStatsUI();
+      updateThreatList();
+      updateTimer();
+    });
+
+    document.getElementById('btnRadarToggle').addEventListener('click', () => {
+      const radar = document.getElementById('radarDisplay');
+      const scan = radar.querySelector('.scan-line');
+      const btn = document.getElementById('btnRadarToggle');
+      const scanOn = !radar.classList.contains('radar-off');
+      
+      if (scanOn) {
+        radar.classList.add('radar-off');
+        btn.textContent = '🗺️ Scan (Off)';
+        btn.style.opacity = '0.5';
+        addChat('system', 'Radar scan paused.', 'alert');
+      } else {
+        radar.classList.remove('radar-off');
+        btn.textContent = '🗺️ Scan';
+        btn.style.opacity = '1';
+        addChat('system', 'Radar scan active.', 'alert');
+      }
+    });
+
+    // Speed Control
+    document.getElementById('btnSpeed').addEventListener('click', () => {
+      const speeds = [1, 2, 4, 8];
+      const currentIdx = speeds.indexOf(simulation.speed || 1);
+      const nextIdx = (currentIdx + 1) % speeds.length;
+      simulation.speed = speeds[nextIdx];
+      document.getElementById('btnSpeed').textContent = `⏩ ${simulation.speed}x`;
+      addChat('system', `Simulation speed set to ${simulation.speed}x`, 'alert');
+    });
+
+    // Spawn Threat
+    document.getElementById('btnSpawn').addEventListener('click', () => {
+      const threatType = THREAT_TYPES[Math.floor(Math.random() * THREAT_TYPES.length)];
+      const id = `threat-${Date.now()}`;
+      simulation.threats.push({
+        ...threatType,
+        id: id,
+        hp: threatType.danger * 25,
+        maxHp: threatType.danger * 25,
+        x: 59.9139 + (Math.random() - 0.5) * 0.03,
+        y: 10.7522 + (Math.random() - 0.5) * 0.06,
+        active: true,
+        patrolRadius: 0.002 + Math.random() * 0.003,
+        patrolAngle: Math.random() * Math.PI * 2
+      });
+      addChat('system', `Spawned ${threatType.name}!`, 'alert');
+      updateThreatList();
+    });
+
+    // Init
+    initTeams();
+    initThreats();
+    initLoot();
+    updateTeamsUI();
+    updateStatsUI();
+    updateThreatList();
+    updateTimer();
+
+    addChat('system', 'Action Center initialized. Press START to begin AI battle simulation.', 'alert');
+
+    // Team Customization
+    let selectedColor = '#e82663';
+    let selectedWeapon = 'assault';
+    let selectedPerk = 'healer';
+    let selectedDiff = 'normal';
+
+    document.querySelectorAll('.color-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.color-btn').forEach(b => b.style.borderColor = 'white');
+        btn.style.borderColor = 'var(--gold)';
+        selectedColor = btn.dataset.color;
+      });
+    });
+    document.querySelector('.color-btn')?.style.borderColor = 'var(--gold)';
+
+    // Loadout selection
+    document.querySelectorAll('.loadout-slot').forEach(slot => {
+      slot.addEventListener('click', () => {
+        document.querySelectorAll('.loadout-slot').forEach(s => s.classList.remove('selected'));
+        slot.classList.add('selected');
+        selectedWeapon = slot.dataset.weapon;
+      });
+    });
+
+    // Perk selection
+    document.querySelectorAll('.perk-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.perk-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedPerk = card.dataset.perk;
+      });
+    });
+
+    // Difficulty selection
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedDiff = btn.dataset.diff;
+      });
+    });
+
+    document.getElementById('btnDeploy')?.addEventListener('click', () => {
+      const name = document.getElementById('customName')?.value || 'Alpha Squad';
+      const strategy = document.getElementById('customStrategy')?.value || 'aggressive';
+      
+      if (simulation.teams.length > 0) {
+        simulation.teams[0].name = name;
+        simulation.teams[0].strategy = strategy;
+        simulation.teams[0].color = selectedColor;
+        simulation.teams[0].weapon = selectedWeapon;
+        simulation.teams[0].perk = selectedPerk;
+        simulation.teams[0].difficulty = selectedDiff;
+        simulation.playerTeam = simulation.teams[0].id;
+        
+        // Apply perk effects
+        applyPerk(simulation.teams[0], selectedPerk);
+        // Apply difficulty multiplier to other teams
+        applyDifficulty(simulation.teams, selectedDiff);
+      }
+      
+      document.getElementById('customizeScreen').style.display = 'none';
+      addChat('system', `${name} deployed with ${selectedWeapon} + ${selectedPerk}!`, 'alert');
+      
+      // Activate daily challenge
+      activateDailyChallenge();
+      // Start weather cycle
+      startWeatherCycle();
+      // Start airdrops
+      startAirdropSystem();
+      
+      updateTeamsUI();
+    });
+
+    function applyPerk(team, perk) {
+      switch(perk) {
+        case 'healer': team.healRate = 1.5; break;
+        case 'stealth': team.stealth = true; break;
+        case 'heavy': team.damageMult = 1.3; break;
+        case 'scout': team.radarRange = 1.4; break;
+      }
+    }
+
+    function applyDifficulty(teams, diff) {
+      const multipliers = { easy: 0.6, normal: 1.0, hard: 1.4, insane: 1.8 };
+      const m = multipliers[diff] || 1.0;
+      teams.slice(1).forEach(t => {
+        t.damageMult = m;
+        t.accuracy = m;
+      });
+    }
+
+    // Daily Challenge System
+    const CHALLENGES = [
+      { name: 'Sniper Only', desc: 'All teams use sniper strategy', modifier: 'sniper' },
+      { name: 'Night Mode', desc: 'Radar range reduced by 50%', modifier: 'night' },
+      { name: 'No Healing', desc: 'Medkits disabled', modifier: 'noheal' },
+      { name: 'Speed Run', desc: 'All teams move 2x faster', modifier: 'speed' },
+      { name: 'Ironman', desc: 'No respawns, 1 life only', modifier: 'ironman' }
+    ];
+
+    function activateDailyChallenge() {
+      const today = new Date().getDay();
+      const challenge = CHALLENGES[today % CHALLENGES.length];
+      const badge = document.getElementById('challengeBadge');
+      const desc = document.getElementById('challengeDesc');
+      if (badge && desc) {
+        desc.textContent = challenge.name + ' — ' + challenge.desc;
+        badge.classList.add('active');
+        simulation.challenge = challenge;
+        
+        // Apply modifier
+        if (challenge.modifier === 'night') {
+          simulation.teams.forEach(t => t.radarRange = (t.radarRange || 1) * 0.5);
+        } else if (challenge.modifier === 'speed') {
+          simulation.teams.forEach(t => t.speedMult = 2);
+        }
+      }
+    }
+
+    // Weather System
+    const WEATHER_TYPES = ['clear', 'fog', 'rain'];
+    function startWeatherCycle() {
+      setInterval(() => {
+        if (!simulation.running) return;
+        const weather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+        const overlay = document.getElementById('weatherOverlay');
+        if (overlay) {
+          overlay.className = 'weather-overlay ' + weather;
+          overlay.classList.add('active');
+          
+          // Apply weather effects
+          simulation.teams.forEach(t => {
+            if (weather === 'fog') {
+              t.visibility = 0.5;
+            } else if (weather === 'rain') {
+              t.speedMult = (t.speedMult || 1) * 0.8;
+            } else {
+              t.visibility = 1;
+              t.speedMult = 1;
+            }
+          });
+        }
+      }, 30000); // Change weather every 30 seconds
+    }
+
+    // Airdrop System
+    function startAirdropSystem() {
+      setInterval(() => {
+        if (!simulation.running) return;
+        const x = 59.91 + (Math.random() - 0.5) * 0.04;
+        const y = 10.74 + (Math.random() - 0.5) * 0.08;
+        const airdrop = { x, y, type: 'airdrop', rarity: 'legendary', active: true, hp: 1 };
+        simulation.threats.push(airdrop);
+        addChat('system', '📦 Airdrop incoming!', 'loot');
+        playSound('victory');
+      }, 45000); // Every 45 seconds
+    }
+
+    // Squad Formation System
+    function assignSquads() {
+      const squadSize = 2;
+      for (let i = 0; i < simulation.teams.length; i += squadSize) {
+        const squadId = Math.floor(i / squadSize) + 1;
+        for (let j = i; j < Math.min(i + squadSize, simulation.teams.length); j++) {
+          simulation.teams[j].squad = squadId;
+          simulation.teams[j].sharedRevives = squadSize;
+        }
+      }
+    }
+
+    // Match Replay System
+    let replayData = [];
+    let replayInterval = null;
+    let replayIndex = 0;
+
+    function startReplayRecording() {
+      replayData = [];
+      replayInterval = setInterval(() => {
+        if (!simulation.running) return;
+        const snapshot = simulation.teams.map(t => ({
+          id: t.id, x: t.x, y: t.y, hp: t.hp, status: t.status, time: simulation.time
+        }));
+        replayData.push({ time: simulation.time, teams: snapshot, threats: [...simulation.threats] });
+      }, 500); // Record every 500ms
+    }
+
+    function stopReplayRecording() {
+      if (replayInterval) clearInterval(replayInterval);
+    }
+
+    // Leaderboard Integration
+    function updateLeaderboard() {
+      const leaderboard = JSON.parse(localStorage.getItem('signalLostLeaderboard') || '[]');
+      const match = {
+        date: new Date().toISOString(),
+        winner: simulation.teams.find(t => t.status === 'alive')?.name || 'None',
+        kills: simulation.kills,
+        time: simulation.time,
+        survived: simulation.teams.filter(t => t.status === 'alive').length
+      };
+      leaderboard.push(match);
+      leaderboard.sort((a, b) => b.kills - a.kills);
+      localStorage.setItem('signalLostLeaderboard', JSON.stringify(leaderboard.slice(0, 50)));
+    }
+
+    // Match end handler — saves replay, updates leaderboard
+    function endMatch() {
+      stopReplayRecording();
+      updateLeaderboard();
+    }
+
+    // Start simulation handler — assigns squads, starts replay recording
+    function startSimulation() {
+      assignSquads();
+      startReplayRecording();
+    }
+
+    document.getElementById('btnViewReplay')?.addEventListener('click', () => {
+      document.getElementById('deathScreen').classList.remove('active');
+      document.getElementById('replayPanel').style.display = 'block';
+      replayIndex = 0;
+      renderReplayFrame(0);
+    });
+    let replayPlaying = false;
+    let replayTimer = null;
+
+    document.getElementById('btnReplayPlay')?.addEventListener('click', () => {
+      if (replayData.length === 0) return;
+      replayPlaying = true;
+      replayTimer = setInterval(() => {
+        if (replayIndex < replayData.length - 1) {
+          replayIndex++;
+          renderReplayFrame(replayIndex);
+        } else {
+          replayPlaying = false;
+          clearInterval(replayTimer);
+        }
+      }, 100);
+    });
+
+    document.getElementById('btnReplayPause')?.addEventListener('click', () => {
+      replayPlaying = false;
+      if (replayTimer) clearInterval(replayTimer);
+    });
+
+    document.getElementById('btnReplayRewind')?.addEventListener('click', () => {
+      replayIndex = 0;
+      renderReplayFrame(0);
+    });
+
+    document.getElementById('replaySlider')?.addEventListener('input', (e) => {
+      replayIndex = Math.floor((e.target.value / 100) * (replayData.length - 1));
+      renderReplayFrame(replayIndex);
+    });
+
+    function renderReplayFrame(idx) {
+      if (!replayData[idx]) return;
+      const frame = replayData[idx];
+      frame.teams.forEach(t => {
+        const marker = radarMarkers[`team-${t.id}`];
+        if (marker && t.status === 'alive') {
+          marker.setLatLng([t.x, t.y]);
+        }
+      });
+      document.getElementById('replayStatus').textContent = `Replay: ${frame.time}s`;
+    }
+  </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    // Leaflet Map for Radar Background
+    let radarMap;
+    let radarMarkers = {};
+
+    function initRadarMap() {
+      radarMap = L.map('radarMap', {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false
+      }).setView([59.9139, 10.7522], 13);
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19
+      }).addTo(radarMap);
+    }
+
+    function createRadarIcon(color, icon, size = 12) {
+      return L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:2px solid #ffd965;box-shadow:0 0 12px ${color}, 0 0 24px ${color}80;display:flex;align-items:center;justify-content:center;font-size:8px;">${icon || ''}</div>`,
+        iconSize: [size, size]
+      });
+    }
+
+    function updateRadarMarkers() {
+      if (!radarMap) return;
+      Object.values(radarMarkers).forEach(m => radarMap.removeLayer(m));
+      radarMarkers = {};
+
+      simulation.teams.forEach(team => {
+        if (team.status === 'alive') {
+          const marker = L.marker([team.x, team.y], {
+            icon: createRadarIcon(team.color, team.id[0].toUpperCase(), 16)
+          }).addTo(radarMap);
+          marker.bindPopup(`<b style="color:${team.color}">${team.name}</b><br>HP: ${team.hp}/${team.maxHp}<br>Kills: ${team.kills}`);
+          radarMarkers[`team-${team.id}`] = marker;
+        }
+      });
+
+      simulation.threats.forEach(threat => {
+        if (threat.active && threat.hp > 0) {
+          const marker = L.marker([threat.x, threat.y], {
+            icon: createRadarIcon('#e82663', threat.icon, 14)
+          }).addTo(radarMap);
+          marker.bindPopup(`<b style="color:#e82663">${threat.name}</b><br>HP: ${threat.hp}/${threat.maxHp}`);
+          radarMarkers[`threat-${threat.id}`] = marker;
+        }
+      });
+
+      simulation.loot.forEach(item => {
+        if (!item.collected) {
+          const marker = L.marker([item.x, item.y], {
+            icon: createRadarIcon('#ffd965', '📦', 12)
+          }).addTo(radarMap);
+          marker.bindPopup(`<b style="color:#ffd965">${item.type.toUpperCase()}</b>`);
+          radarMarkers[`loot-${item.id}`] = marker;
+        }
+      });
+    }
+
+    // Update radar markers periodically
+    setInterval(updateRadarMarkers, 2000);
+    
+    // Init map after page loads
+    setTimeout(initRadarMap, 100);
+
+    // ==========================================================
+    // GAS FIELD / HAZARD ZONE SYSTEM
+    // ==========================================================
+    const GAS_TYPES = [
+      { type: 'toxic', name: 'Toxic Gas', color: '#00ff80', damage: 8, icon: '☠️' },
+      { type: 'fire', name: 'Fire Storm', color: '#ff4500', damage: 12, icon: '🔥' },
+      { type: 'radiation', name: 'Radiation', color: '#ffff00', damage: 6, icon: '☢️' },
+      { type: 'ice', name: 'Flash Freeze', color: '#00bfff', damage: 5, icon: '❄️' }
+    ];
+
+    let gasMarkers = [];
+    let safeZoneCircle = null;
+    let gravestoneMarkers = [];
+    let droppedLootMarkers = [];
+
+    function initGasFields() {
+      // Spawn 2-3 random gas fields
+      const count = 2 + Math.floor(Math.random() * 2);
+      simulation.gasFields = [];
+      
+      for (let i = 0; i < count; i++) {
+        const gasType = GAS_TYPES[Math.floor(Math.random() * GAS_TYPES.length)];
+        const field = {
+          ...gasType,
+          id: `gas-${Date.now()}-${i}`,
+          x: 59.9139 + (Math.random() - 0.5) * 0.04,
+          y: 10.7522 + (Math.random() - 0.5) * 0.08,
+          radius: 0.005 + Math.random() * 0.01,
+          expanding: true,
+          maxRadius: 0.02,
+          expandRate: 0.0001
+        };
+        simulation.gasFields.push(field);
+      }
+      updateGasFieldUI();
+    }
+
+    function updateGasFields() {
+      simulation.gasFields.forEach(gas => {
+        // Expand or contract
+        if (gas.expanding && gas.radius < gas.maxRadius) {
+          gas.radius += gas.expandRate;
+        } else if (gas.radius >= gas.maxRadius) {
+          gas.expanding = false;
+        }
+        
+        // Damage teams inside
+        simulation.teams.forEach(team => {
+          if (team.status !== 'alive') return;
+          const dist = getDistance(team, gas);
+          if (dist < gas.radius) {
+            const dmg = Math.floor(gas.damage * (1 - dist / gas.radius));
+            team.hp -= dmg;
+            if (Math.random() < 0.1) {
+              addChat(team.id, `Taking damage from ${gas.name}!`, 'alert');
+            }
+            if (team.hp <= 0) {
+              team.hp = 0;
+              team.status = 'dead';
+              team.deaths++;
+              team.causeOfDeath = gas.name;
+              handleDeath(team, null, gas.name);
+            }
+          }
+        });
+      });
+      updateGasFieldMarkers();
+    }
+
+    function updateGasFieldUI() {
+      // Add gas field legend to stats panel
+      const statsPanel = document.querySelector('.stats-panel .panel-body');
+      if (!statsPanel) return;
+      
+      // Check if legend already exists
+      let legend = document.getElementById('gasFieldLegend');
+      if (!legend) {
+        legend = document.createElement('div');
+        legend.id = 'gasFieldLegend';
+        legend.className = 'gas-field-legend';
+        statsPanel.insertBefore(legend, statsPanel.firstChild);
+      }
+      
+      legend.innerHTML = '<div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; width: 100%;">Active Hazards:</div>' +
+        simulation.gasFields.map(gas => `
+          <div class="gas-legend-item">
+            <div class="gas-legend-dot gas-${gas.type}"></div>
+            <span>${gas.icon} ${gas.name}</span>
+          </div>
+        `).join('');
+    }
+
+    function updateGasFieldMarkers() {
+      if (!radarMap) return;
+      
+      // Remove old gas markers
+      gasMarkers.forEach(m => radarMap.removeLayer(m));
+      gasMarkers = [];
+      
+      simulation.gasFields.forEach(gas => {
+        const circle = L.circle([gas.x, gas.y], {
+          radius: gas.radius * 111000, // Convert to meters roughly
+          color: gas.color,
+          fillColor: gas.color,
+          fillOpacity: 0.15,
+          weight: 2,
+          dashArray: '8, 8'
+        }).addTo(radarMap);
+        circle.bindPopup(`<b style="color:${gas.color}">${gas.icon} ${gas.name}</b><br>Damage: ${gas.damage}/s`);
+        gasMarkers.push(circle);
+      });
+    }
+
+    // ==========================================================
+    // SAFE ZONE SYSTEM (Battle Royale Style)
+    // ==========================================================
+    function initSafeZone() {
+      simulation.safeZone = {
+        center: [59.9139, 10.7522],
+        radius: 0.05,
+        targetRadius: 0.05,
+        shrinkTime: 120,
+        nextShrink: 120,
+        shrinking: false
+      };
+      updateSafeZoneUI();
+    }
+
+    function updateSafeZone() {
+      const sz = simulation.safeZone;
+      
+      if (!sz.shrinking && simulation.time >= sz.nextShrink) {
+        sz.shrinking = true;
+        sz.targetRadius = Math.max(0.005, sz.radius * 0.6);
+        sz.shrinkTime = 60 + Math.floor(Math.random() * 60);
+        addChat('system', `⚠️ Safe zone shrinking! Move to center!`, 'alert');
+        playSound('alert');
+      }
+      
+      if (sz.shrinking) {
+        const diff = sz.radius - sz.targetRadius;
+        if (diff > 0.0001) {
+          sz.radius -= diff / sz.shrinkTime;
+        } else {
+          sz.shrinking = false;
+          sz.nextShrink = simulation.time + 60 + Math.floor(Math.random() * 60);
+          addChat('system', `✅ Safe zone stabilized.`, 'planning');
+        }
+      }
+      
+      // Damage teams outside safe zone
+      simulation.teams.forEach(team => {
+        if (team.status !== 'alive') return;
+        const dist = Math.sqrt(
+          Math.pow(team.x - sz.center[0], 2) + 
+          Math.pow(team.y - sz.center[1], 2)
+        );
+        if (dist > sz.radius) {
+          team.hp -= 3; // Storm damage
+          if (Math.random() < 0.05) {
+            addChat(team.id, `Taking storm damage! Get to safety!`, 'alert');
+          }
+          if (team.hp <= 0) {
+            team.hp = 0;
+            team.status = 'dead';
+            team.deaths++;
+            team.causeOfDeath = 'The Storm';
+            handleDeath(team, null, 'The Storm');
+          }
+        }
+      });
+      
+      updateSafeZoneMarker();
+      updateSafeZoneUI();
+    }
+
+    function updateSafeZoneMarker() {
+      if (!radarMap) return;
+      
+      if (safeZoneCircle) {
+        radarMap.removeLayer(safeZoneCircle);
+      }
+      
+      const sz = simulation.safeZone;
+      safeZoneCircle = L.circle(sz.center, {
+        radius: sz.radius * 111000,
+        color: '#ffd965',
+        fillColor: '#ffd965',
+        fillOpacity: 0.05,
+        weight: 3,
+        dashArray: '12, 6'
+      }).addTo(radarMap);
+    }
+
+    function updateSafeZoneUI() {
+      const indicator = document.getElementById('safeZoneIndicator');
+      const timer = document.getElementById('safeZoneTimer');
+      const bar = document.getElementById('safeZoneBar');
+      const sz = simulation.safeZone;
+      
+      if (simulation.running && simulation.time > 30) {
+        indicator.classList.add('active');
+        const timeLeft = Math.max(0, sz.nextShrink - simulation.time);
+        const mins = Math.floor(timeLeft / 60);
+        const secs = timeLeft % 60;
+        timer.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        
+        const progress = sz.shrinking ? 
+          (sz.radius - sz.targetRadius) / (sz.radius * 0.4) : 
+          1 - (timeLeft / (sz.nextShrink - simulation.time + timeLeft || 1));
+        bar.style.width = `${Math.max(0, Math.min(100, (1 - progress) * 100))}%`;
+      } else {
+        indicator.classList.remove('active');
+      }
+    }
+
+    // ==========================================================
+    // DEATH SYSTEM
+    // ==========================================================
+    function initDeathSystem() {
+      document.getElementById('btnSpectate').addEventListener('click', () => {
+        document.getElementById('deathScreen').classList.remove('active');
+        startSpectatorMode();
+      });
+      
+      document.getElementById('btnReturnMenu').addEventListener('click', () => {
+        document.getElementById('deathScreen').classList.remove('active');
+        // Reset or redirect
+        location.reload();
+      });
+    }
+
+    function handleDeath(team, killer, cause) {
+      // Add to kill feed
+      addKillFeed(team, killer, cause);
+      
+      // Create gravestone
+      createGravestone(team);
+      
+      // Drop loot
+      dropLoot(team);
+      
+      // Play death sound
+      playSound('alert');
+      
+      // If this is the player team, show death screen
+      if (simulation.playerTeam === team.id) {
+        showDeathScreen(team, cause);
+      }
+      
+      // Check if only one team remains
+      const alive = simulation.teams.filter(t => t.status === 'alive');
+      if (alive.length <= 1 && simulation.time > 60) {
+        simulation.running = false;
+        clearInterval(simulation.interval);
+        saveMatchResult();
+        playSound('victory');
+        addChat('system', `🏆 ${alive[0]?.name || 'No one'} wins the match!`, 'alert');
+        document.getElementById('matchPhase').textContent = 'Complete';
+      }
+    }
+
+    function createGravestone(team) {
+      const gravestone = {
+        id: `grave-${team.id}-${Date.now()}`,
+        name: team.name,
+        x: team.x,
+        y: team.y,
+        time: simulation.time,
+        cause: team.causeOfDeath || 'Unknown',
+        kills: team.kills,
+        teamId: team.id,
+        color: team.color
+      };
+      simulation.gravestones.push(gravestone);
+      updateGravestoneMarkers();
+    }
+
+    function updateGravestoneMarkers() {
+      if (!radarMap) return;
+      
+      gravestoneMarkers.forEach(m => radarMap.removeLayer(m));
+      gravestoneMarkers = [];
+      
+      simulation.gravestones.forEach(gs => {
+        const marker = L.marker([gs.x, gs.y], {
+          icon: L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="width:20px;height:20px;background:rgba(0,0,0,0.8);border-radius:50%;border:2px solid ${gs.color};display:flex;align-items:center;justify-content:center;font-size:12px;">⛼</div>`,
+            iconSize: [20, 20]
+          })
+        }).addTo(radarMap);
+        
+        marker.bindPopup(`
+          <b style="color:${gs.color}">⛼ ${gs.name}</b><br>
+          <small>KIA: ${gs.cause}</small><br>
+          <small>Survived: ${Math.floor(gs.time / 60)}m ${gs.time % 60}s</small><br>
+          <small>Kills: ${gs.kills}</small>
+        `);
+        
+        marker.on('click', () => {
+          openLootModal(gs);
+        });
+        
+        gravestoneMarkers.push(marker);
+      });
+    }
+
+    function showDeathScreen(team, cause) {
+      const screen = document.getElementById('deathScreen');
+      document.getElementById('deathTitle').textContent = team.name.toUpperCase();
+      document.getElementById('deathCause').textContent = `Neutralized by ${cause} in Sector ${Math.floor(Math.random() * 9) + 1}`;
+      document.getElementById('deathTime').textContent = 
+        `${String(Math.floor(simulation.time / 60)).padStart(2, '0')}:${String(simulation.time % 60).padStart(2, '0')}`;
+      document.getElementById('deathKills').textContent = team.kills;
+      
+      // Calculate rank
+      const allTeams = [...simulation.teams].sort((a, b) => b.timeSurvived - a.timeSurvived || b.kills - a.kills);
+      const rank = allTeams.findIndex(t => t.id === team.id) + 1;
+      document.getElementById('deathRank').textContent = `#${rank}`;
+      
+      screen.classList.add('active');
+    }
+
+    // ==========================================================
+    // KILL FEED SYSTEM
+    // ==========================================================
+    function addKillFeed(victim, killer, cause) {
+      const feed = document.getElementById('killFeed');
+      const item = document.createElement('div');
+      item.className = 'kill-feed-item';
+      
+      if (killer) {
+        item.innerHTML = `
+          <span class="killer">${killer.name || killer}</span>
+          <span style="color: var(--muted);"> → </span>
+          <span class="victim">${victim.name}</span>
+          <div class="weapon">${cause}</div>
+        `;
+      } else {
+        item.innerHTML = `
+          <span class="victim">${victim.name}</span>
+          <span style="color: var(--muted);"> died to </span>
+          <span class="killer">${cause}</span>
+        `;
+      }
+      
+      feed.appendChild(item);
+      
+      // Remove after animation
+      setTimeout(() => {
+        if (item.parentNode) item.parentNode.removeChild(item);
+      }, 5000);
+    }
+
+    // ==========================================================
+    // SPECTATOR MODE
+    // ==========================================================
+    function initSpectatorMode() {
+      document.getElementById('btnNextSpectate').addEventListener('click', () => {
+        cycleSpectatorTarget();
+      });
+    }
+
+    function startSpectatorMode() {
+      const alive = simulation.teams.filter(t => t.status === 'alive');
+      if (alive.length === 0) return;
+      
+      simulation.spectatorTarget = alive[0].id;
+      document.getElementById('spectatorBanner').classList.add('active');
+      updateSpectatorTarget();
+    }
+
+    function cycleSpectatorTarget() {
+      const alive = simulation.teams.filter(t => t.status === 'alive');
+      if (alive.length === 0) return;
+      
+      const currentIdx = alive.findIndex(t => t.id === simulation.spectatorTarget);
+      const nextIdx = (currentIdx + 1) % alive.length;
+      simulation.spectatorTarget = alive[nextIdx].id;
+      updateSpectatorTarget();
+    }
+
+    function updateSpectatorTarget() {
+      const team = simulation.teams.find(t => t.id === simulation.spectatorTarget);
+      if (team) {
+        document.getElementById('spectatorTarget').textContent = team.name;
+        // Center map on spectated team
+        if (radarMap) {
+          radarMap.panTo([team.x, team.y]);
+        }
+      }
+    }
+
+    // ==========================================================
+    // LOOT DROP & SCAVENGING SYSTEM
+    // ==========================================================
+    function dropLoot(team) {
+      const items = [];
+      const lootCount = 2 + Math.floor(Math.random() * 4);
+      const rarities = ['common', 'common', 'common', 'rare', 'rare', 'epic', 'legendary'];
+      const itemTypes = [
+        { name: 'Medkit', type: 'heal', value: 50 },
+        { name: 'Ammo Crate', type: 'ammo', value: 30 },
+        { name: 'Shield Cell', type: 'shield', value: 25 },
+        { name: 'Grenade', type: 'weapon', value: 40 },
+        { name: 'Adrenaline', type: 'buff', value: 20 },
+        { name: 'Armor Plate', type: 'armor', value: 35 }
+      ];
+      
+      for (let i = 0; i < lootCount; i++) {
+        const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+        const rarity = rarities[Math.floor(Math.random() * rarities.length)];
+        items.push({
+          ...itemType,
+          rarity,
+          id: `loot-${Date.now()}-${i}`,
+          x: team.x + (Math.random() - 0.5) * 0.001,
+          y: team.y + (Math.random() - 0.5) * 0.001
+        });
+      }
+      
+      simulation.droppedLoot.push(...items);
+      updateDroppedLootMarkers();
+    }
+
+    function updateDroppedLootMarkers() {
+      if (!radarMap) return;
+      
+      droppedLootMarkers.forEach(m => radarMap.removeLayer(m));
+      droppedLootMarkers = [];
+      
+      simulation.droppedLoot.forEach(item => {
+        const marker = L.marker([item.x, item.y], {
+          icon: L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="width:14px;height:14px;background:rgba(255,217,101,0.6);border-radius:50%;border:2px solid #ffd965;display:flex;align-items:center;justify-content:center;font-size:8px;animation:pulse 2s infinite;">📦</div>`,
+            iconSize: [14, 14]
+          })
+        }).addTo(radarMap);
+        
+        marker.bindPopup(`<b>📦 ${item.name}</b><br>
+          <small style="color:${getRarityColor(item.rarity)}">${item.rarity.toUpperCase()}</small>`);
+        
+        droppedLootMarkers.push(marker);
+      });
+    }
+
+    function getRarityColor(rarity) {
+      const colors = {
+        common: '#888',
+        rare: '#008c94',
+        epic: '#ff8b1f',
+        legendary: '#b8860b'
+      };
+      return colors[rarity] || '#888';
+    }
+
+    function openLootModal(gravestone) {
+      const modal = document.getElementById('lootModal');
+      document.getElementById('lootCorpseName').textContent = gravestone.name;
+      
+      // Find loot near this gravestone
+      const nearbyLoot = simulation.droppedLoot.filter(item => 
+        getDistance({ x: gravestone.x, y: gravestone.y }, item) < 0.002
+      );
+      
+      const container = document.getElementById('lootItemsContainer');
+      if (nearbyLoot.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 20px;">No loot remaining.</div>';
+      } else {
+        container.innerHTML = nearbyLoot.map(item => `
+          <div class="loot-item" onclick="collectLoot('${item.id}')">
+            <span class="loot-item-name">${item.name}</span>
+            <span class="loot-item-rarity rarity-${item.rarity}">${item.rarity}</span>
+          </div>
+        `).join('');
+      }
+      
+      modal.classList.add('active');
+    }
+
+    function collectLoot(lootId) {
+      const idx = simulation.droppedLoot.findIndex(l => l.id === lootId);
+      if (idx > -1) {
+        const item = simulation.droppedLoot[idx];
+        simulation.droppedLoot.splice(idx, 1);
+        simulation.lootCollected++;
+        addChat('system', `Collected ${item.name} (${item.rarity})!`, 'planning');
+        updateDroppedLootMarkers();
+        document.getElementById('lootModal').classList.remove('active');
+        updateStatsUI();
+      }
+    }
+
+    document.getElementById('btnCloseLoot').addEventListener('click', () => {
+      document.getElementById('lootModal').classList.remove('active');
+    });
+
+    // ==========================================================
+    // REVIVE SYSTEM
+    // ==========================================================
+    function checkRevives() {
+      const downed = simulation.teams.filter(t => t.status === 'downed');
+      
+      downed.forEach(team => {
+        team.downedTimer = (team.downedTimer || 30) - 1;
+        
+        // Check if any alive teammate is nearby
+        const teammate = simulation.teams.find(t => 
+          t.id !== team.id && t.status === 'alive' && getDistance(t, team) < 0.003
+        );
+        
+        if (teammate) {
+          // Being revived
+          team.reviveProgress = (team.reviveProgress || 0) + 1;
+          if (team.reviveProgress >= 5) {
+            // Revived!
+            team.status = 'alive';
+            team.hp = 30;
+            team.downedTimer = null;
+            team.reviveProgress = null;
+            addChat(team.id, `Revived by ${teammate.name}!`, 'planning');
+            playSound('start');
+          }
+        } else if (team.downedTimer <= 0) {
+          // Bleed out
+          team.status = 'dead';
+          team.deaths++;
+          team.causeOfDeath = 'Bled out';
+          handleDeath(team, null, 'Bled out');
+        }
+      });
+    }
+
+    // Override resolveCombat to use downed state
+    const originalResolveCombat = resolveCombat;
+    resolveCombat = function() {
+      const aliveTeams = simulation.teams.filter(t => t.status === 'alive');
+
+      // Team vs Threat combat
+      simulation.teams.forEach(team => {
+        if (team.status !== 'alive') return;
+
+        simulation.threats.forEach(threat => {
+          if (!threat.active || threat.hp <= 0) return;
+          const dist = getDistance(team, threat);
+
+          if (dist < 0.003) {
+            const damage = Math.floor(Math.random() * 15) + 5;
+            threat.hp -= damage;
+            team.hp -= Math.floor(Math.random() * 10) + 2;
+
+            if (threat.hp <= 0) {
+              threat.active = false;
+              team.kills++;
+              simulation.threatsKilled++;
+              playSound('combat');
+              addChat(team.id, `Neutralized ${threat.name}!`, 'combat');
+            }
+
+            if (team.hp <= 0) {
+              team.hp = 0;
+              team.status = 'downed';
+              team.downedTimer = 30;
+              team.reviveProgress = 0;
+              addChat(team.id, `Team downed by ${threat.name}! Need revive!`, 'alert');
+            }
+          }
+        });
+
+        // Team vs Team combat
+        aliveTeams.forEach(enemy => {
+          if (enemy.id === team.id || enemy.status !== 'alive') return;
+          const dist = getDistance(team, enemy);
+
+          if (dist < 0.002 && (team.strategy === 'aggressive' || enemy.strategy === 'aggressive')) {
+            const teamDmg = Math.floor(Math.random() * 12) + 3;
+            const enemyDmg = Math.floor(Math.random() * 12) + 3;
+            enemy.hp -= teamDmg;
+            team.hp -= enemyDmg;
+
+            addChat(team.id, `Engaging ${enemy.name}! Exchange of fire!`, 'combat');
+
+            if (enemy.hp <= 0) {
+              enemy.hp = 0;
+              enemy.status = 'downed';
+              enemy.downedTimer = 30;
+              enemy.reviveProgress = 0;
+              team.kills++;
+              addChat(team.id, `Downed ${enemy.name}!`, 'combat');
+            }
+
+            if (team.hp <= 0) {
+              team.hp = 0;
+              team.status = 'downed';
+              team.downedTimer = 30;
+              team.reviveProgress = 0;
+              enemy.kills++;
+              addChat(team.id, `Downed by ${enemy.name}! Need revive!`, 'alert');
+            }
+          }
+        });
+      });
+
+      checkRevives();
+    };
+
+    // Override tick to include gas fields and safe zone
+    const originalTick = tick;
+    tick = function() {
+      if (!simulation.running) return;
+
+      const speed = simulation.speed || 1;
+      for (let i = 0; i < speed; i++) {
+        simulation.time++;
+        simulation.teams.forEach(moveTeam);
+        moveThreats();
+        resolveCombat();
+        updateGasFields();
+        updateSafeZone();
+
+        if (simulation.time % (5 + Math.floor(Math.random() * 10)) === 0) {
+          generateRandomChat();
+        }
+      }
+
+      updateTeamsUI();
+      updateStatsUI();
+      updateThreatList();
+      updateTimer();
+      updateRadarStatus();
+
+      const aliveTeams = simulation.teams.filter(t => t.status === 'alive');
+      if (aliveTeams.length <= 1 && simulation.time > 60) {
+        simulation.running = false;
+        clearInterval(simulation.interval);
+        saveMatchResult();
+        playSound('victory');
+        addChat('system', `🏆 ${aliveTeams[0]?.name || 'No one'} wins the match!`, 'alert');
+        document.getElementById('matchPhase').textContent = 'Complete';
+        document.getElementById('btnStart').textContent = '▶ Restart';
+      } else {
+        const phase = simulation.time < 30 ? 'Setup' : simulation.time < 120 ? 'Battle' : 'Endgame';
+        document.getElementById('matchPhase').textContent = phase;
+      }
+    };
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+
+    </div>
+  </main>
+  <script src="./design-system.js"></script>
+  <script src="./design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

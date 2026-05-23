@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAPLAYER V2 — TOPO</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    color: #e0e0e0;
+  }
+  canvas { display: block; }
+  #hud {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid #444;
+    padding: 10px 16px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    pointer-events: none;
+    z-index: 10;
+  }
+  #hud .title {
+    color: #8ecae6;
+    font-weight: bold;
+    font-size: 14px;
+  }
+  #hud .sub {
+    color: #888;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="title">MAPLAYER V2 — TOPO</div>
+  <div class="sub">CONTOUR INTERVAL: 200m | SCALE 1:50K</div>
+</div>
+<canvas id="mapCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('mapCanvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// --- Terrain elevation function ---
+function elevation(x, y) {
+  const s = 0.003;
+  return 300
+    + 200 * Math.sin(x * s * 1.3 + y * s * 0.7)
+    + 150 * Math.sin(x * s * 0.5 - y * s * 1.1)
+    + 80  * Math.sin((x + y) * s * 2.0)
+    + 60  * Math.cos(x * s * 3.2) * Math.sin(y * s * 2.8);
+}
+
+// --- Color interpolation ---
+function lerp(a, b, t) { return a + (b - a) * t; }
+function terrainColor(elev) {
+  // low (green) -> mid (brown) -> high (white)
+  if (elev < 400) {
+    const t = (elev - 200) / 200; // 0..1
+    return `rgb(${lerp(34,139,t|0)}, ${lerp(85,90,t|0)}, ${lerp(51,43,t|0)})`;
+  } else if (elev < 600) {
+    const t = (elev - 400) / 200;
+    return `rgb(${lerp(139,168,t|0)}, ${lerp(90,120,t|0)}, ${lerp(43,83,t|0)})`;
+  } else {
+    const t = Math.min(1, (elev - 600) / 300);
+    return `rgb(${lerp(168,220,t|0)}, ${lerp(120,220,t|0)}, ${lerp(83,220,t|0)})`;
+  }
+}
+
+function contourColor(elev) {
+  if (elev < 400) return '#4ade80'; // green
+  if (elev < 600) return '#d4a373'; // brown
+  return '#f8fafc'; // white
+}
+
+// --- Marching squares contour extraction ---
+function getContourPaths(level, step) {
+  const paths = [];
+  const w = canvas.width;
+  const h = canvas.height;
+  for (let y = 0; y < h - step; y += step) {
+    for (let x = 0; x < w - step; x += step) {
+      const e00 = elevation(x, y);
+      const e10 = elevation(x + step, y);
+      const e11 = elevation(x + step, y + step);
+      const e01 = elevation(x, y + step);
+
+      let idx = 0;
+      if (e00 >= level) idx |= 8;
+      if (e10 >= level) idx |= 4;
+      if (e11 >= level) idx |= 2;
+      if (e01 >= level) idx |= 1;
+
+      if (idx === 0 || idx === 15) continue;
+
+      // interpolate crossing points
+      const interp = (a, b) => (level - a) / (b - a);
+      const top    = { x: x + step * interp(e00, e10), y };
+      const right  = { x: x + step, y: y + step * interp(e10, e11) };
+      const bottom = { x: x + step * interp(e01, e11), y: y + step };
+      const left   = { x, y: y + step * interp(e00, e01) };
+
+      const segs = [];
+      switch (idx) {
+        case 1:  segs.push([left, bottom]); break;
+        case 2:  segs.push([bottom, right]); break;
+        case 3:  segs.push([left, right]); break;
+        case 4:  segs.push([top, right]); break;
+        case 5:  segs.push([top, left], [right, bottom]); break;
+        case 6:  segs.push([top, bottom]); break;
+        case 7:  segs.push([top, left]); break;
+        case 8:  segs.push([left, top]); break;
+        case 9:  segs.push([top, bottom]); break;
+        case 10: segs.push([left, bottom], [top, right]); break;
+        case 11: segs.push([top, right]); break;
+        case 12: segs.push([left, right]); break;
+        case 13: segs.push([bottom, right]); break;
+        case 14: segs.push([left, bottom]); break;
+      }
+      for (const seg of segs) paths.push(seg);
+    }
+  }
+  return paths;
+}
+
+// --- Smooth contour paths into bezier curves ---
+function smoothContours(paths, tolerance) {
+  if (!paths.length) return [];
+  // chain segments into polylines
+  const polylines = [];
+  const used = new Set();
+  for (let i = 0; i < paths.length; i++) {
+    if (used.has(i)) continue;
+    let seg = paths[i];
+    const poly = [seg[0], seg[1]];
+    used.add(i);
+    let extended = true;
+    while (extended) {
+      extended = false;
+      for (let j = 0; j < paths.length; j++) {
+        if (used.has(j)) continue;
+        const s = paths[j];
+        const last = poly[poly.length - 1];
+        const first = poly[0];
+        const dx1 = s[0].x - last.x, dy1 = s[0].y - last.y;
+        const dx2 = s[1].x - last.x, dy2 = s[1].y - last.y;
+        const dx3 = s[0].x - first.x, dy3 = s[0].y - first.y;
+        const dx4 = s[1].x - first.x, dy4 = s[1].y - first.y;
+        if (dx1 * dx1 + dy1 * dy1 < tolerance) {
+          poly.push(s[1]); used.add(j); extended = true; break;
+        } else if (dx2 * dx2 + dy2 * dy2 < tolerance) {
+          poly.push(s[0]); used.add(j); extended = true; break;
+        } else if (dx3 * dx3 + dy3 * dy3 < tolerance) {
+          poly.unshift(s[1]); used.add(j); extended = true; break;
+        } else if (dx4 * dx4 + dy4 * dy4 < tolerance) {
+          poly.unshift(s[0]); used.add(j); extended = true; break;
+        }
+      }
+    }
+    polylines.push(poly);
+  }
+  return polylines;
+}
+
+function drawBezierPolyline(poly, color, width) {
+  if (poly.length < 2) return;
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.moveTo(poly[0].x, poly[0].y);
+  for (let i = 1; i < poly.length - 1; i++) {
+    const xc = (poly[i].x + poly[i + 1].x) / 2;
+    const yc = (poly[i].y + poly[i + 1].y) / 2;
+    ctx.quadraticCurveTo(poly[i].x, poly[i].y, xc, yc);
+  }
+  if (poly.length > 1) {
+    const last = poly[poly.length - 1];
+    ctx.lineTo(last.x, last.y);
+  }
+  ctx.stroke();
+}
+
+// --- Terrain background ---
+function drawTerrain() {
+  const w = canvas.width;
+  const h = canvas.height;
+  const step = 4; // pixel size for terrain blocks
+  for (let y = 0; y < h; y += step) {
+    for (let x = 0; x < w; x += step) {
+      const e = elevation(x + step / 2, y + step / 2);
+      ctx.fillStyle = terrainColor(e);
+      ctx.fillRect(x, y, step, step);
+    }
+  }
+}
+
+// --- Elevation labels ---
+function drawLabels(levels) {
+  ctx.font = 'bold 11px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const placed = [];
+  for (const level of levels) {
+    const paths = getContourPaths(level, 8);
+    const polys = smoothContours(paths, 25);
+    for (const poly of polys) {
+      if (poly.length < 10) continue;
+      // pick a point roughly in the middle
+      const idx = Math.floor(poly.length / 2);
+      const p = poly[idx];
+      // avoid overlap
+      let ok = true;
+      for (const q of placed) {
+        const dx = p.x - q.x, dy = p.y - q.y;
+        if (dx * dx + dy * dy < 3600) { ok = false; break; }
+      }
+      if (!ok) continue;
+      placed.push(p);
+      const text = level + 'm';
+      const tw = ctx.measureText(text).width;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(p.x - tw / 2 - 4, p.y - 7, tw + 8, 14);
+      ctx.fillStyle = contourColor(level);
+      ctx.fillText(text, p.x, p.y + 1);
+    }
+  }
+}
+
+// --- Players ---
+const players = [
+  { x: 0.25, y: 0.35, color: '#ff4d4d', name: 'P1' },
+  { x: 0.55, y: 0.25, color: '#4dabf7', name: 'P2' },
+  { x: 0.70, y: 0.60, color: '#ffd43b', name: 'P3' },
+];
+
+function drawPlayers() {
+  const w = canvas.width;
+  const h = canvas.height;
+  for (const p of players) {
+    const px = p.x * w;
+    const py = p.y * h;
+    const e = elevation(px, py);
+
+    // dot
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // label
+    ctx.font = 'bold 12px "Courier New", monospace';
+    const text = `${p.name}  ${Math.round(e)}m`;
+    const tw = ctx.measureText(text).width;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(px + 10, py - 10, tw + 8, 18);
+    ctx.fillStyle = p.color;
+    ctx.fillText(text, px + 14, py + 1);
+  }
+}
+
+// --- Main render ---
+function render() {
+  drawTerrain();
+
+  const levels = [200, 300, 400, 500, 600, 700, 800];
+  for (const level of levels) {
+    const paths = getContourPaths(level, 6);
+    const polys = smoothContours(paths, 20);
+    const col = contourColor(level);
+    const width = (level % 200 === 0) ? 1.6 : 0.8; // index contours thicker
+    for (const poly of polys) {
+      drawBezierPolyline(poly, col, width);
+    }
+  }
+
+  drawLabels([200, 400, 600]);
+  drawPlayers();
+}
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+@import url("./design-lab-option2.css?v=1");
+
+:root {
+  --panel-peach: #ffc0a0;
+  --panel-gold: #ffd965;
+  --panel-cream: #fff0c7;
+  --panel-teal: #008c94;
+  --panel-pink: #e82663;
+  --panel-orange: #ff8b1f;
+  --gloss-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.58), inset 0 -22px 32px rgba(116, 45, 17, 0.12), 0 12px 0 rgba(0, 140, 148, 0.62), 0 22px 44px rgba(74, 28, 12, 0.3);
+}
+
+.lab-nav a {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 240, 199, 0.92) 58%, rgba(255, 217, 101, 0.52)),
+    var(--panel-cream);
+}
+
+.mission-gloss,
+.operator-panel,
+.preview-grid article {
+  background:
+    radial-gradient(circle at 24% 10%, rgba(255, 255, 255, 0.52), transparent 24%),
+    linear-gradient(140deg, var(--panel-gold), var(--panel-peach) 46%, #ffb172 100%);
+  box-shadow: var(--gloss-shadow);
+  border-color: rgba(255, 250, 224, 0.82);
+}
+
+.control-lab {
+  border-color: rgba(255, 250, 224, 0.86);
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.5), transparent 22%),
+    radial-gradient(circle at 76% 22%, rgba(255, 217, 101, 0.34), transparent 24%),
+    linear-gradient(145deg, #ffb184, var(--panel-peach) 45%, var(--panel-gold));
+  box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.62), inset 0 -26px 38px rgba(232, 38, 99, 0.12), 0 12px 0 var(--panel-teal), 0 25px 54px rgba(74, 28, 12, 0.34);
+}
+
+.control-side {
+  border-color: rgba(255, 255, 255, 0.76);
+  background:
+    radial-gradient(circle at 26% 10%, rgba(255, 255, 255, 0.62), transparent 24%),
+    linear-gradient(180deg, #ffe960, #ffd965 44%, #ffb55f);
+  box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.7), inset 0 -20px 30px rgba(255, 139, 31, 0.22), 0 10px 0 rgba(232, 38, 99, 0.46), 0 20px 34px rgba(74, 28, 12, 0.26);
+}
+
+.control-feed {
+  border-color: rgba(255, 255, 255, 0.72);
+  background:
+    radial-gradient(circle at 28% 12%, rgba(255, 255, 255, 0.5), transparent 22%),
+    linear-gradient(180deg, #fff0c7, #ffc0a0 68%, #ff8b1f);
+  box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.58), inset 0 -18px 28px rgba(232, 38, 99, 0.12), 0 10px 0 rgba(255, 139, 31, 0.42), 0 20px 34px rgba(74, 28, 12, 0.24);
+}
+
+.control-feed article {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(255, 240, 199, 0.78)),
+    var(--panel-cream);
+}
+
+.operator-panel {
+  background:
+    radial-gradient(circle at 28% 12%, rgba(255, 255, 255, 0.56), transparent 22%),
+    linear-gradient(150deg, #ffdf89, #ffc0a0 48%, #e82663);
+}
+
+.candy-tabs button,
+.control-actions button,
+.operator-panel button {
+  min-height: 42px;
+  border: 1px solid rgba(36, 20, 20, 0.18);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 34% 14%, rgba(255, 255, 255, 0.82), transparent 24%),
+    linear-gradient(180deg, #fffbe4, #ffd965 58%, #ffb55f);
+  color: #241414;
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.68), inset 0 -8px 14px rgba(255, 139, 31, 0.2), 0 8px 0 rgba(113, 48, 17, 0.16), 0 16px 28px rgba(74, 28, 12, 0.18);
+}
+
+.candy-tabs .selected {
+  background:
+    radial-gradient(circle at 34% 14%, rgba(255, 255, 255, 0.2), transparent 20%),
+    linear-gradient(180deg, #5a1d27, #1a0d11);
+  color: var(--gold);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.18), inset 0 -8px 14px rgba(0, 0, 0, 0.26), 0 8px 0 var(--panel-pink), 0 16px 28px rgba(36, 20, 20, 0.28);
+}
+
+body[data-button-style="pebble"] .candy-tabs button,
+body[data-button-style="pebble"] .control-actions button,
+body[data-button-style="pebble"] .operator-panel button {
+  border-radius: 18px 28px 20px 30px;
+  background:
+    radial-gradient(circle at 26% 18%, rgba(255, 255, 255, 0.78), transparent 24%),
+    linear-gradient(160deg, #fff0c7, #ffc0a0 58%, #ff8b1f);
+}
+
+body[data-button-style="switch"] .candy-tabs,
+body[data-button-style="switch"] .control-actions {
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(36, 20, 20, 0.12);
+  box-shadow: inset 0 3px 10px rgba(36, 20, 20, 0.16);
+}
+
+body[data-button-style="switch"] .candy-tabs button,
+body[data-button-style="switch"] .control-actions button {
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 4px 0 rgba(113, 48, 17, 0.12);
+}
+
+body[data-button-style="chrome"] .candy-tabs button,
+body[data-button-style="chrome"] .control-actions button,
+body[data-button-style="chrome"] .operator-panel button {
+  background:
+    linear-gradient(180deg, #ffffff, #fff2c4 42%, #dcd7b5 43%, #fff8df 68%, #ffd965);
+  border-color: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 2px 0 #fff, inset 0 -9px 18px rgba(82, 33, 21, 0.12), 0 7px 0 rgba(0, 140, 148, 0.28), 0 16px 28px rgba(74, 28, 12, 0.16);
+}
+
+.radar-lab {
+  border-color: rgba(255, 255, 255, 0.52);
+  box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.2), 0 12px 0 rgba(36, 20, 20, 0.14), 0 24px 46px rgba(74, 28, 12, 0.22);
+}

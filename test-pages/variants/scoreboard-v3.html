@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCOREBOARD V3 — MEDAL / ACHIEVEMENTS</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+  }
+
+  /* Canvas background */
+  #bg-canvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* HUD */
+  #hud {
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 10;
+    font-size: 14px; letter-spacing: 4px; color: #00d4ff;
+    text-shadow: 0 0 8px rgba(0,212,255,0.5);
+    pointer-events: none;
+  }
+
+  /* Main container */
+  #app {
+    position: relative; z-index: 2;
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    padding: 48px 16px 16px;
+  }
+
+  /* Category tabs */
+  #tabs {
+    display: flex; justify-content: center; gap: 8px;
+    margin-bottom: 16px; flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 6px 16px;
+    border: 1px solid #333;
+    background: #111;
+    color: #888;
+    font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; border-radius: 4px; transition: .2s;
+    user-select: none;
+  }
+  .tab:hover { border-color: #555; color: #ccc; }
+  .tab.active {
+    border-color: #00d4ff; color: #00d4ff;
+    background: rgba(0,212,255,0.08);
+    box-shadow: 0 0 12px rgba(0,212,255,0.15);
+  }
+
+  /* Grid */
+  #grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+    overflow-y: auto;
+    padding: 8px;
+    align-content: start;
+  }
+
+  /* Achievement card */
+  .card {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 16px 8px;
+    border-radius: 8px;
+    background: #14141a;
+    border: 1px solid #222;
+    cursor: pointer;
+    transition: transform .15s, border-color .2s, box-shadow .2s;
+    user-select: none;
+  }
+  .card:hover { transform: translateY(-2px); border-color: #444; }
+  .card.completed {
+    border-color: #d4af37;
+    box-shadow: 0 0 16px rgba(212,175,55,0.25), inset 0 0 20px rgba(212,175,55,0.05);
+    animation: goldPulse 3s ease-in-out infinite;
+  }
+  .card.locked { opacity: .45; filter: grayscale(.7); }
+  .card.in-progress { border-color: #555; }
+
+  @keyframes goldPulse {
+    0%, 100% { box-shadow: 0 0 16px rgba(212,175,55,0.2), inset 0 0 20px rgba(212,175,55,0.03); }
+    50% { box-shadow: 0 0 24px rgba(212,175,55,0.35), inset 0 0 30px rgba(212,175,55,0.08); }
+  }
+
+  /* Hex badge */
+  .hex-wrap {
+    width: 72px; height: 72px;
+    position: relative;
+    margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hex-svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+  .hex-bg { fill: #1e1e28; stroke: #333; stroke-width: 2; }
+  .card.completed .hex-bg { fill: #2a2210; stroke: #d4af37; }
+  .card.in-progress .hex-bg { fill: #1a1a24; stroke: #666; }
+  .card.locked .hex-bg { fill: #111; stroke: #222; }
+
+  .hex-icon {
+    position: relative; z-index: 1;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hex-icon svg { width: 100%; height: 100%; }
+
+  /* Checkmark overlay */
+  .checkmark {
+    position: absolute; top: 4px; right: 4px;
+    width: 18px; height: 18px;
+    background: #d4af37; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2;
+  }
+  .checkmark svg { width: 10px; height: 10px; }
+
+  /* Lock overlay */
+  .lock {
+    position: absolute; top: 4px; right: 4px;
+    width: 18px; height: 18px;
+    background: #222; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2;
+  }
+  .lock svg { width: 10px; height: 10px; }
+
+  /* Text */
+  .ach-name {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    text-align: center; margin-bottom: 4px;
+    color: #ccc;
+  }
+  .card.completed .ach-name { color: #f0d060; }
+  .ach-desc {
+    font-size: 10px; color: #777;
+    text-align: center; line-height: 1.3;
+    margin-bottom: 8px;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    width: 100%; height: 4px;
+    background: #222; border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, #00d4ff, #00ffaa);
+    transition: width .4s ease;
+  }
+  .card.completed .progress-fill { background: #d4af37; }
+  .card.locked .progress-wrap { background: #1a1a1a; }
+  .card.locked .progress-fill { background: #333; width: 0 !important; }
+
+  .progress-text {
+    font-size: 9px; color: #555;
+    margin-top: 4px; text-align: center;
+    letter-spacing: 1px;
+  }
+  .card.completed .progress-text { color: #d4af37; }
+
+  /* Popup */
+  #popup-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 50;
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  #popup-overlay.show { display: flex; }
+  #popup {
+    background: #14141a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    max-width: 360px; width: 100%;
+    padding: 24px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+  }
+  #popup .popup-hex {
+    width: 96px; height: 96px;
+    margin: 0 auto 16px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #popup .popup-hex svg.hex-svg { width: 100%; height: 100%; position: absolute; }
+  #popup .popup-hex .hex-icon { width: 44px; height: 44px; }
+  #popup .popup-title {
+    font-size: 16px; font-weight: 700;
+    text-align: center; letter-spacing: 2px;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  #popup .popup-desc {
+    font-size: 13px; color: #999;
+    text-align: center; line-height: 1.5;
+    margin-bottom: 16px;
+  }
+  #popup .popup-progress-wrap {
+    width: 100%; height: 6px;
+    background: #222; border-radius: 3px;
+    overflow: hidden; margin-bottom: 6px;
+  }
+  #popup .popup-progress-fill {
+    height: 100%; border-radius: 3px;
+    transition: width .4s ease;
+  }
+  #popup .popup-progress-text {
+    font-size: 11px; color: #777;
+    text-align: center; margin-bottom: 16px;
+  }
+  #popup .popup-meta {
+    display: flex; justify-content: center; gap: 16px;
+    font-size: 11px; color: #555;
+  }
+  #popup .popup-meta span { display: flex; align-items: center; gap: 4px; }
+  #popup .popup-close {
+    position: absolute; top: 8px; right: 8px;
+    width: 28px; height: 28px;
+    background: #222; border: none; border-radius: 50%;
+    color: #888; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: .2s;
+  }
+  #popup .popup-close:hover { background: #333; color: #fff; }
+
+  /* Scrollbar */
+  #grid::-webkit-scrollbar { width: 6px; }
+  #grid::-webkit-scrollbar-track { background: transparent; }
+  #grid::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div id="hud">SCOREBOARD V3</div>
+
+<div id="app">
+  <div id="tabs">
+    <div class="tab active" data-cat="all">ALL</div>
+    <div class="tab" data-cat="combat">COMBAT</div>
+    <div class="tab" data-cat="exploration">EXPLORATION</div>
+    <div class="tab" data-cat="social">SOCIAL</div>
+    <div class="tab" data-cat="challenges">CHALLENGES</div>
+  </div>
+  <div id="grid"></div>
+</div>
+
+<div id="popup-overlay">
+  <div id="popup">
+    <button class="popup-close" id="popup-close">&times;</button>
+    <div class="popup-hex" id="popup-hex"></div>
+    <div class="popup-title" id="popup-title"></div>
+    <div class="popup-desc" id="popup-desc"></div>
+    <div class="popup-progress-wrap"><div class="popup-progress-fill" id="popup-progress"></div></div>
+    <div class="popup-progress-text" id="popup-progress-text"></div>
+    <div class="popup-meta">
+      <span id="popup-cat"></span>
+      <span id="popup-status"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================
+   DATA: 12 ACHIEVEMENTS
+   ========================= */
+const achievements = [
+  {
+    id: 'a1', name: 'First Blood', category: 'combat',
+    desc: 'Defeat your first enemy in combat.',
+    current: 1, target: 1,
+    icon: 'sword'
+  },
+  {
+    id: 'a2', name: 'Sharpshooter', category: 'combat',
+    desc: 'Land 50 critical hits on targets.',
+    current: 34, target: 50,
+    icon: 'crosshair'
+  },
+  {
+    id: 'a3', name: 'Unstoppable', category: 'combat',
+    desc: 'Win 10 consecutive battles without losing.',
+    current: 0, target: 10,
+    icon: 'shield'
+  },
+  {
+    id: 'a4', name: 'World Walker', category: 'exploration',
+    desc: 'Discover every zone on the world map.',
+    current: 12, target: 12,
+    icon: 'compass'
+  },
+  {
+    id: 'a5', name: 'Treasure Hunter', category: 'exploration',
+    desc: 'Open 25 hidden treasure chests.',
+    current: 18, target: 25,
+    icon: 'gem'
+  },
+  {
+    id: 'a6', name: 'Deep Diver', category: 'exploration',
+    desc: 'Reach the deepest level of the abyss.',
+    current: 0, target: 1,
+    icon: 'anchor'
+  },
+  {
+    id: 'a7', name: 'Socialite', category: 'social',
+    desc: 'Befriend 20 NPCs across all regions.',
+    current: 20, target: 20,
+    icon: 'heart'
+  },
+  {
+    id: 'a8', name: 'Diplomat', category: 'social',
+    desc: 'Resolve 15 conflicts through dialogue.',
+    current: 9, target: 15,
+    icon: 'chat'
+  },
+  {
+    id: 'a9', name: 'Guild Leader', category: 'social',
+    desc: 'Form and lead a guild of 30 members.',
+    current: 2, target: 30,
+    icon: 'crown'
+  },
+  {
+    id: 'a10', name: 'Speed Run', category: 'challenges',
+    desc: 'Complete the campaign in under 4 hours.',
+    current: 1, target: 1,
+    icon: 'bolt'
+  },
+  {
+    id: 'a11', name: 'Pacifist', category: 'challenges',
+    desc: 'Finish a full zone without dealing damage.',
+    current: 0, target: 1,
+    icon: 'dove'
+  },
+  {
+    id: 'a12', name: 'Iron Will', category: 'challenges',
+    desc: 'Survive 100 enemy encounters with no healing.',
+    current: 67, target: 100,
+    icon: 'flame'
+  }
+];
+
+/* =========================
+   ICONS (geometric SVG)
+   ========================= */
+const icons = {
+  sword: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2l7 7-9 9-7-7 9-9z"/><path d="M2 22l4-4"/></svg>`,
+  crosshair: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>`,
+  shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-4 9-8 10-4-1-8-5-8-10V6l8-4z"/></svg>`,
+  compass: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M16 8l-4 4-4 4 4-4 4-4z"/></svg>`,
+  gem: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l4 6-10 12L2 9l4-6z"/><path d="M12 21V9"/></svg>`,
+  anchor: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><path d="M12 7v10M5 13a7 7 0 0014 0"/></svg>`,
+  heart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/></svg>`,
+  chat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`,
+  crown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 18h20M2 18l3-10 5 5 4-8 4 8 5-5 3 10"/></svg>`,
+  bolt: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h8l-2 8 10-12h-8l2-8z"/></svg>`,
+  dove: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12c4-4 8-2 10 0s6 4 10 0"/><path d="M12 12c-2-4-4-8-6-8s-2 4 0 8"/></svg>`,
+  flame: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c0 0-6 6-6 12a6 6 0 0012 0c0-6-6-12-6-12z"/><path d="M12 14a2 2 0 100 4 2 2 0 000-4z"/></svg>`
+};
+
+function getStatus(a) {
+  if (a.current >= a.target) return 'completed';
+  if (a.current === 0) return 'locked';
+  return 'in-progress';
+}
+
+/* =========================
+   HEX SVG GENERATOR
+   ========================= */
+function hexSVG(cls) {
+  // flat-topped hex
+  const pts = [
+    [50,5], [93,25], [93,75], [50,95], [7,75], [7,25]
+  ].map(p => p.join(',')).join(' ');
+  return `<svg class="hex-svg" viewBox="0 0 100 100"><polygon class="${cls}" points="${pts}"/></svg>`;
+}
+
+/* =========================
+   RENDER GRID
+   ========================= */
+const grid = document.getElementById('grid');
+
+function render(cat) {
+  grid.innerHTML = '';
+  achievements.forEach(a => {
+    if (cat !== 'all' && a.category !== cat) return;
+    const status = getStatus(a);
+    const pct = Math.min(100, Math.round((a.current / a.target) * 100));
+
+    const card = document.createElement('div');
+    card.className = `card ${status}`;
+    card.dataset.id = a.id;
+
+    let badge = '';
+    if (status === 'completed') {
+      badge = `<div class="checkmark"><svg viewBox="0 0 24 24" fill="none" stroke="#0a0a0f" stroke-width="3"><path d="M4 12l6 6L20 6"/></svg></div>`;
+    } else if (status === 'locked') {
+      badge = `<div class="lock"><svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>`;
+    }
+
+    card.innerHTML = `
+      <div class="hex-wrap">
+        ${hexSVG('hex-bg')}
+        <div class="hex-icon">${icons[a.icon] || ''}</div>
+        ${badge}
+      </div>
+      <div class="ach-name">${a.name}</div>
+      <div class="ach-desc">${a.desc}</div>
+      <div class="progress-wrap"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="progress-text">${status === 'locked' ? 'LOCKED' : `${a.current} / ${a.target}`}</div>
+    `;
+
+    card.addEventListener('click', () => openPopup(a));
+    grid.appendChild(card);
+  });
+}
+
+/* =========================
+   TABS
+   ========================= */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    render(tab.dataset.cat);
+  });
+});
+
+/* =========================
+   POPUP
+   ========================= */
+const popupOverlay = document.getElementById('popup-overlay');
+const popupClose = document.getElementById('popup-close');
+
+function openPopup(a) {
+  const status = getStatus(a);
+  const pct = Math.min(100, Math.round((a.current / a.target) * 100));
+
+  const hexCls = status === 'completed' ? 'hex-bg' : (status === 'in-progress' ? 'hex-bg' : 'hex-bg');
+  const hexColor = status === 'completed' ? '#d4af37' : (status === 'in-progress' ? '#666' : '#222');
+  const fillColor = status === 'completed' ? '#d4af37' : (status === 'in-progress' ? '#00d4ff' : '#444');
+  const titleColor = status === 'completed' ? '#f0d060' : '#ccc';
+
+  document.getElementById('popup-hex').innerHTML = `
+    ${hexSVG('hex-bg').replace('hex-bg', 'hex-bg').replace('"hex-bg"', `"hex-bg" style="fill:${status==='completed'?'#2a2210':(status==='in-progress'?'#1a1a24':'#111')};stroke:${hexColor}"`)}
+    <div class="hex-icon" style="color:${hexColor}">${icons[a.icon] || ''}</div>
+  `;
+  document.getElementById('popup-title').textContent = a.name;
+  document.getElementById('popup-title').style.color = titleColor;
+  document.getElementById('popup-desc').textContent = a.desc;
+  const bar = document.getElementById('popup-progress');
+  bar.style.width = pct + '%';
+  bar.style.background = fillColor;
+  document.getElementById('popup-progress-text').textContent = status === 'locked' ? 'LOCKED — 0%' : `${a.current} / ${a.target}  (${pct}%)`;
+  document.getElementById('popup-cat').innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg> ${a.category.toUpperCase()}`;
+  document.getElementById('popup-status').textContent = status === 'completed' ? '✓ COMPLETED' : (status === 'locked' ? '🔒 LOCKED' : '◐ IN PROGRESS');
+
+  popupOverlay.classList.add('show');
+}
+
+popupClose.addEventListener('click', () => popupOverlay.classList.remove('show'));
+popupOverlay.addEventListener('click', e => { if (e.target === popupOverlay) popupOverlay.classList.remove('show'); });
+
+/* =========================
+   CANVAS HEX GRID BACKGROUND
+   ========================= */
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, hexR = 28, hexH, hexW;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  hexH = hexR * Math.sin(Math.PI / 3) * 2;
+  hexW = hexR * 1.5;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function drawHex(x, y, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const ang = Math.PI / 3 * i;
+    const px = x + r * Math.cos(ang);
+    const py = y + r * Math.sin(ang);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+let t = 0;
+function loop() {
+  t += 0.005;
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(0,212,255,0.06)';
+  ctx.lineWidth = 1;
+
+  const cols = Math.ceil(W / hexW) + 1;
+  const rows = Math.ceil(H / hexH) + 1;
+
+  for (let row = -1; row < rows; row++) {
+    for (let col = -1; col < cols; col++) {
+      const xOff = (row % 2) * (hexW * 0.5);
+      const x = col * hexW + xOff;
+      const y = row * (hexH * 0.75);
+
+      // subtle pulse on some hexes
+      const dist = Math.hypot(x - W/2, y - H/2);
+      const pulse = Math.sin(t * 2 + dist * 0.01) * 0.5 + 0.5;
+      const r = hexR * (0.85 + pulse * 0.15);
+
+      ctx.strokeStyle = `rgba(0,212,255,${0.03 + pulse * 0.05})`;
+      drawHex(x, y, r);
+      ctx.stroke();
+    }
+  }
+
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* init */
+render('all');
+</script>
+</body>
+</html>

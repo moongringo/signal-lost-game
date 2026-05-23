@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RADAR V12</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  canvas { display: block; }
+  #hud {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    color: #ffaa00;
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px #ff6600;
+    pointer-events: none;
+    user-select: none;
+  }
+  #temp-readout {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    color: #ffaa00;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 6px #ff6600;
+    pointer-events: none;
+    user-select: none;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+<canvas id="radar"></canvas>
+<div id="hud">RADAR V12</div>
+<div id="temp-readout">THERMAL MODE<br>MAX: 1200C<br>MIN: -40C</div>
+<script>
+const canvas = document.getElementById('radar');
+const ctx = canvas.getContext('2d');
+
+let W, H, CX, CY;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  CX = W / 2;
+  CY = H / 2;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const RANGE = 600;
+const SCALE = () => Math.min(W, H) / (RANGE * 2.2);
+
+function worldToScreen(x, y) {
+  const s = SCALE();
+  return { x: CX + x * s, y: CY + y * s, scale: s };
+}
+
+// Thermal palette: 0=cold (black/purple) -> 1=hot (white)
+// black -> purple -> dark red -> red -> orange -> yellow -> white
+function thermalColor(t) {
+  t = Math.max(0, Math.min(1, t));
+  if (t < 0.15) {
+    // black -> deep purple
+    const u = t / 0.15;
+    return `rgb(${Math.round(u * 40)}, 0, ${Math.round(u * 30)})`;
+  } else if (t < 0.30) {
+    // purple -> dark red
+    const u = (t - 0.15) / 0.15;
+    return `rgb(${Math.round(40 + u * 100)}, 0, ${Math.round(30 * (1 - u))})`;
+  } else if (t < 0.45) {
+    // dark red -> red
+    const u = (t - 0.30) / 0.15;
+    return `rgb(${Math.round(140 + u * 115)}, 0, 0)`;
+  } else if (t < 0.60) {
+    // red -> orange
+    const u = (t - 0.45) / 0.15;
+    return `rgb(255, ${Math.round(u * 100)}, 0)`;
+  } else if (t < 0.80) {
+    // orange -> yellow
+    const u = (t - 0.60) / 0.20;
+    return `rgb(255, ${Math.round(100 + u * 155)}, 0)`;
+  } else {
+    // yellow -> white
+    const u = (t - 0.80) / 0.20;
+    return `rgb(255, ${Math.round(255)}, ${Math.round(u * 255)})`;
+  }
+}
+
+function thermalGradient(cx, cy, r, coreTemp) {
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, thermalColor(coreTemp));
+  g.addColorStop(0.3, thermalColor(coreTemp * 0.7));
+  g.addColorStop(0.7, thermalColor(coreTemp * 0.35));
+  g.addColorStop(1, thermalColor(0));
+  return g;
+}
+
+// Terrain generation
+const terrainCells = [];
+const CELL_SIZE = 40;
+for (let x = -RANGE; x <= RANGE; x += CELL_SIZE) {
+  for (let y = -RANGE; y <= RANGE; y += CELL_SIZE) {
+    const dist = Math.hypot(x, y);
+    if (dist > RANGE) continue;
+    // Open areas warmer, shaded/corners cooler
+    const baseTemp = 0.15 + Math.random() * 0.08;
+    const openBonus = (1 - dist / RANGE) * 0.05;
+    const noise = Math.sin(x * 0.01) * Math.cos(y * 0.01) * 0.03;
+    terrainCells.push({
+      x, y,
+      w: CELL_SIZE, h: CELL_SIZE,
+      temp: Math.max(0.05, Math.min(0.30, baseTemp + openBonus + noise))
+    });
+  }
+}
+
+// Buildings (cool rectangles)
+const buildings = [];
+for (let i = 0; i < 8; i++) {
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 100 + Math.random() * (RANGE - 150);
+  const w = 30 + Math.random() * 50;
+  const h = 30 + Math.random() * 50;
+  buildings.push({
+    x: Math.cos(angle) * dist,
+    y: Math.sin(angle) * dist,
+    w, h,
+    temp: 0.08 + Math.random() * 0.06
+  });
+}
+
+// Entities
+function randPos() {
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 80 + Math.random() * (RANGE - 80);
+  return { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist };
+}
+
+const PLAYER = { x: 0, y: 0, temp: 0.82, size: 5, label: 'YOU' };
+
+const enemies = Array.from({ length: 6 }, () => ({
+  ...randPos(),
+  temp: 0.75 + Math.random() * 0.10,
+  size: 4,
+  speed: 0.3 + Math.random() * 0.5,
+  angle: Math.random() * Math.PI * 2,
+  label: 'ENEMY'
+}));
+
+const friendlies = Array.from({ length: 3 }, () => ({
+  ...randPos(),
+  temp: 0.70 + Math.random() * 0.08,
+  size: 4,
+  speed: 0.2 + Math.random() * 0.3,
+  angle: Math.random() * Math.PI * 2,
+  label: 'ALLY'
+}));
+
+// Weapon fire hotspots
+let hotspots = [];
+
+function spawnHotspot(x, y, intensity = 1.0) {
+  hotspots.push({ x, y, born: performance.now(), intensity });
+}
+
+// Auto-fire simulation
+let lastFire = 0;
+function maybeFire() {
+  const now = performance.now();
+  if (now - lastFire > 800 + Math.random() * 1200) {
+    lastFire = now;
+    const shooter = Math.random() < 0.5
+      ? enemies[Math.floor(Math.random() * enemies.length)]
+      : friendlies[Math.floor(Math.random() * friendlies.length)];
+    if (shooter) {
+      const spread = 20;
+      spawnHotspot(
+        shooter.x + (Math.random() - 0.5) * spread,
+        shooter.y + (Math.random() - 0.5) * spread,
+        0.9 + Math.random() * 0.1
+      );
+    }
+  }
+}
+
+// Scan line
+let scanY = 0;
+const SCAN_SPEED = 0.8; // pixels per frame approx
+
+function drawTerrain() {
+  for (const cell of terrainCells) {
+    const p = worldToScreen(cell.x, cell.y);
+    const s = SCALE();
+    ctx.fillStyle = thermalColor(cell.temp);
+    ctx.fillRect(p.x, p.y, cell.w * s + 1, cell.h * s + 1);
+  }
+}
+
+function drawBuildings() {
+  for (const b of buildings) {
+    const p = worldToScreen(b.x - b.w / 2, b.y - b.h / 2);
+    const s = SCALE();
+    const bw = b.w * s;
+    const bh = b.h * s;
+
+    // Building body (cool)
+    ctx.fillStyle = thermalColor(b.temp);
+    ctx.fillRect(p.x, p.y, bw, bh);
+
+    // Slightly warmer edges (heat leak)
+    ctx.strokeStyle = thermalColor(b.temp + 0.05);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(p.x, p.y, bw, bh);
+  }
+}
+
+function drawHeatEntity(e) {
+  const p = worldToScreen(e.x, e.y);
+  const s = SCALE();
+  const radius = e.size * s * 3;
+
+  // Warm blob glow
+  ctx.fillStyle = thermalGradient(p.x, p.y, radius * 2.5, e.temp * 0.6);
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, radius * 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Core heat
+  ctx.fillStyle = thermalGradient(p.x, p.y, radius, e.temp);
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hot center
+  ctx.fillStyle = thermalColor(e.temp);
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, radius * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Label
+  const dist = Math.hypot(e.x, e.y).toFixed(0);
+  ctx.font = '10px "Courier New", monospace';
+  ctx.fillStyle = thermalColor(e.temp * 0.85);
+  ctx.textAlign = 'center';
+  ctx.fillText(`${e.label} ${dist}m`, p.x, p.y - radius * 2.5 - 4);
+}
+
+function drawHotspots(now) {
+  hotspots = hotspots.filter(h => now - h.born < 2000);
+  for (const h of hotspots) {
+    const age = (now - h.born) / 2000;
+    const fade = 1 - age;
+    const p = worldToScreen(h.x, h.y);
+    const s = SCALE();
+    const baseR = 8 * s;
+    const r = baseR + age * baseR * 3;
+    const temp = h.intensity * fade;
+
+    // Expanding heat bloom
+    ctx.fillStyle = thermalGradient(p.x, p.y, r, temp);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bright core
+    ctx.fillStyle = thermalColor(temp);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, baseR * 0.5 * fade, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawScanLine() {
+  scanY += SCAN_SPEED;
+  if (scanY > H) scanY = 0;
+
+  // Horizontal scan bar
+  const barH = 3;
+  const grad = ctx.createLinearGradient(0, scanY - barH, 0, scanY + barH * 2);
+  grad.addColorStop(0, 'rgba(255, 255, 200, 0)');
+  grad.addColorStop(0.5, 'rgba(255, 255, 220, 0.25)');
+  grad.addColorStop(1, 'rgba(255, 255, 200, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, scanY - barH, W, barH * 3);
+
+  // Subtle trailing fade behind scan
+  ctx.fillStyle = 'rgba(255, 255, 200, 0.02)';
+  ctx.fillRect(0, Math.max(0, scanY - 60), W, 60);
+}
+
+function drawReticle() {
+  const size = 18;
+  ctx.strokeStyle = thermalColor(0.55);
+  ctx.lineWidth = 1.5;
+
+  ctx.beginPath();
+  ctx.moveTo(CX - size, CY);
+  ctx.lineTo(CX + size, CY);
+  ctx.moveTo(CX, CY - size);
+  ctx.lineTo(CX, CY + size);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(CX, CY, size * 0.6, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawCrosshairTicks() {
+  const len = 12;
+  const gap = 6;
+  ctx.strokeStyle = thermalColor(0.25);
+  ctx.lineWidth = 1;
+
+  const corners = [
+    { x: 8, y: 8 },
+    { x: W - 8, y: 8 },
+    { x: 8, y: H - 8 },
+    { x: W - 8, y: H - 8 }
+  ];
+
+  for (const c of corners) {
+    const dx = c.x < W / 2 ? 1 : -1;
+    const dy = c.y < H / 2 ? 1 : -1;
+    ctx.beginPath();
+    ctx.moveTo(c.x + dx * gap, c.y);
+    ctx.lineTo(c.x + dx * (gap + len), c.y);
+    ctx.moveTo(c.x, c.y + dy * gap);
+    ctx.lineTo(c.x, c.y + dy * (gap + len));
+    ctx.stroke();
+  }
+}
+
+function drawScaleBar() {
+  const barX = W - 140;
+  const barY = H - 40;
+  const barW = 100;
+  const barH = 8;
+
+  for (let i = 0; i < barW; i++) {
+    const t = i / barW;
+    ctx.fillStyle = thermalColor(t);
+    ctx.fillRect(barX + i, barY, 1, barH);
+  }
+
+  ctx.strokeStyle = thermalColor(0.4);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(barX, barY, barW, barH);
+
+  ctx.font = '10px "Courier New", monospace';
+  ctx.fillStyle = thermalColor(0.5);
+  ctx.textAlign = 'left';
+  ctx.fillText('COLD', barX, barY + barH + 14);
+  ctx.textAlign = 'right';
+  ctx.fillText('HOT', barX + barW, barY + barH + 14);
+}
+
+function update() {
+  enemies.forEach(e => {
+    e.x += Math.cos(e.angle) * e.speed;
+    e.y += Math.sin(e.angle) * e.speed;
+    const d = Math.hypot(e.x, e.y);
+    if (d > RANGE - 20 || d < 60) e.angle += Math.PI;
+    e.angle += (Math.random() - 0.5) * 0.05;
+  });
+
+  friendlies.forEach(e => {
+    e.x += Math.cos(e.angle) * e.speed;
+    e.y += Math.sin(e.angle) * e.speed;
+    const d = Math.hypot(e.x, e.y);
+    if (d > RANGE - 20 || d < 60) e.angle += Math.PI;
+    e.angle += (Math.random() - 0.5) * 0.04;
+  });
+
+  maybeFire();
+}
+
+function draw() {
+  // Clear to cold black
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  drawTerrain();
+  drawBuildings();
+
+  drawHeatEntity(PLAYER);
+  enemies.forEach(drawHeatEntity);
+  friendlies.forEach(drawHeatEntity);
+
+  drawHotspots(performance.now());
+  drawScanLine();
+
+  drawReticle();
+  drawCrosshairTicks();
+  drawScaleBar();
+
+  // Border
+  ctx.strokeStyle = thermalColor(0.20);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(4, 4, W - 8, H - 8);
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Signal Lost — Design Browser</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0e0;font-family:'Courier New',monospace;padding:16px;min-height:100vh}
+h1{font-size:18px;color:#00ff88;letter-spacing:3px;margin-bottom:4px}
+.sub{font-size:10px;color:#556655;margin-bottom:20px}
+h2{font-size:12px;color:#889988;letter-spacing:2px;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid #1a2a1a}
+h2.featured{color:#00ff88;border-bottom-color:#00ff88}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.card{background:rgba(255,255,255,0.02);border:1px solid #1a2a1a;border-radius:3px;padding:8px;text-decoration:none;color:#b0b0b0;transition:all 0.2s;display:block}
+.card:active{background:rgba(0,255,136,0.05);border-color:#00ff88}
+.card .num{font-size:8px;color:#446644;margin-bottom:2px}
+.card .name{font-size:10px;color:#e0e0e0;font-weight:bold}
+.card .desc{font-size:8px;color:#556655;margin-top:2px;line-height:1.3}
+.card.featured{border-color:#00ff88;background:rgba(0,255,136,0.03)}
+.card.featured .name{color:#00ff88}
+.tag{display:inline-block;font-size:7px;padding:1px 4px;border-radius:2px;margin-top:3px;margin-right:2px}
+.tag.radar{background:rgba(0,255,136,0.1);color:#00ff88;border:1px solid rgba(0,255,136,0.2)}
+.tag.loading{background:rgba(68,136,255,0.1);color:#4488ff;border:1px solid rgba(68,136,255,0.2)}
+.tag.chat{background:rgba(255,170,0,0.1);color:#ffaa00;border:1px solid rgba(255,170,0,0.2)}
+.tag.wild{background:rgba(255,51,68,0.1);color:#ff3344;border:1px solid rgba(255,51,68,0.2)}
+.tag.modern{background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2)}
+.note{font-size:8px;color:#334433;margin:12px 0;text-align:center}
+@media(min-width:500px){.grid{grid-template-columns:1fr 1fr 1fr}.card{padding:10px}}
+</style>
+</head>
+<body>
+<h1>SIGNAL LOST</h1>
+<div class="sub">DESIGN VARIANT BROWSER — 55+ INTERFACES</div>
+
+<h2 class="featured">★ MODERN TACTICAL (RECOMMENDED)</h2>
+<div class="grid">
+<a class="card featured" href="modern-radar.html"><div class="num">MODERN</div><div class="name">Tactical Radar</div><div class="desc">3D isometric tactical map with health rings, movement trails, elevation contours. 3 view modes.</div><span class="tag modern">★ PICK</span></a>
+<a class="card featured" href="modern-loading.html"><div class="num">MODERN</div><div class="name">Pre-Mission Briefing</div><div class="desc">Full briefing sequence: connect → authenticate → brief → load assets → ready. Typing text effect.</div><span class="tag modern">★ PICK</span></a>
+<a class="card featured" href="modern-chat.html"><div class="num">MODERN</div><div class="name">Tactical Comms</div><div class="desc">Fully featured comms with tabs, squad panel, 12-command wheel, encrypted channel display.</div><span class="tag modern">★ PICK</span></a>
+</div>
+
+<h2>RADAR VARIANTS (v1-v15)</h2>
+<div class="grid">
+<a class="card" href="variants/radar-v1.html"><div class="num">RADAR V1</div><div class="name">Classic Minimap</div><div class="desc">Pure 2D canvas RTS-style minimap overlay, bottom-right corner</div><span class="tag radar">2D</span></a>
+<a class="card" href="variants/radar-v2.html"><div class="num">RADAR V2</div><div class="name">Isometric 3D</div><div class="desc">Three.js 45° camera, extruded buildings, orbit controls</div><span class="tag radar">3D</span></a>
+<a class="card" href="variants/radar-v3.html"><div class="num">RADAR V3</div><div class="name">Sonar Arc</div><div class="desc">Circular sweep radar, CRT glow, blips fade over time</div><span class="tag radar">2D</span></a>
+<a class="card" href="variants/radar-v4.html"><div class="num">RADAR V4</div><div class="name">Holographic</div><div class="desc">Three.js wireframe, cyan/blue glow, auto-orbiting camera</div><span class="tag radar">3D</span></a>
+<a class="card" href="variants/radar-v5.html"><div class="num">RADAR V5</div><div class="name">Tactical Tablet</div><div class="desc">Device frame with military grid reference</div><span class="tag radar">2D</span></a>
+<a class="card" href="variants/radar-v6.html"><div class="num">RADAR V6</div><div class="name">Pip-Boy Style</div><div class="desc">Green monochrome CRT, stats around map edge</div><span class="tag radar">2D</span></a>
+<a class="card" href="variants/radar-v7.html"><div class="num">RADAR V7</div><div class="name">Helmet HUD</div><div class="desc">FPV visor with compass, threat arrows, health bar</div><span class="tag radar">2D</span></a>
+<a class="card" href="variants/radar-v8.html"><div class="num">RADAR V8</div><div class="name">Full 3D Orbit</div><div class="desc">Three.js with terrain height, trees, shadows, OrbitControls</div><span class="tag radar">3D</span></a>
+<a class="card" href="variants/radar-v9.html"><div class="num">RADAR V9</div><div class="name">Data Stream</div><div class="desc">Azimuth bearing bar with tick marks, no map</div><span class="tag radar">2D</span></a>
+<a class="card" href="variants/radar-v10.html"><div class="num">RADAR V10</div><div class="name">Night Vision</div><div class="desc">Green-tinted minimal, reticle center, PIP zoom</div><span class="tag radar">2D</span></a>
+<a class="card" href="variants/radar-v11.html"><div class="num">RADAR V11</div><div class="name">Command View</div><div class="desc">Military commander table, unit icons, patrol arrows</div><span class="tag radar">2D</span></a>
+<a class="card" href="variants/radar-v12.html"><div class="num">RADAR V12</div><div class="name">Thermal Vision</div><div class="desc">Heat signatures, hotspots from gunfire</div><span class="tag radar">2D</span></a>
+<a class="card" href="variants/radar-v13.html"><div class="num">RADAR V13</div><div class="name">Augmented Reality</div><div class="desc">Transparent HUD with floating AR markers</div><span class="tag radar">2D</span></a>
+<a class="card" href="variants/radar-v14.html"><div class="num">RADAR V14</div><div class="name">Split View</div><div class="desc">Left=tactical map, right=unit FPV, selectable</div><span class="tag radar">2D</span></a>
+<a class="card" href="variants/radar-v15.html"><div class="num">RADAR V15</div><div class="name">Satellite Imagery</div><div class="desc">Real satellite photo look, cloud drift, building shadows</div><span class="tag radar">2D</span></a>
+</div>
+
+<h2>LOADING VARIANTS (v1-v15)</h2>
+<div class="grid">
+<a class="card" href="variants/loading-v1.html"><div class="num">LOAD V1</div><div class="name">Terminal Boot</div><div class="desc">Green-on-black boot sequence, ASCII progress bar</div><span class="tag loading">TEXT</span></a>
+<a class="card" href="variants/loading-v2.html"><div class="num">LOAD V2</div><div class="name">Satellite Scan</div><div class="desc">Three.js globe rotating, scan line sweep</div><span class="tag loading">3D</span></a>
+<a class="card" href="variants/loading-v3.html"><div class="num">LOAD V3</div><div class="name">Drone Descent</div><div class="desc">Camera descending through fog over terrain</div><span class="tag loading">3D</span></a>
+<a class="card" href="variants/loading-v4.html"><div class="num">LOAD V4</div><div class="name">Hex Grid Fill</div><div class="desc">Hexagons fill one by one, center logo</div><span class="tag loading">2D</span></a>
+<a class="card" href="variants/loading-v5.html"><div class="num">LOAD V5</div><div class="name">Military Briefing</div><div class="desc">Dossier with mission details typing in</div><span class="tag loading">TEXT</span></a>
+<a class="card" href="variants/loading-v6.html"><div class="num">LOAD V6</div><div class="name">Particle Signal</div><div class="desc">Three.js particles form logo on completion</div><span class="tag loading">3D</span></a>
+<a class="card" href="variants/loading-v7.html"><div class="num">LOAD V7</div><div class="name">Hologram Table</div><div class="desc">Wireframe projects upward from table surface</div><span class="tag loading">3D</span></a>
+<a class="card" href="variants/loading-v8.html"><div class="num">LOAD V8</div><div class="name">VHS Retro</div><div class="desc">Static noise, tracking lines, wobble, retro counter</div><span class="tag loading">TEXT</span></a>
+<a class="card" href="variants/loading-v9.html"><div class="num">LOAD V9</div><div class="name">Neural Network</div><div class="desc">3D nodes form SIGNAL LOST shape</div><span class="tag loading">3D</span></a>
+<a class="card" href="variants/loading-v10.html"><div class="num">LOAD V10</div><div class="name">Compass Rose</div><div class="desc">Needle spins, outer ring fills like clock</div><span class="tag loading">CSS</span></a>
+<a class="card" href="variants/loading-v11.html"><div class="num">LOAD V11</div><div class="name">Cipher Decrypt</div><div class="desc">Encrypted hex scrolling, lines decrypt one by one</div><span class="tag loading">TEXT</span></a>
+<a class="card" href="variants/loading-v12.html"><div class="num">LOAD V12</div><div class="name">Map Generation</div><div class="desc">Terrain drawn in real-time: grid → elevation → buildings</div><span class="tag loading">2D</span></a>
+<a class="card" href="variants/loading-v13.html"><div class="num">LOAD V13</div><div class="name">Squad Assembly</div><div class="desc">6 operators step into formation, gear appears</div><span class="tag loading">2D</span></a>
+<a class="card" href="variants/loading-v14.html"><div class="num">LOAD V14</div><div class="name">Heartbeat Monitor</div><div class="desc">ECG flatline → steady heartbeat, vitals rise</div><span class="tag loading">2D</span></a>
+<a class="card" href="variants/loading-v15.html"><div class="num">LOAD V15</div><div class="name">Breach Prep</div><div class="desc">Door with breaching charge, countdown, flash</div><span class="tag loading">2D</span></a>
+</div>
+
+<h2>CHAT VARIANTS (v1-v15)</h2>
+<div class="grid">
+<a class="card" href="variants/chat-v1.html"><div class="num">CHAT V1</div><div class="name">Radio Comms</div><div class="desc">Static crackle per message, WW2 radio style</div><span class="tag chat">RADIO</span></a>
+<a class="card" href="variants/chat-v2.html"><div class="num">CHAT V2</div><div class="name">Slide Panel</div><div class="desc">Slides from right with map background</div><span class="tag chat">PANEL</span></a>
+<a class="card" href="variants/chat-v3.html"><div class="num">CHAT V3</div><div class="name">Transparent Overlay</div><div class="desc">Floating text through game view, minimal</div><span class="tag chat">MINIMAL</span></a>
+<a class="card" href="variants/chat-v4.html"><div class="num">CHAT V4</div><div class="name">Command Center</div><div class="desc">Split terminal: chat + squad status, multi-tab</div><span class="tag chat">TERMINAL</span></a>
+<a class="card" href="variants/chat-v5.html"><div class="num">CHAT V5</div><div class="name">Headset HUD</div><div class="desc">FPV battlefield background, voice bars</div><span class="tag chat">HUD</span></a>
+<a class="card" href="variants/chat-v6.html"><div class="num">CHAT V6</div><div class="name">Bubble Design</div><div class="desc">Modern bubbles, avatars, left/right alignment</div><span class="tag chat">MODERN</span></a>
+<a class="card" href="variants/chat-v7.html"><div class="num">CHAT V7</div><div class="name">Tactical Grid</div><div class="desc">3-column layout: LZ STATUS / TEAM / COMMS</div><span class="tag chat">GRID</span></a>
+<a class="card" href="variants/chat-v8.html"><div class="num">CHAT V8</div><div class="name">Ping Wheel</div><div class="desc">Apex-style radial pings, map markers</div><span class="tag chat">PING</span></a>
+<a class="card" href="variants/chat-v9.html"><div class="num">CHAT V9</div><div class="name">Encrypted Feed</div><div class="desc">DECRYPTING animation, Matrix code bg</div><span class="tag chat">SECURE</span></a>
+<a class="card" href="variants/chat-v10.html"><div class="num">CHAT V10</div><div class="name">Hologram 3D</div><div class="desc">Three.js floating text panels, camera orbit</div><span class="tag chat">3D</span></a>
+<a class="card" href="variants/chat-v11.html"><div class="num">CHAT V11</div><div class="name">Tactical Watch</div><div class="desc">Smartwatch UI, circular elements, compact</div><span class="tag chat">WATCH</span></a>
+<a class="card" href="variants/chat-v12.html"><div class="num">CHAT V12</div><div class="name">Neural Link</div><div class="desc">Brainwave interface, thought bubbles, EEG readout</div><span class="tag chat">NEURAL</span></a>
+<a class="card" href="variants/chat-v13.html"><div class="num">CHAT V13</div><div class="name">Paper Map</div><div class="desc">Analog physical map with handwritten sticky notes</div><span class="tag chat">ANALOG</span></a>
+<a class="card" href="variants/chat-v14.html"><div class="num">CHAT V14</div><div class="name">Morse Code</div><div class="desc">Visual dots/dashes, telegraph sounder arm</div><span class="tag chat">VINTAGE</span></a>
+<a class="card" href="variants/chat-v15.html"><div class="num">CHAT V15</div><div class="name">Stealth Mode</div><div class="desc">Nearly invisible, auto-hides, whisper button only</div><span class="tag chat">STEALTH</span></a>
+</div>
+
+<h2>WILDCARDS</h2>
+<div class="grid">
+<a class="card" href="variants/wildcard-v1.html"><div class="num">WILD V1</div><div class="name">Synthwave Retro</div><div class="desc">80s outrun: pink sun, purple grid, neon glow</div><span class="tag wild">RETRO</span></a>
+<a class="card" href="variants/wildcard-v2.html"><div class="num">WILD V2</div><div class="name">Pixel Art 8-Bit</div><div class="desc">Chunky pixel sprites, NES palette, CRT curve</div><span class="tag wild">PIXEL</span></a>
+<a class="card" href="variants/wildcard-v3.html"><div class="num">WILD V3</div><div class="name">Glitchcore</div><div class="desc">Digital distortion, character flicker, VHS errors</div><span class="tag wild">GLITCH</span></a>
+<a class="card" href="variants/wildcard-v4.html"><div class="num">WILD V4</div><div class="name">Fractal Dimension</div><div class="desc">Plasma terrain, Mandelbrot zoom, recursive patterns</div><span class="tag wild">FRACTAL</span></a>
+<a class="card" href="variants/wildcard-v5.html"><div class="num">WILD V5</div><div class="name">Comic Book</div><div class="desc">Halftone dots, speech bubbles, bold outlines</div><span class="tag wild">COMIC</span></a>
+</div>
+
+<div class="note">SIGNAL LOST v2 — DESIGN EXPLORATIONS — 2026-05-18</div>
+</body>
+</html>

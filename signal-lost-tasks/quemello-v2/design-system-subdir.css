@@ -1,0 +1,253 @@
+/* Quemello v2 — Warm Frosted Glass Overrides (loaded LAST) */
+
+/* Warm palette variables — no !important on vars, cascade naturally */
+:root {
+  --bg-card: rgba(255, 240, 199, 0.72);
+  --bg-elevated: rgba(255, 248, 220, 0.85);
+  --text: #201116;
+  --text-dim: #704a41;
+  --text-muted: #a08070;
+  --border: rgba(255, 217, 101, 0.25);
+  --border-hover: rgba(255, 217, 101, 0.45);
+  --danger: #e82663;
+  --success: #008c94;
+  --warning: #ff8b1f;
+  --info: #18364b;
+  --gold-dim: rgba(255, 217, 101, 0.15);
+  --coral: #e82663;
+  --coral-light: #ff6b8a;
+  --coral-dim: rgba(232, 38, 99, 0.15);
+  --teal-dim: rgba(0, 140, 148, 0.15);
+  --charcoal: #fff0c7;
+  --charcoal-light: #fff8dc;
+  --charcoal-elevated: #fff8dc;
+}
+
+/* Force warm page background */
+html, body {
+  background: #fff0c7 !important;
+  color: #201116 !important;
+}
+
+/* === Direct property overrides with !important === */
+/* Dashboard cards */
+.dash-card, .recent-card {
+  background: rgba(255, 240, 199, 0.72) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: rgba(255, 217, 101, 0.3) !important;
+}
+
+/* Mobile / Quemello cards */
+.mobile-card, .mob-card, .q-card, .q-team-member,
+.q-stat-box, .q-equip-cell, .weapon-cell,
+.inventory-grid .inv-item, .objective-item,
+.metric-row, .gps-status, .match-timer, .score-pill,
+.join-code, .module-card, .chat-bubble.them,
+.flow-panel, .flow-card {
+  background: rgba(255, 240, 199, 0.72) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: rgba(255, 217, 101, 0.3) !important;
+}
+
+/* Buttons — warm gold glass */
+.q-btn, .cmd-btn, .mobile-btn, .dash-btn, .action-btn {
+  background: rgba(255, 248, 220, 0.6) !important;
+  border: 1px solid rgba(255, 217, 101, 0.4) !important;
+  color: #201116 !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.q-btn:hover, .cmd-btn:hover, .mobile-btn:hover {
+  border-color: #ffd965 !important;
+  box-shadow: 0 0 20px rgba(255, 217, 101, 0.3) !important;
+}
+
+.q-btn.primary, .mobile-btn.primary, .cmd-btn.fire {
+  background: linear-gradient(135deg, rgba(255, 217, 101, 0.8), rgba(255, 139, 31, 0.7)) !important;
+  color: #201116 !important;
+  border-color: transparent !important;
+}
+
+.q-btn.danger, .mobile-btn.danger {
+  background: linear-gradient(135deg, rgba(232, 38, 99, 0.7), rgba(107, 63, 160, 0.6)) !important;
+  color: white !important;
+}
+
+/* Nav / header bars */
+.q-nav, .mobile-header, .mobile-nav, .status-bar {
+  background: rgba(255, 240, 199, 0.7) !important;
+  border-bottom-color: rgba(255, 217, 101, 0.3) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+/* Radar and map — keep dark tinted */
+.q-radar, .reference-radar, .mobile-map, .radar-display,
+.leaflet-container {
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Leaflet popups */
+.leaflet-popup-content-wrapper {
+  background: rgba(255, 248, 220, 0.9) !important;
+  color: #201116 !important;
+  border: 1px solid rgba(255, 217, 101, 0.3) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Text color fixes */
+.dash-card h4, .dash-card .val, .recent-card-header h3,
+.q-card h3, .q-card h4, .mobile-card h3,
+.mobile-card h4, .stat-label, .section-title {
+  color: #201116 !important;
+}
+
+.dash-card .delta, .activity-text .mode,
+.activity-time, .text-muted, .meta {
+  color: #704a41 !important;
+}
+
+/* Store page overrides */
+.store-card, .login-card, .auth-card {
+  background: rgba(255, 240, 199, 0.72) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: rgba(255, 217, 101, 0.3) !important;
+}
+
+.item-card, .featured-item, .featured-item.large,
+.bundle-card, .crate-card, .store-panel, .shop-panel {
+  background: rgba(255, 240, 199, 0.65) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border-color: rgba(255, 217, 101, 0.25) !important;
+}
+
+.item-card:hover, .featured-item:hover {
+  border-color: rgba(255, 217, 101, 0.4) !important;
+  background: rgba(255, 248, 220, 0.75) !important;
+}
+
+.item-img, .item-preview, .bundle-preview {
+  background: linear-gradient(135deg, rgba(24, 54, 75, 0.3), rgba(0, 140, 148, 0.3)) !important;
+}
+
+.tab-btn {
+  background: rgba(255, 248, 220, 0.5) !important;
+  color: #201116 !important;
+  border: 1px solid rgba(255, 217, 101, 0.3) !important;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 217, 101, 0.4) !important;
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, rgba(0, 140, 148, 0.8), rgba(24, 54, 75, 0.8)) !important;
+  color: white !important;
+}
+
+.store-card h2, .store-card h3, .item-name, .bundle-title,
+.featured-item .title, .item-card .name, .store-title,
+.login-card h1, .login-card h2, .login-card label, .login-card .brand h1,
+.auth-card h1, .auth-card h2, .auth-card label {
+  color: #201116 !important;
+}
+
+.item-desc, .item-meta, .bundle-desc, .store-desc,
+.login-card p, .login-card .brand p, .auth-card p {
+  color: #704a41 !important;
+}
+
+.balance, .credits, .currency {
+  background: rgba(255, 217, 101, 0.2) !important;
+  color: #201116 !important;
+  border-color: rgba(255, 217, 101, 0.3) !important;
+}
+
+/* Squad activity dots keep their colors */
+.activity-dot.win { background: #008c94 !important; box-shadow: 0 0 6px #008c94 !important; }
+.activity-dot.loss { background: #e82663 !important; box-shadow: 0 0 6px #e82663 !important; }
+
+/* Generic card/panel overrides — catch-all for un-themed pages */
+.card, .panel, .tile, .box, .container {
+  background: rgba(255, 240, 199, 0.65) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border-color: rgba(255, 217, 101, 0.25) !important;
+}
+
+.team-member, .member-row, .player-row, .list-item, .list-row {
+  background: rgba(255, 248, 220, 0.55) !important;
+  border-color: rgba(255, 217, 101, 0.2) !important;
+}
+
+.team-member:hover, .list-item:hover {
+  background: rgba(255, 217, 101, 0.2) !important;
+}
+
+/* Nav bar override */
+.nav, .top-bar, .app-bar, .toolbar {
+  background: rgba(255, 240, 199, 0.75) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom-color: rgba(255, 217, 101, 0.3) !important;
+}
+
+.nav-logo, .nav a, .app-bar a, .toolbar a {
+  color: #201116 !important;
+}
+
+/* Generic text fixes */
+.card h2, .card h3, .card h4, .panel h2, .panel h3,
+.box h2, .box h3, .tile h3, .container h3 {
+  color: #201116 !important;
+}
+
+.card p, .card span:not(.tag):not(.badge):not(.pill),
+.panel p, .box p, .tile p {
+  color: #704a41 !important;
+}
+
+/* Preserve accent colors for tags/badges */
+.tag, .badge, .pill, .chip {
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Override dark grid backgrounds on body */
+body[style*="grid"], body[style*="linear-gradient"] {
+  background-image: none !important;
+}
+
+/* Generic button overrides */
+button, .btn, .action, .submit {
+  background: rgba(255, 248, 220, 0.6) !important;
+  border: 1px solid rgba(255, 217, 101, 0.4) !important;
+  color: #201116 !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+button:hover, .btn:hover, .action:hover {
+  border-color: #ffd965 !important;
+  box-shadow: 0 0 15px rgba(255, 217, 101, 0.3) !important;
+}
+
+/* Active / primary buttons */
+button.active, .btn.active, .tab-btn.active, .primary {
+  background: linear-gradient(135deg, rgba(255, 217, 101, 0.8), rgba(255, 139, 31, 0.7)) !important;
+  color: #201116 !important;
+  border-color: transparent !important;
+}
+
+/* CRT / 1960s terminal overrides */
+.crt-frame, .panel-60s, .terminal-panel, .monitor-panel,
+.comms-panel, .radar-panel, .hud-panel, .tactical-panel {
+  background: rgba(255, 240, 199, 0.6) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border-color: rgba(255, 217, 101, 0.3) !important;
+}

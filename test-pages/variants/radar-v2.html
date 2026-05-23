@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Signal Lost — RADAR V2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0e0;font-family:'Courier New',monospace;overflow:hidden;height:100dvh;touch-action:none}
+#hud{position:absolute;top:10px;left:10px;z-index:10;background:rgba(0,0,0,0.8);border:1px solid #00ff88;padding:6px 12px;border-radius:4px;font-size:11px;color:#00ff88}
+#hud span{color:#666;font-size:9px}
+#canvas-container{width:100vw;height:100vh}
+.legend{position:absolute;bottom:20px;right:10px;z-index:10;background:rgba(0,0,0,0.8);border:1px solid #333;padding:6px 10px;border-radius:4px;font-size:9px;color:#888;line-height:1.6}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.dot.g{background:#00ff88}.dot.r{background:#ff3344}.dot.b{background:#4488ff}.dot.y{background:#ffaa00}
+</style>
+</head>
+<body>
+<div id="hud">RADAR V2 <span>ISOMETRIC 3D</span></div>
+<div class="legend"><div><span class="dot g"></span> Allies</div><div><span class="dot r"></span> Enemies</div><div><span class="dot b"></span> Objectives</div><div><span class="dot y"></span> Extraction</div></div>
+<div id="canvas-container"></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="module">
+import*as THREE from'three';import{OrbitControls}from'three/addons/controls/OrbitControls.js';
+const c=document.getElementById('canvas-container'),s=new THREE.Scene;s.background=new THREE.Color(0x0a0a0f);
+const ca=new THREE.PerspectiveCamera(40,c.clientWidth/c.clientHeight,0.1,300);ca.position.set(45,40,45);ca.lookAt(0,0,0);
+const r=new THREE.WebGLRenderer({antialias:true});r.setSize(c.clientWidth,c.clientHeight);r.setPixelRatio(Math.min(devicePixelRatio,2));c.appendChild(r.domElement);
+const o=new OrbitControls(ca,r.domElement);o.enableDamping=true;o.maxPolarAngle=Math.PI/2.1;o.minDistance=20;o.maxDistance=150;o.target.set(0,0,0);
+new THREE.HemisphereLight(0x00ff88,0x001100,0.5);const dl=new THREE.DirectionalLight(0xffffff,0.6);dl.position.set(30,50,20);s.add(dl);
+const al=new THREE.AmbientLight(0x223322,0.4);s.add(al);
+// Grid
+const g=new THREE.GridHelper(80,20,0x00ff88,0x224433);g.position.y=-0.5;s.add(g);
+const pg=new THREE.PlaneGeometry(80,80);const pm=new THREE.MeshBasicMaterial({color:0x0d1a10,side:THREE.DoubleSide,transparent:true,opacity:0.4});
+const pl=new THREE.Mesh(pg,pm);pl.rotation.x=-Math.PI/2;pl.position.y=-0.5;s.add(pl);
+// Terrain patches (colored tiles for visual variety)
+for(let i=0;i<40;i++){const t=new THREE.Mesh(new THREE.BoxGeometry(8+Math.random()*6,0.1,8+Math.random()*6),new THREE.MeshBasicMaterial({color:Math.random()>0.5?0x0d2215:0x0a1a10,transparent:true,opacity:0.3}));t.position.set((Math.random()-0.5)*60,0,(Math.random()-0.5)*60);s.add(t)}
+// Buildings
+const bc=[0x334455,0x445566,0x3a4a5a,0x2c3e50,0x4a5568];const bpos=[[-12,-10],[-5,-18],[7,-12],[16,-6],[-18,6],[-3,12],[12,14],[18,18],[-10,20],[2,-3],[-22,-12],[22,-8],[12,-22],[-15,16],[6,-25],[25,5],[-25,8],[-8,-28]];
+bpos.forEach((p,i)=>{const w=1.5+Math.random()*3,d=1.5+Math.random()*3,h=1+Math.random()*3,co=bc[i%bc.length];const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:co,roughness:0.7,metalness:0.3,emissive:co,emissiveIntensity:0.05}));b.position.set(p[0],h/2,p[1]);s.add(b);const e=new THREE.EdgesGeometry(b.geometry);const el=new THREE.LineSegments(e,new THREE.LineBasicMaterial({color:0x00ff88,transparent:true,opacity:0.12}));el.position.copy(b.position);s.add(el)});
+// Map border
+const mp=[[-25,0,-25],[25,0,-25],[25,0,25],[-25,0,25],[-25,0,-25]];const ml=new THREE.Line(new THREE.BufferGeometry().setFromPoints(mp.map(p=>new THREE.Vector3(p[0],p[1],p[2]))),new THREE.LineBasicMaterial({color:0x00ff88,transparent:true,opacity:0.25}));s.add(ml);
+function mkDot(x,z,color,label){const g=new THREE.Group();const b=new THREE.Mesh(new THREE.SphereGeometry(0.8,10,10),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:0.2}));g.add(b);const r2=new THREE.Mesh(new THREE.RingGeometry(1,1.5,16),new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.2,side:THREE.DoubleSide}));r2.rotation.x=-Math.PI/2;r2.position.y=0.05;g.add(r2);g.position.set(x,0.3,z);return g}
+const allies=[];[[-4,-2],[3,-7],[-8,6],[7,3],[-2,11],[12,-4],[18,-12],[-14,-6]].forEach((p,i)=>{const m=mkDot(p[0],p[1],0x00ff88,`P${i+1}`);s.add(m);allies.push({m,p,v:{x:(Math.random()-0.5)*0.04,z:(Math.random()-0.5)*0.04}})});
+const enemies=[];[[18,12],[-16,-18],[22,-14],[-20,16],[10,22],[-24,8]].forEach((p,i)=>{const m=mkDot(p[0],p[1],0xff3344,`E${i+1}`);s.add(m);enemies.push({m,p,v:{x:(Math.random()-0.5)*0.03,z:(Math.random()-0.5)*0.03}})});
+[[-12,10],[14,-10]].forEach(p=>{s.add(mkDot(p[0],p[1],0x4488ff,'OBJ'))});
+s.add(mkDot(0,-26,0xffaa00,'EXFIL'));
+window.addEventListener('resize',()=>{ca.aspect=c.clientWidth/c.clientHeight;ca.updateProjectionMatrix();r.setSize(c.clientWidth,c.clientHeight)});
+function anim(){requestAnimationFrame(anim);
+allies.forEach(a=>{a.p[0]+=a.v.x;a.p[2]+=a.v.z;if(Math.abs(a.p[0])>22||Math.random()<0.01)a.v.x=(Math.random()-0.5)*0.04;if(Math.abs(a.p[2])>22||Math.random()<0.01)a.v.z=(Math.random()-0.5)*0.04;a.m.position.x=a.p[0];a.m.position.z=a.p[2];a.m.rotation.y+=0.02});
+enemies.forEach(e=>{const near=allies.reduce((b,a)=>{const dx=a.p[0]-e.p[0],dz=a.p[2]-e.p[2],d=Math.sqrt(dx*dx+dz*dz);return d<b.d?{p:a.p,d}:b},{p:null,d:1/0});if(near.p&&near.d>4){const dx=near.p[0]-e.p[0],dz=near.p[2]-e.p[2],dist=Math.sqrt(dx*dx+dz*dz);if(dist>0){e.p[0]+=(dx/dist)*0.025;e.p[2]+=(dz/dist)*0.025}}e.m.position.x=e.p[0];e.m.position.z=e.p[2];e.m.rotation.y+=0.03});
+o.update();r.render(s,ca)}
+anim();
+</script>
+</body>
+</html>

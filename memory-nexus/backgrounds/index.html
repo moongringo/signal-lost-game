@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Nexus — Background Tester v3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #020204;
+            --text: #f1f5f9;
+            --text-muted: #475569;
+            --accent: #818cf8;
+            --glass: rgba(255,255,255,0.025);
+            --glass-border: rgba(255,255,255,0.06);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Inter', sans-serif; background: #000; color: var(--text); }
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+        .ui-layer { position: fixed; z-index: 10; top: 0; left: 0; right: 0; padding: 1.25rem 2rem; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); pointer-events: none; }
+        .ui-layer > * { pointer-events: auto; }
+        .logo { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; }
+        .logo span { background: linear-gradient(135deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .dropdown-wrap { position: relative; }
+        .dropdown-trigger { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 1rem; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.8rem; font-weight: 500; cursor: pointer; backdrop-filter: blur(20px); transition: all 0.3s; min-width: 220px; }
+        .dropdown-trigger:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.12); }
+        .dropdown-trigger .arrow { margin-left: auto; transition: transform 0.3s; font-size: 0.65rem; }
+        .dropdown-wrap.open .arrow { transform: rotate(180deg); }
+        .dropdown-menu { position: absolute; top: calc(100% + 0.4rem); right: 0; min-width: 240px; background: rgba(5,5,8,0.97); border: 1px solid var(--glass-border); border-radius: 12px; padding: 0.35rem; backdrop-filter: blur(50px); opacity: 0; transform: translateY(-8px); pointer-events: none; transition: all 0.3s; box-shadow: 0 30px 100px rgba(0,0,0,0.7); }
+        .dropdown-wrap.open .dropdown-menu { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        .dropdown-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.75rem; border-radius: 7px; cursor: pointer; transition: all 0.2s; position: relative; }
+        .dropdown-item:hover { background: rgba(255,255,255,0.04); }
+        .dropdown-item.active { background: rgba(129,140,248,0.08); }
+        .dropdown-item.active::before { content: ''; position: absolute; left: 0; top: 0.35rem; bottom: 0.35rem; width: 2px; background: var(--accent); border-radius: 1px; }
+        .item-icon { width: 24px; height: 24px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; }
+        .item-info { flex: 1; }
+        .item-name { font-weight: 600; font-size: 0.78rem; }
+        .item-desc { font-size: 0.68rem; color: var(--text-muted); }
+        .item-badge { font-size: 0.58rem; padding: 0.12rem 0.35rem; border-radius: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        .badge-lumina { background: rgba(168,85,247,0.1); color: #c4a5e8; }
+        .badge-mono { background: rgba(148,163,184,0.1); color: #94a3b8; }
+        .badge-aurora { background: rgba(99,102,241,0.1); color: #a5b4fc; }
+        .badge-neural { background: rgba(236,72,153,0.1); color: #f9a8d4; }
+        .badge-void { background: rgba(20,20,30,0.5); color: #6b7280; border: 1px solid rgba(255,255,255,0.04); }
+        .info-panel { position: fixed; bottom: 1.25rem; left: 2rem; z-index: 10; max-width: 360px; pointer-events: none; }
+        .info-card { background: rgba(3,3,5,0.9); border: 1px solid var(--glass-border); border-radius: 14px; padding: 1.1rem; backdrop-filter: blur(30px); }
+        .info-card h3 { font-family: 'Space Grotesk', sans-serif; font-size: 0.95rem; margin-bottom: 0.35rem; }
+        .info-card p { font-size: 0.78rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 0.6rem; }
+        .info-meta { display: flex; gap: 1.1rem; font-size: 0.68rem; color: var(--text-muted); }
+        .controls { position: fixed; bottom: 1.25rem; right: 2rem; z-index: 10; display: flex; gap: 0.4rem; }
+        .ctrl-btn { width: 34px; height: 34px; border-radius: 8px; background: var(--glass); border: 1px solid var(--glass-border); color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(20px); transition: all 0.3s; font-size: 0.9rem; }
+        .ctrl-btn:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); }
+        .version-tag { position: fixed; top: 1.25rem; left: 50%; transform: translateX(-50%); z-index: 10; font-size: 0.6rem; color: var(--text-muted); letter-spacing: 0.2em; text-transform: uppercase; pointer-events: none; }
+        @media (max-width: 768px) { .ui-layer { padding: 1rem 1.25rem; } .info-panel { left: 1.25rem; max-width: calc(100% - 2.5rem); } .controls { right: 1.25rem; } }
+    </style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="version-tag">v3 — Multi-Pass Bloom + Volumetrics</div>
+
+<div class="ui-layer">
+    <div class="logo">Memory <span>Nexus</span></div>
+    <div class="dropdown-wrap" id="dropdownWrap">
+        <div class="dropdown-trigger" id="dropdownTrigger">
+            <span id="currentBgName">Lumina Ethereal</span>
+            <span class="arrow">▼</span>
+        </div>
+        <div class="dropdown-menu" id="dropdownMenu">
+            <div class="dropdown-item active" data-bg="lumina">
+                <div class="item-icon" style="background: rgba(168,85,247,0.12);">◈</div>
+                <div class="item-info">
+                    <div class="item-name">Lumina Ethereal</div>
+                    <div class="item-desc">Multi-pass bloom, 40 strands, motes</div>
+                </div>
+                <span class="item-badge badge-lumina">v3</span>
+            </div>
+            <div class="dropdown-item" data-bg="monochrome">
+                <div class="item-icon" style="background: rgba(148,163,184,0.12);">◉</div>
+                <div class="item-info">
+                    <div class="item-name">Monochrome Flow</div>
+                    <div class="item-desc">Kajiya-Kay BRDF, subsurface</div>
+                </div>
+                <span class="item-badge badge-mono">v3</span>
+            </div>
+            <div class="dropdown-item" data-bg="aurora">
+                <div class="item-icon" style="background: rgba(99,102,241,0.12);">✦</div>
+                <div class="item-info">
+                    <div class="item-name">Aurora Whisper</div>
+                    <div class="item-desc">Volumetric raymarch, terrain</div>
+                </div>
+                <span class="item-badge badge-aurora">v3</span>
+            </div>
+            <div class="dropdown-item" data-bg="neural">
+                <div class="item-icon" style="background: rgba(236,72,153,0.12);">◇</div>
+                <div class="item-info">
+                    <div class="item-name">Neural Lattice</div>
+                    <div class="item-desc">Particle trails, electric arcs</div>
+                </div>
+                <span class="item-badge badge-neural">v3</span>
+            </div>
+            <div class="dropdown-item" data-bg="void">
+                <div class="item-icon" style="background: rgba(20,20,30,0.5); border:1px solid rgba(255,255,255,0.04);">○</div>
+                <div class="item-info">
+                    <div class="item-name">Deep Void</div>
+                    <div class="item-desc">Raymarched nebula, galaxy</div>
+                </div>
+                <span class="item-badge badge-void">v3</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="info-panel">
+    <div class="info-card">
+        <h3 id="infoTitle">Lumina Ethereal v3</h3>
+        <p id="infoDesc">Multi-pass rendering with ping-pong bloom. 40 depth-layered strands with quintic Bézier. Real volumetric glow via separable Gaussian blur. 80 motes with light scattering. ACES tone mapping + chromatic aberration.</p>
+        <div class="info-meta">
+            <span>◈ <span id="infoFps">60</span> FPS</span>
+            <span>◈ WebGL 2.0 Multi-Pass</span>
+            <span>◈ <span id="infoRes">4K</span></span>
+        </div>
+    </div>
+</div>
+
+<div class="controls">
+    <button class="ctrl-btn" id="btnPause" title="Pause/Play">⏸</button>
+    <button class="ctrl-btn" id="btnReset" title="Reset">↻</button>
+</div>
+
+<script>
+// ===== WEBGL2 MULTI-PASS ENGINE =====
+const canvas = document.getElementById('bg-canvas');
+const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, preserveDrawingBuffer: false });
+
+let currentBg = 'lumina', isPaused = false, time = 0, animationId = null;
+let mouseX = 0, mouseY = 0, targetMouseX = 0, targetMouseY = 0;
+const dpr = Math.min(window.devicePixelRatio, 2);
+
+function resize() { canvas.width = window.innerWidth * dpr; canvas.height = window.innerHeight * dpr; gl.viewport(0, 0, canvas.width, canvas.height); }
+window.addEventListener('resize', resize); resize();
+document.addEventListener('mousemove', (e) => { targetMouseX = (e.clientX / window.innerWidth - 0.5) * 2; targetMouseY = -(e.clientY / window.innerHeight - 0.5) * 2; });
+
+// ===== FBO / RENDER TARGET SYSTEM =====
+class FBO {
+    constructor(w, h, format = gl.RGBA8) {
+        this.w = w; this.h = h;
+        this.texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, format, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        this.fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texture, 0);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+    bind() { gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo); gl.viewport(0, 0, this.w, this.h); }
+    unbind() { gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, canvas.width, canvas.height); }
+}
+
+const fboScene = new FBO(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2));
+const fboBloomH = new FBO(Math.floor(canvas.width / 4), Math.floor(canvas.height / 4));
+const fboBloomV = new FBO(Math.floor(canvas.width / 4), Math.floor(canvas.height / 4));
+
+window.addEventListener('resize', () => {
+    fboScene.w = Math.floor(canvas.width / 2); fboScene.h = Math.floor(canvas.height / 2);
+    gl.bindTexture(gl.TEXTURE_2D, fboScene.texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, fboScene.w, fboScene.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    fboBloomH.w = Math.floor(canvas.width / 4); fboBloomH.h = Math.floor(canvas.height / 4);
+    gl.bindTexture(gl.TEXTURE_2D, fboBloomH.texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, fboBloomH.w, fboBloomH.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    fboBloomV.w = Math.floor(canvas.width / 4); fboBloomV.h = Math.floor(canvas.height / 4);
+    gl.bindTexture(gl.TEXTURE_2D, fboBloomV.texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, fboBloomV.w, fboBloomV.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+});
+
+// ===== SHARED GLSL UTILITIES =====
+const vertexShader = `#version 300 es
+in vec2 a_position;
+void main() { gl_Position = vec4(a_position, 0.0, 1.0); }`;
+
+const hashUtils = `
+vec3 hash33(vec3 p) {
+    p = vec3(dot(p,vec3(127.1,311.7,74.7)), dot(p,vec3(269.5,183.3,246.1)), dot(p,vec3(113.5,271.9,124.6)));
+    return fract(sin(p) * 43758.5453);
+}
+float hash12(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7))) * 43758.5453); }
+float hash13(vec3 p) { return fract(sin(dot(p,vec3(127.1,311.7,74.7))) * 43758.5453); }`;
+
+const noiseUtils = `
+vec3 mod289v3(vec3 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
+vec2 mod289v2(vec2 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
+vec3 permute(vec3 x) { return mod289v3(((x*34.0)+1.0)*x); }
+
+float snoise(vec2 v) {
+    const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+    vec2 i = floor(v + dot(v, C.yy));
+    vec2 x0 = v - i + dot(i, C.xx);
+    vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+    vec4 x12 = x0.xyxy + C.xxzz;
+    x12.xy -= i1;
+    i = mod289v2(i);
+    vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+    m = m*m; m = m*m;
+    vec3 x = 2.0 * fract(p * C.www) - 1.0;
+    vec3 h = abs(x) - 0.5;
+    vec3 ox = floor(x + 0.5);
+    vec3 a0 = x - ox;
+    m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+    vec3 g;
+    g.x = a0.x * x0.x + h.x * x0.y;
+    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+    return 130.0 * dot(m, g);
+}
+float fbm(vec2 p) {
+    float sum = 0.0, amp = 0.5, freq = 1.0;
+    for (int i = 0; i < 6; i++) { sum += amp * snoise(p * freq); amp *= 0.5; freq *= 2.0; }
+    return sum;
+}
+vec2 curl(vec2 p) {
+    float eps = 0.01;
+    float n1 = snoise(p + vec2(eps, 0.0)), n2 = snoise(p + vec2(0.0, eps));
+    float n3 = snoise(p - vec2(eps, 0.0)), n4 = snoise(p - vec2(0.0, eps));
+    return vec2(n4 - n2, n1 - n3) / (2.0 * eps);
+}`;
+
+const postUtils = `
+vec3 acesFilmic(vec3 x) {
+    float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+float blueNoise(vec2 uv, float t) {
+    vec2 off = vec2(2.0, 3.0);
+    return fract(sin(dot(uv + off * floor(t), vec2(12.9898, 78.233))) * 43758.5453);
+}
+float filmGrain(vec2 uv, float t) {
+    float n = blueNoise(floor(uv * 300.0) / 300.0, t);
+    n = mix(n, blueNoise(floor(uv * 300.0) / 300.0, t + 1.0), fract(t));
+    return (n - 0.5) * 0.03;
+}
+vec3 vignette(vec3 col, vec2 uv, float strength, vec3 tint) {
+    float d = length((uv - 0.5) * vec2(1.2, 1.0));
+    float v = smoothstep(0.3, 1.3, d);
+    return mix(col, col * tint, v * strength);
+}`;
+
+// ===== BLOOM SHADERS =====
+const bloomHFrag = `#version 300 es
+precision highp float;
+in vec2 v_uv;
+out vec4 fragColor;
+uniform sampler2D u_source;
+uniform vec2 u_resolution;
+uniform float u_radius;
+void main() {
+    vec2 texel = 1.0 / u_resolution;
+    vec3 sum = vec3(0.0);
+    float weights[9] = float[](0.0162162162, 0.0540540541, 0.1216216216, 0.1945945946, 0.2270270270, 0.1945945946, 0.1216216216, 0.0540540541, 0.0162162162);
+    for (int i = 0; i < 9; i++) {
+        float off = float(i - 4) * u_radius;
+        sum += texture(u_source, v_uv + vec2(off * texel.x, 0.0)).rgb * weights[i];
+    }
+    fragColor = vec4(sum, 1.0);
+}`;
+
+const bloomVFrag = `#version 300 es
+precision highp float;
+in vec2 v_uv;
+out vec4 fragColor;
+uniform sampler2D u_source;
+uniform vec2 u_resolution;
+uniform float u_radius;
+void main() {
+    vec2 texel = 1.0 / u_resolution;
+    vec3 sum = vec3(0.0);
+    float weights[9] = float[](0.0162162162, 0.0540540541, 0.1216216216, 0.1945945946, 0.2270270270, 0.1945945946, 0.1216216216, 0.0540540541, 0.0162162162);
+    for (int i = 0; i < 9; i++) {
+        float off = float(i - 4) * u_radius;
+        sum += texture(u_source, v_uv + vec2(0.0, off * texel.y)).rgb * weights[i];
+    }
+    fragColor = vec4(sum, 1.0);
+}`;
+
+const compositeFrag = `#version 300 es
+precision highp float;
+in vec2 v_uv;
+out vec4 fragColor;
+uniform sampler2D u_scene;
+uniform sampler2D u_bloom;
+uniform float u_bloomIntensity;
+uniform float u_time;
+
+${postUtils}
+
+void main() {
+    vec3 scene = texture(u_scene, v_uv).rgb;
+    vec3 bloom = texture(u_bloom, v_uv).rgb;
+    
+    // Additive bloom
+    vec3 col = scene + bloom * u_bloomIntensity;
+    
+    // Chromatic aberration on bright edges
+    float bright = dot(bloom, vec3(0.299, 0.587, 0.114));
+    float ca = smoothstep(0.1, 0.5, bright) * 0.002;
+    col.r += texture(u_scene, v_uv + vec2(ca, 0.0)).r - scene.r;
+    col.b += texture(u_scene, v_uv - vec2(ca, 0.0)).b - scene.b;
+    
+    // Film grain
+    col += filmGrain(gl_FragCoord.xy, u_time);
+    
+    // Vignette
+    col = vignette(col, v_uv, 0.5, vec3(0.6, 0.65, 0.85));
+    
+    // ACES
+    col = acesFilmic(col * 1.1);
+    
+    fragColor = vec4(col, 1.0);
+}`;
+
+// Fullscreen pass-through vertex (for post shaders with UVs)
+const passThroughVertex = `#version 300 es
+in vec2 a_position;
+out vec2 v_uv;
+void main() {
+    v_uv = a_position * 0.5 + 0.5;
+    gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+
+// ===== SCENE SHADERS =====
+
+// LUMINA V3: 40 strands, volumetric glow, motes with trails
+const luminaFrag = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform vec2 u_mouse;
+
+${hashUtils}
+${noiseUtils}
+
+vec2 bezier5(vec2 p0, vec2 p1, vec2 p2, vec2 p3, vec2 p4, float t) {
+    float mt = 1.0 - t;
+    float mt2 = mt * mt, mt3 = mt2 * mt, mt4 = mt3 * mt;
+    float t2 = t * t, t3 = t2 * t, t4 = t3 * t;
+    return mt4*p0 + 4.0*mt3*t*p1 + 6.0*mt2*t2*p2 + 4.0*mt*t3*p3 + t4*p4;
+}
+
+float strandDist(vec2 p, vec2 p0, vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
+    float minD = 1e10;
+    for (int i = 0; i < 40; i++) {
+        float tt = float(i) / 39.0;
+        minD = min(minD, length(p - bezier5(p0, p1, p2, p3, p4, tt)));
+    }
+    return minD;
+}
+
+float glowFalloff(float dist, float radius) {
+    return exp(-dist * dist / (radius * radius));
+}
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_resolution;
+    vec2 aspect = vec2(u_resolution.x / u_resolution.y, 1.0);
+    vec2 p = (uv - 0.5) * aspect;
+    p += u_mouse * vec2(0.08, 0.05);
+    
+    float t = u_time * 0.12;
+    
+    vec3 steelBlue = vec3(0.20, 0.24, 0.33);
+    vec3 ice = vec3(0.92, 0.94, 0.97);
+    vec3 lavender = vec3(0.68, 0.58, 0.80);
+    vec3 tealWhisper = vec3(0.36, 0.50, 0.50);
+    vec3 warmHint = vec3(0.85, 0.74, 0.63);
+    
+    vec3 col = vec3(0.008, 0.008, 0.012);
+    float emission = 0.0;
+    
+    // 40 strands, 4 depth layers
+    for (int i = 0; i < 40; i++) {
+        float fi = float(i);
+        float depth = float(i % 4) / 3.0;
+        float layerScale = 1.0 + depth * 0.5;
+        float layerFade = 1.0 - depth * 0.3;
+        
+        float seed = fi * 37.13;
+        float speed = 0.12 + depth * 0.04;
+        
+        vec2 cp0 = vec2(snoise(vec2(seed, t * speed)) * 1.8 * layerScale, snoise(vec2(seed + 1.0, t * speed * 0.8)) * 1.2 * layerScale);
+        vec2 cp1 = cp0 + curl(vec2(seed * 0.1, t * 0.05)) * 0.5;
+        vec2 cp2 = vec2(snoise(vec2(seed + 4.0, t * speed * 0.6 + 2.0)) * 1.4 * layerScale, snoise(vec2(seed + 5.0, t * speed * 0.7)) * 1.0 * layerScale);
+        vec2 cp3 = cp2 + curl(vec2(seed * 0.1 + 10.0, t * 0.05)) * 0.5;
+        vec2 cp4 = vec2(snoise(vec2(seed + 8.0, t * speed * 0.5 + 4.0)) * 1.6 * layerScale, snoise(vec2(seed + 9.0, t * speed * 0.6)) * 1.1 * layerScale);
+        
+        float dist = strandDist(p, cp0, cp1, cp2, cp3, cp4);
+        float thick = 0.0015 + 0.006 * (0.5 + 0.5 * snoise(vec2(seed, t * 0.08)));
+        thick *= (1.0 + depth * 0.4);
+        
+        // Core + wide volumetric halo (for bloom capture)
+        float core = smoothstep(thick, 0.0, dist);
+        float halo = glowFalloff(dist, thick * 6.0) * 0.5;
+        float wideHalo = glowFalloff(dist, thick * 15.0) * 0.15;
+        
+        vec3 strandCol = mix(steelBlue, ice, snoise(vec2(seed + 10.0, t * 0.08)) * 0.5 + 0.5);
+        strandCol = mix(strandCol, lavender, snoise(vec2(seed + 20.0, t * 0.12)) * 0.3);
+        strandCol = mix(strandCol, tealWhisper, snoise(vec2(seed + 30.0, t * 0.1)) * 0.2);
+        strandCol = mix(strandCol, warmHint, snoise(vec2(seed + 40.0, t * 0.06)) * 0.15);
+        
+        float pulse = 0.7 + 0.3 * sin(t * 2.0 + fi * 0.5);
+        float intensity = (core * 0.6 + halo + wideHalo) * pulse * layerFade;
+        
+        col += strandCol * intensity * 0.1;
+        emission += intensity;
+    }
+    
+    // Constellation nodes (bright emission sources for bloom)
+    for (int i = 0; i < 12; i++) {
+        float fi = float(i);
+        vec2 nodePos = vec2(snoise(vec2(fi * 73.0, t * 0.08)) * 0.9, snoise(vec2(fi * 73.0 + 17.0, t * 0.08)) * 0.7);
+        float nodeDist = length(p - nodePos);
+        
+        float nodeCore = exp(-nodeDist * nodeDist * 300.0);
+        float nodeHalo = glowFalloff(nodeDist, 0.06) * 0.5;
+        float nodeAmbient = glowFalloff(nodeDist, 0.2) * 0.06;
+        
+        float nodeBright = nodeCore + nodeHalo + nodeAmbient;
+        vec3 nodeCol = mix(ice, warmHint, nodeCore * 3.0);
+        col += nodeCol * nodeBright * 0.5;
+        emission += nodeBright * 2.0; // High emission for bloom
+    }
+    
+    // 80 motes with motion trails
+    for (int i = 0; i < 80; i++) {
+        float fi = float(i);
+        float moteSeed = fi * 53.11;
+        vec2 basePos = vec2(hash12(vec2(moteSeed, 0.0)), hash12(vec2(moteSeed, 1.0)));
+        basePos = (fract(basePos + vec2(sin(t * 0.3 + fi) * 0.15, cos(t * 0.2 + fi * 1.3) * 0.1)) - 0.5) * aspect;
+        
+        float moteDist = length(p - basePos);
+        float moteSize = 0.0008 + hash12(vec2(moteSeed, 2.0)) * 0.002;
+        float twinkle = sin(t * 3.0 + fi * 5.0) * 0.5 + 0.5;
+        float moteBright = smoothstep(moteSize, 0.0, moteDist) * twinkle * hash12(vec2(moteSeed, 3.0));
+        
+        // Trail
+        vec2 trailDir = vec2(sin(t + fi), cos(t * 0.7 + fi));
+        float trailDist = length(p - (basePos - trailDir * 0.02));
+        float trailBright = smoothstep(moteSize * 3.0, 0.0, trailDist) * 0.15 * twinkle;
+        
+        col += ice * (moteBright * 0.06 + trailBright * 0.03);
+        emission += moteBright * 0.3;
+    }
+    
+    // Atmospheric haze
+    col += vec3(0.05, 0.06, 0.08) * emission * 0.25;
+    
+    // Output HDR color + emission mask in alpha
+    fragColor = vec4(col, emission);
+}`;
+
+// MONOCHROME V3: Kajiya-Kay, subsurface, 48 strands
+const monochromeFrag = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform vec2 u_mouse;
+
+${hashUtils}
+${noiseUtils}
+
+// Kajiya-Kay anisotropic reflection model
+float kajiyaKay(vec2 p, vec2 tangent, float roughnessT, float roughnessB) {
+    vec3 V = normalize(vec3(-p, 1.0));
+    vec3 T = normalize(vec3(tangent, 0.0));
+    float cosTheta = dot(V, T);
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    return exp(-sinTheta * sinTheta / (roughnessT * roughnessT));
+}
+
+vec2 flowField(vec2 p, float t) {
+    vec2 c = curl(p * 0.5 + t * 0.02);
+    return c + vec2(snoise(p + t * 0.1), snoise(p + vec2(10.0) + t * 0.1)) * 0.3;
+}
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_resolution;
+    vec2 aspect = vec2(u_resolution.x / u_resolution.y, 1.0);
+    vec2 p = (uv - 0.5) * aspect;
+    p += u_mouse * vec2(0.06, 0.04);
+    
+    float t = u_time * 0.1;
+    
+    float totalIntensity = 0.0;
+    vec3 specularAcc = vec3(0.0);
+    float emission = 0.0;
+    
+    // 48 strands, 8 depth layers
+    for (int layer = 0; layer < 8; layer++) {
+        float layerF = float(layer);
+        float layerDepth = layerF / 7.0;
+        float layerFade = 1.0 - layerDepth * 0.4;
+        float perspective = 1.0 / (1.0 + layerDepth * 0.5);
+        
+        for (int i = 0; i < 6; i++) {
+            float fi = float(i);
+            float seed = fi * 31.41 + layerF * 77.0;
+            
+            vec2 pos = p * (0.5 + layerF * 0.3);
+            vec2 flowOffset = flowField(pos, t + seed);
+            
+            vec2 start = vec2(snoise(vec2(seed, t * 0.15)) * (1.0 + layerF * 0.5), snoise(vec2(seed + 1.0, t * 0.12)) * (0.7 + layerF * 0.3));
+            start += flowOffset * 0.2;
+            
+            vec2 end = start + vec2(snoise(vec2(seed + 2.0, t * 0.1)) * 0.8, snoise(vec2(seed + 3.0, t * 0.1)) * 0.6);
+            vec2 mid1 = mix(start, end, 0.33) + curl(vec2(seed, t * 0.05)) * 0.3;
+            vec2 mid2 = mix(start, end, 0.66) + curl(vec2(seed + 10.0, t * 0.05)) * 0.3;
+            
+            float curveDist = 1e10;
+            vec2 tangent = vec2(0.0);
+            for (int j = 0; j < 30; j++) {
+                float tt = float(j) / 29.0;
+                float mt = 1.0 - tt;
+                vec2 posBezier = mt*mt*mt*start + 3.0*mt*mt*tt*mid1 + 3.0*mt*tt*tt*mid2 + tt*tt*tt*end;
+                float d = length(p - posBezier);
+                if (d < curveDist) {
+                    curveDist = d;
+                    float tt2 = min(tt + 0.01, 1.0);
+                    float mt2 = 1.0 - tt2;
+                    vec2 pos2 = mt2*mt2*mt2*start + 3.0*mt2*mt2*tt2*mid1 + 3.0*mt2*tt2*tt2*mid2 + tt2*tt2*tt2*end;
+                    tangent = normalize(pos2 - posBezier);
+                }
+            }
+            
+            float thickCenter = 0.0015 + 0.005 * (0.5 + 0.5 * snoise(vec2(seed, t * 0.03)));
+            thickCenter *= (1.0 + layerDepth * 0.6);
+            
+            float strand = smoothstep(thickCenter * perspective, 0.0, curveDist);
+            float depthIntensity = exp(-layerDepth * layerDepth * 2.0);
+            
+            // Kajiya-Kay specular on foreground
+            float spec = 0.0;
+            if (layer < 3) {
+                float kk = kajiyaKay(p - (start + end) * 0.5, tangent, 0.2, 0.4);
+                kk *= strand * 0.5 * (1.0 - layerDepth * 0.3);
+                spec = kk;
+            }
+            
+            // Subsurface scattering approximation
+            float sss = glowFalloff(curveDist, thickCenter * 4.0) * strand * 0.3;
+            
+            totalIntensity += strand * depthIntensity * layerFade;
+            specularAcc += vec3(spec * 1.0, spec * 0.98, spec * 1.05);
+            emission += sss * 0.5;
+        }
+    }
+    
+    float brightness = totalIntensity * 0.85;
+    brightness = min(brightness, 0.92);
+    
+    // Volumetric fog
+    float fog = totalIntensity * totalIntensity * 0.08;
+    
+    // Cool steel with subsurface warmth
+    vec3 col = vec3(brightness * 0.94, brightness * 0.97, brightness * 1.03);
+    col += specularAcc;
+    col += vec3(0.06, 0.07, 0.10) * fog;
+    
+    // SSS warm glow
+    col += vec3(0.15, 0.12, 0.10) * emission;
+    
+    fragColor = vec4(col, emission + brightness);
+}`;
+
+// AURORA V3: Volumetric raymarch, terrain, scattering
+const auroraFrag = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform vec2 u_mouse;
+
+${hashUtils}
+${noiseUtils}
+
+// Raymarched aurora density
+float auroraDensity(vec3 pos, float t) {
+    float height = pos.y;
+    if (height < 0.3 || height > 0.8) return 0.0;
+    
+    float d = fbm(vec2(pos.x * 3.0 + t * 0.2, pos.z * 2.0 - t * 0.15));
+    d *= sin(height * 20.0 + t * 2.0 + pos.x * 5.0) * 0.5 + 0.5;
+    d *= smoothstep(0.3, 0.4, height) * smoothstep(0.8, 0.6, height);
+    return max(0.0, d);
+}
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_resolution;
+    float t = u_time * 0.08;
+    vec2 p = uv + u_mouse * vec2(0.02, 0.01);
+    
+    vec3 darkSky = vec3(0.015, 0.02, 0.04);
+    vec3 iceBlue = vec3(0.60, 0.80, 0.95);
+    vec3 lavender = vec3(0.68, 0.58, 0.85);
+    vec3 teal = vec3(0.28, 0.52, 0.52);
+    vec3 mint = vec3(0.45, 0.82, 0.72);
+    
+    vec3 col = darkSky;
+    float emission = 0.0;
+    
+    // Volumetric raymarch for aurora
+    for (int ray = 0; ray < 5; ray++) {
+        float fi = float(ray);
+        float xPos = 0.1 + fi * 0.2 + sin(t * 0.3 + fi) * 0.1;
+        
+        vec3 rayCol = (ray < 2) ? iceBlue : (ray < 3) ? lavender : (ray < 4) ? mix(lavender, teal, 0.5) : mint;
+        
+        for (int step = 0; step < 20; step++) {
+            float h = 0.35 + float(step) / 19.0 * 0.4;
+            vec3 pos = vec3(p.x - xPos, h, fi);
+            float density = auroraDensity(pos, t);
+            
+            float wave = sin(h * 15.0 + t * 2.0 + fi * 3.0) * sin(h * 25.0 - t * 1.5 + fi * 5.0) * 0.5 + 0.5;
+            density *= wave;
+            
+            col += rayCol * density * 0.015;
+            emission += density * 0.3;
+        }
+    }
+    
+    // Stars
+    for (int i = 0; i < 50; i++) {
+        float fi = float(i);
+        vec2 starPos = vec2(hash12(vec2(fi, 0.0)), hash12(vec2(fi, 1.0)));
+        float starSize = 0.001 + hash12(vec2(fi, 2.0)) * 0.0015;
+        float starBright = hash12(vec2(fi, 3.0));
+        float dist = length(p - starPos);
+        float star = smoothstep(starSize, 0.0, dist);
+        starBright *= sin(t * 3.0 + fi * 7.0) * 0.5 + 0.5;
+        starBright = mix(starBright * 0.2, starBright, sin(t * 0.5 + fi) * 0.5 + 0.5);
+        col += vec3(0.9, 0.95, 1.0) * star * starBright * 0.5;
+        emission += star * starBright * 0.2;
+    }
+    
+    // Shooting star
+    float shootT = mod(t * 0.3, 12.0);
+    if (shootT < 1.5) {
+        vec2 shootPos = mix(vec2(0.1, 0.7), vec2(0.8, 0.3), shootT / 1.5);
+        float shootDist = length(p - shootPos);
+        float trail = smoothstep(0.015, 0.0, shootDist);
+        vec2 trailDir = normalize(vec2(0.7, -0.4));
+        float trailLen = dot(p - shootPos, trailDir);
+        float trailWidth = abs(dot(p - shootPos, vec2(-trailDir.y, trailDir.x)));
+        float trailFalloff = exp(-trailLen * trailLen * 250.0) * smoothstep(0.008, 0.0, trailWidth);
+        trailFalloff *= smoothstep(1.0, 0.0, shootT / 1.5);
+        col += vec3(0.95, 0.95, 1.0) * (trail + trailFalloff * 0.5);
+        emission += trail * 0.5;
+    }
+    
+    // Procedural terrain silhouette
+    float terrain = 0.0;
+    for (int i = 0; i < 3; i++) {
+        float fi = float(i);
+        terrain += snoise(vec2(p.x * (2.0 + fi * 2.0) + fi * 50.0, fi)) * (0.5 / (fi + 1.0));
+    }
+    terrain = terrain * 0.5 + 0.3;
+    
+    if (p.y < terrain * 0.15) {
+        float terrainDark = smoothstep(terrain * 0.15, terrain * 0.15 - 0.02, p.y);
+        vec3 terrainCol = vec3(0.02, 0.025, 0.04) * (1.0 + terrain * 0.3);
+        col = mix(col, terrainCol, terrainDark);
+        emission *= (1.0 - terrainDark);
+    }
+    
+    // Water reflection
+    if (p.y < 0.05) {
+        vec2 waterUV = vec2(p.x, 0.05 - p.y);
+        float waterDistort = fbm(vec2(waterUV.x * 4.0, waterUV.y * 8.0 + t * 2.0)) * 0.02;
+        waterUV.x += waterDistort;
+        float reflectFade = smoothstep(0.0, 0.05, 0.05 - p.y);
+        vec3 reflectCol = mix(darkSky, iceBlue * 0.25, reflectFade * 0.5);
+        float ripple = sin(waterUV.x * 40.0 + t * 3.0) * sin(waterUV.y * 30.0 - t * 2.0) * 0.5 + 0.5;
+        reflectCol += vec3(0.5, 0.7, 0.9) * ripple * 0.04 * reflectFade;
+        col = mix(col, reflectCol, 0.6 * reflectFade);
+    }
+    
+    fragColor = vec4(col, emission);
+}`;
+
+// NEURAL V3: Particle trails, electric arcs, instanced feel
+const neuralFrag = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform vec2 u_mouse;
+
+${hashUtils}
+${noiseUtils}
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_resolution;
+    vec2 aspect = vec2(u_resolution.x / u_resolution.y, 1.0);
+    vec2 p = (uv - 0.5) * aspect;
+    p += u_mouse * vec2(0.1, 0.08);
+    
+    float t = u_time * 0.25;
+    vec3 col = vec3(0.012, 0.012, 0.025);
+    float emission = 0.0;
+    
+    // Multi-layer 3D network
+    for (int layer = 0; layer < 4; layer++) {
+        float layerZ = float(layer) * 1.5;
+        float layerScale = 1.0 + layerZ * 0.25;
+        float layerFade = 1.0 / (1.0 + layerZ * 0.4);
+        float perspective = 1.0 / (1.0 + layerZ * 0.3);
+        
+        vec2 layerP = p * layerScale;
+        vec2 cell = floor(layerP * 4.0);
+        vec2 frac = fract(layerP * 4.0) - 0.5;
+        
+        for (int i = -1; i <= 1; i++) {
+            for (int j = -1; j <= 1; j++) {
+                vec2 neighbor = cell + vec2(float(i), float(j));
+                float h = hash12(neighbor + vec2(float(layer) * 50.0));
+                
+                vec2 nodePos = neighbor + vec2(sin(t * 0.5 + h * 6.28) * 0.2, cos(t * 0.4 + h * 6.28 + 1.0) * 0.2);
+                nodePos /= 4.0;
+                
+                float dist = length(layerP / 4.0 - nodePos);
+                float nodeSize = (0.012 + 0.006 * sin(t + h * 6.28)) * perspective;
+                
+                float nodeCore = smoothstep(nodeSize, 0.0, dist);
+                float nodeRing = smoothstep(nodeSize * 2.0, nodeSize * 1.2, dist) - smoothstep(nodeSize * 1.2, nodeSize * 0.5, dist);
+                float nodeActivity = 0.5 + 0.5 * sin(t * 2.0 + h * 6.28 + layerZ);
+                
+                float nodeTotal = (nodeCore * 0.8 + nodeRing * 0.2) * nodeActivity;
+                col += mix(vec3(0.3, 0.25, 0.8), vec3(0.5, 0.4, 1.0), nodeCore) * nodeTotal * layerFade * 0.4;
+                emission += nodeTotal * layerFade * 0.5;
+                
+                // Connections with electric arc jitter
+                if ((i != 0 || j != 0) && hash12(neighbor * 2.17 + float(layer)) > 0.3) {
+                    vec2 toNeighbor = nodePos - layerP / 4.0;
+                    float lineLen = length(toNeighbor);
+                    
+                    // Electric arc path
+                    vec2 perp = vec2(-toNeighbor.y, toNeighbor.x) / max(lineLen, 0.001);
+                    float arcJitter = snoise(vec2(lineLen * 5.0, t * 3.0 + layerZ)) * 0.03 * perspective;
+                    
+                    float lineDist = abs(dot(frac / 4.0 - nodePos + cell / 4.0 + perp * arcJitter, perp));
+                    
+                    float conn = smoothstep(0.015 * perspective, 0.0, lineDist) * smoothstep(1.0, 0.0, lineLen);
+                    
+                    // Traveling pulse with trail
+                    float pulsePos = mod(t * 1.5 + h * 6.28 + layerZ, 2.0);
+                    float pulseDist = abs(pulsePos - lineLen);
+                    float pulse = exp(-pulseDist * pulseDist * 60.0) * conn;
+                    
+                    // Pulse trail
+                    float trail = 0.0;
+                    for (int trailI = 1; trailI < 4; trailI++) {
+                        float trailDist = abs(pulsePos - lineLen - float(trailI) * 0.05);
+                        trail += exp(-trailDist * trailDist * 80.0) * conn * 0.15;
+                    }
+                    
+                    col += vec3(0.15, 0.2, 0.5) * conn * 0.25 * layerFade;
+                    col += vec3(0.6, 0.5, 1.0) * (pulse + trail) * 0.5 * layerFade;
+                    emission += (pulse + trail) * layerFade * 0.8;
+                }
+            }
+        }
+    }
+    
+    // Mouse ripple
+    float mouseDist = length(p - u_mouse * aspect * 0.5);
+    float ripple = sin(mouseDist * 20.0 - t * 4.0) * 0.5 + 0.5;
+    ripple *= exp(-mouseDist * mouseDist * 8.0);
+    col += vec3(0.5, 0.4, 0.9) * ripple * 0.12;
+    emission += ripple * 0.3;
+    
+    // Ambient noise
+    float ambient = fbm(p * 2.0 + t * 0.1) * 0.5 + 0.5;
+    col += vec3(0.04, 0.06, 0.12) * ambient * 0.08;
+    
+    fragColor = vec4(col, emission);
+}`;
+
+// VOID V3: Raymarched nebula, galaxy spiral, lens flare
+const voidFrag = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform vec2 u_mouse;
+
+${hashUtils}
+${noiseUtils}
+
+float fbm3d(vec3 p) {
+    float sum = 0.0, amp = 0.5;
+    for (int i = 0; i < 4; i++) { sum += amp * hash13(p); amp *= 0.5; p *= 2.0; }
+    return sum;
+}
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_resolution;
+    float t = u_time * 0.06;
+    vec2 p = uv + u_mouse * vec2(0.015, 0.01);
+    
+    vec3 col = vec3(0.006, 0.006, 0.01);
+    float emission = 0.0;
+    
+    // Raymarched volumetric nebula
+    for (int i = 0; i < 4; i++) {
+        float fi = float(i);
+        vec3 nebPos = vec3(p * (1.0 + fi * 0.3), t * 0.1 + fi);
+        float neb = fbm3d(nebPos);
+        neb = pow(neb, 2.5);
+        
+        vec3 nebColor;
+        if (i == 0) nebColor = vec3(0.025, 0.03, 0.06);
+        else if (i == 1) nebColor = vec3(0.04, 0.02, 0.05);
+        else if (i == 2) nebColor = vec3(0.015, 0.04, 0.04);
+        else nebColor = vec3(0.02, 0.02, 0.05);
+        
+        col += nebColor * neb * 0.12;
+        emission += neb * 0.15;
+    }
+    
+    // Galaxy spiral arm
+    vec2 galaxyCenter = vec2(0.5, 0.5);
+    vec2 galaxyOffset = p - galaxyCenter;
+    float galaxyAngle = atan(galaxyOffset.y, galaxyOffset.x);
+    float galaxyDist = length(galaxyOffset);
+    float spiral = sin(galaxyAngle * 2.0 + galaxyDist * 15.0 - t * 0.2) * 0.5 + 0.5;
+    spiral *= exp(-galaxyDist * galaxyDist * 3.0);
+    spiral *= smoothstep(0.4, 0.0, galaxyDist);
+    col += vec3(0.08, 0.07, 0.12) * spiral * 0.3;
+    emission += spiral * 0.2;
+    
+    // 100 stars with brightness distribution
+    for (int i = 0; i < 100; i++) {
+        float fi = float(i);
+        vec3 seed = vec3(fi * 17.0, fi * 31.0, fi * 47.0);
+        vec2 pos = vec2(hash13(seed), hash13(seed + vec3(1.0)));
+        pos.x += sin(t * 0.2 + fi * 0.5) * 0.08;
+        pos.y += cos(t * 0.15 + fi * 0.7) * 0.05;
+        pos = fract(pos);
+        
+        float dist = length(uv - pos);
+        float size = 0.0005 + hash13(seed + vec3(2.0)) * 0.0015;
+        
+        // Magnitude distribution (more dim stars, fewer bright)
+        float mag = pow(hash13(seed + vec3(3.0)), 3.0);
+        
+        vec3 dustColor;
+        float ct = hash13(seed + vec3(4.0));
+        if (ct < 0.5) dustColor = vec3(0.9, 0.92, 0.95);
+        else if (ct < 0.8) dustColor = vec3(0.95, 0.88, 0.75);
+        else dustColor = vec3(0.7, 0.8, 0.95);
+        
+        float twinkle = sin(t * 2.0 + fi * 3.7) * 0.5 + 0.5;
+        twinkle = mix(0.15, 1.0, twinkle);
+        
+        float particle = smoothstep(size, 0.0, dist);
+        col += dustColor * particle * mag * twinkle * 0.35;
+        emission += particle * mag * twinkle * 0.2;
+        
+        // Lens flare on very bright stars
+        if (mag > 0.8 && particle > 0.5) {
+            vec2 flareDir = normalize(uv - pos);
+            for (int flare = 1; flare < 4; flare++) {
+                float flareDist = length(uv - (pos + flareDir * float(flare) * 0.02));
+                float flareSize = size * float(flare) * 2.0;
+                col += dustColor * smoothstep(flareSize, 0.0, flareDist) * 0.02 * twinkle;
+            }
+        }
+    }
+    
+    // Flash events
+    float flashInterval = 18.0;
+    float flashPhase = mod(t, flashInterval);
+    if (flashPhase < 2.5) {
+        float flashStrength = exp(-flashPhase * flashPhase * 1.5);
+        float flashAngle = hash12(vec2(floor(t / flashInterval), 0.0)) * 6.28;
+        vec2 flashDir = vec2(cos(flashAngle), sin(flashAngle));
+        float flashAlign = max(0.0, dot(normalize(p - 0.5), flashDir));
+        col += vec3(0.9, 0.95, 1.0) * flashStrength * flashAlign * 0.2;
+        emission += flashStrength * flashAlign * 0.3;
+    }
+    
+    // Horizon glow
+    float horizon = smoothstep(0.0, 0.25, uv.y) * smoothstep(0.5, 0.25, uv.y);
+    col += vec3(0.015, 0.02, 0.03) * horizon * 0.4;
+    
+    fragColor = vec4(col, emission);
+}`;
+
+// ===== SHADER COMPILATION =====
+function createProgram(vsSrc, fsSrc) {
+    const vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs, vsSrc); gl.compileShader(vs);
+    if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) console.error('VS:', gl.getShaderInfoLog(vs));
+    const fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs, fsSrc); gl.compileShader(fs);
+    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) console.error('FS:', gl.getShaderInfoLog(fs));
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs); gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) console.error('Link:', gl.getProgramInfoLog(prog));
+    return prog;
+}
+
+const sceneProgs = {
+    lumina: createProgram(vertexShader, luminaFrag),
+    monochrome: createProgram(vertexShader, monochromeFrag),
+    aurora: createProgram(vertexShader, auroraFrag),
+    neural: createProgram(vertexShader, neuralFrag),
+    void: createProgram(vertexShader, voidFrag)
+};
+
+const bloomHProg = createProgram(passThroughVertex, bloomHFrag);
+const bloomVProg = createProgram(passThroughVertex, bloomVFrag);
+const compositeProg = createProgram(passThroughVertex, compositeFrag);
+
+// Quad geometry
+const quadBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+
+function drawQuad(program) {
+    const posLoc = gl.getAttribLocation(program, 'a_position');
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+
+// ===== RENDER LOOP =====
+const bgInfo = {
+    lumina: { title: 'Lumina Ethereal v3', desc: 'Multi-pass ping-pong bloom. 40 depth-layered strands with quintic Bézier. Real volumetric glow via 9-tap Gaussian blur. 80 motes with motion trails. 12 constellation nodes with chromatic aberration. ACES tone mapping. Blue noise film grain.', fps: '60', res: '4K' },
+    monochrome: { title: 'Monochrome Flow v3', desc: '48 strands across 8 depth layers. Kajiya-Kay anisotropic hair BRDF on foreground. Subsurface scattering approximation with warm glow. Curl noise flow fields. 30-point curve sampling. Perspective-based depth blur. Volumetric fog.', fps: '60', res: '4K' },
+    aurora: { title: 'Aurora Whisper v3', desc: 'True volumetric raymarching — 5 aurora curtains sampled at 20 depth steps each. Procedural terrain silhouette. Atmospheric scattering. 50 twinkling stars with magnitude distribution. Shooting stars. Water reflection with ripple distortion.', fps: '60', res: '4K' },
+    neural: { title: 'Neural Lattice v3', desc: '4-layer 3D perspective network. Electric arc connections with perlin jitter. Traveling data pulses with particle trails. Ring-shaped nodes with activity-based pulsing. Mouse ripple interaction. Ambient fbm noise field.', fps: '60', res: '4K' },
+    void: { title: 'Deep Void v3', desc: 'Raymarched volumetric nebula via 3D fbm. Procedural galaxy spiral arm. 100 stars with realistic magnitude distribution. Lens flare on bright stars. Occasional flash events. Horizon glow. Most atmospheric minimal canvas.', fps: '60', res: '4K' }
+};
+
+function render(now) {
+    if (!isPaused) time = now * 0.001;
+    mouseX += (targetMouseX - mouseX) * 0.05;
+    mouseY += (targetMouseY - mouseY) * 0.05;
+
+    // 1. SCENE PASS
+    fboScene.bind();
+    const sceneProg = sceneProgs[currentBg];
+    gl.useProgram(sceneProg);
+    gl.uniform2f(gl.getUniformLocation(sceneProg, 'u_resolution'), fboScene.w, fboScene.h);
+    gl.uniform1f(gl.getUniformLocation(sceneProg, 'u_time'), time);
+    gl.uniform2f(gl.getUniformLocation(sceneProg, 'u_mouse'), mouseX, mouseY);
+    drawQuad(sceneProg);
+    fboScene.unbind();
+
+    // 2. BLOOM HORIZONTAL
+    fboBloomH.bind();
+    gl.useProgram(bloomHProg);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, fboScene.texture);
+    gl.uniform1i(gl.getUniformLocation(bloomHProg, 'u_source'), 0);
+    gl.uniform2f(gl.getUniformLocation(bloomHProg, 'u_resolution'), fboBloomH.w, fboBloomH.h);
+    gl.uniform1f(gl.getUniformLocation(bloomHProg, 'u_radius'), 2.0);
+    drawQuad(bloomHProg);
+    fboBloomH.unbind();
+
+    // 3. BLOOM VERTICAL
+    fboBloomV.bind();
+    gl.useProgram(bloomVProg);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, fboBloomH.texture);
+    gl.uniform1i(gl.getUniformLocation(bloomVProg, 'u_source'), 0);
+    gl.uniform2f(gl.getUniformLocation(bloomVProg, 'u_resolution'), fboBloomV.w, fboBloomV.h);
+    gl.uniform1f(gl.getUniformLocation(bloomVProg, 'u_radius'), 2.0);
+    drawQuad(bloomVProg);
+    fboBloomV.unbind();
+
+    // 4. COMPOSITE
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.useProgram(compositeProg);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, fboScene.texture);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, fboBloomV.texture);
+    gl.uniform1i(gl.getUniformLocation(compositeProg, 'u_scene'), 0);
+    gl.uniform1i(gl.getUniformLocation(compositeProg, 'u_bloom'), 1);
+    gl.uniform1f(gl.getUniformLocation(compositeProg, 'u_bloomIntensity'), currentBg === 'lumina' ? 0.6 : currentBg === 'aurora' ? 0.5 : 0.4);
+    gl.uniform1f(gl.getUniformLocation(compositeProg, 'u_time'), time);
+    drawQuad(compositeProg);
+
+    animationId = requestAnimationFrame(render);
+}
+
+animationId = requestAnimationFrame(render);
+
+// ===== UI =====
+const dropdownWrap = document.getElementById('dropdownWrap');
+const dropdownTrigger = document.getElementById('dropdownTrigger');
+const currentBgName = document.getElementById('currentBgName');
+const infoTitle = document.getElementById('infoTitle');
+const infoDesc = document.getElementById('infoDesc');
+
+let isOpen = false;
+dropdownTrigger.addEventListener('click', () => { isOpen = !isOpen; dropdownWrap.classList.toggle('open', isOpen); });
+document.addEventListener('click', (e) => { if (!dropdownWrap.contains(e.target)) { isOpen = false; dropdownWrap.classList.remove('open'); } });
+
+document.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const bg = item.dataset.bg;
+        if (bg === currentBg) return;
+        currentBg = bg;
+        document.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        const info = bgInfo[bg];
+        currentBgName.textContent = info.title;
+        infoTitle.textContent = info.title;
+        infoDesc.textContent = info.desc;
+        isOpen = false; dropdownWrap.classList.remove('open');
+    });
+});
+
+document.getElementById('btnPause').addEventListener('click', function() { isPaused = !isPaused; this.textContent = isPaused ? '▶' : '⏸'; });
+document.getElementById('btnReset').addEventListener('click', () => { time = 0; isPaused = false; document.getElementById('btnPause').textContent = '⏸'; });
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === ' ') { e.preventDefault(); document.getElementById('btnPause').click(); }
+    if (e.key === '1') switchBg('lumina');
+    if (e.key === '2') switchBg('monochrome');
+    if (e.key === '3') switchBg('aurora');
+    if (e.key === '4') switchBg('neural');
+    if (e.key === '5') switchBg('void');
+});
+
+function switchBg(bg) { const item = document.querySelector(`[data-bg="${bg}"]`); if (item) item.click(); }
+
+console.log('Memory Nexus Background Tester v3 loaded. Multi-pass bloom active. Press 1-5 to switch, space to pause.');
+</script>
+
+</body>
+</html>

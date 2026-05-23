@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Lost — Game Manual</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#c0c0c0;font-family:'Courier New',monospace;line-height:1.6;padding:20px;max-width:900px;margin:0 auto}
+h1{color:#00ff88;font-size:22px;letter-spacing:4px;margin-bottom:4px;padding-bottom:8px;border-bottom:1px solid #1a2a1a}
+h2{color:#4fc3f7;font-size:16px;margin:28px 0 10px;padding-bottom:4px;border-bottom:1px solid #1a2a1a;letter-spacing:1px}
+h3{color:#ffd965;font-size:14px;margin:20px 0 8px}
+h4{color:#889;font-size:12px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px}
+p,li{font-size:13px;margin-bottom:6px;color:#b0b0b0}
+ul,ol{padding-left:20px;margin-bottom:12px}
+li{margin-bottom:3px}
+b{color:#e0e0e0}
+em{color:#4fc3f7;font-style:normal}
+.tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:3px;margin:2px;font-weight:bold;letter-spacing:0.5px}
+.tag.pve{background:rgba(0,230,118,0.1);color:#00e676;border:1px solid rgba(0,230,118,0.2)}
+.tag.pvp{background:rgba(255,138,101,0.1);color:#ff8a65;border:1px solid rgba(255,138,101,0.2)}
+.tag.pvpe{background:rgba(255,213,101,0.1);color:#ffd54f;border:1px solid rgba(255,213,101,0.2)}
+.tag.role{background:rgba(79,195,247,0.1);color:#4fc3f7;border:1px solid rgba(79,195,247,0.2)}
+.tag.threat{background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)}
+.tag.mission{background:rgba(186,104,200,0.1);color:#ba68c8;border:1px solid rgba(186,104,200,0.2)}
+.tag.ability{background:rgba(129,199,132,0.1);color:#81c784;border:1px solid rgba(129,199,132,0.2)}
+.version{font-size:11px;color:#556;margin-bottom:20px}
+.card{background:rgba(255,255,255,0.02);border:1px solid #1a2a1a;border-radius:4px;padding:14px;margin:12px 0}
+.card h3{margin-top:0}
+code{font-size:12px;color:#00ff88;background:rgba(0,255,136,0.05);padding:1px 5px;border-radius:2px}
+hr{border:none;border-top:1px solid #1a2a1a;margin:20px 0}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:bold;margin-right:4px}
+.pill.hunt{background:rgba(239,68,68,0.15);color:#ef4444}
+.pill.patrol{background:rgba(79,195,247,0.15);color:#4fc3f7}
+.pill.sentry{background:rgba(255,170,0,0.15);color:#ffaa00}
+.pill.mechanic{background:rgba(129,199,132,0.15);color:#81c784}
+.pill.decoder{background:rgba(186,104,200,0.15);color:#ba68c8}
+.pill.navigator{background:rgba(0,188,212,0.15);color:#00bcd4}
+.pill.drone{background:rgba(255,138,101,0.15);color:#ff8a65}
+.pill.courier{background:rgba(255,213,101,0.15);color:#ffd54f}
+.pill.sniper{background:rgba(239,68,68,0.15);color:#ef4444}
+.pill.mc{background:rgba(79,195,247,0.15);color:#4fc3f7}
+.pill.medic{background:rgba(0,230,118,0.15);color:#00e676}
+table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+th{text-align:left;color:#889;border-bottom:1px solid #1a2a1a;padding:6px 4px;font-weight:normal;text-transform:uppercase;letter-spacing:1px;font-size:10px}
+td{padding:6px 4px;border-bottom:1px solid #0d0d14;color:#b0b0b0}
+tr:hover td{background:rgba(255,255,255,0.01)}
+.nav{position:sticky;top:0;background:#0a0a0f;padding:8px 0;border-bottom:1px solid #1a2a1a;margin-bottom:20px;z-index:10;display:flex;gap:8px;flex-wrap:wrap}
+.nav a{color:#556;text-decoration:none;font-size:11px;letter-spacing:0.5px;padding:4px 10px;border:1px solid #1a2a1a;border-radius:3px}
+.nav a:hover{color:#00ff88;border-color:#00ff88}
+.footer{text-align:center;font-size:11px;color:#334;margin-top:40px;padding:20px;border-top:1px solid #1a2a1a}
+.footer span{color:#00ff88}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="#intro">Intro</a>
+  <a href="#setup">Setup</a>
+  <a href="#squad">Squad & Teams</a>
+  <a href="#modes">Game Modes</a>
+  <a href="#missions">Mission Types</a>
+  <a href="#pvp">PvP</a>
+  <a href="#threats">AI Threats</a>
+  <a href="#roles">Roles</a>
+  <a href="#map">The Map</a>
+  <a href="#win">Win Conditions</a>
+  <a href="#custom">Custom Missions</a>
+  <a href="#hacking">Hacking</a>
+  <a href="#alliances">Alliances</a>
+  <a href="#safety">Safety</a>
+  <a href="#faq">FAQ</a>
+</nav>
+
+<h1>SIGNAL LOST</h1>
+<div class="version">GAME MANUAL v0.2 — Updated May 23, 2026</div>
+<p><em>Coordinate. Decode. Extract.</em></p>
+<p>Signal Lost is a multi-squad extraction game played on the real world map. Squads deploy with their own objectives, compete indirectly using tactical tools, and try to extract before the timer runs out. AI threats patrol the map and make extraction harder. The map is big — movement takes real time.</p>
+
+<hr>
+
+<h2 id="intro">The Big Idea</h2>
+<p>You and your squad deploy into a contested zone. There are <b>automated defense systems</b> left over from a past conflict — drones, sentries, turrets — still running their original patrol routes. Your squad has objectives to complete. Other squads are on the same map with their own objectives. First squad to complete their objectives and extract wins.</p>
+<p>There are <b>no guns</b> against other players. Combat between squads is <b>indirect</b>: drones, traps, sabotage, and hacking. You win by being smarter and faster, not by shooting first.</p>
+
+<hr>
+
+<h2 id="setup">Game Setup Flow</h2>
+
+<div class="card">
+<h3>Host creates a game</h3>
+<ol>
+<li>Enter your <b>Name</b> and <b>Callsign</b></li>
+<li>Name your <b>Squad</b> (e.g. "Vanguard")</li>
+<li>Pick <b>Game Mode</b>: Quick Match (your own instance) or Open World (shared map with other squads)</li>
+<li>Pick <b>Squad Structure</b>: Co-op (1 team) or Competitive (2 teams)</li>
+<li>If Competitive: name Team A and Team B. Players choose which to join.</li>
+<li>Pick <b>Mission Type</b> (see mission types below)</li>
+<li>If custom location: drop a pin on the map anywhere in the world</li>
+<li>Set <b>Duration</b> (15-90 min, default 45 min)</li>
+<li>Launch — a game code is generated (e.g. <code>AQUA-RADAR-42</code>)</li>
+<li>Friends join via the game code</li>
+</ol>
+</div>
+
+<div class="card">
+<h3>Joining a game</h3>
+<ol>
+<li>Enter the <b>Game Code</b> from the host</li>
+<li>Enter your <b>Name</b> and <b>Callsign</b></li>
+<li>If 2-team squad: pick which team to join</li>
+<li>Enter your <b>Squad Name</b> (or join the host's squad)</li>
+<li>You're in the lobby — pick a role, ready up</li>
+<li>Host launches the mission</li>
+</ol>
+</div>
+
+|<div class="card">
+|<h3>What if no other squads are available?</h3>
+|<p>The host chooses when setting up:</p>
+|<ul>
+|<li><b>Deploy alone (PvE):</b> Your squad faces AI threats only. All objectives are yours. Extract to win. Good for practice or solo play.</li>
+|<li><b>AI squads (PvPvE):</b> The server fills empty slots with AI-controlled bot squads. They compete for objectives, use drones and traps against you, and try to extract.</li>
+|</ul>
+|</div>
+|
+|<div class="card">
+|<h3>NPC Squad Intelligence</h3>
+|<p>When AI squads are active, bot-controlled squads behave like real players with some differences:</p>
+|<ul>
+|<li><b>Naming:</b> Auto-generated squad names like "SIGMA-5", "PHANTOM Unit", "IRON-7", "ECHO Base". Bot players have generated callsigns like "Raven-1", "Talon-3".</li>
+|<li><b>Movement:</b> Bots move toward their objectives using the same real map. They follow roads and terrain — no teleporting. You might spot them crossing a bridge or passing through a zone.</li>
+|<li><b>Detection:</b> Bot squads appear as "Unknown Squad" on your tactical map within 500m range, or when spotted by your Drone / Mission Control.</li>
+|<li><b>Behavior:</b> Bots complete objectives, deploy traps and recon drones, call extraction when done. They won't hunt you specifically but will use indirect PvP tools if they detect you.</li>
+|<li><b>Predictability:</b> Bot patrol routes are more rigid than human players — they take the same path back from objectives. Good players can predict and exploit this.</li>
+|<li><b>Difficulty scaling:</b> Bots scale with the host's challenge rating. Recruit bots make mistakes (walk into traps). Nightmare bots are aggressive, use perfect drone coverage, and extract fast.</li>
+|</ul>
+|</div>
+|
+|<hr>
+
+<h2 id="squad">Squad & Teams</h2>
+
+<h3>Key Terms</h3>
+<ul>
+<li><b>Squad:</b> The group that joins via one game code (2-8 players)</li>
+<li><b>Team:</b> The competitive side within your squad if you split up</li>
+</ul>
+
+<h3>Option A: Co-op Squad (1 team)</h3>
+<p>All players share the same squad name and work together. One set of objectives. One extraction point. Everyone extracts together or no one does.</p>
+<p><span class="tag pve">CO-OP</span> Best for 1-4 players, casual play, learning the game.</p>
+
+<h3>Option B: Competitive Squad (2 teams)</h3>
+<p>The squad splits into two internal teams with different names. Each team has their own objectives. They compete in the same instance. Other squads see you as one squad — they don't know you're competing internally.</p>
+<p><span class="tag pvp">COMPETITIVE</span> Best for 4-8 players who want to play together but compete.</p>
+
+<h3>In Open World mode</h3>
+<p>Multiple squads from different game codes deploy to the same shared map. Squads see each other on the tactical map. They can interact via drones, traps, and sabotage. First squad to extract wins.</p>
+
+<hr>
+
+<h2 id="modes">Game Modes</h2>
+
+<table>
+<tr><th>Mode</th><th>Description</th><th>Players</th><th>AI Threats</th></tr>
+<tr><td><b>Quick Match</b></td><td>Your own instance. Only your squad + AI. No other squads.</td><td>1-8</td><td>Full</td></tr>
+<tr><td><b>Open World</b></td><td>Shared persistent map. Multiple squads compete. PvPvE.</td><td>2-24</td><td>Scaled to total players</td></tr>
+</table>
+
+<hr>
+
+<h2 id="missions">Mission Types</h2>
+
+<table>
+<tr><th>Type</th><th>Duration</th><th>Description</th><th>Best For</th></tr>
+<tr><td><span class="pill patrol">EXTRACTION</span></td><td>30-60 min</td><td>Standard: complete objectives across the zone, extract when done. Balanced mix of objectives, AI, and PvP.</td><td>Default, all-round</td></tr>
+<tr><td><span class="pill hunt">DATA HEIST</span></td><td>20-30 min</td><td>One big fortified objective instead of many small ones. More turrets, fewer patrols. High risk, high reward.</td><td>Quick games</td></tr>
+<tr><td><span class="pill mechanic">SEARCH & RESCUE</span></td><td>40-50 min</td><td>Find and extract a downed asset (NPC beacon). The asset moves periodically. More aggressive AI pursuit.</td><td>Teamwork focus</td></tr>
+<tr><td><span class="pill courier">SCOUT RUN</span></td><td>10-15 min</td><td>Mark 5 locations by getting within 100m of each. No extraction needed — finish when all 5 are marked.</td><td>Quick sessions, learning</td></tr>
+<tr><td><span class="pill mc">NIGHT OP</span></td><td>30-40 min</td><td>Same as Extraction but reduced visibility. AI has shorter detection range. Your GPS degrades faster in darkness.</td><td>Stealth gameplay</td></tr>
+<tr><td><span class="pill sniper">RACE</span></td><td>20-30 min</td><td>Squads start at opposite ends. First to collect 3 caches and extract wins. Pure competition.</td><td>Competitive squads</td></tr>
+<tr><td><span class="pill sentry">HOLDOUT</span></td><td>20-25 min</td><td>Defend a position for 15 minutes while waves of AI approach. Extract when timer hits zero. No PvP.</td><td>Co-op, team defense</td></tr>
+<tr><td><span class="pill decoder">FREE ROAM</span></td><td>Unlimited</td><td>No objectives, no timer, no extraction needed. Explore the map, test equipment, practice. AI patrols but doesn't hunt.</td><td>Practice, exploration</td></tr>
+</table>
+
+<hr>
+
+<h2 id="pvp">PvP — Detailed Mechanics</h2>
+
+<p>There are <b>no direct guns</b> against other players. Combat between squads is tactical and indirect. Each method has specific mechanics, costs, and counterplay.</p>
+
+<div class="card">
+<h3>🔄 Method Overview</h3>
+<table>
+<tr><th>Method</th><th>Effect</th><th>Duration</th><th>Cooldown</th></tr>
+<tr><td><span class="tag pvp">SNIPER</span></td><td>Tag enemy in sightline: signal damage + map reveal (30s)</td><td>30s reveal</td><td>120s per tag</td></tr>
+<tr><td><span class="tag pvp">RECON DRONE</span></td><td>Deploy drone that follows enemy squad, reveals position in real-time</td><td>60s follow</td><td>90s per drone</td></tr>
+<tr><td><span class="tag pvp">TRAPS</span></td><td>Place proximity devices: jammers, tripwires, false objectives</td><td>5 min duration</td><td>60s per trap (max 3 active)</td></tr>
+<tr><td><span class="tag pvp">SABOTAGE</span></td><td>Hack extraction point / steal cache / intercept transmissions</td><td>Instant effect</td><td>180s per sabotage</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>🎯 Sniper — Tag & Reveal</h3>
+<p><b>How it works:</b></p>
+<ol>
+<li>Find a position with sightlines to likely enemy routes</li>
+<li>Activate sniper mode — your position is fixed, you scan a 90° arc</li>
+<li>When an enemy squad member enters your sightline, a tag prompt appears</li>
+<li>Confirm tag: enemy takes signal damage (-20), their position is revealed on <b>all squads' maps</b> for 30 seconds</li>
+<li>Sniper position is NOT revealed (you stay hidden unless detected by other means)</li>
+</ol>
+<p><b>Counterplay:</b></p>
+<ul>
+<li>Stay in cover (buildings, forest, terrain blocks sightlines)</li>
+<li>Use smoke (Decoder ability creates a smoke cloud that blocks sniper view)</li>
+<li>Move at night (Night Op mode — sniper sightlines reduced 50%)</li>
+<li>Decoder can detect sniper positions within 200m — ping them for your squad</li>
+<li>Courier moves too fast to be tagged reliably</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>🚁 Recon Drone — Intel Gathering</h3>
+<p><b>How it works:</b></p>
+<ol>
+<li>Target an enemy squad on your tactical map (must be within 800m)</li>
+<li>Deploy recon drone — it launches from your position toward the target</li>
+<li>Drone reaches target after 15s flight time (visible as a small dot on enemy's map — they can shoot it down if they spot it)</li>
+<li>Once on target: reveals enemy squad's positions to your squad in real-time for 60s</li>
+<li>Optional: drop an audio decoy (fake gunshot / radio chatter) to lure AI threats toward the enemy squad</li>
+</ol>
+<p><b>Counterplay:</b></p>
+<ul>
+<li>Mechanic can hack an enemy recon drone — it becomes YOUR drone instead (instant, no cooldown for the hack)</li>
+<li>Navigator can spot drone contrails (glowing trail visible for 5s after deployment)</li>
+<li>Any squad member can shoot down a drone that's within 100m (2s aim, makes noise = attracts AI)</li>
+<li>Stay under cover (drones lose visual lock in dense forest or buildings)</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>📦 Traps — Area Denial</h3>
+<p><b>Three trap types:</b></p>
+<ul>
+<li><b>Signal Jammer:</b> When triggered, the enemy squad's comms go dark for 20s — no chat, no pings, no squad markers on map. Best placed at extraction points or objective locations.</li>
+<li><b>Audio Tripwire:</b> When triggered, pings the enemy's position to all squads on the map for 10s. Also alerts nearby AI threats to investigate the location. Best placed on commonly used paths.</li>
+<li><b>False Objective Marker:</b> When triggered, a fake objective appears on the enemy's map at a random nearby location. Wastes their time investigating it. Best placed near real objectives to create confusion.</li>
+</ul>
+<p><b>Rules:</b></p>
+<ul>
+<li>Max 3 traps active at a time per squad</li>
+<li>Traps last 5 minutes, then expire</li>
+<li>Triggers on proximity (10m radius for jammers/tripwires, 50m for false markers)</li>
+<li>Traps are visible to the Drone's recon scan</li>
+<li>Courier can trigger-and-evade (move fast enough to trigger but escape the effect zone)</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>💥 Sabotage — Direct Disruption</h3>
+<p><b>How it works:</b></p>
+<ul>
+<li><b>Sabotage Extraction Point (Mechanic only):</b> Approach an enemy squad's marked extraction point (within 30m). Stand still for 10s to plant a beacon. The extraction point moves to a different location 500m away. Enemy squad gets warned: "EXTRACTION POINT COMPROMISED".</li>
+<li><b>Steal Cache:</b> If an enemy squad has secured a cache (completed objective but hasn't extracted yet), any player can approach and steal it (5s interaction). The cache transfers to your squad. Warning ping for the enemy.</li>
+<li><b>Intercept Transmission (Decoder only):</b> Within 100m of an enemy squad, intercept their squad chat for 15s — you see their text messages. No warning for the target.</li>
+</ul>
+<p><b>Counterplay:</b></p>
+<ul>
+<li>Mission Control detects all sabotage attempts in progress and pings the location to all squads</li>
+<li>Mechanic can reinforce your extraction point (makes it immune to sabotage for 5 min)</li>
+<li>Protect your caches — don't leave them unattended</li>
+<li>Use encrypted chat (Decoder ability) to block interception</li>
+</ul>
+</div>
+
+<hr>
+
+<h2 id="threats">AI Threats</h2>
+
+<p>AI threats are <b>automated defense systems</b> left from a past conflict. They patrol fixed routes and respond to intrusion. They are <b>not</b> intelligent squads — they're more like a security alarm system.</p>
+
+<h3>Threat Types</h3>
+
+<table>
+<tr><th>Threat</th><th>Speed</th><th>Detection</th><th>Behavior</th><th>Origin</th></tr>
+<tr><td><span class="pill patrol">PATROL DRONE</span></td><td>Slow (1 zone / 5 min)</td><td>Visual, 200m</td><td>Runs a fixed route. If it spots you, pings your position to all threats in the zone.</td><td>Drone Bay (static locations)</td></tr>
+<tr><td><span class="pill sentry">GROUND SENTRY</span></td><td>Stationary</td><td>Motion + heat, 150m</td><td>Guards infrastructure. Tags you with SIGNAL LOST debuff — your position blips every 10s for 30s.</td><td>Bridges, power stations, relay towers</td></tr>
+<tr><td><span class="pill hunt">HUNT DRONE</span></td><td>Fast (3 zones, limited fuel)</td><td>Actively pursues last known position</td><td>Deployed from Radar Tower when alarm triggers. Follows for 2 min, then returns. Can be outrun or jammed.</td><td>Radar Tower</td></tr>
+<tr><td><span class="pill sniper">STATIC TURRET</span></td><td>Stationary</td><td>Instant, 100m arc</td><td>Suppression fire. Slows movement, damages signal. Can be disabled by Mechanic.</td><td>High-value zones, caches, extraction points</td></tr>
+</table>
+
+<h3>How AI Cooperates</h3>
+<p>AI threats cooperate <b>within the same zone only</b>. Each zone is its own sub-network. There is no global command center.</p>
+
+<table>
+<tr><th>Step</th><th>What Happens</th></tr>
+<tr><td>1. Detection</td><td>Patrol drone visually spots you — it alone knows you're there</td></tr>
+<tr><td>2. Alert</td><td>Drone pings your position to all threats in the <b>same zone</b></td></tr>
+<tr><td>3. Investigation</td><td>Sentries expand scan radius (+50m), other patrols adjust routes toward you</td></tr>
+<tr><td>4. Pursuit</td><td>Radar Tower in the zone launches a Hunt Drone toward your last position</td></tr>
+<tr><td>5. Escape</td><td>Break line of sight for 15s — all threats return to normal</td></tr>
+<tr><td>6. Cooldown</td><td>Zone has reduced sensitivity for 120s (false alarm cooldown)</td></tr>
+</table>
+
+<h3>Cross-Zone Coordination</h3>
+<ul>
+<li>If you cross a zone boundary while being pursued, the drone <b>hands off</b> to the next zone's network</li>
+<li>If the next zone already has active alarms, handoff fails — drone returns</li>
+<li><b>Radar Towers</b> are the only units with cross-zone range. They can launch Hunt Drones to adjacent zones — but it takes 60s for the drone to arrive</li>
+<li>A Radar Tower only helps adjacent zones if its own zone is quiet</li>
+</ul>
+
+<h3>Escaping AI Threats</h3>
+<ul>
+<li>Break line of sight (buildings, forest, terrain) — AI loses pursuit in 15s</li>
+<li>Outrun for 60s — drone gives up, returns to route</li>
+<li>Use role ability: Decoder signal cloak, Mechanic EMP burst — instant break</li>
+<li>Run into another squad's zone — AI may switch targets to the closer player</li>
+</ul>
+
+<h3>Threat Spawning</h3>
+<ul>
+<li>Never spawn on top of players — minimum 400m spawn distance</li>
+<li>60% minimum threats even when solo, 100% with max squads</li>
+<li>More squads doesn't mean more threats per zone — density stays constant</li>
+</ul>
+
+<hr>
+
+<h2 id="roles">Roles</h2>
+
+<p>Each role has a unique ability that affects gameplay. Abilities have cooldowns.</p>
+
+<table>
+<tr><th>Role</th><th>Ability</th><th>Cooldown</th><th>Description</th></tr>
+<tr><td><span class="pill patrol">DRONE</span></td><td>Recon Drone</td><td>60s</td><td>Deploy a drone to scout terrain ahead. Reveals traps, enemy positions, and AI threat zones. Drone follows you for 30s.</td></tr>
+<tr><td><span class="pill mechanic">MECHANIC</span></td><td>EMP Burst</td><td>120s</td><td>Short-range EMP: disables turrets (5 min), hacks enemy drones, can hack Radar Towers (see Hacking section).</td></tr>
+<tr><td><span class="pill medic">MEDIC</span></td><td>Signal Boost</td><td>90s</td><td>Boosts nearby squad members' signal strength. Restores degraded GPS. Can revive downed teammates (stand within 20m for 5s).</td></tr>
+<tr><td><span class="pill decoder">DECODER</span></td><td>Signal Cloak</td><td>120s</td><td>Become invisible to AI threats for 20s. Also reveals encrypted objective markers — bonus caches appear on your map.</td></tr>
+<tr><td><span class="pill navigator">NAVIGATOR</span></td><td>Route Optimizer</td><td>90s</td><td>Plots the most efficient path to any objective. Shows shortcut markers, threat avoid routes. Squad moves 15% faster while active.</td></tr>
+<tr><td><span class="pill courier">COURIER</span></td><td>Sprint</td><td>45s</td><td>Run at 2x speed for 15s. Can trigger-and-evade traps. Good for rushing caches or extraction. Signal degrades faster while sprinting.</td></tr>
+<tr><td><span class="pill mc">MISSION CONTROL</span></td><td>Strategic View</td><td>None (passive)</td><td>Sees the full map: all squad positions, all threat patrol routes, all objectives. Can detect sabotage attempts and ping threats for the squad.</td></tr>
+<tr><td><span class="pill sniper">SNIPER</span></td><td>Tag & Reveal</td><td>120s</td><td>Set up a sniper position. When an enemy squad enters your sightline, tag them — revealed on map for 30s, takes signal damage.</td></tr>
+</table>
+
+<hr>
+
+<h2 id="map">The Map</h2>
+
+<h3>Real World Map</h3>
+<p>Signal Lost uses the <b>real world map</b> via Leaflet with OpenStreetMap tiles. The game works anywhere in the world.</p>
+
+<h3>Zones</h3>
+<p>The map is divided into tactical zones based on real terrain:</p>
+<ul>
+<li><b>Urban</b> — Dense buildings, short sightlines. Good for cover, bad for detection range.</li>
+<li><b>Forest</b> — Reduced signal strength, AI hides easier. Good for evading pursuit.</li>
+<li><b>Industrial</b> — Open sightlines, signal boost. Exposed but fast movement.</li>
+<li><b>River / Water</b> — Crossing points are chokepoints. Sentry placement common.</li>
+<li><b>Mountain / Hills</b> — High ground gives vision advantage to Snipers. Signal varies.</li>
+</ul>
+
+<h3>Scale</h3>
+<ul>
+<li>Full map scale: ~10km x 10km gameplay area</li>
+<li>Walking across takes 20+ minutes</li>
+<li>Zone size: ~3-5 minutes to cross on foot</li>
+<li>Objective radius: 100-200m from pin location</li>
+</ul>
+
+<h3>GPS Mode</h3>
+<p>Players can use their real GPS location to deploy. Your real position becomes your spawn point on the map. Objectives and threats generate around you.</p>
+
+<hr>
+
+<h2 id="win">Win Conditions</h2>
+
+<h3>Primary: Extraction Race</h3>
+<ul>
+<li>First squad to reach their extraction point and complete the extraction sequence <b>wins</b></li>
+<li>Extraction takes <b>30 seconds</b> (stand in the zone, defend)</li>
+<li>If interrupted, extraction fails and must restart</li>
+<li>If timer expires: forced extraction begins (2 min countdown), all squads must extract or lose</li>
+</ul>
+
+<h3>Secondary: Points</h3>
+<p>Points are earned during the mission and used as tiebreaker:</p>
+<table>
+<tr><th>Action</th><th>Points</th></tr>
+<tr><td>Complete an objective</td><td>+100</td></tr>
+<tr><td>Secure a cache</td><td>+50</td></tr>
+<tr><td>Sabotage an enemy extraction attempt</td><td>+75</td></tr>
+<tr><td>Evade a hunt drone</td><td>+25</td></tr>
+<tr><td>Extract successfully</td><td>+200</td></tr>
+<tr><td>First to extract</td><td>+150 bonus</td></tr>
+</table>
+
+<h3>No Active Squads Available</h3>
+<ul>
+<li>If you deploy alone (PvE mode): complete all objectives and extract = <b>win</b></li>
+<li>Points still count toward leaderboards</li>
+<li>With AI squads: compete against bot squads, same win conditions apply</li>
+</ul>
+
+<hr>
+
+<h2 id="custom">Custom Missions</h2>
+
+<h3>Anywhere in the World</h3>
+<p>Players can create custom missions by dropping a pin anywhere on the real map.</p>
+
+<h3>Setup</h3>
+<ol>
+<li>On the setup screen, switch to <b>Custom Mission</b> tab</li>
+<li>Use the Leaflet map to <b>drop a pin</b> anywhere in the world</li>
+<li><b>Name</b> the mission (free text, e.g. "Downtown Extraction", "Bridge Crossing")</li>
+<li>Pick a <b>mission type</b> (from the list above)</li>
+<li>Set <b>duration</b> (15-90 min)</li>
+<li>Launch — the server generates the mission around that location</li>
+</ol>
+
+<h3>What Gets Generated</h3>
+<ul>
+<li>Threat patrol routes around the pin location (within 2km)</li>
+<li>Objective locations (caches, upload points, waypoints)</li>
+<li>Extraction point on the opposite side of the zone</li>
+<li>Zone boundaries auto-generated from real terrain</li>
+</ul>
+
+<h3>GPS Integration</h3>
+<p>In custom mode, you can deploy at your <b>real GPS location</b>. Your phone's GPS becomes your spawn point. Objectives generate around you. This lets you play Signal Lost in your hometown, at a park, or anywhere with GPS signal.</p>
+
+<hr>
+
+<h2 id="hacking">Hacking — Mechanic Ability</h2>
+
+<h3>Radar Tower Hacking</h3>
+<p>The <span class="pill mechanic">MECHANIC</span> can hack Radar Towers and use them against other squads.</p>
+
+<h3>How To Hack</h3>
+<ol>
+<li>Locate a <b>Radar Tower</b> on the map (marked for all players)</li>
+<li>Approach within <b>50m</b> — hacking prompt appears</li>
+<li>Stand still for <b>15 seconds</b> to complete the hack</li>
+<li>If interrupted (hit by trap, detected, damaged) — hack fails, 60s cooldown before retry</li>
+</ol>
+
+<h3>Hack Effects (pick one, lasts 3 min)</h3>
+
+<table>
+<tr><th>Effect</th><th>What Happens</th><th>Best Use</th></tr>
+<tr><td><b>Redirect Drones</b></td><td>All patrol/Hunt drones from this tower prioritize the target squad. AI ignores you and hunts them.</td><td>Target a nearby squad to slow them down</td></tr>
+<tr><td><b>Squad Scan</b></td><td>Tower reveals the target squad's position on your map for 60s. They get a warning: "SIGNAL INTERCEPTED".</td><td>Intel advantage before engaging</td></tr>
+<tr><td><b>Disable Zone</b></td><td>Disable the tower for 5 min. No drones launch from this zone. Safe passage for everyone (including enemies).</td><td>Create a safe corridor for your extraction</td></tr>
+</table>
+
+<h3>Counterplay</h3>
+<ul>
+<li>Target squad gets warned: "Radar Tower [name] has been compromised"</li>
+<li><span class="pill mc">MISSION CONTROL</span> can detect the hack in progress and ping the tower to all squads</li>
+<li>Another <span class="pill mechanic">MECHANIC</span> can counter-hack the tower to restore it (10 seconds)</li>
+<li>Any player can destroy the tower permanently (30s, makes noise, attracts AI)</li>
+</ul>
+
+<hr>
+
+<h2 id="alliances">Squad Alliances</h2>
+
+<p>In Open World mode, squads can form temporary alliances with other squads. This is optional — most games are competitive.</p>
+
+<div class="card">
+<h3>Forming an Alliance</h3>
+<ol>
+<li>Send an alliance request to another squad via the tactical map (select their squad marker → "Request Alliance")</li>
+<li>The target squad's Mission Control (or squad leader if no MC) receives the request</li>
+<li>They accept or decline — alliance is formed immediately if accepted</li>
+<li>Alliance is announced to <b>all squads on the map</b>: "[Squad A] and [Squad B] have formed an alliance"</li>
+</ol>
+</div>
+
+<div class="card">
+<h3>Alliance Benefits</h3>
+<ul>
+<li><b>Shared Extraction:</b> Both squads can use each other's extraction points. If either squad extracts, both are counted as extracting together (shared win or shared points).</li>
+<li><b>Shared Intel:</b> Objective locations, threat positions, and trap placements are visible to both squads on the tactical map.</li>
+<li><b>No Friendly Fire:</b> Indirect PvP tools (snipers, drones, traps, sabotage) cannot target allied squads. Attempts are blocked.</li>
+<li><b>Combined Chat:</b> A shared alliance chat channel opens for coordination.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>Alliance Rules & Limits</h3>
+<ul>
+<li><b>Maximum size:</b> 2 squads per alliance (can't form a 3-squad coalition).</li>
+<li><b>Duration:</b> Lasts until one squad extracts, or until one squad breaks the alliance.</li>
+<li><b>Breaking:</b> Either squad can break the alliance at any time. Breaking is immediate and announced: "[Squad A] has broken the alliance with [Squad B]". No cooldown on re-alliance.</li>
+<li><b>Betrayal:</b> If a squad breaks the alliance and immediately attacks their former ally, they get a "TRAITOR" penalty (-200 points).</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>Strategy Tips</h3>
+<ul>
+<li>Alliances are great for taking down a stronger squad — two squads working together can apply twice the pressure.</li>
+<li>But remember: only one squad gets the "first to extract" bonus. Alliances are temporary — someone extracts first.</li>
+<li>Alliances are public knowledge. Other squads will adjust their strategy when they see two squads allied.</li>
+<li>The TRAITOR penalty makes betrayal costly but not impossible — sometimes -200 points is worth winning.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2 id="safety">Safety & Property Logic</h2>
+
+<p>Since Signal Lost uses real-world GPS locations, we have safety systems to prevent trespassing, dangerous situations, and privacy concerns.</p>
+
+<div class="card">
+<h3>🏞️ Public Spaces Are the Default</h3>
+<p>For standard (non-custom) missions, the game defaults to <b>pre-approved public zones</b>: parks, squares, beaches, nature reserves, sports fields, university campuses, commercial districts, and industrial zones.</p>
+<p>The game picks a random public space within the area you choose — you don't need to find a "good spot". Just pick a neighborhood and the game handles the rest.</p>
+</div>
+
+<div class="card">
+<h3>🚫 Blocked Locations</h3>
+<p>These locations are completely blocked. You <b>cannot</b> drop a pin within 100m of them:</p>
+<table>
+<tr><th>Location</th><th>Why Blocked</th></tr>
+<tr><td>Military bases</td><td>Safety/legal</td></tr>
+<tr><td>Schools, kindergartens</td><td>No gameplay near children</td></tr>
+<tr><td>Prisons, police stations</td><td>Security risk</td></tr>
+<tr><td>Hospitals, fire stations</td><td>Don't interfere with emergency services</td></tr>
+<tr><td>Government buildings</td><td>Security concerns</td></tr>
+<tr><td>Airports, airfields</td><td>Safety + legal</td></tr>
+<tr><td>Construction sites</td><td>Physical safety hazard</td></tr>
+<tr><td>Railways, active train tracks</td><td>Physical safety</td></tr>
+<tr><td>Highways, motorways</td><td>Physical safety</td></tr>
+</table>
+<p><b>What the player sees:</b> "⛔ This location is blocked for safety reasons. Please choose a different area."</p>
+</div>
+
+<div class="card">
+<h3>🏠 Private Property Detection</h3>
+<p>The game checks OpenStreetMap data when you drop a pin. If the pin is on a <b>private residential property</b> (a house, apartment building, farm, or land tagged as residential), the mission zone automatically shifts to the nearest <b>public space</b>:</p>
+<ol>
+<li>Nearest public road / street</li>
+<li>Nearest park or green space</li>
+<li>Nearest public square or plaza</li>
+<li>Nearest public building</li>
+</ol>
+<p><b>What the player sees:</b> "📍 Your pin was set on a residential area. The mission zone has been shifted 180m northeast to [Street/Park Name]."</p>
+<p>Your street, sidewalk, and local park are fine. Only the building/land parcel itself is blocked.</p>
+</div>
+
+<div class="card">
+<h3>🌙 Night Deployment Restrictions</h3>
+<p>At night (22:00 - 06:00 local time based on the pin location), <b>residential zones</b> are restricted. Commercial, industrial, and wilderness areas remain playable.</p>
+<p><b>Why:</b> Walking around a residential neighborhood at 2 AM looking for caches is how you get the police called on you. We want players to be safe.</p>
+</div>
+
+<div class="card">
+<h3>🏘️ Large Properties / Farms / Ranches</h3>
+<p>Some players own very large properties and want to play on their own land. Two scenarios:</p>
+<p><b>1. Playing on your own property:</b> The host can <b>claim</b> their property by entering coordinates and acknowledging they have permission. Objectives generate on the property. Joiners see "Private Property — deploy only with permission".</p>
+<p><b>2. Playing on someone else's large property:</b> If you have permission, host can set the mission as "Private — permission granted". The game blocks public games from generating objectives near claimed properties but allows private game codes.</p>
+<p>Claimed properties are stored locally per game server. Public Open World games always offset objectives away from claimed properties.</p>
+</div>
+
+<div class="card">
+<h3>🗺️ Property Owner Opt-Out</h3>
+<p>Property owners can opt their property out of Signal Lost:</p>
+<ul>
+<li>Submit coordinates via a web form</li>
+<li>The property is added to a local exclusion list</li>
+<li>Mission zones automatically adjust around excluded properties</li>
+<li>Exclusion is per-building (using OSM outlines), not per-neighborhood</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>🎯 Trap & Decoy Safety</h3>
+<p>PvP traps and false objectives <b>cannot</b> be used to lure players to dangerous locations:</p>
+<ul>
+<li>Traps can only be placed within 100m of an existing real objective</li>
+<li>False objective markers generate within 100-300m of real objectives — not kilometers away</li>
+<li>All trap/decoy positions are checked against the blocked-location list</li>
+<li>If a trap would spawn in a blocked area, it re-rolls to a safe location</li>
+</ul>
+<p><b>Result:</b> You can't trick someone into walking onto train tracks by placing a fake cache there.</p>
+</div>
+
+<div class="card">
+<h3>🛡️ First-Time Safety Briefing</h3>
+<p>Every new player sees a mandatory safety briefing before their first mission (shown once, saved acknowledgment):</p>
+<ul>
+<li>Only deploy in areas you are legally allowed to be</li>
+<li>Do not trespass on private property</li>
+<li>Be aware of your surroundings at all times</li>
+<li>Do not use the game while driving or operating machinery</li>
+<li>Respect local laws and regulations</li>
+<li>If confronted by authorities, comply and explain</li>
+<li>You are responsible for your own safety</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>🆘 Emergency Situations</h3>
+<p><b>If you are injured or in danger, call your local emergency services immediately.</b> The game is not a medical or safety device.</p>
+<p>The game's Emergency Stop button (always visible on screen) ends your participation and displays your <b>current GPS coordinates</b> in large text — so you can read them to emergency dispatchers if needed.</p>
+<p>That's all. The game does not contact emergency services, send alerts, or track your location after the mission ends.</p>
+</div>
+
+<div class="card">
+<h3>Can I shoot other players?</h3>
+<p>No. There are no direct weapons against other players. Combat is indirect: drones, traps, sabotage, and hacking. You win by extracting first, not by eliminating other squads.</p>
+</div>
+
+<div class="card">
+<h3>What happens if I die?</h3>
+<p>You don't "die" — your signal gets degraded. If your signal reaches zero, you go <b>offline</b> for 60 seconds. Your squad can revive you (Medic) or you respawn after the timer. You lose any caches you were carrying.</p>
+</div>
+
+<div class="card">
+<h3>Can I play alone?</h3>
+<p>Yes. Deploy solo (PvE mode) and complete objectives against AI threats. Or deploy into Open World and compete against other squads alone — risky but rewarding.</p>
+</div>
+
+<div class="card">
+<h3>How big is the map?</h3>
+<p>~10km x 10km gameplay area. Walking across takes 20+ minutes. Use the Navigator's route optimization for efficient travel. The Courier can sprint for short bursts.</p>
+</div>
+
+<div class="card">
+<h3>Can I play with friends on different devices?</h3>
+<p>Yes. Share the game code. Players on any device with a browser can join. GPS works best on phones, but desktop works too (click-to-place your position).</p>
+</div>
+
+<div class="card">
+<h3>What's the difference between Quick Match and Open World?</h3>
+<ul>
+<li><b>Quick Match:</b> Your own instance. Only your squad + AI. No other players on the map.</li>
+<li><b>Open World:</b> Shared persistent map. Multiple squads (from different game codes) deploy together. Compete indirectly for extraction.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>Can I create a mission at my real location?</h3>
+<p>Yes. Use Custom Mission mode with GPS enabled. Drop a pin where you are, or let the game use your GPS coordinates. Objectives generate around your real position.</p>
+</div>
+
+<div class="card">
+<h3>How do alliances work?</h3>
+<p>See the <a href="#alliances" style="color:#4fc3f7">Alliances</a> section. In short: temporary 2-squad teams in Open World mode. Share extraction points and intel. Betrayal comes with a -200 point penalty.</p>
+</div>
+
+<div class="card">
+<h3>How do I counter a Mechanic hacking our tower?</h3>
+<p>Your Mission Control can detect it. Go to the tower and either: destroy it (30s, noisy), have your Mechanic counter-hack it (10s), or just let it happen and deal with the consequences.</p>
+</div>
+
+<div class="footer">
+SIGNAL LOST v2 — <span>Coordinate. Decode. Extract.</span><br>
+Game Manual — Updated 2026-05-23
+</div>
+
+</body>
+</html>

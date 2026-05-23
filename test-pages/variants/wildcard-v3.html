@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WILDCARD V3 — GLITCH</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #000;
+    color: #0ff;
+    font-family: 'Share Tech Mono', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+  }
+
+  /* VHS tracking error lines */
+  .vhs-lines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.4;
+  }
+
+  .vhs-line {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: rgba(255,255,255,0.3);
+    animation: vhsDrift 3s linear infinite;
+  }
+
+  @keyframes vhsDrift {
+    0% { transform: translateY(-10px); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(100vh); opacity: 0; }
+  }
+
+  /* Static noise overlay */
+  .static-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9997;
+    opacity: 0.15;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    animation: staticFlicker 0.1s steps(2) infinite;
+  }
+
+  @keyframes staticFlicker {
+    0% { opacity: 0.1; }
+    50% { opacity: 0.2; }
+    100% { opacity: 0.1; }
+  }
+
+  /* Scanlines */
+  .scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9996;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.3) 0px,
+      rgba(0,0,0,0.3) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+
+  /* Main container */
+  .container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 1fr 1fr;
+    gap: 12px;
+    padding: 16px;
+    height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HUD Header */
+  .hud-header {
+    grid-column: 1 / -1;
+    border: 2px solid #f0f;
+    padding: 12px 20px;
+    background: rgba(0,0,0,0.8);
+    position: relative;
+    overflow: hidden;
+    animation: hudGlitch 4s infinite;
+  }
+
+  @keyframes hudGlitch {
+    0%, 90%, 100% { transform: translate(0); filter: none; }
+    91% { transform: translate(-3px, 2px); filter: hue-rotate(90deg); }
+    92% { transform: translate(3px, -1px); filter: hue-rotate(-90deg); }
+    93% { transform: translate(0); filter: none; }
+    96% { transform: translate(2px, 0); filter: saturate(2); }
+    97% { transform: translate(-1px, 1px); filter: none; }
+  }
+
+  .hud-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,0,255,0.2), transparent);
+    animation: hudScan 2s linear infinite;
+  }
+
+  @keyframes hudScan {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+
+  .hud-title {
+    font-size: 28px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    text-shadow: 2px 0 #f0f, -2px 0 #0ff;
+    animation: textFlicker 0.15s infinite alternate;
+  }
+
+  @keyframes textFlicker {
+    0% { opacity: 1; }
+    100% { opacity: 0.85; }
+  }
+
+  .hud-subtitle {
+    font-size: 12px;
+    color: #f0f;
+    margin-top: 4px;
+    letter-spacing: 2px;
+  }
+
+  /* Panel styling */
+  .panel {
+    border: 2px solid #0ff;
+    background: rgba(0,0,0,0.85);
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 1px solid rgba(255,0,255,0.3);
+    pointer-events: none;
+    animation: borderGlitch 3s infinite;
+  }
+
+  @keyframes borderGlitch {
+    0%, 95%, 100% { opacity: 1; transform: scale(1); }
+    96% { opacity: 0; transform: scale(1.01); }
+    97% { opacity: 1; transform: scale(0.99); }
+  }
+
+  .panel-title {
+    font-size: 14px;
+    color: #f0f;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+    border-bottom: 1px solid #f0f;
+    padding-bottom: 4px;
+    animation: charShift 2s infinite;
+  }
+
+  @keyframes charShift {
+    0%, 100% { letter-spacing: 2px; }
+    50% { letter-spacing: 3px; }
+  }
+
+  /* RADAR PANEL */
+  .radar-panel {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .radar-canvas {
+    width: 100%;
+    height: calc(100% - 30px);
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(circle at center, rgba(0,255,255,0.05) 0%, transparent 70%);
+  }
+
+  .radar-grid {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    border: 2px solid rgba(0,255,255,0.4);
+    border-radius: 50%;
+    animation: radarJitter 0.5s infinite;
+  }
+
+  @keyframes radarJitter {
+    0%, 100% { transform: translate(-50%, -50%) translate(0,0); }
+    25% { transform: translate(-50%, -50%) translate(1px, -1px); }
+    50% { transform: translate(-50%, -50%) translate(-1px, 1px); }
+    75% { transform: translate(-50%, -50%) translate(0, -1px); }
+  }
+
+  .radar-grid::before,
+  .radar-grid::after {
+    content: '';
+    position: absolute;
+    border: 1px solid rgba(0,255,255,0.2);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .radar-grid::before { width: 130px; height: 130px; }
+  .radar-grid::after { width: 60px; height: 60px; }
+
+  .radar-sweep {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #0ff, transparent);
+    transform-origin: left center;
+    animation: sweepRotate 2s linear infinite;
+  }
+
+  @keyframes sweepRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .radar-blip {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #f0f;
+    border-radius: 50%;
+    animation: blipGlitch 1s infinite;
+  }
+
+  @keyframes blipGlitch {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(1.5); }
+  }
+
+  .radar-tear {
+    position: absolute;
+    width: 100%;
+    height: 20px;
+    background: rgba(0,255,255,0.1);
+    animation: tearShift 0.8s infinite;
+  }
+
+  @keyframes tearShift {
+    0% { top: 20%; transform: translateX(0); }
+    25% { transform: translateX(10px); }
+    50% { transform: translateX(-5px); }
+    75% { transform: translateX(15px); }
+    100% { top: 80%; transform: translateX(0); }
+  }
+
+  /* LOADING PANEL */
+  .loading-panel {
+    grid-row: 2;
+    grid-column: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .loading-text {
+    font-size: 18px;
+    margin-bottom: 20px;
+    text-align: center;
+    animation: loadingTextGlitch 1s infinite;
+  }
+
+  @keyframes loadingTextGlitch {
+    0%, 90%, 100% { transform: translateX(0); filter: none; }
+    91% { transform: translateX(-5px); filter: hue-rotate(180deg); }
+    92% { transform: translateX(5px); filter: none; }
+    93% { transform: translateX(-2px); }
+    94% { transform: translateX(0); }
+  }
+
+  .loading-bar-container {
+    width: 100%;
+    height: 24px;
+    border: 2px solid #f0f;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .loading-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #0ff, #f0f, #0ff);
+    width: 0%;
+    position: relative;
+    animation: barStutter 3s infinite;
+  }
+
+  @keyframes barStutter {
+    0% { width: 0%; }
+    20% { width: 15%; }
+    21% { width: 12%; }
+    25% { width: 30%; }
+    26% { width: 28%; }
+    40% { width: 45%; }
+    41% { width: 42%; }
+    55% { width: 60%; }
+    56% { width: 55%; }
+    70% { width: 75%; }
+    71% { width: 70%; }
+    85% { width: 90%; }
+    86% { width: 85%; }
+    95% { width: 98%; }
+    96% { width: 95%; }
+    100% { width: 100%; }
+  }
+
+  .loading-percentage {
+    text-align: center;
+    font-size: 24px;
+    color: #f0f;
+    animation: percentGlitch 0.2s infinite;
+  }
+
+  @keyframes percentGlitch {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+  }
+
+  .loading-fragments {
+    margin-top: 16px;
+    font-size: 10px;
+    color: rgba(0,255,255,0.5);
+    word-break: break-all;
+    line-height: 1.4;
+  }
+
+  /* CHAT PANEL */
+  .chat-panel {
+    grid-row: 3;
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid rgba(0,255,255,0.3);
+    margin-bottom: 10px;
+  }
+
+  .chat-message {
+    margin-bottom: 10px;
+    padding: 8px;
+    border-left: 3px solid #0ff;
+    background: rgba(0,255,255,0.05);
+    position: relative;
+    animation: messageGlitch 4s infinite;
+  }
+
+  .chat-message:nth-child(2) { animation-delay: 1s; }
+  .chat-message:nth-child(3) { animation-delay: 2s; }
+  .chat-message:nth-child(4) { animation-delay: 3s; }
+
+  @keyframes messageGlitch {
+    0%, 95%, 100% { transform: translateX(0); filter: none; }
+    96% { transform: translateX(3px); filter: hue-rotate(90deg); }
+    97% { transform: translateX(-2px); filter: none; }
+    98% { transform: translateX(1px); }
+  }
+
+  .chat-sender {
+    font-size: 11px;
+    color: #f0f;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+
+  .chat-text {
+    font-size: 13px;
+    line-height: 1.4;
+    color: #0ff;
+    animation: textCorrupt 3s infinite;
+  }
+
+  @keyframes textCorrupt {
+    0%, 90%, 100% { opacity: 1; }
+    92% { opacity: 0.5; }
+    93% { opacity: 1; }
+    95% { opacity: 0.3; }
+    96% { opacity: 1; }
+  }
+
+  .chat-artifact {
+    display: inline-block;
+    color: #f0f;
+    font-size: 10px;
+    margin-left: 4px;
+    animation: artifactFlicker 0.1s infinite;
+  }
+
+  @keyframes artifactFlicker {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .chat-input-area {
+    display: flex;
+    gap: 8px;
+  }
+
+  .chat-input {
+    flex: 1;
+    background: #000;
+    border: 2px solid #0ff;
+    color: #0ff;
+    padding: 8px 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    animation: inputGlitch 5s infinite;
+  }
+
+  @keyframes inputGlitch {
+    0%, 95%, 100% { border-color: #0ff; }
+    96% { border-color: #f0f; }
+    97% { border-color: #0ff; }
+    98% { border-color: #f00; }
+    99% { border-color: #0ff; }
+  }
+
+  .chat-send {
+    background: #000;
+    border: 2px solid #f0f;
+    color: #f0f;
+    padding: 8px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    animation: sendGlitch 3s infinite;
+  }
+
+  @keyframes sendGlitch {
+    0%, 90%, 100% { transform: translate(0); }
+    91% { transform: translate(-2px, 1px); }
+    92% { transform: translate(1px, -1px); }
+    93% { transform: translate(0); }
+  }
+
+  .chat-send:hover {
+    background: rgba(255,0,255,0.2);
+  }
+
+  /* Glitch blocks */
+  .glitch-block {
+    position: fixed;
+    background: rgba(0,255,255,0.1);
+    pointer-events: none;
+    z-index: 9995;
+    animation: blockGlitch 2s infinite;
+  }
+
+  @keyframes blockGlitch {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 0.3; }
+  }
+
+  /* RGB shift effect */
+  .rgb-shift {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9994;
+    mix-blend-mode: screen;
+    animation: rgbShift 5s infinite;
+  }
+
+  @keyframes rgbShift {
+    0%, 90%, 100% { 
+      box-shadow: inset 0 0 0 transparent, inset 0 0 0 transparent;
+    }
+    92% { 
+      box-shadow: inset 3px 0 0 rgba(255,0,0,0.2), inset -3px 0 0 rgba(0,255,255,0.2);
+    }
+    94% { 
+      box-shadow: inset -2px 0 0 rgba(255,0,255,0.2), inset 2px 0 0 rgba(0,255,0,0.2);
+    }
+    96% { 
+      box-shadow: inset 0 0 0 transparent, inset 0 0 0 transparent;
+    }
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #000; }
+  ::-webkit-scrollbar-thumb { background: #f0f; }
+</style>
+</head>
+<body>
+
+<!-- Overlays -->
+<div class="static-overlay"></div>
+<div class="scanlines"></div>
+<div class="rgb-shift"></div>
+<div class="vhs-lines" id="vhsLines"></div>
+
+<!-- Glitch blocks container -->
+<div id="glitchBlocks"></div>
+
+<div class="container">
+  <!-- HUD Header -->
+  <div class="hud-header">
+    <div class="hud-title" id="hudTitle">WILDCARD V3 — GLITCH</div>
+    <div class="hud-subtitle">SYSTEM_CORRUPTED // SIGNAL_LOST // DATA_INTEGRITY: 12%</div>
+  </div>
+
+  <!-- RADAR -->
+  <div class="panel radar-panel">
+    <div class="panel-title" id="radarTitle">◈ RADAR_MALFUNCTION</div>
+    <div class="radar-canvas" id="radarCanvas">
+      <div class="radar-grid">
+        <div class="radar-sweep"></div>
+      </div>
+      <div class="radar-blip" style="top: 35%; left: 45%;"></div>
+      <div class="radar-blip" style="top: 60%; left: 65%; animation-delay: 0.3s;"></div>
+      <div class="radar-blip" style="top: 45%; left: 30%; animation-delay: 0.6s;"></div>
+      <div class="radar-tear"></div>
+      <div class="radar-tear" style="animation-delay: 0.4s; height: 8px;"></div>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="panel loading-panel">
+    <div class="panel-title" id="loadingTitle">◈ UPLOAD_CORRUPTED</div>
+    <div class="loading-text" id="loadingText">INITIALIZING_BROKEN_PROTOCOL...</div>
+    <div class="loading-bar-container">
+      <div class="loading-bar"></div>
+    </div>
+    <div class="loading-percentage" id="loadingPercent">0%</div>
+    <div class="loading-fragments" id="loadingFragments"></div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="panel chat-panel">
+    <div class="panel-title" id="chatTitle">◈ TRANSMISSION_FRAGMENTS</div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-message">
+        <div class="chat-sender">[UNKNOWN_SOURCE]</div>
+        <div class="chat-text">Can anyone hear this? The signal is breaking apart<span class="chat-artifact">▓▒░</span></div>
+      </div>
+      <div class="chat-message">
+        <div class="chat-sender">[CORRUPTED_NODE_7]</div>
+        <div class="chat-text">Data streams are merging. Reality buffer at 3%<span class="chat-artifact">◈◉◎</span></div>
+      </div>
+      <div class="chat-message">
+        <div class="chat-sender">[SYSTEM]</div>
+        <div class="chat-text">WARNING: Memory sectors 0x4F through 0x9A are unreadable<span class="chat-artifact">▒▓░</span></div>
+      </div>
+      <div class="chat-message">
+        <div class="chat-sender">[GHOST_SIGNAL]</div>
+        <div class="chat-text">...echo... echo... the pattern repeats but wrong<span class="chat-artifact">◐◑◒</span></div>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <input type="text" class="chat-input" id="chatInput" placeholder="TYPE_MESSAGE_[CORRUPTED]...">
+      <button class="chat-send" id="chatSend">SEND</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Glitch character sets
+const glitchChars = '▓▒░◈◉◎◐◑◒◓◇◆□■▪▫▬▭▮▯▲▼◄►◢◣◤◥▴▾◂▸▵▿◃▹←↑→↓↔↕↨∟▌▐▀▄█';
+const hexChars = '0123456789ABCDEF';
+
+// Random glitch character
+function randomGlitch() {
+  return glitchChars[Math.floor(Math.random() * glitchChars.length)];
+}
+
+// Random hex byte
+function randomHex() {
+  return hexChars[Math.floor(Math.random() * 16)];
+}
+
+// Corrupt text element
+function corruptText(element, intensity = 0.3) {
+  const original = element.dataset.original || element.textContent;
+  if (!element.dataset.original) element.dataset.original = original;
+  
+  let result = '';
+  for (let i = 0; i < original.length; i++) {
+    if (Math.random() < intensity && original[i] !== ' ') {
+      result += randomGlitch();
+    } else {
+      result += original[i];
+    }
+  }
+  element.textContent = result;
+}
+
+// Glitch the HUD title periodically
+const hudTitle = document.getElementById('hudTitle');
+setInterval(() => {
+  if (Math.random() < 0.4) {
+    corruptText(hudTitle, 0.2);
+    setTimeout(() => {
+      hudTitle.textContent = hudTitle.dataset.original;
+    }, 150);
+  }
+}, 800);
+
+// Glitch panel titles
+const panelTitles = ['radarTitle', 'loadingTitle', 'chatTitle'];
+setInterval(() => {
+  const titleId = panelTitles[Math.floor(Math.random() * panelTitles.length)];
+  const el = document.getElementById(titleId);
+  if (el && Math.random() < 0.5) {
+    corruptText(el, 0.25);
+    setTimeout(() => {
+      el.textContent = el.dataset.original;
+    }, 200);
+  }
+}, 1200);
+
+// Loading text glitch
+const loadingText = document.getElementById('loadingText');
+const loadingMessages = [
+  'INITIALIZING_BROKEN_PROTOCOL...',
+  'DATA_CORRUPTION_DETECTED...',
+  'RETRYING_FAILED_SECTOR...',
+  'MEMORY_FAULT_0x4F3A...',
+  'SIGNAL_DEGRADED...',
+  'BUFFER_OVERFLOW_IMMINENT...'
+];
+setInterval(() => {
+  if (Math.random() < 0.3) {
+    loadingText.textContent = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+    corruptText(loadingText, 0.15);
+    setTimeout(() => {
+      loadingText.textContent = loadingText.dataset.original;
+    }, 250);
+  }
+}, 2000);
+
+// Loading percentage counter
+const loadingPercent = document.getElementById('loadingPercent');
+let percent = 0;
+setInterval(() => {
+  percent += Math.floor(Math.random() * 8) - 2;
+  if (percent < 0) percent = 0;
+  if (percent > 100) percent = 100;
+  loadingPercent.textContent = percent + '%';
+  if (Math.random() < 0.3) {
+    loadingPercent.style.color = Math.random() < 0.5 ? '#f0f' : '#0ff';
+  }
+}, 300);
+
+// Generate hex fragments
+const fragmentsEl = document.getElementById('loadingFragments');
+function generateFragments() {
+  let frag = '';
+  for (let i = 0; i < 8; i++) {
+    frag += '0x';
+    for (let j = 0; j < 4; j++) frag += randomHex();
+    frag += ' ';
+  }
+  fragmentsEl.textContent = frag;
+}
+generateFragments();
+setInterval(generateFragments, 400);
+
+// Chat message text corruption
+const chatTexts = document.querySelectorAll('.chat-text');
+chatTexts.forEach((el, idx) => {
+  if (!el.dataset.original) el.dataset.original = el.childNodes[0].textContent.trim();
+  setInterval(() => {
+    if (Math.random() < 0.3) {
+      const artifact = el.querySelector('.chat-artifact');
+      let newText = el.dataset.original;
+      // Randomly replace some chars
+      let corrupted = '';
+      for (let i = 0; i < newText.length; i++) {
+        if (Math.random() < 0.15 && newText[i] !== ' ') {
+          corrupted += randomGlitch();
+        } else {
+          corrupted += newText[i];
+        }
+      }
+      el.childNodes[0].textContent = corrupted + ' ';
+      setTimeout(() => {
+        el.childNodes[0].textContent = el.dataset.original + ' ';
+      }, 200 + Math.random() * 300);
+    }
+  }, 1500 + idx * 400);
+});
+
+// VHS line generation
+const vhsLines = document.getElementById('vhsLines');
+function createVHSLine() {
+  const line = document.createElement('div');
+  line.className = 'vhs-line';
+  line.style.top = Math.random() * 100 + '%';
+  line.style.height = (Math.random() * 4 + 1) + 'px';
+  line.style.opacity = Math.random() * 0.5 + 0.1;
+  line.style.animationDuration = (Math.random() * 2 + 1) + 's';
+  vhsLines.appendChild(line);
+  setTimeout(() => line.remove(), 3000);
+}
+setInterval(createVHSLine, 500);
+
+// Glitch blocks
+const glitchBlocks = document.getElementById('glitchBlocks');
+function createGlitchBlock() {
+  const block = document.createElement('div');
+  block.className = 'glitch-block';
+  block.style.left = Math.random() * 100 + '%';
+  block.style.top = Math.random() * 100 + '%';
+  block.style.width = (Math.random() * 100 + 20) + 'px';
+  block.style.height = (Math.random() * 20 + 2) + 'px';
+  block.style.background = Math.random() < 0.5 ? 'rgba(0,255,255,0.2)' : 'rgba(255,0,255,0.2)';
+  glitchBlocks.appendChild(block);
+  setTimeout(() => block.remove(), 1000);
+}
+setInterval(createGlitchBlock, 300);
+
+// Radar tear effect
+const radarCanvas = document.getElementById('radarCanvas');
+function createRadarTear() {
+  const tear = document.createElement('div');
+  tear.className = 'radar-tear';
+  tear.style.top = Math.random() * 80 + 10 + '%';
+  tear.style.height = (Math.random() * 15 + 3) + 'px';
+  tear.style.animationDuration = (Math.random() * 0.5 + 0.3) + 's';
+  radarCanvas.appendChild(tear);
+  setTimeout(() => tear.remove(), 1000);
+}
+setInterval(createRadarTear, 600);
+
+// Random screen shake
+setInterval(() => {
+  if (Math.random() < 0.1) {
+    document.body.style.transform = `translate(${(Math.random() - 0.5) * 6}px, ${(Math.random() - 0.5) * 4}px)`;
+    setTimeout(() => {
+      document.body.style.transform = 'translate(0,0)';
+    }, 100);
+  }
+}, 500);
+
+// Chat input handling
+const chatInput = document.getElementById('chatInput');
+const chatSend = document.getElementById('chatSend');
+const chatMessages = document.getElementById('chatMessages');
+
+function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  
+  const msg = document.createElement('div');
+  msg.className = 'chat-message';
+  msg.style.animationDelay = '0s';
+  
+  const sender = document.createElement('div');
+  sender.className = 'chat-sender';
+  sender.textContent = '[USER_' + Math.floor(Math.random() * 999).toString(16).toUpperCase() + ']';
+  
+  const content = document.createElement('div');
+  content.className = 'chat-text';
+  content.dataset.original = text;
+  content.textContent = text + ' ';
+  
+  const artifact = document.createElement('span');
+  artifact.className = 'chat-artifact';
+  artifact.textContent = '▓▒░';
+  content.appendChild(artifact);
+  
+  msg.appendChild(sender);
+  msg.appendChild(content);
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  chatInput.value = '';
+  
+  // Corrupt the new message randomly
+  setInterval(() => {
+    if (Math.random() < 0.2) {
+      let corrupted = '';
+      for (let i = 0; i < content.dataset.original.length; i++) {
+        if (Math.random() < 0.1 && content.dataset.original[i] !== ' ') {
+          corrupted += randomGlitch();
+        } else {
+          corrupted += content.dataset.original[i];
+        }
+      }
+      content.childNodes[0].textContent = corrupted + ' ';
+      setTimeout(() => {
+        content.childNodes[0].textContent = content.dataset.original + ' ';
+      }, 200);
+    }
+  }, 2000);
+}
+
+chatSend.addEventListener('click', sendMessage);
+chatInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+// Random color inversion flash
+setInterval(() => {
+  if (Math.random() < 0.05) {
+    document.body.style.filter = 'invert(1)';
+    setTimeout(() => {
+      document.body.style.filter = 'none';
+    }, 80);
+  }
+}, 2000);
+
+// Initialize dataset originals
+panelTitles.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.dataset.original = el.textContent;
+});
+loadingText.dataset.original = loadingText.textContent;
+</script>
+
+</body>
+</html>

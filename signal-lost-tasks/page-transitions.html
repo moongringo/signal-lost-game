@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>R&D Page Transitions Library</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg2: #12121a;
+      --text: #ffffff;
+      --text2: #a0a0b0;
+      --accent: #00f0ff;
+      --accent2: #ff0055;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+    
+    .container { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
+    
+    h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 900; margin-bottom: 1rem; letter-spacing: -0.03em; }
+    h2 { font-size: 1.25rem; font-weight: 700; margin: 2rem 0 1rem; color: var(--accent); }
+    p { color: var(--text2); line-height: 1.7; margin-bottom: 2rem; }
+    
+    .demo-box {
+      background: var(--bg2);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 3rem;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    
+    .demo-box .label {
+      position: absolute;
+      top: 1rem;
+      left: 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    
+    .demo-box .content {
+      text-align: center;
+    }
+    
+    .demo-box h3 {
+      font-size: 2rem;
+      font-weight: 900;
+      margin-bottom: 0.5rem;
+    }
+    
+    .demo-box span {
+      color: var(--text2);
+      font-size: 0.9rem;
+    }
+    
+    /* ========== PAGE TRANSITIONS ========== */
+    
+    /* 1. Fade Transition */
+    .transition-fade {
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    }
+    .transition-fade.out {
+      opacity: 0;
+    }
+    
+    /* 2. Slide Up */
+    .transition-slide-up {
+      transform: translateY(0);
+      opacity: 1;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease;
+    }
+    .transition-slide-up.out {
+      transform: translateY(-30px);
+      opacity: 0;
+    }
+    
+    /* 3. Slide Down */
+    .transition-slide-down {
+      transform: translateY(0);
+      opacity: 1;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease;
+    }
+    .transition-slide-down.out {
+      transform: translateY(30px);
+      opacity: 0;
+    }
+    
+    /* 4. Scale Fade */
+    .transition-scale {
+      transform: scale(1);
+      opacity: 1;
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s ease;
+    }
+    .transition-scale.out {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    
+    /* 5. Curtain Left */
+    .curtain-left {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--accent);
+      transform: translateX(-100%);
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 9999;
+    }
+    .curtain-left.active {
+      transform: translateX(0);
+    }
+    
+    /* 6. Curtain Right */
+    .curtain-right {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--accent2);
+      transform: translateX(100%);
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 9999;
+    }
+    .curtain-right.active {
+      transform: translateX(0);
+    }
+    
+    /* 7. Circle Expand */
+    .circle-expand {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 9999;
+    }
+    .circle-expand.active {
+      transform: translate(-50%, -50%) scale(300);
+    }
+    
+    /* 8. Blur Transition */
+    .transition-blur {
+      filter: blur(0);
+      opacity: 1;
+      transition: filter 0.5s ease, opacity 0.5s ease;
+    }
+    .transition-blur.out {
+      filter: blur(10px);
+      opacity: 0;
+    }
+    
+    /* 9. Flip Transition */
+    .transition-flip {
+      transform: perspective(1000px) rotateY(0);
+      opacity: 1;
+      transition: transform 0.7s ease, opacity 0.7s ease;
+    }
+    .transition-flip.out {
+      transform: perspective(1000px) rotateY(90deg);
+      opacity: 0;
+    }
+    
+    /* 10. Glitch Transition */
+    .glitch-transition {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 9999;
+      display: none;
+    }
+    .glitch-transition.active {
+      display: block;
+      animation: glitchTransition 0.5s ease forwards;
+    }
+    @keyframes glitchTransition {
+      0% { clip-path: inset(0 0 100% 0); }
+      20% { clip-path: inset(30% 0 40% 0); }
+      40% { clip-path: inset(10% 0 70% 0); }
+      60% { clip-path: inset(50% 0 20% 0); }
+      80% { clip-path: inset(0 0 100% 0); }
+      100% { clip-path: inset(0 0 0% 0); }
+    }
+    
+    .code-block {
+      background: var(--bg2);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1rem 0 2rem;
+      overflow-x: auto;
+    }
+    
+    .code-block code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      line-height: 1.8;
+      color: var(--text2);
+      white-space: pre;
+      display: block;
+    }
+    
+    .code-block .comment { color: var(--text3); }
+    .code-block .keyword { color: var(--accent); }
+    .code-block .string { color: var(--accent2); }
+    .code-block .function { color: #ffd965; }
+  </style>
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="page-transitions" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>R&D Page Transitions Library</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <div class="container">
+    <h1>Page Transitions Library</h1>
+    <p>10 production-ready page transition effects. Click each box to preview the transition. Used by the top 200 award-winning sites for seamless navigation.</p>
+    
+    <h2>1. Fade Transition</h2>
+    <div class="demo-box transition-fade" onclick="demoTransition(this, 'transition-fade')">
+      <span class="label">Click to preview</span>
+      <div class="content">
+        <h3>Fade</h3>
+        <span>Smooth opacity transition</span>
+      </div>
+    </div>
+    
+    <h2>2. Slide Up</h2>
+    <div class="demo-box transition-slide-up" onclick="demoTransition(this, 'transition-slide-up')">
+      <span class="label">Click to preview</span>
+      <div class="content">
+        <h3>Slide Up</h3>
+        <span>Content slides upward</span>
+      </div>
+    </div>
+    
+    <h2>3. Scale Fade</h2>
+    <div class="demo-box transition-scale" onclick="demoTransition(this, 'transition-scale')">
+      <span class="label">Click to preview</span>
+      <div class="content">
+        <h3>Scale Fade</h3>
+        <span>Scale down with spring physics</span>
+      </div>
+    </div>
+    
+    <h2>4. Blur Transition</h2>
+    <div class="demo-box transition-blur" onclick="demoTransition(this, 'transition-blur')">
+      <span class="label">Click to preview</span>
+      <div class="content">
+        <h3>Blur</h3>
+        <span>Content blurs into focus</span>
+      </div>
+    </div>
+    
+    <h2>5. Flip Transition</h2>
+    <div class="demo-box transition-flip" onclick="demoTransition(this, 'transition-flip')">
+      <span class="label">Click to preview</span>
+      <div class="content">
+        <h3>Flip</h3>
+        <span>3D perspective rotation</span>
+      </div>
+    </div>
+    
+    <h2>6. Curtain Left</h2>
+    <div class="demo-box" onclick="demoCurtain('curtain-left')">
+      <span class="label">Click to preview</span>
+      <div class="content">
+        <h3>Curtain Left</h3>
+        <span>Color wipes from left</span>
+      </div>
+    </div>
+    <div class="curtain-left" id="curtain-left"></div>
+    
+    <h2>7. Curtain Right</h2>
+    <div class="demo-box" onclick="demoCurtain('curtain-right')">
+      <span class="label">Click to preview</span>
+      <div class="content">
+        <h3>Curtain Right</h3>
+        <span>Color wipes from right</span>
+      </div>
+    </div>
+    <div class="curtain-right" id="curtain-right"></div>
+    
+    <h2>8. Circle Expand</h2>
+    <div class="demo-box" onclick="demoCircle()">
+      <span class="label">Click to preview</span>
+      <div class="content">
+        <h3>Circle Expand</h3>
+        <span>Radial reveal from center</span>
+      </div>
+    </div>
+    <div class="circle-expand" id="circle-expand"></div>
+    
+    <h2>9. Glitch Transition</h2>
+    <div class="demo-box" onclick="demoGlitch()">
+      <span class="label">Click to preview</span>
+      <div class="content">
+        <h3>Glitch</h3>
+        <span>Clip-path slice animation</span>
+      </div>
+    </div>
+    <div class="glitch-transition" id="glitch-transition"></div>
+    
+    <h2>Implementation Code</h2>
+    <div class="code-block">
+      <code>// Simple page transition wrapper
+<span class="keyword">function</span> <span class="function">navigateTo</span>(url) {
+  <span class="comment">// Add out class to trigger exit animation</span>
+  document.body.classList.add(<span class="string">'transition-fade-out'</span>);
+  
+  <span class="comment">// Wait for animation, then navigate</span>
+  <span class="function">setTimeout</span>(() => {
+    window.location.href = url;
+  }, 500);
+}
+
+<span class="comment">// On page load, remove out class to trigger enter</span>
+window.addEventListener(<span class="string">'load'</span>, () => {
+  document.body.classList.remove(<span class="string">'transition-fade-out'</span>);
+  document.body.classList.add(<span class="string">'transition-fade-in'</span>);
+});
+
+<span class="comment">// With Barba.js (recommended for complex sites)</span>
+<span class="keyword">import</span> barba <span class="keyword">from</span> <span class="string">'@barba/core'</span>;
+
+barba.init({
+  transitions: [{
+    name: <span class="string">'fade'</span>,
+    leave(data) {
+      <span class="keyword">return</span> gsap.to(data.current.container, { 
+        opacity: 0, 
+        duration: 0.5 
+      });
+    },
+    enter(data) {
+      <span class="keyword">return</span> gsap.from(data.next.container, { 
+        opacity: 0, 
+        duration: 0.5 
+      });
+    }
+  }]
+});</code>
+    </div>
+  </div>
+  
+  <script>
+    function demoTransition(el, className) {
+      el.classList.add('out');
+      setTimeout(() => {
+        el.classList.remove('out');
+      }, 800);
+    }
+    
+    function demoCurtain(id) {
+      const el = document.getElementById(id);
+      el.classList.add('active');
+      setTimeout(() => {
+        el.classList.remove('active');
+      }, 1200);
+    }
+    
+    function demoCircle() {
+      const el = document.getElementById('circle-expand');
+      el.classList.add('active');
+      setTimeout(() => {
+        el.classList.remove('active');
+      }, 1500);
+    }
+    
+    function demoGlitch() {
+      const el = document.getElementById('glitch-transition');
+      el.classList.add('active');
+      setTimeout(() => {
+        el.classList.remove('active');
+      }, 800);
+    }
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quemello — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="quemello-theme.css">
+  <style>
+    .dash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 1500px; margin: 0 auto; padding: 80px 24px 24px; }
+    @media (max-width: 1000px) { .dash-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .dash-grid { grid-template-columns: 1fr; } }
+    .dash-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; backdrop-filter: blur(12px); transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .dash-card:hover { border-color: var(--border-hover); box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 40px var(--gold-dim); transform: translateY(-2px); }
+    .dash-card .icon { font-size: 32px; margin-bottom: 16px; }
+    .dash-card h4 { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+    .dash-card .val { font-size: 36px; font-weight: 800; color: var(--cream); }
+    .dash-card .delta { font-size: 12px; color: var(--teal); margin-top: 4px; }
+    .dash-card .delta.down { color: var(--coral); }
+    .recent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1500px; margin: 20px auto 0; padding: 0 24px; }
+    @media (max-width: 900px) { .recent-grid { grid-template-columns: 1fr; } }
+    .recent-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; backdrop-filter: blur(12px); }
+    .recent-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .recent-card-header h3 { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); }
+    .recent-card-body { padding: 16px 20px; }
+    .activity-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .activity-dot.win { background: var(--teal); box-shadow: 0 0 6px var(--teal); }
+    .activity-dot.loss { background: var(--coral); box-shadow: 0 0 6px var(--coral); }
+    .activity-text { font-size: 13px; }
+    .activity-text .mode { color: var(--text-dim); font-size: 11px; }
+    .activity-time { margin-left: auto; font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  </style>
+  <link rel="stylesheet" href="../../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="dashboard" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Quemello — Dashboard</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../../design-flow-setup.html">Setup</a>
+        <a href="../../design-flow-roles.html">Roles</a>
+        <a href="../../design-flow-control.html">Control</a>
+
+        <a href="../../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../../login.html">Login</a>
+              <a href="../../server-browser.html">Server Browser</a>
+              <a href="../../map-selection.html">Map Selection</a>
+              <a href="../../role-selection.html">Role Selection</a>
+              <a href="../../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../../player-profile.html">Player Profile</a>
+              <a href="../../career-stats.html">Career Stats</a>
+              <a href="../../match-result.html">Match Result</a>
+              <a href="../../post-match-report.html">Post-Match Report</a>
+              <a href="../../kill-cam.html">Kill Cam</a>
+              <a href="../../death-recap.html">Death Recap</a>
+              <a href="../../spectator-mode.html">Spectator Mode</a>
+              <a href="../../replay-viewer.html">Replay Viewer</a>
+              <a href="../../tournament-bracket.html">Tournament</a>
+              <a href="../../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../../store.html">Store</a>
+              <a href="../../friends.html">Friends</a>
+              <a href="../../squad.html">Squad</a>
+              <a href="../../clan-wars.html">Clan Wars</a>
+              <a href="../../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../../token-dashboard.html">Token Dashboard</a>
+              <a href="../../daily-challenges.html">Daily Challenges</a>
+              <a href="../../inventory.html">Inventory</a>
+              <a href="../../loadout-builder.html">Loadout Builder</a>
+              <a href="../../battle-pass.html">Battle Pass</a>
+              <a href="../../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../../R&D-INDEX.html">R&D Index</a>
+              <a href="../../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../../leaderboard.html">Leaderboard</a>
+              <a href="../../settings.html">Settings</a>
+              <a href="../../design-system.html">Design System</a>
+              <a href="../../design-flow-setup.html">Setup Page</a>
+              <a href="../../design-flow-roles.html">Roles Page</a>
+              <a href="../../design-flow-control.html">Control Page</a>
+              <a href="../../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../../mobile-radar.html">Mobile Radar</a>
+              <a href="../../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+
+  <div class="particle"></div><div class="particle"></div>
+    <div class="particle"></div><div class="particle"></div>
+  </div>
+  <nav class="q-nav">
+    <a href="index.html" class="q-nav-logo">Quemello<span>.</span></a>
+    <div class="q-nav-right">
+      <span class="q-pill info" id="q-clock">00:00:00 UTC</span>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <div class="dash-grid">
+      <div class="dash-card enter-stagger">
+        <div class="icon">🏆</div>
+        <h4>Total Matches</h4>
+        <div class="val">247</div>
+        <div class="delta">+12 this week</div>
+      </div>
+      <div class="dash-card enter-stagger">
+        <div class="icon">🎯</div>
+        <h4>Win Rate</h4>
+        <div class="val">64%</div>
+        <div class="delta">+3% vs last month</div>
+      </div>
+      <div class="dash-card enter-stagger">
+        <div class="icon">💀</div>
+        <h4>K/D Ratio</h4>
+        <div class="val">1.84</div>
+        <div class="delta down">-0.2 vs last month</div>
+      </div>
+      <div class="dash-card enter-stagger">
+        <div class="icon">⭐</div>
+        <h4>Rank</h4>
+        <div class="val">Gold I</div>
+        <div class="delta">+1 tier this season</div>
+      </div>
+    </div>
+
+    <div class="recent-grid">
+      <div class="recent-card enter-stagger">
+        <div class="recent-card-header"><h3>Recent Matches</h3><span class="tag" style="font-size:10px;color:var(--text-dim)">Last 5</span></div>
+        <div class="recent-card-body">
+          <div class="activity-item"><div class="activity-dot win"></div><div class="activity-text">Victory — <span class="mode">Search & Destroy</span></div><div class="activity-time">2m ago</div></div>
+          <div class="activity-item"><div class="activity-dot win"></div><div class="activity-text">Victory — <span class="mode">Domination</span></div><div class="activity-time">15m ago</div></div>
+          <div class="activity-item"><div class="activity-dot loss"></div><div class="activity-text">Defeat — <span class="mode">Team Deathmatch</span></div><div class="activity-time">32m ago</div></div>
+          <div class="activity-item"><div class="activity-dot win"></div><div class="activity-text">Victory — <span class="mode">Search & Destroy</span></div><div class="activity-time">1h ago</div></div>
+          <div class="activity-item"><div class="activity-dot win"></div><div class="activity-text">Victory — <span class="mode">Hardpoint</span></div><div class="activity-time">2h ago</div></div>
+        </div>
+      </div>
+      <div class="recent-card enter-stagger">
+        <div class="recent-card-header"><h3>Top Weapons</h3><span class="tag" style="font-size:10px;color:var(--text-dim)">By Kills</span></div>
+        <div class="recent-card-body">
+          <div class="activity-item"><div class="activity-text" style="font-weight:600">M16A1</div><div class="activity-time" style="color:var(--teal)">342 kills</div></div>
+          <div class="activity-item"><div class="activity-text" style="font-weight:600">M1911</div><div class="activity-time" style="color:var(--teal)">89 kills</div></div>
+          <div class="activity-item"><div class="activity-text" style="font-weight:600">M40</div><div class="activity-time" style="color:var(--teal)">67 kills</div></div>
+          <div class="activity-item"><div class="activity-text" style="font-weight:600">M67 Frag</div><div class="activity-time" style="color:var(--teal)">23 kills</div></div>
+          <div class="activity-item"><div class="activity-text" style="font-weight:600">Claymore</div><div class="activity-time" style="color:var(--teal)">18 kills</div></div>
+        </div>
+      </div>
+      <div class="recent-card enter-stagger">
+        <div class="recent-card-header"><h3>Squad Activity</h3><span class="tag" style="font-size:10px;color:var(--text-dim)">Online</span></div>
+        <div class="recent-card-body">
+          <div class="activity-item"><div class="activity-dot win"></div><div class="activity-text">Morgan <span class="mode">— In Match</span></div><div class="activity-time" style="color:var(--teal)">●</div></div>
+          <div class="activity-item"><div class="activity-dot win"></div><div class="activity-text">Chen <span class="mode">— In Lobby</span></div><div class="activity-time" style="color:var(--gold)">●</div></div>
+          <div class="activity-item"><div class="activity-dot loss"></div><div class="activity-text">O'Brien <span class="mode">— Offline</span></div><div class="activity-time" style="color:var(--text-muted)">○</div></div>
+          <div class="activity-item"><div class="activity-dot loss"></div><div class="activity-text">Kowalski <span class="mode">— Offline</span></div><div class="activity-time" style="color:var(--text-muted)">○</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="quemello-effects.js"></script>
+
+
+    </div>
+  </main>
+  <script src="../../design-system.js"></script>
+  <script src="../../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

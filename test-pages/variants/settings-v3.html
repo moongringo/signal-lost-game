@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings V3 — Controls</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #0a0a0a;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 1.1rem;
+    letter-spacing: 0.18em;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .tab {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #888;
+    padding: 8px 18px;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: .2s;
+  }
+  .tab.active {
+    background: #2a2a2a;
+    color: #e0e0e0;
+    border-color: #555;
+  }
+  .tab:hover:not(.active) { border-color: #444; color: #aaa; }
+
+  /* Panel */
+  .panel {
+    width: 100%;
+    max-width: 720px;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 24px;
+    display: none;
+  }
+  .panel.active { display: block; }
+
+  /* Keyboard visual */
+  .keyboard-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+  .kb-row { display: flex; gap: 6px; justify-content: center; }
+  .keycap {
+    width: 44px; height: 44px;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; color: #aaa;
+    box-shadow: 0 3px 0 #0a0a0a;
+    user-select: none;
+  }
+  .keycap.wide { width: 70px; }
+  .keycap.xwide { width: 90px; }
+  .keycap.space { width: 260px; }
+  .keycap.active-key {
+    background: #2a2a2a;
+    border-color: #666;
+    color: #e0e0e0;
+    box-shadow: 0 1px 0 #0a0a0a;
+    transform: translateY(2px);
+  }
+
+  /* Bind list */
+  .bind-list { display: flex; flex-direction: column; gap: 10px; }
+  .bind-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #161616;
+    border: 1px solid #222;
+    border-radius: 6px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: .15s;
+  }
+  .bind-row:hover { border-color: #444; background: #1a1a1a; }
+  .bind-label { font-size: 0.8rem; color: #bbb; letter-spacing: 0.06em; text-transform: uppercase; }
+  .bind-keys { display: flex; gap: 6px; }
+  .bind-key {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 0.72rem;
+    color: #ddd;
+    min-width: 32px;
+    text-align: center;
+    box-shadow: 0 2px 0 #0a0a0a;
+  }
+
+  /* Controller visual */
+  .controller-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+  .ctrl-body {
+    width: 320px; height: 200px;
+    background: #1a1a1a;
+    border: 2px solid #333;
+    border-radius: 60px 60px 80px 80px;
+    position: relative;
+    box-shadow: 0 8px 0 #0a0a0a;
+  }
+  .stick {
+    width: 56px; height: 56px;
+    background: #222;
+    border: 2px solid #444;
+    border-radius: 50%;
+    position: absolute;
+    box-shadow: inset 0 2px 4px #000;
+  }
+  .stick::after {
+    content: '';
+    width: 28px; height: 28px;
+    background: #2a2a2a;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 1px 2px #000;
+  }
+  .stick.left { top: 60px; left: 40px; }
+  .stick.right { top: 60px; right: 40px; }
+  .dpad {
+    position: absolute;
+    top: 70px; left: 110px;
+    width: 44px; height: 44px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+  }
+  .dpad > div {
+    background: #222;
+    border: 1px solid #333;
+  }
+  .dpad .u { grid-column: 2; grid-row: 1; border-radius: 4px 4px 0 0; }
+  .dpad .l { grid-column: 1; grid-row: 2; border-radius: 4px 0 0 4px; }
+  .dpad .c { grid-column: 2; grid-row: 2; background: #1a1a1a; border: none; }
+  .dpad .r { grid-column: 3; grid-row: 2; border-radius: 0 4px 4px 0; }
+  .dpad .d { grid-column: 2; grid-row: 3; border-radius: 0 0 4px 4px; }
+  .face {
+    position: absolute;
+    top: 70px; right: 110px;
+    width: 44px; height: 44px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+  }
+  .face > div {
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 50%;
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.55rem; color: #888;
+  }
+  .face .y { grid-column: 2; grid-row: 1; }
+  .face .x { grid-column: 1; grid-row: 2; }
+  .face .b { grid-column: 3; grid-row: 2; }
+  .face .a { grid-column: 2; grid-row: 3; }
+  .shoulder {
+    position: absolute;
+    top: -12px;
+    width: 70px; height: 24px;
+    background: #222;
+    border: 2px solid #333;
+    border-radius: 12px 12px 0 0;
+    font-size: 0.6rem;
+    color: #666;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .shoulder.lb { left: 30px; }
+  .shoulder.rb { right: 30px; }
+  .center-btn {
+    position: absolute;
+    bottom: 30px; left: 50%;
+    transform: translateX(-50%);
+    width: 40px; height: 16px;
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 8px;
+  }
+
+  .ctrl-legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 24px;
+    width: 100%;
+    max-width: 400px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.78rem; color: #aaa;
+  }
+  .legend-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #333;
+    border: 1px solid #444;
+  }
+
+  /* Overlay */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .overlay.show { display: flex; }
+  .overlay-box {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 36px 48px;
+    text-align: center;
+    animation: pop .25s ease;
+  }
+  @keyframes pop {
+    from { transform: scale(0.9); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+  .overlay-box h2 {
+    font-size: 1rem;
+    letter-spacing: 0.15em;
+    color: #ddd;
+    margin-bottom: 8px;
+  }
+  .overlay-box p {
+    font-size: 0.8rem;
+    color: #777;
+  }
+  .overlay-box .cancel-btn {
+    margin-top: 18px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #888;
+    padding: 8px 22px;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .overlay-box .cancel-btn:hover { border-color: #555; color: #bbb; }
+</style>
+</head>
+<body>
+
+<h1>Settings V3 — Controls</h1>
+
+<div class="tabs">
+  <div class="tab active" data-target="keyboard">Keyboard</div>
+  <div class="tab" data-target="controller">Controller</div>
+</div>
+
+<!-- Keyboard Panel -->
+<div id="keyboard" class="panel active">
+  <div class="keyboard-wrap">
+    <div class="kb-row">
+      <div class="keycap" data-k="1">1</div>
+      <div class="keycap" data-k="2">2</div>
+      <div class="keycap" data-k="3">3</div>
+      <div class="keycap" data-k="4">4</div>
+      <div class="keycap" data-k="5">5</div>
+      <div class="keycap" data-k="6">6</div>
+      <div class="keycap" data-k="7">7</div>
+      <div class="keycap" data-k="8">8</div>
+      <div class="keycap" data-k="9">9</div>
+      <div class="keycap" data-k="0">0</div>
+    </div>
+    <div class="kb-row">
+      <div class="keycap" data-k="q">Q</div>
+      <div class="keycap" data-k="w">W</div>
+      <div class="keycap" data-k="e">E</div>
+      <div class="keycap" data-k="r">R</div>
+      <div class="keycap" data-k="t">T</div>
+      <div class="keycap" data-k="y">Y</div>
+      <div class="keycap" data-k="u">U</div>
+      <div class="keycap" data-k="i">I</div>
+      <div class="keycap" data-k="o">O</div>
+      <div class="keycap" data-k="p">P</div>
+    </div>
+    <div class="kb-row">
+      <div class="keycap wide" data-k="shift">Shift</div>
+      <div class="keycap" data-k="a">A</div>
+      <div class="keycap" data-k="s">S</div>
+      <div class="keycap" data-k="d">D</div>
+      <div class="keycap" data-k="f">F</div>
+      <div class="keycap" data-k="g">G</div>
+      <div class="keycap" data-k="h">H</div>
+      <div class="keycap" data-k="j">J</div>
+      <div class="keycap" data-k="k">K</div>
+      <div class="keycap" data-k="l">L</div>
+    </div>
+    <div class="kb-row">
+      <div class="keycap xwide" data-k="ctrl">Ctrl</div>
+      <div class="keycap" data-k="z">Z</div>
+      <div class="keycap" data-k="x">X</div>
+      <div class="keycap" data-k="c">C</div>
+      <div class="keycap" data-k="v">V</div>
+      <div class="keycap" data-k="b">B</div>
+      <div class="keycap" data-k="n">N</div>
+      <div class="keycap" data-k="m">M</div>
+      <div class="keycap wide" data-k="enter">Enter</div>
+    </div>
+    <div class="kb-row">
+      <div class="keycap space" data-k=" ">Space</div>
+    </div>
+    <div class="kb-row">
+      <div class="keycap wide" data-k="arrowup">▲</div>
+      <div class="keycap wide" data-k="arrowleft">◀</div>
+      <div class="keycap wide" data-k="arrowdown">▼</div>
+      <div class="keycap wide" data-k="arrowright">▶</div>
+    </div>
+  </div>
+
+  <div class="bind-list" id="bindList">
+    <div class="bind-row" data-action="move">
+      <span class="bind-label">Move</span>
+      <div class="bind-keys"><span class="bind-key">W</span><span class="bind-key">A</span><span class="bind-key">S</span><span class="bind-key">D</span><span class="bind-key">Arrows</span></div>
+    </div>
+    <div class="bind-row" data-action="sprint">
+      <span class="bind-label">Sprint</span>
+      <div class="bind-keys"><span class="bind-key">Shift</span></div>
+    </div>
+    <div class="bind-row" data-action="interact">
+      <span class="bind-label">Interact</span>
+      <div class="bind-keys"><span class="bind-key">E</span></div>
+    </div>
+    <div class="bind-row" data-action="reload">
+      <span class="bind-label">Reload</span>
+      <div class="bind-keys"><span class="bind-key">R</span></div>
+    </div>
+    <div class="bind-row" data-action="weapon1">
+      <span class="bind-label">Weapon 1</span>
+      <div class="bind-keys"><span class="bind-key">1</span></div>
+    </div>
+    <div class="bind-row" data-action="weapon2">
+      <span class="bind-label">Weapon 2</span>
+      <div class="bind-keys"><span class="bind-key">2</span></div>
+    </div>
+    <div class="bind-row" data-action="grenade">
+      <span class="bind-label">Grenade</span>
+      <div class="bind-keys"><span class="bind-key">G</span></div>
+    </div>
+    <div class="bind-row" data-action="map">
+      <span class="bind-label">Map</span>
+      <div class="bind-keys"><span class="bind-key">M</span></div>
+    </div>
+    <div class="bind-row" data-action="comms">
+      <span class="bind-label">Comms</span>
+      <div class="bind-keys"><span class="bind-key">C</span></div>
+    </div>
+    <div class="bind-row" data-action="ping">
+      <span class="bind-label">Ping</span>
+      <div class="bind-keys"><span class="bind-key">Mouse3</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Controller Panel -->
+<div id="controller" class="panel">
+  <div class="controller-wrap">
+    <div class="ctrl-body">
+      <div class="shoulder lb">LB</div>
+      <div class="shoulder rb">RB</div>
+      <div class="stick left"></div>
+      <div class="stick right"></div>
+      <div class="dpad">
+        <div class="u"></div>
+        <div class="l"></div>
+        <div class="c"></div>
+        <div class="r"></div>
+        <div class="d"></div>
+      </div>
+      <div class="face">
+        <div class="y">Y</div>
+        <div class="x">X</div>
+        <div class="b">B</div>
+        <div class="a">A</div>
+      </div>
+      <div class="center-btn"></div>
+    </div>
+
+    <div class="ctrl-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#c44"></div> Left Stick — Move</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#48c"></div> Right Stick — Aim</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4a4"></div> A — Interact</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a4a"></div> B — Reload</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#cc4"></div> X — Grenade</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4cc"></div> Y — Comms</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#666"></div> LB — Weapon 1</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#666"></div> RB — Weapon 2</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#444"></div> D-Pad Up — Map</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#444"></div> Left Stick Click — Sprint</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#444"></div> Right Stick Click — Ping</div>
+    </div>
+  </div>
+</div>
+
+<!-- Rebind Overlay -->
+<div class="overlay" id="overlay">
+  <div class="overlay-box">
+    <h2>Press a Key</h2>
+    <p>Waiting for input…</p>
+    <button class="cancel-btn" id="cancelBtn">Cancel</button>
+  </div>
+</div>
+
+<script>
+  // Tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.target).classList.add('active');
+    });
+  });
+
+  // Rebind
+  let rebindingAction = null;
+  const overlay = document.getElementById('overlay');
+  const cancelBtn = document.getElementById('cancelBtn');
+
+  document.querySelectorAll('.bind-row').forEach(row => {
+    row.addEventListener('click', () => {
+      rebindingAction = row;
+      overlay.classList.add('show');
+    });
+  });
+
+  function closeOverlay() {
+    overlay.classList.remove('show');
+    rebindingAction = null;
+  }
+
+  cancelBtn.addEventListener('click', closeOverlay);
+  overlay.addEventListener('click', e => { if(e.target === overlay) closeOverlay(); });
+
+  window.addEventListener('keydown', e => {
+    if (!rebindingAction) return;
+    e.preventDefault();
+    const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+    const keysContainer = rebindingAction.querySelector('.bind-keys');
+    keysContainer.innerHTML = '';
+    const span = document.createElement('span');
+    span.className = 'bind-key';
+    span.textContent = key;
+    keysContainer.appendChild(span);
+
+    // highlight on mini keyboard
+    document.querySelectorAll('.keycap').forEach(k => k.classList.remove('active-key'));
+    const match = document.querySelector(`.keycap[data-k="${e.key.toLowerCase()}"]`);
+    if (match) match.classList.add('active-key');
+
+    closeOverlay();
+  });
+
+  window.addEventListener('mousedown', e => {
+    if (!rebindingAction) return;
+    if (e.button === 1) {
+      e.preventDefault();
+      const keysContainer = rebindingAction.querySelector('.bind-keys');
+      keysContainer.innerHTML = '';
+      const span = document.createElement('span');
+      span.className = 'bind-key';
+      span.textContent = 'Mouse3';
+      keysContainer.appendChild(span);
+      closeOverlay();
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQUAD ASSEMBLY — Loading V13</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    overflow: hidden;
+    font-family: 'Segoe UI', 'Courier New', monospace;
+  }
+  canvas { display: block; }
+  #hud {
+    position: absolute;
+    top: 18px; left: 24px;
+    color: #ff3333;
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-shadow: 0 0 6px rgba(255,51,51,0.4);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="hud">LOADING V13</div>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── State ───
+const classes = ['RECON','BREACH','SUPPORT','SNIPER','MEDIC','COMMS'];
+const gearPieces = ['rifle','backpack','helmet','radio'];
+const squad = [];
+
+for (let i = 0; i < 6; i++) {
+  squad.push({
+    idx: i,
+    cls: classes[i],
+    x: 0, y: 0,            // current position
+    tx: 0, ty: 0,          // target position
+    alpha: 0,
+    stepIn: 0,             // 0→1 stepping into formation
+    gearProgress: 0,       // 0→4 gear pieces
+    gearAlpha: [0,0,0,0],  // per-piece fade
+    highlight: 0,          // leader pulse
+    done: false
+  });
+}
+
+let phase = 0;        // 0=step in, 1=gear, 2=leader, 3=done
+let currentOp = 0;    // which operator is assembling
+let phaseTimer = 0;
+let progress = 0;
+let flash = 0;
+let dust = [];
+
+// ─── Dust particles ───
+for (let i = 0; i < 60; i++) {
+  dust.push({
+    x: Math.random() * W,
+    y: Math.random() * H,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.2,
+    size: Math.random() * 1.5 + 0.5,
+    alpha: Math.random() * 0.3 + 0.05
+  });
+}
+
+function updateDust() {
+  for (let d of dust) {
+    d.x += d.vx; d.y += d.vy;
+    if (d.x < 0) d.x = W;
+    if (d.x > W) d.x = 0;
+    if (d.y < 0) d.y = H;
+    if (d.y > H) d.y = 0;
+  }
+}
+
+// ─── Layout ───
+function layout() {
+  const spacing = Math.min(140, W / 7);
+  const totalW = spacing * 5;
+  const startX = (W - totalW) / 2;
+  const baseY = H * 0.52;
+  for (let i = 0; i < 6; i++) {
+    squad[i].tx = startX + i * spacing;
+    squad[i].ty = baseY;
+  }
+}
+layout();
+
+// ─── Timing ───
+const STEP_DURATION = 600;
+const GEAR_DURATION = 500;
+const LEADER_DURATION = 1200;
+const TOTAL_TIME = 6 * STEP_DURATION + 6 * 4 * GEAR_DURATION + LEADER_DURATION;
+
+let startTime = performance.now();
+
+// ─── Drawing helpers ───
+function drawSilhouette(op) {
+  const s = 1.0; // scale
+  const x = op.x;
+  const y = op.y;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+
+  const baseAlpha = op.alpha * (0.9 + op.highlight * 0.1);
+  ctx.fillStyle = `rgba(35,42,52,${baseAlpha})`;
+  ctx.strokeStyle = `rgba(100,115,130,${op.alpha * 0.8})`;
+  ctx.lineWidth = 1.2;
+
+  // Head
+  ctx.beginPath();
+  ctx.arc(0, -58, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Helmet (gear piece 2)
+  if (op.gearAlpha[2] > 0) {
+    ctx.save();
+    ctx.strokeStyle = `rgba(120,140,160,${op.gearAlpha[2]})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, -60, 12, Math.PI, 0);
+    ctx.stroke();
+    // NVG mount
+    ctx.fillStyle = `rgba(80,100,120,${op.gearAlpha[2]})`;
+    ctx.fillRect(-3, -68, 6, 4);
+    ctx.restore();
+  }
+
+  // Torso
+  ctx.beginPath();
+  ctx.moveTo(-16, -46);
+  ctx.lineTo(16, -46);
+  ctx.lineTo(12, 0);
+  ctx.lineTo(-12, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Vest detail
+  ctx.strokeStyle = `rgba(70,85,100,${op.alpha * 0.6})`;
+  ctx.beginPath();
+  ctx.moveTo(-10, -38);
+  ctx.lineTo(10, -38);
+  ctx.moveTo(-8, -28);
+  ctx.lineTo(8, -28);
+  ctx.stroke();
+
+  // Backpack (gear piece 1)
+  if (op.gearAlpha[1] > 0) {
+    ctx.save();
+    ctx.fillStyle = `rgba(45,55,65,${op.gearAlpha[1]})`;
+    ctx.strokeStyle = `rgba(100,120,140,${op.gearAlpha[1] * 0.8})`;
+    ctx.beginPath();
+    ctx.roundRect(-22, -44, 8, 36, 2);
+    ctx.fill();
+    ctx.stroke();
+    // straps
+    ctx.strokeStyle = `rgba(120,135,150,${op.gearAlpha[1] * 0.6})`;
+    ctx.beginPath();
+    ctx.moveTo(-18, -40);
+    ctx.lineTo(-14, -40);
+    ctx.moveTo(-18, -20);
+    ctx.lineTo(-14, -20);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Legs
+  ctx.fillStyle = `rgba(15,18,22,${baseAlpha})`;
+  ctx.strokeStyle = `rgba(60,70,80,${op.alpha * 0.6})`;
+  // Left leg
+  ctx.beginPath();
+  ctx.moveTo(-11, 0);
+  ctx.lineTo(-6, 0);
+  ctx.lineTo(-8, 42);
+  ctx.lineTo(-14, 42);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // Right leg
+  ctx.beginPath();
+  ctx.moveTo(6, 0);
+  ctx.lineTo(11, 0);
+  ctx.lineTo(14, 42);
+  ctx.lineTo(8, 42);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Boots
+  ctx.fillStyle = `rgba(30,35,42,${baseAlpha})`;
+  ctx.beginPath();
+  ctx.moveTo(-15, 42);
+  ctx.lineTo(-6, 42);
+  ctx.lineTo(-5, 50);
+  ctx.lineTo(-16, 50);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(7, 42);
+  ctx.lineTo(16, 42);
+  ctx.lineTo(17, 50);
+  ctx.lineTo(6, 50);
+  ctx.closePath();
+  ctx.fill();
+
+  // Arms
+  ctx.fillStyle = `rgba(15,18,22,${baseAlpha})`;
+  ctx.strokeStyle = `rgba(60,70,80,${op.alpha * 0.6})`;
+  // Left arm
+  ctx.beginPath();
+  ctx.moveTo(-15, -44);
+  ctx.lineTo(-24, -20);
+  ctx.lineTo(-20, -18);
+  ctx.lineTo(-12, -40);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // Right arm
+  ctx.beginPath();
+  ctx.moveTo(15, -44);
+  ctx.lineTo(28, -28);
+  ctx.lineTo(24, -24);
+  ctx.lineTo(12, -38);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Rifle (gear piece 0)
+  if (op.gearAlpha[0] > 0) {
+    ctx.save();
+    ctx.strokeStyle = `rgba(80,95,110,${op.gearAlpha[0]})`;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(18, -22);
+    ctx.lineTo(38, -18);
+    ctx.stroke();
+    // Stock
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(16, -20);
+    ctx.lineTo(12, -22);
+    ctx.stroke();
+    // Magazine
+    ctx.fillStyle = `rgba(70,85,100,${op.gearAlpha[0]})`;
+    ctx.beginPath();
+    ctx.moveTo(28, -16);
+    ctx.lineTo(30, -10);
+    ctx.lineTo(26, -10);
+    ctx.lineTo(24, -16);
+    ctx.closePath();
+    ctx.fill();
+    // Barrel
+    ctx.strokeStyle = `rgba(100,115,130,${op.gearAlpha[0]})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(36, -18);
+    ctx.lineTo(44, -17);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Radio (gear piece 3)
+  if (op.gearAlpha[3] > 0) {
+    ctx.save();
+    ctx.fillStyle = `rgba(55,70,85,${op.gearAlpha[3]})`;
+    ctx.strokeStyle = `rgba(110,130,150,${op.gearAlpha[3] * 0.7})`;
+    ctx.lineWidth = 1;
+    // Radio body on left hip
+    ctx.beginPath();
+    ctx.roundRect(-18, -8, 8, 12, 1);
+    ctx.fill();
+    ctx.stroke();
+    // Antenna
+    ctx.strokeStyle = `rgba(140,160,180,${op.gearAlpha[3] * 0.6})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-14, -8);
+    ctx.lineTo(-12, -22);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawClassIcon(op) {
+  const x = op.x;
+  const y = op.y + 72;
+  const a = op.alpha;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = a;
+
+  // Icon box
+  ctx.strokeStyle = 'rgba(120,140,160,0.5)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-18, -10, 36, 20);
+  ctx.fillStyle = 'rgba(10,14,18,0.7)';
+  ctx.fillRect(-18, -10, 36, 20);
+
+  // Class symbol
+  ctx.strokeStyle = 'rgba(180,200,220,0.8)';
+  ctx.fillStyle = 'rgba(180,200,220,0.8)';
+  ctx.lineWidth = 1.2;
+  const s = op.cls;
+
+  if (s === 'RECON') {
+    // Eye
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 7, 4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (s === 'BREACH') {
+    // Hammer / ram
+    ctx.beginPath();
+    ctx.moveTo(-6, -5);
+    ctx.lineTo(6, -5);
+    ctx.lineTo(6, 2);
+    ctx.lineTo(2, 2);
+    ctx.lineTo(2, 6);
+    ctx.lineTo(-2, 6);
+    ctx.lineTo(-2, 2);
+    ctx.lineTo(-6, 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(0, 6);
+    ctx.lineTo(0, 8);
+    ctx.stroke();
+  } else if (s === 'SUPPORT') {
+    // Shield
+    ctx.beginPath();
+    ctx.moveTo(-6, -6);
+    ctx.quadraticCurveTo(0, -9, 6, -6);
+    ctx.lineTo(6, 2);
+    ctx.quadraticCurveTo(0, 7, -6, 2);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, -6);
+    ctx.lineTo(0, 4);
+    ctx.moveTo(-4, -1);
+    ctx.lineTo(4, -1);
+    ctx.stroke();
+  } else if (s === 'SNIPER') {
+    // Crosshair
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-9, 0); ctx.lineTo(9, 0);
+    ctx.moveTo(0, -9); ctx.lineTo(0, 9);
+    ctx.stroke();
+  } else if (s === 'MEDIC') {
+    // Cross
+    ctx.fillRect(-2, -7, 4, 14);
+    ctx.fillRect(-7, -2, 14, 4);
+  } else if (s === 'COMMS') {
+    // Antenna waves
+    ctx.beginPath();
+    ctx.moveTo(-2, 6);
+    ctx.lineTo(-2, -4);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(-2, -6, 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(-2, -6, 5, -Math.PI * 0.7, -Math.PI * 0.3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(-2, -6, 8, -Math.PI * 0.7, -Math.PI * 0.3);
+    ctx.stroke();
+  }
+
+  // Label
+  ctx.fillStyle = 'rgba(160,180,200,0.9)';
+  ctx.font = '9px "Segoe UI", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(op.cls, 0, 24);
+
+  ctx.restore();
+}
+
+function drawBackground() {
+  // Dark hangar
+  const grd = ctx.createLinearGradient(0, 0, 0, H);
+  grd.addColorStop(0, '#141820');
+  grd.addColorStop(0.5, '#10141a');
+  grd.addColorStop(1, '#0a0c12');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, W, H);
+
+  // Floor
+  const floorY = H * 0.72;
+  ctx.fillStyle = '#0d1015';
+  ctx.fillRect(0, floorY, W, H - floorY);
+
+  // Floor lines
+  ctx.strokeStyle = 'rgba(45,55,70,0.5)';
+  ctx.lineWidth = 1;
+  for (let i = -5; i <= 5; i++) {
+    const x = W / 2 + i * 120;
+    ctx.beginPath();
+    ctx.moveTo(x, floorY);
+    ctx.lineTo(x + i * 30, H);
+    ctx.stroke();
+  }
+
+  // Back wall panels
+  ctx.strokeStyle = 'rgba(40,50,65,0.4)';
+  for (let i = 0; i < 8; i++) {
+    const x = (W / 8) * i;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, floorY);
+    ctx.stroke();
+  }
+
+  // Overhead lights
+  for (let i = 1; i < 8; i += 2) {
+    const lx = (W / 8) * i;
+    ctx.fillStyle = 'rgba(60,75,90,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(lx, floorY - 10, 60, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Dust
+  for (let d of dust) {
+    ctx.fillStyle = `rgba(180,190,200,${d.alpha})`;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawProgress() {
+  const barW = Math.min(500, W * 0.7);
+  const barH = 6;
+  const x = (W - barW) / 2;
+  const y = H - 60;
+
+  // Label
+  ctx.fillStyle = 'rgba(160,180,200,0.9)';
+  ctx.font = '11px "Segoe UI", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('SQUAD DEPLOYMENT', W / 2, y - 14);
+
+  // Bar bg
+  ctx.fillStyle = 'rgba(30,40,50,0.6)';
+  ctx.fillRect(x, y, barW, barH);
+
+  // Bar fill
+  const fillW = barW * progress;
+  const grd = ctx.createLinearGradient(x, 0, x + fillW, 0);
+  grd.addColorStop(0, 'rgba(180,60,60,0.8)');
+  grd.addColorStop(1, 'rgba(220,100,60,0.9)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(x, y, fillW, barH);
+
+  // Tick marks
+  ctx.strokeStyle = 'rgba(60,80,100,0.5)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 6; i++) {
+    const tx = x + (barW / 6) * i;
+    ctx.beginPath();
+    ctx.moveTo(tx, y - 2);
+    ctx.lineTo(tx, y + barH + 2);
+    ctx.stroke();
+  }
+
+  // Percentage
+  ctx.fillStyle = 'rgba(200,210,220,0.8)';
+  ctx.font = '10px "Segoe UI", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(Math.floor(progress * 100) + '%', x + barW, y + 18);
+}
+
+function drawLeaderHighlight() {
+  const leader = squad[2];
+  if (leader.highlight <= 0) return;
+  const h = leader.highlight;
+  ctx.save();
+  ctx.globalAlpha = h * 0.3;
+  ctx.strokeStyle = '#ff4444';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.arc(leader.x, leader.y - 10, 55, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Glow
+  ctx.globalAlpha = h * 0.08;
+  ctx.fillStyle = '#ff3333';
+  ctx.beginPath();
+  ctx.arc(leader.x, leader.y - 10, 70, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Leader text
+  ctx.globalAlpha = h;
+  ctx.fillStyle = '#ff5555';
+  ctx.font = 'bold 10px "Segoe UI", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('LEADER', leader.x, leader.y - 72);
+
+  ctx.restore();
+}
+
+function drawReadyFlash() {
+  if (flash <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = flash * 0.15;
+  ctx.fillStyle = '#ff3333';
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
+
+// ─── Main loop ───
+function update(now) {
+  const elapsed = now - startTime;
+
+  updateDust();
+
+  // Phase progression
+  let opIdx = 0;
+  let t = elapsed;
+
+  // Step-in phase for each operator
+  for (let i = 0; i < 6; i++) {
+    const stepStart = i * STEP_DURATION;
+    const stepEnd = stepStart + STEP_DURATION;
+    if (t >= stepStart) {
+      const p = Math.min(1, (t - stepStart) / STEP_DURATION);
+      squad[i].stepIn = easeOutBack(p);
+      squad[i].alpha = Math.min(1, p * 2);
+      squad[i].x = squad[i].tx - (1 - squad[i].stepIn) * 200;
+      squad[i].y = squad[i].ty;
+    }
+  }
+
+  // Gear phase
+  for (let i = 0; i < 6; i++) {
+    const gearStart = 6 * STEP_DURATION + i * 4 * GEAR_DURATION;
+    for (let g = 0; g < 4; g++) {
+      const gStart = gearStart + g * GEAR_DURATION;
+      const gEnd = gStart + GEAR_DURATION;
+      if (t >= gStart) {
+        const p = Math.min(1, (t - gStart) / GEAR_DURATION);
+        squad[i].gearAlpha[g] = easeOutQuad(p);
+      }
+    }
+  }
+
+  // Leader highlight
+  const leaderStart = 6 * STEP_DURATION + 6 * 4 * GEAR_DURATION;
+  if (t >= leaderStart) {
+    const p = Math.min(1, (t - leaderStart) / LEADER_DURATION);
+    squad[2].highlight = Math.sin(p * Math.PI) * 1.0;
+    if (p >= 1) squad[2].highlight = 1;
+  }
+
+  // Progress
+  progress = Math.min(1, t / TOTAL_TIME);
+
+  // Ready flash at end
+  if (progress >= 1) {
+    flash = 0.15 + Math.sin(now * 0.004) * 0.1;
+  }
+
+  // Draw
+  ctx.clearRect(0, 0, W, H);
+  drawBackground();
+
+  // Shadow under each operator
+  for (let op of squad) {
+    if (op.alpha <= 0) continue;
+    ctx.save();
+    ctx.globalAlpha = op.alpha * 0.2;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(op.x, op.y + 52, 22, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  for (let op of squad) {
+    if (op.alpha > 0) {
+      drawSilhouette(op);
+      drawClassIcon(op);
+    }
+  }
+
+  drawLeaderHighlight();
+  drawProgress();
+  drawReadyFlash();
+
+  requestAnimationFrame(update);
+}
+
+// Easing
+function easeOutBack(t) {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+function easeOutQuad(t) {
+  return 1 - (1 - t) * (1 - t);
+}
+
+requestAnimationFrame(update);
+</script>
+</body>
+</html>

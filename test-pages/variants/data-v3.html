@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DATA V3 — COMMS NET</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* HUD Overlay */
+        .hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-top {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+
+        .hud-title {
+            font-size: 14px;
+            letter-spacing: 6px;
+            color: #00ff88;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            border: 1px solid #00ff88;
+            padding: 8px 24px;
+            background: rgba(0, 20, 10, 0.8);
+        }
+
+        .hud-subtitle {
+            font-size: 10px;
+            letter-spacing: 3px;
+            color: #00aa55;
+            margin-top: 6px;
+        }
+
+        .hud-corner {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 1px solid #00ff88;
+        }
+
+        .hud-corner.tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
+        .hud-corner.tr { top: 10px; right: 10px; border-left: none; border-bottom: none; }
+        .hud-corner.bl { bottom: 10px; left: 10px; border-right: none; border-top: none; }
+        .hud-corner.br { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+
+        .hud-stats {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 11px;
+            line-height: 1.8;
+            color: #00aa55;
+        }
+
+        .hud-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 11px;
+            line-height: 1.8;
+            text-align: right;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .legend-line {
+            width: 24px;
+            height: 2px;
+        }
+
+        .legend-line.strong { background: #00ff88; }
+        .legend-line.weak { background: #ffcc00; }
+        .legend-line.lost { background: #ff3333; }
+        .legend-line.dashed { 
+            background: repeating-linear-gradient(90deg, #ff3333, #ff3333 3px, transparent 3px, transparent 6px);
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 255, 136, 0.15);
+            animation: scan 4s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        .node-label {
+            position: absolute;
+            font-size: 10px;
+            color: #00ff88;
+            text-align: center;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+            z-index: 5;
+        }
+
+        .node-label .name {
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .node-label .status {
+            font-size: 9px;
+            color: #00aa55;
+            margin-top: 2px;
+        }
+
+        .center-label {
+            font-size: 12px;
+            color: #ffffff;
+        }
+
+        .center-label .name {
+            color: #ffffff;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        }
+
+        .center-label .status {
+            color: #00ff88;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="hud">
+        <div class="hud-top">
+            <div class="hud-title">DATA V3 — COMMS NET</div>
+            <div class="hud-subtitle">NETWORK VISUALIZATION ACTIVE</div>
+        </div>
+        
+        <div class="hud-corner tl"></div>
+        <div class="hud-corner tr"></div>
+        <div class="hud-corner bl"></div>
+        <div class="hud-corner br"></div>
+        
+        <div class="hud-stats">
+            <div>NODES: <span id="node-count">0</span></div>
+            <div>LINKS: <span id="link-count">0</span></div>
+            <div>PACKETS: <span id="packet-count">0</span></div>
+            <div>UPTIME: <span id="uptime">00:00:00</span></div>
+        </div>
+        
+        <div class="hud-legend">
+            <div class="legend-item"><span>STRONG</span><div class="legend-line strong"></div></div>
+            <div class="legend-item"><span>WEAK</span><div class="legend-line weak"></div></div>
+            <div class="legend-item"><span>LOST</span><div class="legend-line lost"></div></div>
+            <div class="legend-item"><span>OUT OF RANGE</span><div class="legend-line dashed"></div></div>
+        </div>
+        
+        <div class="scan-line"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height, centerX, centerY;
+        
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            centerX = width / 2;
+            centerY = height / 2;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+        
+        // Player data
+        const players = [
+            { id: 'you', name: 'YOU', status: 'ONLINE', signal: 'strong', angle: 0, distance: 0, isCenter: true },
+            { id: 'p1', name: 'ALPHA-1', status: 'ONLINE', signal: 'strong', angle: 0, distance: 180 },
+            { id: 'p2', name: 'BRAVO-2', status: 'ONLINE', signal: 'strong', angle: 45, distance: 220 },
+            { id: 'p3', name: 'CHARLIE-3', status: 'STANDBY', signal: 'weak', angle: 90, distance: 160 },
+            { id: 'p4', name: 'DELTA-4', status: 'ONLINE', signal: 'strong', angle: 135, distance: 200 },
+            { id: 'p5', name: 'ECHO-5', status: 'OFFLINE', signal: 'lost', angle: 180, distance: 280 },
+            { id: 'p6', name: 'FOXTROT-6', status: 'ONLINE', signal: 'strong', angle: 225, distance: 190 },
+            { id: 'p7', name: 'GOLF-7', status: 'STANDBY', signal: 'weak', angle: 270, distance: 240 },
+            { id: 'p8', name: 'HOTEL-8', status: 'ONLINE', signal: 'strong', angle: 315, distance: 170 },
+            { id: 'p9', name: 'INDIA-9', status: 'OFFLINE', signal: 'lost', angle: 30, distance: 320 },
+            { id: 'p10', name: 'JULIET-10', status: 'ONLINE', signal: 'strong', angle: 120, distance: 210 },
+            { id: 'p11', name: 'KILO-11', status: 'STANDBY', signal: 'weak', angle: 200, distance: 260 },
+            { id: 'p12', name: 'LIMA-12', status: 'ONLINE', signal: 'strong', angle: 250, distance: 185 },
+            { id: 'p13', name: 'MIKE-13', status: 'OFFLINE', signal: 'lost', angle: 300, distance: 350 },
+            { id: 'p14', name: 'NOVEMBER-14', status: 'ONLINE', signal: 'strong', angle: 70, distance: 195 },
+            { id: 'p15', name: 'OSCAR-15', status: 'STANDBY', signal: 'weak', angle: 160, distance: 230 },
+        ];
+        
+        // Calculate positions
+        players.forEach(p => {
+            const rad = (p.angle * Math.PI) / 180;
+            p.x = centerX + Math.cos(rad) * p.distance;
+            p.y = centerY + Math.sin(rad) * p.distance;
+        });
+        
+        // Links between players (mesh network)
+        const links = [];
+        for (let i = 1; i < players.length; i++) {
+            // Connect to center (you)
+            links.push({
+                from: players[0],
+                to: players[i],
+                signal: players[i].signal,
+                distance: players[i].distance
+            });
+            
+            // Connect to nearby players
+            for (let j = i + 1; j < players.length; j++) {
+                const dx = players[i].x - players[j].x;
+                const dy = players[i].y - players[j].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 200) {
+                    const sig = dist < 120 ? 'strong' : dist < 170 ? 'weak' : 'lost';
+                    links.push({
+                        from: players[i],
+                        to: players[j],
+                        signal: sig,
+                        distance: dist
+                    });
+                }
+            }
+        }
+        
+        // Data packets
+        const packets = [];
+        
+        function spawnPacket() {
+            const link = links[Math.floor(Math.random() * links.length)];
+            if (link.signal === 'lost') return;
+            
+            packets.push({
+                link: link,
+                progress: 0,
+                speed: 0.01 + Math.random() * 0.015,
+                size: 2 + Math.random() * 2
+            });
+        }
+        
+        // Signal colors
+        const signalColors = {
+            strong: '#00ff88',
+            weak: '#ffcc00',
+            lost: '#ff3333'
+        };
+        
+        // Animation state
+        let time = 0;
+        let startTime = Date.now();
+        
+        function updateUptime() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+            const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+            const s = String(elapsed % 60).padStart(2, '0');
+            document.getElementById('uptime').textContent = `${h}:${m}:${s}`;
+        }
+        
+        function updateLabels() {
+            // Remove old labels
+            document.querySelectorAll('.node-label').forEach(l => l.remove());
+            
+            // Add new labels
+            players.forEach(p => {
+                const label = document.createElement('div');
+                label.className = 'node-label' + (p.isCenter ? ' center-label' : '');
+                label.style.left = p.x + 'px';
+                label.style.top = (p.y + (p.isCenter ? 25 : 20)) + 'px';
+                label.innerHTML = `
+                    <div class="name">${p.name}</div>
+                    <div class="status">${p.status}</div>
+                `;
+                document.querySelector('.hud').appendChild(label);
+            });
+        }
+        
+        // Initial labels
+        updateLabels();
+        window.addEventListener('resize', () => {
+            players.forEach(p => {
+                const rad = (p.angle * Math.PI) / 180;
+                p.x = centerX + Math.cos(rad) * p.distance;
+                p.y = centerY + Math.sin(rad) * p.distance;
+            });
+            updateLabels();
+        });
+        
+        // Update HUD stats
+        document.getElementById('node-count').textContent = players.length;
+        document.getElementById('link-count').textContent = links.length;
+        
+        function draw() {
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, width, height);
+            
+            time += 0.016;
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(0, 255, 136, 0.05)';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            for (let x = 0; x < width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            
+            // Draw concentric circles (range rings)
+            [150, 250, 350].forEach((r, i) => {
+                ctx.strokeStyle = `rgba(0, 255, 136, ${0.08 - i * 0.02})`;
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 10]);
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            });
+            
+            // Draw links
+            links.forEach(link => {
+                const color = signalColors[link.signal];
+                const isFar = link.distance > 250;
+                
+                ctx.strokeStyle = color;
+                ctx.lineWidth = link.signal === 'strong' ? 2 : 1;
+                ctx.globalAlpha = link.signal === 'lost' ? 0.3 : 0.6;
+                
+                if (isFar) {
+                    ctx.setLineDash([8, 8]);
+                }
+                
+                ctx.beginPath();
+                ctx.moveTo(link.from.x, link.from.y);
+                ctx.lineTo(link.to.x, link.to.y);
+                ctx.stroke();
+                
+                ctx.setLineDash([]);
+                ctx.globalAlpha = 1;
+                
+                // Signal strength indicator (small dots along line)
+                if (link.signal !== 'lost') {
+                    const midX = (link.from.x + link.to.x) / 2;
+                    const midY = (link.from.y + link.to.y) / 2;
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(midX, midY, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            
+            // Update and draw packets
+            for (let i = packets.length - 1; i >= 0; i--) {
+                const pkt = packets[i];
+                pkt.progress += pkt.speed;
+                
+                if (pkt.progress >= 1) {
+                    packets.splice(i, 1);
+                    continue;
+                }
+                
+                const x = pkt.link.from.x + (pkt.link.to.x - pkt.link.from.x) * pkt.progress;
+                const y = pkt.link.from.y + (pkt.link.to.y - pkt.link.from.y) * pkt.progress;
+                
+                const color = signalColors[pkt.link.signal];
+                
+                // Packet glow
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(x, y, pkt.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                // Packet trail
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.4 * (1 - pkt.progress);
+                ctx.beginPath();
+                ctx.moveTo(pkt.link.from.x, pkt.link.from.y);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+            
+            // Spawn new packets
+            if (Math.random() < 0.08) {
+                spawnPacket();
+            }
+            
+            // Draw nodes
+            players.forEach(p => {
+                const color = p.isCenter ? '#ffffff' : signalColors[p.signal];
+                const size = p.isCenter ? 10 : 6;
+                
+                // Node glow
+                if (p.signal === 'strong' || p.isCenter) {
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = p.isCenter ? 20 : 12;
+                }
+                
+                // Outer ring
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1.5;
+                ctx.globalAlpha = 0.4;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, size + 6 + Math.sin(time * 2 + p.angle) * 2, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+                
+                // Node body
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.shadowBlur = 0;
+                
+                // Center dot for non-center nodes
+                if (!p.isCenter) {
+                    ctx.fillStyle = '#0a0a0a';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, size * 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Status indicator ring
+                if (p.status === 'OFFLINE') {
+                    ctx.strokeStyle = '#ff3333';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([3, 3]);
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, size + 10, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            });
+            
+            // Draw center crosshair
+            ctx.strokeStyle = 'rgba(0, 255, 136, 0.3)';
+            ctx.lineWidth = 1;
+            const crossSize = 20;
+            ctx.beginPath();
+            ctx.moveTo(centerX - crossSize, centerY);
+            ctx.lineTo(centerX + crossSize, centerY);
+            ctx.moveTo(centerX, centerY - crossSize);
+            ctx.lineTo(centerX, centerY + crossSize);
+            ctx.stroke();
+            
+            // Update stats
+            document.getElementById('packet-count').textContent = packets.length;
+            updateUptime();
+            
+            requestAnimationFrame(draw);
+        }
+        
+        draw();
+    </script>
+</body>
+</html>

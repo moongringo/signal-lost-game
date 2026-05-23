@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAPLAYER V9 — RESOURCES</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0f0a;
+    color: #c8e6c9;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+  }
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: rgba(10, 30, 10, 0.92);
+    border-bottom: 2px solid #4caf50;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+  #hud .title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #81c784;
+    text-shadow: 0 0 8px #4caf50;
+  }
+  #hud .stats {
+    display: flex;
+    gap: 20px;
+    font-size: 12px;
+  }
+  #hud .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #hud .stat-icon {
+    width: 12px; height: 12px;
+    border-radius: 2px;
+  }
+  #canvas-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+  canvas { display: block; }
+  #tooltip {
+    position: fixed;
+    background: rgba(10, 30, 10, 0.95);
+    border: 1px solid #4caf50;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    pointer-events: none;
+    display: none;
+    z-index: 200;
+    white-space: nowrap;
+  }
+  #legend {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(10, 30, 10, 0.92);
+    border: 1px solid #4caf50;
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 11px;
+    z-index: 100;
+  }
+  #legend .legend-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #81c784;
+  }
+  #legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0;
+  }
+  #legend .legend-color {
+    width: 16px; height: 16px;
+    border-radius: 2px;
+  }
+  #controls {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(10, 30, 10, 0.92);
+    border: 1px solid #4caf50;
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 11px;
+    z-index: 100;
+  }
+  #controls button {
+    background: #1b5e20;
+    color: #c8e6c9;
+    border: 1px solid #4caf50;
+    padding: 4px 10px;
+    margin: 2px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 10px;
+    border-radius: 2px;
+  }
+  #controls button:hover {
+    background: #2e7d32;
+  }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="title">MAPLAYER V9 — RESOURCES</div>
+  <div class="stats">
+    <div class="stat-item"><span class="stat-icon" style="background:#4caf50"></span>WOOD: <span id="wood-total">0</span></div>
+    <div class="stat-item"><span class="stat-icon" style="background:#8d6e63"></span>MINERALS: <span id="mineral-total">0</span></div>
+    <div class="stat-item"><span class="stat-icon" style="background:#42a5f5"></span>WATER: <span id="water-total">0</span></div>
+    <div class="stat-item">DEPOSITS: <span id="deposit-count">0</span></div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <canvas id="mapCanvas"></canvas>
+</div>
+
+<div id="tooltip"></div>
+
+<div id="legend">
+  <div class="legend-title">LEGEND</div>
+  <div class="legend-item"><span class="legend-color" style="background:rgba(76,175,80,0.4)"></span>Vegetation Zone</div>
+  <div class="legend-item"><span class="legend-color" style="background:rgba(141,110,99,0.5)"></span>Mineral Zone</div>
+  <div class="legend-item"><span class="legend-color" style="background:rgba(66,165,245,0.4)"></span>Water Zone</div>
+  <div class="legend-item"><span class="legend-color" style="background:#fff;border:1px solid #4caf50"></span>Collection Radius</div>
+</div>
+
+<div id="controls">
+  <div style="margin-bottom:6px;font-weight:bold;color:#81c784">CONTROLS</div>
+  <button onclick="resetDeposits()">RESET</button>
+  <button onclick="toggleRadius()">TOGGLE RADIUS</button>
+  <button onclick="depleteRandom()">DEPLETE RANDOM</button>
+</div>
+
+<script>
+const canvas = document.getElementById('mapCanvas');
+const ctx = canvas.getContext('2d');
+const tooltip = document.getElementById('tooltip');
+
+let showRadius = true;
+let deposits = [];
+let players = [];
+let zones = [];
+let particles = [];
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Zone types
+const ZONE_TYPES = {
+  VEGETATION: { color: 'rgba(76,175,80,0.25)', stroke: '#4caf50', label: 'Vegetation' },
+  MINERAL:    { color: 'rgba(141,110,99,0.35)', stroke: '#8d6e63', label: 'Mineral' },
+  WATER:      { color: 'rgba(66,165,245,0.25)', stroke: '#42a5f5', label: 'Water' }
+};
+
+// Resource types
+const RESOURCE_TYPES = {
+  WOOD:     { icon: 'tree',     color: '#4caf50', zone: 'VEGETATION' },
+  MINERAL:  { icon: 'pickaxe',  color: '#8d6e63', zone: 'MINERAL' },
+  WATER:    { icon: 'drop',     color: '#42a5f5', zone: 'WATER' }
+};
+
+function randomRange(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+function dist(a, b) {
+  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+}
+
+function generateZones() {
+  zones = [];
+  const w = canvas.width;
+  const h = canvas.height;
+  const types = ['VEGETATION', 'MINERAL', 'WATER'];
+  for (let i = 0; i < 8; i++) {
+    const type = types[Math.floor(Math.random() * types.length)];
+    zones.push({
+      x: randomRange(80, w - 80),
+      y: randomRange(80, h - 80),
+      radius: randomRange(60, 150),
+      type: type,
+      ...ZONE_TYPES[type]
+    });
+  }
+}
+
+function generateDeposits() {
+  deposits = [];
+  const w = canvas.width;
+  const h = canvas.height;
+  const types = Object.keys(RESOURCE_TYPES);
+
+  for (let i = 0; i < 40; i++) {
+    const typeKey = types[Math.floor(Math.random() * types.length)];
+    const type = RESOURCE_TYPES[typeKey];
+    let x = randomRange(60, w - 60);
+    let y = randomRange(100, h - 60);
+
+    // Bias placement toward matching zones
+    const matchingZones = zones.filter(z => z.type === type.zone);
+    if (matchingZones.length > 0 && Math.random() < 0.7) {
+      const zone = matchingZones[Math.floor(Math.random() * matchingZones.length)];
+      const angle = randomRange(0, Math.PI * 2);
+      const r = randomRange(0, zone.radius * 0.8);
+      x = zone.x + Math.cos(angle) * r;
+      y = zone.y + Math.sin(angle) * r;
+    }
+
+    deposits.push({
+      x, y,
+      type: typeKey,
+      quantity: Math.floor(randomRange(50, 500)),
+      maxQuantity: Math.floor(randomRange(200, 600)),
+      depletion: 0, // 0 to 1
+      id: i
+    });
+  }
+}
+
+function generatePlayers() {
+  players = [];
+  const w = canvas.width;
+  const h = canvas.height;
+  for (let i = 0; i < 3; i++) {
+    players.push({
+      x: randomRange(100, w - 100),
+      y: randomRange(120, h - 100),
+      radius: randomRange(50, 90),
+      color: ['#ff9800', '#e91e63', '#9c27b0'][i],
+      label: 'P' + (i + 1),
+      targetDeposit: null
+    });
+  }
+}
+
+function drawTree(ctx, x, y, size, color, depletion) {
+  const alpha = 1 - depletion * 0.7;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  // Trunk
+  ctx.fillRect(x - size * 0.1, y, size * 0.2, size * 0.4);
+  // Leaves (triangle)
+  ctx.beginPath();
+  ctx.moveTo(x, y - size * 0.6);
+  ctx.lineTo(x - size * 0.35, y + size * 0.1);
+  ctx.lineTo(x + size * 0.35, y + size * 0.1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x, y - size * 0.9);
+  ctx.lineTo(x - size * 0.25, y - size * 0.2);
+  ctx.lineTo(x + size * 0.25, y - size * 0.2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function drawPickaxe(ctx, x, y, size, color, depletion) {
+  const alpha = 1 - depletion * 0.7;
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  // Handle
+  ctx.beginPath();
+  ctx.moveTo(x - size * 0.25, y + size * 0.3);
+  ctx.lineTo(x + size * 0.25, y - size * 0.3);
+  ctx.stroke();
+  // Head left
+  ctx.beginPath();
+  ctx.moveTo(x + size * 0.1, y - size * 0.1);
+  ctx.lineTo(x - size * 0.25, y - size * 0.45);
+  ctx.lineTo(x - size * 0.05, y - size * 0.25);
+  ctx.stroke();
+  // Head right
+  ctx.beginPath();
+  ctx.moveTo(x + size * 0.1, y - size * 0.1);
+  ctx.lineTo(x + size * 0.45, y - size * 0.45);
+  ctx.lineTo(x + size * 0.25, y - size * 0.25);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawDrop(ctx, x, y, size, color, depletion) {
+  const alpha = 1 - depletion * 0.7;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y - size * 0.5);
+  ctx.bezierCurveTo(x - size * 0.4, y - size * 0.1, x - size * 0.4, y + size * 0.3, x, y + size * 0.4);
+  ctx.bezierCurveTo(x + size * 0.4, y + size * 0.3, x + size * 0.4, y - size * 0.1, x, y - size * 0.5);
+  ctx.fill();
+  // Shine
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(x - size * 0.1, y - size * 0.1, size * 0.08, size * 0.12, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function drawIcon(ctx, deposit) {
+  const size = 14;
+  const type = RESOURCE_TYPES[deposit.type];
+  switch (type.icon) {
+    case 'tree': drawTree(ctx, deposit.x, deposit.y - 4, size, type.color, deposit.depletion); break;
+    case 'pickaxe': drawPickaxe(ctx, deposit.x, deposit.y, size, type.color, deposit.depletion); break;
+    case 'drop': drawDrop(ctx, deposit.x, deposit.y, size, type.color, deposit.depletion); break;
+  }
+}
+
+function drawZones() {
+  for (const zone of zones) {
+    ctx.beginPath();
+    ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+    ctx.fillStyle = zone.color;
+    ctx.fill();
+    ctx.strokeStyle = zone.stroke;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = zone.stroke;
+    ctx.font = '10px Courier New';
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = 0.6;
+    ctx.fillText(zone.label.toUpperCase(), zone.x, zone.y - zone.radius - 6);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawDeposits() {
+  for (const d of deposits) {
+    // Glow under icon
+    const type = RESOURCE_TYPES[d.type];
+    const alpha = 1 - d.depletion * 0.6;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, 10, 0, Math.PI * 2);
+    ctx.fillStyle = type.color;
+    ctx.globalAlpha = alpha * 0.2;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    drawIcon(ctx, d);
+
+    // Quantity bar
+    const barW = 24;
+    const barH = 4;
+    const barX = d.x - barW / 2;
+    const barY = d.y + 14;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(barX, barY, barW, barH);
+    const fill = (d.quantity / d.maxQuantity) * barW;
+    ctx.fillStyle = type.color;
+    ctx.globalAlpha = alpha;
+    ctx.fillRect(barX, barY, fill, barH);
+    ctx.globalAlpha = 1;
+
+    // Quantity text
+    ctx.fillStyle = '#c8e6c9';
+    ctx.font = '9px Courier New';
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = alpha;
+    ctx.fillText(d.quantity, d.x, barY + barH + 10);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawPlayers() {
+  for (const p of players) {
+    // Collection radius
+    if (showRadius) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.globalAlpha = 0.4;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = 0.06;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // Player dot
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Label
+    ctx.fillStyle = p.color;
+    ctx.font = 'bold 10px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(p.label, p.x, p.y - 12);
+  }
+}
+
+function drawGrid() {
+  ctx.strokeStyle = 'rgba(76,175,80,0.08)';
+  ctx.lineWidth = 1;
+  const step = 40;
+  for (let x = 0; x < canvas.width; x += step) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvas.height);
+    ctx.stroke();
+  }
+  for (let y = 0; y < canvas.height; y += step) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+}
+
+function drawParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= 0.02;
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = p.life;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function spawnParticles(x, y, color, count = 5) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: randomRange(-1, 1),
+      vy: randomRange(-1.5, -0.3),
+      life: 1,
+      size: randomRange(2, 4),
+      color
+    });
+  }
+}
+
+function updateStats() {
+  let wood = 0, mineral = 0, water = 0, active = 0;
+  for (const d of deposits) {
+    if (d.depletion < 1) {
+      if (d.type === 'WOOD') wood += d.quantity;
+      else if (d.type === 'MINERAL') mineral += d.quantity;
+      else if (d.type === 'WATER') water += d.quantity;
+      active++;
+    }
+  }
+  document.getElementById('wood-total').textContent = wood;
+  document.getElementById('mineral-total').textContent = mineral;
+  document.getElementById('water-total').textContent = water;
+  document.getElementById('deposit-count').textContent = active + '/' + deposits.length;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawGrid();
+  drawZones();
+  drawDeposits();
+  drawPlayers();
+  drawParticles();
+  updateStats();
+}
+
+function animate() {
+  draw();
+  requestAnimationFrame(animate);
+}
+
+// Mouse interaction
+let hoveredDeposit = null;
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  hoveredDeposit = null;
+  for (const d of deposits) {
+    if (dist({x: mx, y: my}, d) < 18) {
+      hoveredDeposit = d;
+      break;
+    }
+  }
+  if (hoveredDeposit) {
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 12) + 'px';
+    tooltip.style.top = (e.clientY + 12) + 'px';
+    const type = RESOURCE_TYPES[hoveredDeposit.type];
+    tooltip.innerHTML = `
+      <strong style="color:${type.color}">${hoveredDeposit.type}</strong><br>
+      Quantity: ${hoveredDeposit.quantity} / ${hoveredDeposit.maxQuantity}<br>
+      Depletion: ${(hoveredDeposit.depletion * 100).toFixed(0)}%<br>
+      Zone: ${type.zone}
+    `;
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  for (const d of deposits) {
+    if (dist({x: mx, y: my}, d) < 18 && d.depletion < 1) {
+      const amount = Math.min(20, d.quantity);
+      d.quantity -= amount;
+      if (d.quantity <= 0) {
+        d.quantity = 0;
+        d.depletion = 1;
+      } else {
+        d.depletion = 1 - (d.quantity / d.maxQuantity);
+      }
+      const type = RESOURCE_TYPES[d.type];
+      spawnParticles(d.x, d.y, type.color, 8);
+      break;
+    }
+  }
+});
+
+// Controls
+function resetDeposits() {
+  generateZones();
+  generateDeposits();
+  generatePlayers();
+}
+
+function toggleRadius() {
+  showRadius = !showRadius;
+}
+
+function depleteRandom() {
+  const active = deposits.filter(d => d.depletion < 1);
+  if (active.length === 0) return;
+  const d = active[Math.floor(Math.random() * active.length)];
+  d.quantity = Math.max(0, d.quantity - Math.floor(randomRange(50, 150)));
+  if (d.quantity <= 0) {
+    d.quantity = 0;
+    d.depletion = 1;
+  } else {
+    d.depletion = 1 - (d.quantity / d.maxQuantity);
+  }
+  const type = RESOURCE_TYPES[d.type];
+  spawnParticles(d.x, d.y, type.color, 10);
+}
+
+// Init
+resetDeposits();
+animate();
+</script>
+</body>
+</html>

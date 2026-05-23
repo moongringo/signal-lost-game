@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Signal Lost — Post-Match Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+<style>
+:root { --ink:#201116; --cream:#fff0c7; --gold:#ffd965; --teal:#008c94; --orange:#ff8b1f; --pink:#e82663; --blue:#18364b; }
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--ink);font-family:'Inter',system-ui,sans-serif;color:var(--cream);min-height:100vh}
+body{display:flex;justify-content:center;align-items:center;padding:2rem 1rem}
+
+.report-card{width:100%;max-width:680px;background:linear-gradient(145deg,#1a0d12,#0a0508);border:2px solid rgba(255,217,101,0.2);border-radius:24px;padding:2rem;box-shadow:0 24px 64px rgba(0,0,0,0.5)}
+
+.report-header{text-align:center;margin-bottom:1.5rem}
+.report-header h1{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;margin-bottom:0.25rem}
+.report-header .match-id{font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:rgba(255,240,199,0.5)}
+
+.result-banner{display:flex;align-items:center;justify-content:center;gap:0.75rem;padding:1rem;border-radius:16px;margin-bottom:1.5rem;font-weight:700;font-size:1.1rem;text-transform:uppercase;letter-spacing:0.05em}
+.result-banner.victory{background:rgba(55,240,111,0.1);border:1px solid rgba(55,240,111,0.3);color:#37f06f}
+.result-banner.defeat{background:rgba(232,38,99,0.1);border:1px solid rgba(232,38,99,0.3);color:var(--pink)}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+.stat-cell{text-align:center;padding:1rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,217,101,0.08);border-radius:12px;transition:transform .15s}
+.stat-cell:hover{transform:translateY(-2px)}
+.stat-cell .value{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;font-weight:700;color:var(--gold);line-height:1}
+.stat-cell .label{font-size:0.65rem;text-transform:uppercase;color:rgba(255,240,199,0.5);margin-top:0.5rem;letter-spacing:0.05em}
+
+.damage-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
+.breakdown-cell{display:flex;align-items:center;gap:0.75rem;padding:0.75rem;background:rgba(255,255,255,0.03);border-radius:10px}
+.breakdown-cell .icon{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;font-size:1rem;background:rgba(255,217,101,0.1)}
+.breakdown-cell .info{flex:1}
+.breakdown-cell .info b{display:block;font-size:0.85rem}
+.breakdown-cell .info span{font-size:0.7rem;color:rgba(255,240,199,0.4)}
+.breakdown-cell .amount{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1rem;color:var(--gold)}
+
+.timeline{margin-bottom:1.5rem}
+.timeline-title{font-size:0.75rem;text-transform:uppercase;color:rgba(255,240,199,0.5);margin-bottom:0.75rem;letter-spacing:0.05em}
+.timeline-event{display:flex;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.04);align-items:center}
+.timeline-event:last-child{border-bottom:none}
+.timeline-event .time{font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:rgba(255,240,199,0.4);width:48px;flex-shrink:0}
+.timeline-event .badge{font-size:0.6rem;padding:2px 6px;border-radius:4px;font-weight:700;text-transform:uppercase}
+.timeline-event .badge.kill{background:rgba(232,38,99,0.15);color:var(--pink)}
+.timeline-event .badge.death{background:rgba(255,139,31,0.15);color:var(--orange)}
+.timeline-event .badge.loot{background:rgba(0,140,148,0.15);color:var(--teal)}
+.timeline-event .badge.revive{background:rgba(55,240,111,0.15);color:#37f06f}
+.timeline-event .desc{flex:1;font-size:0.8rem}
+.timeline-event .points{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.8rem;color:var(--gold)}
+
+.xp-track{margin-bottom:1.5rem}
+.xp-track .xp-bar{height:10px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden;margin-top:0.5rem}
+.xp-track .xp-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--gold));border-radius:999px;width:67%;position:relative}
+.xp-track .xp-text{display:flex;justify-content:space-between;font-size:0.7rem;color:rgba(255,240,199,0.5);margin-top:0.25rem}
+
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+.actions button{padding:0.875rem;border-radius:12px;border:2px solid rgba(255,217,101,0.25);background:rgba(255,217,101,0.08);color:var(--cream);font-weight:700;font-size:0.9rem;cursor:pointer;transition:all .15s}
+.actions button:hover{background:rgba(255,217,101,0.18);transform:translateY(-1px)}
+.actions button.primary{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.actions button.primary:hover{background:#ffe89a}
+
+@media(max-width:560px){
+.stats-grid{grid-template-columns:repeat(2,1fr)}
+.damage-breakdown{grid-template-columns:1fr}
+}
+</style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="post-match-report" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Post-Match Report</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<div class="report-card">
+  <div class="report-header">
+    <h1>Mission Report</h1>
+    <div class="match-id">MATCH #8A7F92 — DOWNTOWN — 12:34</div>
+  </div>
+
+  <div class="result-banner victory">🏆 Victory — Squad Survived</div>
+
+  <div class="stats-grid">
+    <div class="stat-cell"><div class="value">8</div><div class="label">Kills</div></div>
+    <div class="stat-cell"><div class="value">1</div><div class="label">Deaths</div></div>
+    <div class="stat-cell"><div class="value">2,340</div><div class="label">Damage</div></div>
+    <div class="stat-cell"><div class="value">12m 48s</div><div class="label">Time Alive</div></div>
+  </div>
+
+  <div class="damage-breakdown">
+    <div class="breakdown-cell">
+      <div class="icon">🔫</div>
+      <div class="info"><b>Assault Rifle</b><span>142 hits</span></div>
+      <div class="amount">1,847</div>
+    </div>
+    <div class="breakdown-cell">
+      <div class="icon">🎯</div>
+      <div class="info"><b>Headshots</b><span>23 critical</span></div>
+      <div class="amount">620</div>
+    </div>
+    <div class="breakdown-cell">
+      <div class="icon">💥</div>
+      <div class="info"><b>Grenade</b><span>3 thrown</span></div>
+      <div class="amount">340</div>
+    </div>
+  </div>
+
+  <div class="timeline">
+    <div class="timeline-title">Event Log</div>
+    <div class="timeline-event">
+      <div class="time">00:42</div>
+      <div class="badge kill">Kill</div>
+      <div class="desc">Eliminated Alpha-1 with assault rifle</div>
+      <div class="points">+150</div>
+    </div>
+    <div class="timeline-event">
+      <div class="time">02:18</div>
+      <div class="badge loot">Loot</div>
+      <div class="desc">Opened supply crate — Epic armor</div>
+      <div class="points">+50</div>
+    </div>
+    <div class="timeline-event">
+      <div class="time">04:05</div>
+      <div class="badge death">Death</div>
+      <div class="desc">Killed by Bravo-3 (sniper, 180m)</div>
+      <div class="points">—</div>
+    </div>
+    <div class="timeline-event">
+      <div class="time">04:12</div>
+      <div class="badge revive">Revive</div>
+      <div class="desc">Squadmate Phantom revived you</div>
+      <div class="points">+25</div>
+    </div>
+    <div class="timeline-event">
+      <div class="time">08:30</div>
+      <div class="badge kill">Kill</div>
+      <div class="desc">Final kill — Bravo-3 eliminated</div>
+      <div class="points">+200</div>
+    </div>
+  </div>
+
+  <div class="xp-track">
+    <div class="timeline-title">XP Progress</div>
+    <div class="xp-bar"><div class="xp-fill"></div></div>
+    <div class="xp-text"><span>Level 14 — 8,450 / 12,000 XP</span><span>+1,250 this match</span></div>
+  </div>
+
+  <div class="actions">
+    <button class="primary" type="button">Play Again</button>
+    <button type="button">Return to Lobby</button>
+  </div>
+</div>
+<script src="design-system.js"></script>
+<script>new SignalLostDesign({ spotlight:true, magneticButtons:true, scrollReveal:true, reducedMotion:true });</script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

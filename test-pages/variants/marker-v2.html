@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Marker V2 — Ping Wheel</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #111820;
+    --panel-2: #0e141b;
+    --text: #e6edf3;
+    --muted: #8a9ab0;
+    --border: #1a2330;
+    --accent: #3ddc97;
+    --accent-2: #5bc0de;
+    --danger: #ff6b6b;
+    --warn: #ffd166;
+    --info: #6c9fff;
+    --move: #a78bfa;
+    --loot: #f0c040;
+    --medic: #ff6b9d;
+    --ammo: #ffb347;
+    --cover: #6ee7b7;
+    --flank: #c084fc;
+    --watch: #38bdf8;
+    --support: #94a3b8;
+    --enemy: #ff4757;
+    --defend: #4ade80;
+    --look: #fbbf24;
+    --attack: #f87171;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+
+  #app {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    height: 100vh;
+  }
+
+  /* HUD Header */
+  .hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+  .hud-title {
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    font-size: 14px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .hud-meta {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  /* Main area */
+  .main {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    overflow: hidden;
+  }
+
+  /* Map area */
+  .map-wrap {
+    position: relative;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(61,220,151,0.06) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(92,192,222,0.06) 0%, transparent 40%),
+      linear-gradient(180deg, #0b0f14 0%, #0e141b 100%);
+    overflow: hidden;
+  }
+
+  /* Grid overlay on map */
+  .map-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* Mock terrain features */
+  .terrain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .terrain .feature {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.12;
+  }
+  .feature.mountain {
+    width: 180px; height: 180px;
+    background: #4a5568;
+    top: 15%; left: 20%;
+  }
+  .feature.water {
+    width: 220px; height: 140px;
+    background: #3182ce;
+    border-radius: 50%;
+    top: 55%; left: 60%;
+    opacity: 0.1;
+  }
+  .feature.forest {
+    width: 120px; height: 120px;
+    background: #38a169;
+    top: 30%; left: 70%;
+  }
+  .feature.building {
+    width: 80px; height: 80px;
+    background: #718096;
+    border-radius: 4px;
+    top: 60%; left: 25%;
+  }
+
+  /* Ping markers on map */
+  .ping-marker {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 0 20px currentColor, 0 4px 12px rgba(0,0,0,0.4);
+    animation: pingDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes pingDrop {
+    0% { transform: translate(-50%, -120px) scale(0.3); opacity: 0; }
+    60% { transform: translate(-50%, -45%) scale(1.15); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+  .ping-marker::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    opacity: 0.4;
+    animation: pingRipple 1.5s ease-out infinite;
+  }
+  @keyframes pingRipple {
+    0% { transform: scale(1); opacity: 0.5; }
+    100% { transform: scale(2); opacity: 0; }
+  }
+  .ping-label {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    background: rgba(0,0,0,0.7);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #fff;
+    pointer-events: none;
+  }
+
+  /* Ping Wheel */
+  .wheel-wrap {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 420px;
+    height: 420px;
+    z-index: 10;
+  }
+  .wheel {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: relative;
+    background: rgba(17,24,32,0.95);
+    border: 1px solid var(--border);
+    box-shadow: 0 0 60px rgba(0,0,0,0.6), inset 0 0 40px rgba(0,0,0,0.3);
+  }
+  .wheel-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--panel-2);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    z-index: 20;
+  }
+  .wedge {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 160px;
+    height: 160px;
+    transform-origin: 0 0;
+    cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease;
+    clip-path: polygon(0 0, 100% 10%, 85% 100%, 10% 85%);
+    border-radius: 0 100% 0 0;
+  }
+  .wedge:hover {
+    transform: scale(1.08);
+    filter: brightness(1.3);
+    z-index: 15;
+  }
+  .wedge-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transform-origin: 0 0;
+  }
+  .wedge-icon {
+    font-size: 22px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  }
+  .wedge-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+  }
+
+  /* Legend sidebar */
+  .legend {
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+  }
+  .legend h3 {
+    margin: 0 0 12px 0;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    cursor: default;
+    transition: background 0.15s;
+  }
+  .legend-item:hover {
+    background: rgba(255,255,255,0.04);
+  }
+  .legend-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px currentColor;
+  }
+  .legend-name {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .legend-desc {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .legend-cat {
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    opacity: 0.7;
+  }
+
+  /* Instructions overlay */
+  .instructions {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 12px;
+    color: var(--muted);
+    pointer-events: none;
+    z-index: 5;
+    text-align: center;
+  }
+
+  /* Mobile */
+  @media (max-width: 800px) {
+    .main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+    .legend { border-left: none; border-top: 1px solid var(--border); max-height: 180px; }
+    .wheel-wrap { width: 320px; height: 320px; }
+    .wedge { width: 120px; height: 120px; }
+    .wedge-icon { font-size: 18px; }
+    .wedge-label { font-size: 9px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="hud">
+    <div class="hud-title">Marker V2 — Ping Wheel</div>
+    <div class="hud-meta">12 PING TYPES • CLICK TO PLACE</div>
+  </header>
+
+  <div class="main">
+    <div class="map-wrap" id="map">
+      <div class="map-grid"></div>
+      <div class="terrain">
+        <div class="feature mountain"></div>
+        <div class="feature water"></div>
+        <div class="feature forest"></div>
+        <div class="feature building"></div>
+      </div>
+
+      <div class="wheel-wrap" id="wheelWrap">
+        <div class="wheel" id="wheel"></div>
+        <div class="wheel-center">PING</div>
+      </div>
+
+      <div class="instructions">Click any wedge to place that ping on the map</div>
+    </div>
+
+    <aside class="legend">
+      <h3>Color Coding</h3>
+
+      <div class="legend-cat">Combat</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--attack);color:var(--attack)"></span><span class="legend-name">Attack</span><span class="legend-desc">Offensive</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--defend);color:var(--defend)"></span><span class="legend-name">Defend</span><span class="legend-desc">Hold position</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--enemy);color:var(--enemy)"></span><span class="legend-name">Enemy</span><span class="legend-desc">Hostile spotted</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--cover);color:var(--cover)"></span><span class="legend-name">Cover</span><span class="legend-desc">Take cover</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--flank);color:var(--flank)"></span><span class="legend-name">Flank</span><span class="legend-desc">Side approach</span></div>
+
+      <div class="legend-cat">Tactical</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--look);color:var(--look)"></span><span class="legend-name">Look</span><span class="legend-desc">Investigate</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--move);color:var(--move)"></span><span class="legend-name">Move</span><span class="legend-desc">Relocate</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--watch);color:var(--watch)"></span><span class="legend-name">Watch</span><span class="legend-desc">Keep eyes on</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--support);color:var(--support)"></span><span class="legend-name">Support</span><span class="legend-desc">Backup needed</span></div>
+
+      <div class="legend-cat">Resources</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--loot);color:var(--loot)"></span><span class="legend-name">Loot</span><span class="legend-desc">Items here</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--medic);color:var(--medic)"></span><span class="legend-name">Medic</span><span class="legend-desc">Healing needed</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--ammo);color:var(--ammo)"></span><span class="legend-name">Ammo</span><span class="legend-desc">Resupply</span></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  const pings = [
+    { id: 'attack', label: 'Attack', icon: '⚔️', color: 'var(--attack)', category: 'Combat' },
+    { id: 'defend', label: 'Defend', icon: '🛡️', color: 'var(--defend)', category: 'Combat' },
+    { id: 'look',   label: 'Look',   icon: '👁️', color: 'var(--look)',   category: 'Tactical' },
+    { id: 'move',   label: 'Move',   icon: '➡️', color: 'var(--move)',   category: 'Tactical' },
+    { id: 'enemy',  label: 'Enemy',  icon: '💀', color: 'var(--enemy)',  category: 'Combat' },
+    { id: 'loot',   label: 'Loot',   icon: '💰', color: 'var(--loot)',   category: 'Resources' },
+    { id: 'medic',  label: 'Medic',  icon: '❤️', color: 'var(--medic)',  category: 'Resources' },
+    { id: 'ammo',   label: 'Ammo',   icon: '🔫', color: 'var(--ammo)',   category: 'Resources' },
+    { id: 'cover',  label: 'Cover',  icon: '🧱', color: 'var(--cover)',  category: 'Combat' },
+    { id: 'flank',  label: 'Flank',  icon: '↪️', color: 'var(--flank)',  category: 'Combat' },
+    { id: 'watch',  label: 'Watch',  icon: '👀', color: 'var(--watch)',  category: 'Tactical' },
+    { id: 'support',label: 'Support',icon: '🤝', color: 'var(--support)',category: 'Tactical' },
+  ];
+
+  const wheel = document.getElementById('wheel');
+  const map = document.getElementById('map');
+  const wheelWrap = document.getElementById('wheelWrap');
+
+  const radius = 140; // distance from center to wedge center
+  const total = pings.length;
+
+  pings.forEach((ping, i) => {
+    const angleDeg = (360 / total) * i - 90; // start from top
+    const angleRad = (angleDeg * Math.PI) / 180;
+
+    const wedge = document.createElement('div');
+    wedge.className = 'wedge';
+    wedge.style.transform = `rotate(${angleDeg}deg) translate(${radius}px) rotate(-${angleDeg}deg)`;
+    wedge.style.background = `conic-gradient(from 0deg, ${ping.color}22, ${ping.color}44)`;
+    wedge.style.border = `1px solid ${ping.color}55`;
+
+    const inner = document.createElement('div');
+    inner.className = 'wedge-inner';
+
+    const icon = document.createElement('div');
+    icon.className = 'wedge-icon';
+    icon.textContent = ping.icon;
+
+    const label = document.createElement('div');
+    label.className = 'wedge-label';
+    label.textContent = ping.label;
+
+    inner.appendChild(icon);
+    inner.appendChild(label);
+    wedge.appendChild(inner);
+
+    wedge.addEventListener('click', () => placePing(ping));
+
+    wheel.appendChild(wedge);
+  });
+
+  function placePing(ping) {
+    // Random position on map, avoiding the wheel center area
+    const mapRect = map.getBoundingClientRect();
+    const centerX = mapRect.width / 2;
+    const centerY = mapRect.height / 2;
+    const minDist = 140; // minimum distance from center
+
+    let x, y, dist;
+    do {
+      x = Math.random() * (mapRect.width - 80) + 40;
+      y = Math.random() * (mapRect.height - 80) + 40;
+      dist = Math.hypot(x - centerX, y - centerY);
+    } while (dist < minDist);
+
+    const marker = document.createElement('div');
+    marker.className = 'ping-marker';
+    marker.style.left = x + 'px';
+    marker.style.top = y + 'px';
+    marker.style.color = ping.color;
+    marker.style.background = ping.color + '22';
+    marker.style.border = `2px solid ${ping.color}`;
+    marker.textContent = ping.icon;
+
+    const label = document.createElement('div');
+    label.className = 'ping-label';
+    label.textContent = ping.label;
+    label.style.color = ping.color;
+    marker.appendChild(label);
+
+    map.appendChild(marker);
+
+    // Auto-remove after 6 seconds with fade
+    setTimeout(() => {
+      marker.style.transition = 'opacity 0.5s, transform 0.5s';
+      marker.style.opacity = '0';
+      marker.style.transform = 'translate(-50%, -50%) scale(0.5)';
+      setTimeout(() => marker.remove(), 500);
+    }, 5500);
+  }
+
+  // Click on empty map to dismiss wheel (optional UX)
+  map.addEventListener('click', (e) => {
+    if (e.target === map || e.target.classList.contains('map-grid') || e.target.classList.contains('terrain') || e.target.classList.contains('feature')) {
+      // Just a nice feedback — wheel pulses
+      wheelWrap.style.transform = 'translate(-50%, -50%) scale(0.97)';
+      setTimeout(() => {
+        wheelWrap.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 120);
+    }
+  });
+</script>
+</body>
+</html>

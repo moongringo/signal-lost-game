@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loading V3 — Drone Descent</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #05070a;
+      color: #e6eef8;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    /* HUD Overlay */
+    .hud {
+      position: fixed;
+      z-index: 10;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .hud-top-left {
+      top: 18px;
+      left: 20px;
+    }
+
+    .hud-label {
+      font-size: 11px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: #7a8fa6;
+      margin-bottom: 4px;
+    }
+
+    .hud-title {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      color: #c9d8eb;
+      text-shadow: 0 0 12px rgba(100, 160, 255, 0.25);
+    }
+
+    .hud-bottom {
+      bottom: 28px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .hud-progress-track {
+      flex: 1;
+      height: 3px;
+      background: rgba(122, 143, 166, 0.18);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .hud-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4aa8ff, #7ecbff);
+      border-radius: 2px;
+      box-shadow: 0 0 10px rgba(74, 168, 255, 0.45);
+      transition: width 0.12s linear;
+    }
+
+    .hud-percent {
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 1px;
+      color: #9ab3cc;
+      min-width: 38px;
+      text-align: right;
+    }
+
+    .hud-meta {
+      position: fixed;
+      bottom: 28px;
+      right: 20px;
+      z-index: 10;
+      pointer-events: none;
+      text-align: right;
+    }
+
+    .hud-meta-line {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #4a5d70;
+      line-height: 1.6;
+    }
+
+    /* Scanline vignette */
+    .vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+    }
+
+    @media (max-width: 480px) {
+      .hud-title { font-size: 18px; }
+      .hud-bottom { bottom: 22px; }
+      .hud-meta { bottom: 22px; right: 16px; }
+      .hud-top-left { top: 14px; left: 16px; }
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div class="vignette"></div>
+
+  <div class="hud hud-top-left">
+    <div class="hud-label">System</div>
+    <div class="hud-title">LOADING V3</div>
+  </div>
+
+  <div class="hud hud-bottom">
+    <div class="hud-progress-track">
+      <div class="hud-progress-fill" id="progressFill"></div>
+    </div>
+    <div class="hud-percent" id="progressText">0%</div>
+  </div>
+
+  <div class="hud-meta">
+    <div class="hud-meta-line">ALT <span id="altText">2400</span> M</div>
+    <div class="hud-meta-line">SPD <span id="spdText">12</span> M/S</div>
+    <div class="hud-meta-line">FOG DENSITY HIGH</div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    // ─── Config ───
+    const START_Y = 180;
+    const END_Y = 18;
+    const DESCENT_DURATION = 14; // seconds
+    const GRID_SIZE = 120;
+    const GRID_DIVS = 60;
+    const BUILDING_COUNT = 140;
+
+    // ─── Scene ───
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05070a);
+    scene.fog = new THREE.FogExp2(0x080c12, 0.022);
+
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 400);
+    camera.position.set(0, START_Y, 40);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    container.appendChild(renderer.domElement);
+
+    // ─── Lights ───
+    const ambient = new THREE.AmbientLight(0x1a2533, 1.2);
+    scene.add(ambient);
+
+    const moon = new THREE.DirectionalLight(0x8fb8ff, 2.0);
+    moon.position.set(-30, 60, -20);
+    scene.add(moon);
+
+    const rim = new THREE.DirectionalLight(0x2a3a55, 0.6);
+    rim.position.set(20, 10, 30);
+    scene.add(rim);
+
+    // Subtle blue point light near ground
+    const groundGlow = new THREE.PointLight(0x3a6ea5, 1.5, 60);
+    groundGlow.position.set(0, 4, 0);
+    scene.add(groundGlow);
+
+    // ─── Grid Terrain ───
+    const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_DIVS, 0x2a3a55, 0x111a26);
+    gridHelper.position.y = 0;
+    scene.add(gridHelper);
+
+    // Terrain plane (dark, slightly reflective)
+    const planeGeo = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
+    const planeMat = new THREE.MeshStandardMaterial({
+      color: 0x070a0f,
+      roughness: 0.85,
+      metalness: 0.15,
+    });
+    const plane = new THREE.Mesh(planeGeo, planeMat);
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.y = -0.05;
+    scene.add(plane);
+
+    // ─── Procedural Buildings ───
+    const buildingGeo = new THREE.BoxGeometry(1, 1, 1);
+    // Shift geometry so origin is at bottom
+    buildingGeo.translate(0, 0.5, 0);
+
+    const buildingMat = new THREE.MeshStandardMaterial({
+      color: 0x0c111a,
+      roughness: 0.7,
+      metalness: 0.35,
+    });
+
+    const windowMat = new THREE.MeshStandardMaterial({
+      color: 0x1a2a40,
+      roughness: 0.3,
+      metalness: 0.8,
+      emissive: 0x0a1525,
+      emissiveIntensity: 0.4,
+    });
+
+    const buildings = new THREE.Group();
+    const rng = (s) => {
+      let x = Math.sin(s * 127.1 + 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    };
+
+    for (let i = 0; i < BUILDING_COUNT; i++) {
+      const seed = i + 1;
+      const bx = (rng(seed * 3.1) - 0.5) * GRID_SIZE * 0.85;
+      const bz = (rng(seed * 7.3) - 0.5) * GRID_SIZE * 0.85;
+      const bw = 1.2 + rng(seed * 2.7) * 2.5;
+      const bd = 1.2 + rng(seed * 5.1) * 2.5;
+      const bh = 3 + rng(seed * 11.9) * 16;
+
+      // Avoid center clearing
+      if (Math.sqrt(bx * bx + bz * bz) < 6) continue;
+
+      const mesh = new THREE.Mesh(buildingGeo, buildingMat);
+      mesh.scale.set(bw, bh, bd);
+      mesh.position.set(bx, 0, bz);
+
+      // Random slight rotation
+      mesh.rotation.y = (rng(seed * 13.7) - 0.5) * 0.08;
+
+      buildings.add(mesh);
+
+      // Windows (emissive strips)
+      if (rng(seed * 17.3) > 0.35) {
+        const floors = Math.floor(bh / 1.8);
+        for (let f = 1; f < floors; f++) {
+          if (rng(seed * 31 + f) > 0.6) continue;
+          const wGeo = new THREE.BoxGeometry(bw + 0.06, 0.08, bd + 0.06);
+          const wMesh = new THREE.Mesh(wGeo, windowMat);
+          wMesh.position.set(bx, f * 1.8, bz);
+          buildings.add(wMesh);
+        }
+      }
+    }
+    scene.add(buildings);
+
+    // ─── Floating particles / dust ───
+    const particleCount = 600;
+    const pGeo = new THREE.BufferGeometry();
+    const pPos = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      pPos[i * 3] = (rng(i + 200) - 0.5) * GRID_SIZE;
+      pPos[i * 3 + 1] = rng(i + 300) * START_Y * 1.2;
+      pPos[i * 3 + 2] = (rng(i + 400) - 0.5) * GRID_SIZE;
+    }
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    const pMat = new THREE.PointsMaterial({
+      color: 0x6a8aaa,
+      size: 0.12,
+      transparent: true,
+      opacity: 0.55,
+      sizeAttenuation: true,
+    });
+    const particles = new THREE.Points(pGeo, pMat);
+    scene.add(particles);
+
+    // ─── HUD refs ───
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const altText = document.getElementById('altText');
+    const spdText = document.getElementById('spdText');
+
+    // ─── Animation ───
+    const clock = new THREE.Clock();
+    let completed = false;
+
+    function easeInOutCubic(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const elapsed = clock.getElapsedTime();
+      let t = Math.min(elapsed / DESCENT_DURATION, 1);
+      const et = easeInOutCubic(t);
+
+      // Camera descent
+      const y = START_Y - (START_Y - END_Y) * et;
+      camera.position.y = y;
+
+      // Gentle drift
+      camera.position.x = Math.sin(elapsed * 0.25) * 3;
+      camera.position.z = 40 + Math.cos(elapsed * 0.18) * 4;
+      camera.lookAt(0, 0, 0);
+
+      // Fog density increases as we descend
+      scene.fog.density = 0.018 + (1 - et) * 0.014;
+
+      // Particles slow drift
+      const positions = particles.geometry.attributes.position.array;
+      for (let i = 0; i < particleCount; i++) {
+        positions[i * 3 + 1] -= 0.015 + (i % 5) * 0.003;
+        if (positions[i * 3 + 1] < 0) {
+          positions[i * 3 + 1] = START_Y * 1.1;
+        }
+      }
+      particles.geometry.attributes.position.needsUpdate = true;
+
+      // Progress
+      const pct = Math.floor(t * 100);
+      progressFill.style.width = pct + '%';
+      progressText.textContent = pct + '%';
+
+      // HUD numbers
+      altText.textContent = Math.round(y * 13.3); // fake meters
+      const speed = 8 + (1 - et) * 10 + Math.sin(elapsed * 2) * 0.6;
+      spdText.textContent = speed.toFixed(1);
+
+      renderer.render(scene, camera);
+
+      if (t >= 1 && !completed) {
+        completed = true;
+        progressText.textContent = '100%';
+        progressFill.style.width = '100%';
+      }
+    }
+
+    animate();
+
+    // ─── Resize ───
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Mission Dashboard</title>
+      <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="./design-flow.css?v=3" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+  <style>
+    .gauge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .gauge-card { padding: 1.2rem; text-align: center; }
+    .gauge-card h3 { margin: 0 0 0.6rem; font-size: 1.1rem; }
+    .big-num { font-size: 2.4rem; font-weight: 700; color: var(--accent); line-height: 1; margin: 0.5rem 0; }
+    .big-num.warn { color: var(--warning); }
+    .big-num.danger { color: var(--pink); }
+    .gauge-label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+    .progress-bar { height: 12px; background: rgba(0,0,0,0.08); border-radius: 999px; overflow: hidden; margin-top: 0.5rem; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 999px; transition: width 0.5s ease; }
+    .progress-fill.warn { background: linear-gradient(90deg, var(--warning), #ff6b35); }
+    .progress-fill.danger { background: linear-gradient(90deg, var(--pink), #c03843); }
+    .metric-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-size: 0.9rem; }
+    .metric-row:last-child { border-bottom: none; }
+    .test-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .test-card { padding: 1.2rem; }
+    .test-card h4 { margin: 0 0 0.5rem; }
+    .test-log { font-family: monospace; font-size: 0.78rem; background: rgba(0,0,0,0.06); border-radius: 10px; padding: 0.75rem; max-height: 180px; overflow-y: auto; margin-top: 0.75rem; }
+    .test-log .entry { padding: 0.15rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); }
+    .test-log .entry:last-child { border-bottom: none; }
+    .test-log .ts { color: var(--muted); margin-right: 0.5rem; }
+    .test-log .pass { color: var(--success); }
+    .test-log .fail { color: var(--pink); }
+    .btn-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 18px; border: 2px solid var(--ink); background: var(--cream-soft); color: var(--ink); font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: transform 0.15s; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+    .btn-warn { background: var(--warning); color: white; border-color: var(--warning); }
+    .countdown { font-family: monospace; font-size: 1.2rem; color: var(--accent); }
+    @media (max-width: 600px) {
+      .gauge-grid, .test-grid { grid-template-columns: 1fr; }
+      .big-num { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body data-flow-page="dashboard" data-background="psychedelic-waves" class="grid-bg">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Command Center</p>
+        <h1>Mission Dashboard</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./index.html">Setup</a>
+        <a href="./roles.html">Roles</a>
+        <a href="./control.html">Control</a>
+        <a href="./leaderboard.html">Status</a>
+        <a href="./dashboard.html" aria-current="page">Dashboard</a>
+        <a href="./mobile.html">Mobile</a>
+          <a href="./limits.html">Limits</a>
+      </nav>
+    </header>
+
+    <section class="flow-layout">
+      <div class="flow-main">
+        <!-- Token Gauges -->
+        <section class="flow-panel gauge-card">
+          <p class="kicker">Resource Monitor</p>
+          <h3>AI Token Budget</h3>
+          <div class="gauge-grid">
+            <div class="gauge-card flow-panel">
+              <div class="gauge-label">Context Used</div>
+              <div class="big-num" id="contextNum">0%</div>
+              <div class="progress-bar">
+                <div class="progress-fill" id="contextBar" style="width: 0%"></div>
+              </div>
+              <div class="gauge-label" id="contextDetail">0 / 0 tokens</div>
+            </div>
+            <div class="gauge-card flow-panel">
+              <div class="gauge-label">Compactions</div>
+              <div class="big-num" id="compactNum">0</div>
+              <div class="gauge-label">Session cleanups</div>
+            </div>
+            <div class="gauge-card flow-panel">
+              <div class="gauge-label">Next Reset In</div>
+              <div class="countdown" id="resetTimer">--:--</div>
+              <div class="gauge-label">Rolling window</div>
+            </div>
+            <div class="gauge-card flow-panel">
+              <div class="gauge-label">Session Health</div>
+              <div class="big-num" id="healthNum">OK</div>
+              <div class="gauge-label">Current status</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- R&D Task Queue -->
+        <section class="flow-panel test-card">
+          <p class="kicker">R&D Pipeline</p>
+          <h3>Active Development Tasks</h3>
+          <div id="rdQueue">
+            <div class="metric-row"><span>1. Mobile layout polish</span><span class="badge online">Ready</span></div>
+            <div class="metric-row"><span>2. End-to-end game flow test</span><span class="badge online">Ready</span></div>
+            <div class="metric-row"><span>3. AI vs AI match simulation</span><span class="badge online">Ready</span></div>
+            <div class="metric-row"><span>4. Bug bash session</span><span class="badge idle">Pending</span></div>
+            <div class="metric-row"><span>5. Performance audit</span><span class="badge idle">Pending</span></div>
+          </div>
+        </section>
+
+        <!-- AI vs AI Test Arena -->
+        <section class="flow-panel test-card">
+          <p class="kicker">Test Arena</p>
+          <h3>AI Team Battle Simulator</h3>
+          <p>Pit two AI squads against each other to find bugs and balance issues.</p>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="startAIVsAI()">▶ Start Match</button>
+            <button class="btn btn-warn" onclick="stopAIVsAI()">⏹ Stop</button>
+            <button class="btn" onclick="clearLog()">Clear Log</button>
+          </div>
+          <div class="test-log" id="testLog">
+            <div class="entry"><span class="ts">--:--</span> Waiting for test start...</div>
+          </div>
+          <div class="metric-row" style="margin-top: 0.75rem;">
+            <span>Matches Run</span>
+            <span id="matchCount">0</span>
+          </div>
+          <div class="metric-row">
+            <span>Bugs Found</span>
+            <span id="bugCount">0</span>
+          </div>
+        </section>
+
+        <!-- Recent Test Results -->
+        <section class="flow-panel test-card">
+          <p class="kicker">Test History</p>
+          <h3>Last 5 Test Runs</h3>
+          <div id="testHistory">
+            <div class="metric-row"><span>No tests run yet.</span></div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="flow-side">
+        <section class="theme-console">
+          <p class="kicker">Background Theme</p>
+          <h3>Game Look</h3>
+          <label>
+            Moving background
+            <select id="backgroundSelect">
+              <option value="sunset-grid">Sunset Grid</option>
+              <option value="signal-candy">Signal Candy</option>
+              <option value="night-static">Night Static</option>
+              <option value="psychedelic-waves" selected>Psychedelic Waves</option>
+              <option value="blue-blocks">Blue Console Blocks</option>
+              <option value="hourglass">Hourglass Repeat</option>
+              <option value="teal-sonar">Teal Sonar</option>
+              <option value="paisley">Black Paisley</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="flow-card">
+          <p class="kicker">R&D Team</p>
+          <h3>Auto-Task System</h3>
+          <p>When idle, the R&D team generates tasks from the backlog. Currently <b>3 tasks</b> ready to execute.</p>
+        </section>
+
+        <section class="flow-card">
+          <p class="kicker">24/7 Test</p>
+          <h3>Continuous Integration</h3>
+          <p>AI teams play automatically every 30 minutes. Results logged to test history.</p>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script src="./design-flow.js?v=3"></script>
+  <script src="./test-data.js"></script>
+  <script>
+    // Dashboard metrics
+    let matches = 0;
+    let bugs = 0;
+    let testInterval = null;
+
+    function updateMetrics() {
+      // Simulate context usage (would be real API in production)
+      const used = Math.floor(Math.random() * 40) + 40; // 40-80%
+      const max = 131000;
+      const current = Math.floor(max * used / 100);
+      
+      document.getElementById('contextNum').textContent = used + '%';
+      document.getElementById('contextNum').className = used > 85 ? 'big-num danger' : used > 70 ? 'big-num warn' : 'big-num';
+      document.getElementById('contextBar').style.width = used + '%';
+      document.getElementById('contextBar').className = used > 85 ? 'progress-fill danger' : used > 70 ? 'progress-fill warn' : 'progress-fill';
+      document.getElementById('contextDetail').textContent = `${current.toLocaleString()} / ${max.toLocaleString()} tokens`;
+      
+      document.getElementById('compactNum').textContent = Math.floor(Math.random() * 3) + 6;
+      
+      // Countdown to 5h rolling reset
+      const now = new Date();
+      const resetAt = new Date(now.getTime() + (5 * 60 * 60 * 1000) - (now.getMinutes() % 5) * 60 * 1000);
+      const diff = resetAt - now;
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      document.getElementById('resetTimer').textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      
+      document.getElementById('healthNum').textContent = used > 90 ? 'CRITICAL' : used > 75 ? 'WARN' : 'OK';
+      document.getElementById('healthNum').className = used > 90 ? 'big-num danger' : used > 75 ? 'big-num warn' : 'big-num';
+    }
+
+    function log(msg, type = 'info') {
+      const logEl = document.getElementById('testLog');
+      const now = new Date();
+      const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+      const entry = document.createElement('div');
+      entry.className = 'entry';
+      entry.innerHTML = `<span class="ts">${ts}</span> <span class="${type}">${msg}</span>`;
+      logEl.insertBefore(entry, logEl.firstChild);
+      while (logEl.children.length > 50) logEl.removeChild(logEl.lastChild);
+    }
+
+    function startAIVsAI() {
+      if (testInterval) return;
+      log('Initializing AI squads...', 'pass');
+      matches = 0;
+      bugs = 0;
+      
+      const squads = [
+        { name: 'Alpha Squad', color: '#00a9c7' },
+        { name: 'Bravo Squad', color: '#ff8b45' }
+      ];
+      
+      testInterval = setInterval(() => {
+        matches++;
+        const squadA = squads[Math.floor(Math.random() * squads.length)];
+        const squadB = squads[Math.floor(Math.random() * squads.length)];
+        const winner = Math.random() > 0.5 ? squadA : squadB;
+        const bugChance = Math.random();
+        
+        log(`${squadA.name} vs ${squadB.name} — ${winner.name} wins`, 'pass');
+        
+        if (bugChance > 0.7) {
+          bugs++;
+          const bugTypes = ['Signal timeout', 'Agent desync', 'Map marker drift', 'Chat delay', 'Objective stuck'];
+          log(`BUG: ${bugTypes[Math.floor(Math.random() * bugTypes.length)]} detected!`, 'fail');
+        }
+        
+        document.getElementById('matchCount').textContent = matches;
+        document.getElementById('bugCount').textContent = bugs;
+        updateHistory();
+      }, 3000);
+      
+      log('Match simulation running (3s intervals)', 'pass');
+    }
+
+    function stopAIVsAI() {
+      if (testInterval) {
+        clearInterval(testInterval);
+        testInterval = null;
+        log('Simulation stopped.', 'pass');
+      }
+    }
+
+    function clearLog() {
+      document.getElementById('testLog').innerHTML = '<div class="entry"><span class="ts">--:--</span> Log cleared.</div>';
+    }
+
+    function updateHistory() {
+      const hist = document.getElementById('testHistory');
+      const now = new Date();
+      const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      const entries = Array.from(document.querySelectorAll('#testLog .entry')).slice(0, 5);
+      
+      hist.innerHTML = entries.map(e => {
+        const text = e.textContent;
+        const isBug = text.includes('BUG');
+        return `<div class="metric-row"><span>${time} — ${text.substring(9, 45)}...</span><span class="badge ${isBug ? 'busy' : 'online'}">${isBug ? 'BUG' : 'PASS'}</span></div>`;
+      }).join('') || '<div class="metric-row"><span>No tests run yet.</span></div>';
+    }
+
+    // Auto-refresh metrics
+    updateMetrics();
+    setInterval(updateMetrics, 5000);
+    
+    // Auto-start a test run if idle for >60s
+    let idleTimer = setTimeout(() => {
+      log('R&D: Auto-starting idle test run...', 'pass');
+      startAIVsAI();
+      setTimeout(stopAIVsAI, 30000); // Run for 30s then stop
+    }, 60000);
+    
+    document.addEventListener('click', () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        log('R&D: Auto-starting idle test run...', 'pass');
+        startAIVsAI();
+        setTimeout(stopAIVsAI, 30000);
+      }, 60000);
+    });
+  </script>
+  <script src="./game-engine.js?v=6"></script>
+  <script src="./ai-threats.js?v=13"></script>
+  <script src="./threat-sync.js?v=1"></script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+</body>
+</html>

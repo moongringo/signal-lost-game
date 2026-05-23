@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Signal Lost — Emote Wheel &amp; Quick Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="design-system.css" />
+<style>
+:root{--ink:#201116;--cream:#fff0c7;--gold:#ffd965;--teal:#008c94;--orange:#ff8b1f;--pink:#e82663;--blue:#18364b;}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--ink);font-family:'Inter',system-ui,sans-serif;color:var(--cream);min-height:100vh}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;gap:2rem}
+
+/* Emote Wheel */
+.wheel-wrap{position:relative;width:280px;height:280px}
+.wheel-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;width:80px;height:80px;border-radius:50%;background:linear-gradient(145deg,var(--teal),var(--blue));display:grid;place-items:center;font-weight:900;font-size:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.4);border:3px solid rgba(255,217,101,0.3);cursor:pointer;transition:transform .2s}
+.wheel-center:hover{transform:translate(-50%,-50%) scale(1.1)}
+.wheel-segment{position:absolute;left:50%;top:50%;width:120px;height:120px;margin-left:-60px;margin-top:-120px;transform-origin:50% 120px;clip-path:polygon(50% 0,100% 100%,0 100%);background:rgba(255,255,255,0.04);border:1px solid rgba(255,217,101,0.1);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:12px;transition:all .15s}
+.wheel-segment:hover{background:rgba(255,217,101,0.12);border-color:rgba(255,217,101,0.3)}
+.wheel-segment .icon{font-size:1.4rem;margin-bottom:2px}
+.wheel-segment .label{font-size:0.6rem;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;color:rgba(255,240,199,0.7)}
+.wheel-segment:nth-child(1){transform:rotate(0deg)}
+.wheel-segment:nth-child(2){transform:rotate(72deg)}
+.wheel-segment:nth-child(3){transform:rotate(144deg)}
+.wheel-segment:nth-child(4){transform:rotate(216deg)}
+.wheel-segment:nth-child(5){transform:rotate(288deg)}
+
+/* Quick Chat */
+.quick-chat{width:100%;max-width:400px;background:linear-gradient(145deg,#1a0d12,#0a0508);border:2px solid rgba(255,217,101,0.15);border-radius:20px;padding:1.25rem}
+.quick-chat h3{font-family:'Space Grotesk',sans-serif;font-size:1rem;margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em}
+.chat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0.5rem}
+.chat-msg{padding:0.65rem 0.75rem;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);font-size:0.8rem;cursor:pointer;transition:all .1s;color:var(--cream);text-align:left}
+.chat-msg:hover{background:rgba(255,217,101,0.1);border-color:rgba(255,217,101,0.2);transform:translateY(-1px)}
+.chat-msg .key{font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:rgba(255,240,199,0.4);float:right;margin-left:0.5rem}
+
+/* Selected preview */
+.preview{margin-top:1rem;padding:0.75rem;border-radius:12px;background:rgba(0,140,148,0.1);border:1px solid rgba(0,140,148,0.2);text-align:center;font-size:0.85rem;min-height:44px;display:grid;place-items:center}
+.preview .emoji{font-size:1.2rem;margin-right:0.25rem}
+
+@media(max-width:400px){
+.wheel-wrap{width:240px;height:240px}
+.wheel-segment{width:100px;height:100px;margin-left:-50px;margin-top:-100px;transform-origin:50% 100px}
+.wheel-center{width:64px;height:64px;font-size:1.2rem}
+}
+</style>
+  <link rel="stylesheet" href="./design-flow.css" />
+</head><body data-flow-page="emote-wheel" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Emote Wheel &amp; Quick Chat</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./design-flow-setup.html">Setup</a>
+        <a href="./design-flow-roles.html">Roles</a>
+        <a href="./design-flow-control.html">Control</a>
+
+        <a href="./design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="./login.html">Login</a>
+              <a href="./server-browser.html">Server Browser</a>
+              <a href="./map-selection.html">Map Selection</a>
+              <a href="./role-selection.html">Role Selection</a>
+              <a href="./matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="./player-profile.html">Player Profile</a>
+              <a href="./career-stats.html">Career Stats</a>
+              <a href="./match-result.html">Match Result</a>
+              <a href="./post-match-report.html">Post-Match Report</a>
+              <a href="./kill-cam.html">Kill Cam</a>
+              <a href="./death-recap.html">Death Recap</a>
+              <a href="./spectator-mode.html">Spectator Mode</a>
+              <a href="./replay-viewer.html">Replay Viewer</a>
+              <a href="./tournament-bracket.html">Tournament</a>
+              <a href="./emote-wheel.html" aria-current="page">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="./store.html">Store</a>
+              <a href="./friends.html">Friends</a>
+              <a href="./squad.html">Squad</a>
+              <a href="./clan-wars.html">Clan Wars</a>
+              <a href="./patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="./token-dashboard.html">Token Dashboard</a>
+              <a href="./daily-challenges.html">Daily Challenges</a>
+              <a href="./inventory.html">Inventory</a>
+              <a href="./loadout-builder.html">Loadout Builder</a>
+              <a href="./battle-pass.html">Battle Pass</a>
+              <a href="./loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="./R&D-INDEX.html">R&D Index</a>
+              <a href="./ai-battle-arena.html">AI Battle Arena</a>
+              <a href="./admin-dashboard.html">Admin Dashboard</a>
+              <a href="./leaderboard.html">Leaderboard</a>
+              <a href="./settings.html">Settings</a>
+              <a href="./design-system.html">Design System</a>
+              <a href="./design-flow-setup.html">Setup Page</a>
+              <a href="./design-flow-roles.html">Roles Page</a>
+              <a href="./design-flow-control.html">Control Page</a>
+              <a href="./action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="./mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="./mobile-radar.html">Mobile Radar</a>
+              <a href="./gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="numberedPagesBtn">🔢 All Pages (1-50+) ▾</button>
+          <div class="page-menu" id="numberedPagesMenu">
+            <div class="page-menu-group"><div class="page-menu-title">Auth & Flow (1-5)</div><a href="./login.html">1 — Login</a><a href="./server-browser.html">2 — Server Browser</a><a href="./map-selection.html">3 — Map Selection</a><a href="./role-selection.html">4 — Role Selection</a><a href="./matchmaking.html">5 — Matchmaking</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Game Screens (6-15)</div><a href="./player-profile.html">6 — Player Profile</a><a href="./career-stats.html">7 — Career Stats</a><a href="./match-result.html">8 — Match Result</a><a href="./post-match-report.html">9 — Post-Match Report</a><a href="./kill-cam.html">10 — Kill Cam</a><a href="./death-recap.html">11 — Death Recap</a><a href="./spectator-mode.html">12 — Spectator Mode</a><a href="./replay-viewer.html">13 — Replay Viewer</a><a href="./tournament-bracket.html">14 — Tournament</a><a href="./emote-wheel.html" aria-current="page">15 — Emote Wheel</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Live & Social (16-20)</div><a href="./store.html">16 — Store</a><a href="./friends.html">17 — Friends</a><a href="./squad.html">18 — Squad</a><a href="./clan-wars.html">19 — Clan Wars</a><a href="./patch-notes.html">20 — Patch Notes</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Management (21-26)</div><a href="./token-dashboard.html">21 — Token Dashboard</a><a href="./daily-challenges.html">22 — Daily Challenges</a><a href="./inventory.html">23 — Inventory</a><a href="./loadout-builder.html">24 — Loadout Builder</a><a href="./battle-pass.html">25 — Battle Pass</a><a href="./loot-crate.html">26 — Loot Crate</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Tools & Systems (27-36)</div><a href="./R&D-INDEX.html">27 — R&D Index</a><a href="./ai-battle-arena.html">28 — AI Battle Arena</a><a href="./admin-dashboard.html">29 — Admin Dashboard</a><a href="./leaderboard.html">30 — Leaderboard</a><a href="./settings.html">31 — Settings</a><a href="./design-system.html">32 — Design System</a><a href="./design-flow-setup.html">33 — Setup Page</a><a href="./design-flow-roles.html">34 — Roles Page</a><a href="./design-flow-control.html">35 — Control Page</a><a href="./action-center.html">36 — Action Center</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Mobile (37-39)</div><a href="./mobile-ui-kit.html">37 — Mobile UI Kit</a><a href="./mobile-radar.html">38 — Mobile Radar</a><a href="./gps-tracker.html">39 — GPS Tracker</a></div>
+          </div>
+        </div>
+
+        <a href="./design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<div class="wheel-wrap" id="emoteWheel">
+  <div class="wheel-segment" data-emote="👍" data-text="Nice!"><div class="icon">👍</div><div class="label">Nice</div></div>
+  <div class="wheel-segment" data-emote="🙏" data-text="Thanks"><div class="icon">🙏</div><div class="label">Thanks</div></div>
+  <div class="wheel-segment" data-emote="⚠️" data-text="Danger"><div class="icon">⚠️</div><div class="label">Danger</div></div>
+  <div class="wheel-segment" data-emote="❤️" data-text="Heal me"><div class="icon">❤️</div><div class="label">Heal</div></div>
+  <div class="wheel-segment" data-emote="👋" data-text="Hello"><div class="icon">👋</div><div class="label">Hello</div></div>
+  <div class="wheel-center" id="wheelCenter">🎭</div>
+</div>
+
+<div class="quick-chat">
+  <h3>Quick Chat</h3>
+  <div class="chat-grid">
+    <button class="chat-msg" data-chat="Enemy spotted"><span class="key">1</span>Enemy spotted</button>
+    <button class="chat-msg" data-chat="Need backup"><span class="key">2</span>Need backup</button>
+    <button class="chat-msg" data-chat="Going in"><span class="key">3</span>Going in</button>
+    <button class="chat-msg" data-chat="Fall back"><span class="key">4</span>Fall back</button>
+    <button class="chat-msg" data-chat="Loot here"><span class="key">5</span>Loot here</button>
+    <button class="chat-msg" data-chat="Follow me"><span class="key">6</span>Follow me</button>
+    <button class="chat-msg" data-chat="Good game"><span class="key">7</span>Good game</button>
+    <button class="chat-msg" data-chat="Group up"><span class="key">8</span>Group up</button>
+  </div>
+  <div class="preview" id="chatPreview">Select an emote or message...</div>
+</div>
+
+<script src="design-system.js"></script>
+<script>
+new SignalLostDesign({ spotlight:true, magneticButtons:true, scrollReveal:true, reducedMotion:true });
+
+const preview = document.getElementById('chatPreview');
+
+// Emote wheel
+document.querySelectorAll('.wheel-segment').forEach(seg => {
+  seg.addEventListener('click', () => {
+    const emote = seg.dataset.emote;
+    const text = seg.dataset.text;
+    preview.innerHTML = `<span class="emoji">${emote}</span> <b>${text}</b>`;
+    preview.style.borderColor = 'rgba(255,217,101,0.4)';
+    setTimeout(() => preview.style.borderColor = '', 400);
+  });
+});
+
+// Quick chat
+document.querySelectorAll('.chat-msg').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const text = btn.dataset.chat;
+    preview.innerHTML = `💬 Squad: <b>${text}</b>`;
+    preview.style.borderColor = 'rgba(0,140,148,0.4)';
+    setTimeout(() => preview.style.borderColor = '', 400);
+  });
+});
+
+// Number keys for quick chat
+window.addEventListener('keydown', e => {
+  const idx = parseInt(e.key) - 1;
+  const msgs = document.querySelectorAll('.chat-msg');
+  if (msgs[idx]) msgs[idx].click();
+});
+</script>
+
+    </div>
+  </main>
+  <script src="design-system.js"></script>
+  <script src="./design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+    // Numbered pages menu toggle
+    const numberedPagesBtn = document.getElementById('numberedPagesBtn');
+    const numberedPagesMenu = document.getElementById('numberedPagesMenu');
+    if (numberedPagesBtn && numberedPagesMenu) {
+      numberedPagesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        numberedPagesMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!numberedPagesMenu.contains(e.target) && !numberedPagesBtn.contains(e.target)) {
+          numberedPagesMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

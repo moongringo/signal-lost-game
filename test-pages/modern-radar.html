@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Signal Lost — Modern Tactical Radar</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0e0;font-family:'Courier New',monospace;overflow:hidden;height:100dvh;touch-action:none;user-select:none}
+/* HUD Bar */
+#hud{position:absolute;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:linear-gradient(180deg,rgba(0,0,0,0.9)0%,transparent 100%);font-size:9px;pointer-events:none}
+#hud .left{display:flex;align-items:center;gap:10px}
+#hud .left .title{font-size:11px;color:#00ff88;letter-spacing:2px;font-weight:bold}
+#hud .left .tag{background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);padding:2px 6px;border-radius:2px;font-size:8px;color:#00ff88}
+#hud .right{display:flex;align-items:center;gap:8px;color:#556655;font-size:8px}
+#hud .right .dot{width:5px;height:5px;border-radius:50%;background:#00ff88;display:inline-block;animation:pulse2 2s infinite}
+@keyframes pulse2{0%,100%{opacity:1}50%{opacity:0.3}}
+/* Map */
+#map-container{width:100vw;height:100vh;position:relative;overflow:hidden}
+canvas#map-canvas{width:100%;height:100%;display:block}
+/* Bottom bar */
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;z-index:20;display:flex;align-items:center;padding:6px 12px;background:linear-gradient(0deg,rgba(0,0,0,0.9)0%,transparent 100%);pointer-events:none}
+#bottom-bar .tab{pointer-events:auto;flex:1;text-align:center;font-size:8px;color:#556655;letter-spacing:1px;padding:6px 4px;cursor:pointer;transition:all 0.2s;border-top:1px solid transparent}
+#bottom-bar .tab.active{color:#00ff88;border-top-color:#00ff88}
+#bottom-bar .tab:active{color:#00ff88}
+/* Zoom controls */
+#zoom-controls{position:absolute;right:10px;bottom:50px;z-index:20;display:flex;flex-direction:column;gap:2px;pointer-events:none}
+#zoom-controls button{pointer-events:auto;width:32px;height:32px;background:rgba(0,0,0,0.7);border:1px solid #1a2a1a;color:#00ff88;font-size:16px;cursor:pointer;border-radius:3px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;font-family:monospace}
+#zoom-controls button:active{background:rgba(0,255,136,0.15);border-color:#00ff88}
+#zoom-level{position:absolute;right:48px;bottom:60px;z-index:20;font-size:9px;color:#556655;pointer-events:none}
+/* Legend */
+#legend{position:absolute;bottom:55px;left:10px;z-index:20;font-size:7px;color:#556655;line-height:1.8;pointer-events:none}
+.l-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div id="hud">
+<div class="left"><span class="title">SIGNAL LOST</span><span class="tag">TAC-MAP</span></div>
+<div class="right"><span class="dot"></span> GPS LOCKED · <span id="player-count">6</span> ONLINE · <span id="zoom-display">1.0x</span></div>
+</div>
+<div id="map-container"><canvas id="map-canvas"></canvas></div>
+<div id="bottom-bar">
+<div class="tab active" data-view="3d">3D VIEW</div>
+<div class="tab" data-view="top">TOP DOWN</div>
+<div class="tab" data-view="minimal">MINIMAL</div>
+</div>
+<div id="zoom-controls"><button id="zoom-in">+</button><button id="zoom-out">−</button></div>
+<div id="zoom-level">ZOOM</div>
+<div id="legend">
+<div><span class="l-dot" style="background:#00ff88"></span> ALLIES</div>
+<div><span class="l-dot" style="background:#ff3344"></span> HOSTILES</div>
+<div><span class="l-dot" style="background:#4488ff"></span> OBJECTIVES</div>
+<div><span class="l-dot" style="background:#ffaa00"></span> EXTRACTION</div>
+</div>
+<script>
+const canvas=document.getElementById('map-canvas'),ctx=canvas.getContext('2d');
+let W,H,zoom=1;
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight}resize();window.addEventListener('resize',resize);
+
+// Data
+const mapSize=50;
+const allies=[],enemies=[],objectives=[];
+const names=['GHOST','VIPER','RAVEN','SHADOW','PHANTOM','BLADE'];
+[[-5,-3],[3,-8],[-8,6],[7,3],[-2,11],[12,-4]].forEach((p,i)=>{allies.push({x:p[0],y:p[1],name:names[i],hp:0.7+Math.random()*0.3,vx:(Math.random()-0.5)*0.04,vy:(Math.random()-0.5)*0.04})});
+[[18,12],[-15,-18],[20,-12],[-18,15],[10,20],[-22,8]].forEach(p=>{enemies.push({x:p[0],y:p[1],vx:(Math.random()-0.5)*0.03,vy:(Math.random()-0.5)*0.03})});
+objectives.push({x:-12,y:10,name:'OBJ-A'},{x:14,y:-10,name:'OBJ-B'});
+const extraction={x:0,y:-26};
+
+let view='3d',camAngle=0;
+let dotPath={}; // movement trails
+
+function toScreen(wx,wy){const cx=W/2,cy=H/2;return{x:cx+wx*zoom*6,y:cy+wy*zoom*6}}
+
+function drawGrid(){
+ctx.save();const cx=W/2,cy=H/2;const step=20;
+ctx.strokeStyle='rgba(0,255,136,0.04)';ctx.lineWidth=0.5;
+for(let i=-mapSize;i<=mapSize;i+=step){const s=toScreen(i,0);if(s.x>=-step&&s.x<=W+step){ctx.beginPath();ctx.moveTo(s.x,0);ctx.lineTo(s.x,H);ctx.stroke()}}
+for(let i=-mapSize;i<=mapSize;i+=step){const s=toScreen(0,i);if(s.y>=-step&&s.y<=H+step){ctx.beginPath();ctx.moveTo(0,s.y);ctx.lineTo(W,s.y);ctx.stroke()}}
+ctx.restore()}
+
+function drawTerrain(){
+// Subtle terrain patches
+for(let i=0;i<30;i++){
+const wx=(Math.random()-0.5)*mapSize*2,wy=(Math.random()-0.5)*mapSize*2;
+const s=toScreen(wx,wy);const r=10+Math.random()*20;
+const grad=ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,r);
+grad.addColorStop(0,`rgba(0,255,136,${0.01+Math.random()*0.02})`);
+grad.addColorStop(1,'transparent');
+ctx.fillStyle=grad;ctx.fillRect(s.x-r,s.y-r,r*2,r*2)}
+}
+
+function drawContourLines(){
+ctx.strokeStyle='rgba(0,255,136,0.03)';ctx.lineWidth=0.3;ctx.setLineDash([2,4]);
+for(let h=5;h<=45;h+=10){const pts=[];for(let a=0;a<=Math.PI*2;a+=0.1){const r=h+Math.sin(a*3)*2+Math.cos(a*5)*1.5;const wx=Math.cos(a)*r,wy=Math.sin(a)*r;const s=toScreen(wx,wy);pts.push(s)}ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.stroke()}
+ctx.setLineDash([])}
+
+function drawBuildings(){
+const bp=[[-12,-10],[-5,-18],[7,-12],[16,-6],[-18,6],[-3,12],[12,14],[18,18],[-10,20],[2,-3],[-22,-12],[22,-8],[12,-22],[-15,16],[6,-25],[25,5],[-25,8],[-8,-28],[20,-20],[-20,-20]];
+bp.forEach(p=>{
+const w=4+Math.random()*6,h=4+Math.random()*6;
+const s=toScreen(p[0],p[1]);const sx=toScreen(p[0]+0.5,p[1])&&s.x;
+const sw=sx?s.x-(toScreen(p[0]+0.5,p[1]).x-s.x):w;
+ctx.fillStyle='rgba(30,40,50,0.6)';ctx.fillRect(s.x-w/2,s.y-h/2,w,h);
+ctx.strokeStyle='rgba(0,255,136,0.08)';ctx.lineWidth=0.5;ctx.strokeRect(s.x-w/2,s.y-h/2,w,h);
+// Shadow
+ctx.fillStyle='rgba(0,0,0,0.2)';ctx.fillRect(s.x-w/2+3,s.y-h/2+3,w,h);
+})}
+
+function drawUnit(x,y,color,size,name,hp,isEnemy){
+const s=toScreen(x,y);if(s.x<-20||s.x>W+20||s.y<-20||s.y>H+20)return;
+ctx.save();
+// Glow
+const grad=ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,size*4);
+grad.addColorStop(0,color+'40');grad.addColorStop(1,'transparent');
+ctx.fillStyle=grad;ctx.beginPath();ctx.arc(s.x,s.y,size*4,0,Math.PI*2);ctx.fill();
+// Body
+if(view==='3d'){
+// 3D effect: ellipse with highlight
+ctx.shadowColor=color;ctx.shadowBlur=8;
+const grad2=ctx.createRadialGradient(s.x-size*0.2,s.y-size*0.3,0,s.x,s.y,size);
+grad2.addColorStop(0,'rgba(255,255,255,0.3)');grad2.addColorStop(0.5,color);grad2.addColorStop(1,color+'80');
+ctx.fillStyle=grad2;ctx.beginPath();ctx.arc(s.x,s.y,size,0,Math.PI*2);ctx.fill();
+ctx.shadowBlur=0;
+// Health ring (allies only)
+if(hp!==undefined){ctx.strokeStyle=hp>0.5?'#00ff88':hp>0.25?'#ffaa00':'#ff3344';ctx.lineWidth=2;ctx.beginPath();ctx.arc(s.x,s.y,size+3,0,Math.PI*2*(1-hp)*2);ctx.stroke()}
+}else{
+ctx.fillStyle=color;ctx.beginPath();ctx.arc(s.x,s.y,size,0,Math.PI*2);ctx.fill()
+}
+// Label
+if(name){ctx.fillStyle='rgba(0,0,0,0.6)';const tw=ctx.measureText(name).width+10;ctx.fillRect(s.x-tw/2,s.y-size-14,tw,12);ctx.fillStyle='#e0e0e0';ctx.font='8px monospace';ctx.textAlign='center';ctx.fillText(name,s.x,s.y-size-6)}
+
+ctx.restore()}
+
+function drawObjective(x,y,name){
+const s=toScreen(x,y);if(s.x<-20||s.x>W+20||s.y<-20||s.y>H+20)return;
+ctx.save();
+const pulse=0.6+Math.sin(Date.now()*0.003)*0.4;
+ctx.shadowColor='#4488ff';ctx.shadowBlur=15*pulse;
+ctx.strokeStyle='#4488ff';ctx.lineWidth=2;ctx.globalAlpha=0.5+pulse*0.3;
+ctx.beginPath();const sz=8*pulse;ctx.moveTo(s.x,s.y-sz);ctx.lineTo(s.x+sz,s.y);ctx.lineTo(s.x,s.y+sz);ctx.lineTo(s.x-sz,s.y);ctx.closePath();ctx.stroke();
+ctx.shadowBlur=0;ctx.globalAlpha=1;
+ctx.fillStyle='#4488ff';ctx.font='7px monospace';ctx.textAlign='center';ctx.fillText(name,s.x,s.y+16);
+ctx.restore()}
+
+function drawExtraction(x,y){
+const s=toScreen(x,y);if(s.x<-20||s.x>W+20||s.y<-20||s.y>H+20)return;
+ctx.save();
+const pulse=0.3+Math.sin(Date.now()*0.002)*0.2;
+ctx.shadowColor='#ffaa00';ctx.shadowBlur=20;
+ctx.fillStyle='rgba(255,170,0,0.4)';ctx.beginPath();ctx.arc(s.x,s.y,12*pulse,0,Math.PI*2);ctx.fill();
+ctx.shadowBlur=0;
+ctx.fillStyle='#ffaa00';ctx.font='7px monospace';ctx.textAlign='center';ctx.fillText('EXFIL',s.x,s.y+18);
+ctx.restore()}
+
+function drawMovementTrail(x,y,color){
+// Trail from path history
+if(!dotPath[x+','+y])dotPath[x+','+y]=[];
+dotPath[x+','+y].push({x,y,life:1});
+if(dotPath[x+','+y].length>5)dotPath[x+','+y].shift();
+dotPath[x+','+y].forEach(pt=>{
+const s=toScreen(pt.x,pt.y);ctx.fillStyle=color+Math.floor(pt.life*40).toString(16).padStart(2,'0');
+ctx.beginPath();ctx.arc(s.x,s.y,2,0,Math.PI*2);ctx.fill();pt.life-=0.25})}
+
+function draw(){
+ctx.clearRect(0,0,W,H);
+// Background
+ctx.fillStyle='#0a0a0f';ctx.fillRect(0,0,W,H);
+drawTerrain();drawGrid();drawContourLines();drawBuildings();
+
+// Map border
+const tl=toScreen(-mapSize,-mapSize),br=toScreen(mapSize,mapSize);
+ctx.strokeStyle='rgba(0,255,136,0.2)';ctx.lineWidth=1;ctx.strokeRect(tl.x,tl.y,br.x-tl.x,br.y-tl.y);
+
+// Distance scale
+const ds=toScreen(0,0),de=toScreen(10,0);
+ctx.strokeStyle='rgba(0,255,136,0.3)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ds.x,ds.y+mapSize*zoom*6+15);ctx.lineTo(de.x,de.y+mapSize*zoom*6+15);ctx.stroke();
+ctx.fillStyle='rgba(0,255,136,0.3)';ctx.font='7px monospace';ctx.textAlign='center';ctx.fillText('100m',(ds.x+de.x)/2,ds.y+mapSize*zoom*6+25);
+
+// Units
+enemies.forEach(e=>drawUnit(e.x,e.y,'#ff3344',6,null,null,true));
+allies.forEach(a=>drawUnit(a.x,a.y,'#00ff88',7,a.name,a.hp));
+objectives.forEach(o=>drawObjective(o.x,o.y,o.name));
+drawExtraction(extraction.x,extraction.y);
+
+// Map center crosshair
+ctx.strokeStyle='rgba(0,255,136,0.1)';ctx.lineWidth=0.5;
+ctx.beginPath();ctx.moveTo(W/2-20,H/2);ctx.lineTo(W/2+20,H/2);ctx.stroke();
+ctx.beginPath();ctx.moveTo(W/2,H/2-20);ctx.lineTo(W/2,H/2+20);ctx.stroke();
+}
+
+function update(){
+// Move allies
+allies.forEach(a=>{a.x+=a.vx;a.y+=a.vy;if(Math.abs(a.x)>30||Math.random()<0.005)a.vx=(Math.random()-0.5)*0.04;if(Math.abs(a.y)>30||Math.random()<0.005)a.vy=(Math.random()-0.5)*0.04;if(a.x<-45||a.x>45)a.vx*=-1;if(a.y<-45||a.y>45)a.vy*=-1});
+// Move enemies toward nearest ally
+enemies.forEach(e=>{const near=allies.reduce((b,a)=>{const d=Math.hypot(a.x-e.x,a.y-e.y);return d<b.d?{p:a,d}:b},{p:null,d:1/0});if(near.p&&near.d>5){const dx=near.p.x-e.x,dy=near.p.y-e.y,dist=Math.hypot(dx,dy);if(dist>0){e.x+=(dx/dist)*0.02;e.y+=(dy/dist)*0.02}}});
+camAngle+=0.002;requestAnimationFrame(frame)}
+
+function frame(){update();draw()}
+
+// View switching
+document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t2=>t2.classList.remove('active'));t.classList.add('active');view=t.dataset.view})});
+
+// Zoom
+let zoomLevel=1;
+document.getElementById('zoom-in').addEventListener('click',()=>{zoomLevel=Math.min(3,zoomLevel+0.25);zoom=zoomLevel;document.getElementById('zoom-display').textContent=zoomLevel.toFixed(1)+'x'});
+document.getElementById('zoom-out').addEventListener('click',()=>{zoomLevel=Math.max(0.5,zoomLevel-0.25);zoom=zoomLevel;document.getElementById('zoom-display').textContent=zoomLevel.toFixed(1)+'x'});
+
+frame();
+</script>
+</body>
+</html>

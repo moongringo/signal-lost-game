@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Design Gallery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="design-system.css" />
+  <style>
+    :root {
+      --ink: #201116;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --teal: #008c94;
+      --pink: #e82663;
+      --orange: #ff8b1f;
+      --purple: #9B7FD0;
+      --mint: #4ECDC4;
+      --muted: #9b8e8e;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--ink);
+      color: var(--cream);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .gallery-header {
+      padding: 2rem;
+      text-align: center;
+      background: linear-gradient(180deg, rgba(255,240,199,0.08) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(255,240,199,0.1);
+    }
+
+    .gallery-header h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .gallery-header p {
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .gallery-stats {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      background: rgba(255,240,199,0.1);
+      border: 1px solid rgba(255,240,199,0.2);
+      border-radius: 50px;
+      padding: 0.5rem 1.2rem;
+      font-size: 0.85rem;
+      color: var(--cream);
+    }
+
+    .stat-pill strong {
+      color: var(--gold);
+      font-size: 1.2rem;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      grid-column: 1 / -1;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.5rem;
+      color: var(--gold);
+      margin-top: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid rgba(255,217,101,0.3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .page-card {
+      background: rgba(255,240,199,0.05);
+      border: 1px solid rgba(255,240,199,0.1);
+      border-radius: 12px;
+      padding: 1.2rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .page-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--teal);
+      transition: width 0.3s ease;
+    }
+
+    .page-card:hover {
+      background: rgba(255,240,199,0.1);
+      border-color: rgba(255,217,101,0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+
+    .page-card:hover::before {
+      width: 100%;
+      opacity: 0.1;
+    }
+
+    .page-number {
+      position: absolute;
+      top: 0.8rem;
+      right: 0.8rem;
+      background: var(--gold);
+      color: var(--ink);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .page-icon {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-name {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 0.3rem;
+      color: var(--cream);
+    }
+
+    .page-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .back-link {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      background: rgba(255,240,199,0.1);
+      border: 1px solid rgba(255,240,199,0.2);
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      color: var(--cream);
+      text-decoration: none;
+      font-size: 0.85rem;
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
+
+    .back-link:hover {
+      background: rgba(255,217,101,0.2);
+      border-color: var(--gold);
+    }
+
+    .cursor-spotlight {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    @media (max-width: 768px) {
+      .gallery-grid {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+      }
+      .gallery-stats {
+        gap: 1rem;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="./design-flow.css" />
+</head><body data-flow-page="design-test" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Design Gallery</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./design-flow-setup.html">Setup</a>
+        <a href="./design-flow-roles.html">Roles</a>
+        <a href="./design-flow-control.html">Control</a>
+
+        <a href="./design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="./login.html">Login</a>
+              <a href="./server-browser.html">Server Browser</a>
+              <a href="./map-selection.html">Map Selection</a>
+              <a href="./role-selection.html">Role Selection</a>
+              <a href="./matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="./player-profile.html">Player Profile</a>
+              <a href="./career-stats.html">Career Stats</a>
+              <a href="./match-result.html">Match Result</a>
+              <a href="./post-match-report.html">Post-Match Report</a>
+              <a href="./kill-cam.html">Kill Cam</a>
+              <a href="./death-recap.html">Death Recap</a>
+              <a href="./spectator-mode.html">Spectator Mode</a>
+              <a href="./replay-viewer.html">Replay Viewer</a>
+              <a href="./tournament-bracket.html">Tournament</a>
+              <a href="./emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="./store.html">Store</a>
+              <a href="./friends.html">Friends</a>
+              <a href="./squad.html">Squad</a>
+              <a href="./clan-wars.html">Clan Wars</a>
+              <a href="./patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="./token-dashboard.html">Token Dashboard</a>
+              <a href="./daily-challenges.html">Daily Challenges</a>
+              <a href="./inventory.html">Inventory</a>
+              <a href="./loadout-builder.html">Loadout Builder</a>
+              <a href="./battle-pass.html">Battle Pass</a>
+              <a href="./loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="./R&D-INDEX.html">R&D Index</a>
+              <a href="./ai-battle-arena.html">AI Battle Arena</a>
+              <a href="./admin-dashboard.html">Admin Dashboard</a>
+              <a href="./leaderboard.html">Leaderboard</a>
+              <a href="./settings.html">Settings</a>
+              <a href="./design-system.html">Design System</a>
+              <a href="./design-flow-setup.html">Setup Page</a>
+              <a href="./design-flow-roles.html">Roles Page</a>
+              <a href="./design-flow-control.html">Control Page</a>
+              <a href="./action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="./mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="./mobile-radar.html">Mobile Radar</a>
+              <a href="./gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="numberedPagesBtn">🔢 All Pages (1-50+) ▾</button>
+          <div class="page-menu" id="numberedPagesMenu">
+            <div class="page-menu-group"><div class="page-menu-title">Auth & Flow (1-5)</div><a href="./login.html">1 — Login</a><a href="./server-browser.html">2 — Server Browser</a><a href="./map-selection.html">3 — Map Selection</a><a href="./role-selection.html">4 — Role Selection</a><a href="./matchmaking.html">5 — Matchmaking</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Game Screens (6-15)</div><a href="./player-profile.html">6 — Player Profile</a><a href="./career-stats.html">7 — Career Stats</a><a href="./match-result.html">8 — Match Result</a><a href="./post-match-report.html">9 — Post-Match Report</a><a href="./kill-cam.html">10 — Kill Cam</a><a href="./death-recap.html">11 — Death Recap</a><a href="./spectator-mode.html">12 — Spectator Mode</a><a href="./replay-viewer.html">13 — Replay Viewer</a><a href="./tournament-bracket.html">14 — Tournament</a><a href="./emote-wheel.html">15 — Emote Wheel</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Live & Social (16-20)</div><a href="./store.html">16 — Store</a><a href="./friends.html">17 — Friends</a><a href="./squad.html">18 — Squad</a><a href="./clan-wars.html">19 — Clan Wars</a><a href="./patch-notes.html">20 — Patch Notes</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Management (21-26)</div><a href="./token-dashboard.html">21 — Token Dashboard</a><a href="./daily-challenges.html">22 — Daily Challenges</a><a href="./inventory.html">23 — Inventory</a><a href="./loadout-builder.html">24 — Loadout Builder</a><a href="./battle-pass.html">25 — Battle Pass</a><a href="./loot-crate.html">26 — Loot Crate</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Tools & Systems (27-36)</div><a href="./R&D-INDEX.html">27 — R&D Index</a><a href="./ai-battle-arena.html">28 — AI Battle Arena</a><a href="./admin-dashboard.html">29 — Admin Dashboard</a><a href="./leaderboard.html">30 — Leaderboard</a><a href="./settings.html">31 — Settings</a><a href="./design-system.html">32 — Design System</a><a href="./design-flow-setup.html">33 — Setup Page</a><a href="./design-flow-roles.html">34 — Roles Page</a><a href="./design-flow-control.html">35 — Control Page</a><a href="./action-center.html">36 — Action Center</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Mobile (37-39)</div><a href="./mobile-ui-kit.html">37 — Mobile UI Kit</a><a href="./mobile-radar.html">38 — Mobile Radar</a><a href="./gps-tracker.html">39 — GPS Tracker</a></div>
+          </div>
+        </div>
+
+        <a href="./design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <a href="./design-flow-setup.html" class="back-link">← Back to Setup</a>
+
+  <header class="gallery-header">
+    <h1>Signal Lost — Design Gallery</h1>
+    <p>All 50+ screens and components in one place</p>
+    <div class="gallery-stats">
+      <div class="stat-pill"><strong>50+</strong> UI Screens</div>
+      <div class="stat-pill"><strong>4</strong> Core Flows</div>
+      <div class="stat-pill"><strong>1</strong> Design System</div>
+    </div>
+  </header>
+
+  <main class="gallery-grid">
+    <!-- Auth & Flow -->
+    <h2 class="section-title">🔐 Auth & Flow (1–5)</h2>
+    <a href="./login.html" class="page-card">
+      <span class="page-number">01</span>
+      <div class="page-icon">🔑</div>
+      <div class="page-name">Login</div>
+      <div class="page-desc">Authentication screen with social login</div>
+    </a>
+    <a href="./server-browser.html" class="page-card">
+      <span class="page-number">02</span>
+      <div class="page-icon">🖥️</div>
+      <div class="page-name">Server Browser</div>
+      <div class="page-desc">Browse and join game servers</div>
+    </a>
+    <a href="./map-selection.html" class="page-card">
+      <span class="page-number">03</span>
+      <div class="page-icon">🗺️</div>
+      <div class="page-name">Map Selection</div>
+      <div class="page-desc">Vote on arena maps and modes</div>
+    </a>
+    <a href="./role-selection.html" class="page-card">
+      <span class="page-number">04</span>
+      <div class="page-icon">🎯</div>
+      <div class="page-name">Role Selection</div>
+      <div class="page-desc">Pick your class and abilities</div>
+    </a>
+    <a href="./matchmaking.html" class="page-card">
+      <span class="page-number">05</span>
+      <div class="page-icon">⚔️</div>
+      <div class="page-name">Matchmaking</div>
+      <div class="page-desc">Queue up and find matches</div>
+    </a>
+
+    <!-- Game Screens -->
+    <h2 class="section-title">🎮 Game Screens (6–15)</h2>
+    <a href="./player-profile.html" class="page-card">
+      <span class="page-number">06</span>
+      <div class="page-icon">👤</div>
+      <div class="page-name">Player Profile</div>
+      <div class="page-desc">Stats, rank, and achievements</div>
+    </a>
+    <a href="./career-stats.html" class="page-card">
+      <span class="page-number">07</span>
+      <div class="page-icon">📊</div>
+      <div class="page-name">Career Stats</div>
+      <div class="page-desc">Lifetime performance breakdown</div>
+    </a>
+    <a href="./match-result.html" class="page-card">
+      <span class="page-number">08</span>
+      <div class="page-icon">🏆</div>
+      <div class="page-name">Match Result</div>
+      <div class="page-desc">Victory or defeat screen</div>
+    </a>
+    <a href="./post-match-report.html" class="page-card">
+      <span class="page-number">09</span>
+      <div class="page-icon">📋</div>
+      <div class="page-name">Post-Match Report</div>
+      <div class="page-desc">Detailed match analytics</div>
+    </a>
+    <a href="./kill-cam.html" class="page-card">
+      <span class="page-number">10</span>
+      <div class="page-icon">💀</div>
+      <div class="page-name">Kill Cam</div>
+      <div class="page-desc">Replay your elimination</div>
+    </a>
+    <a href="./death-recap.html" class="page-card">
+      <span class="page-number">11</span>
+      <div class="page-icon">⚰️</div>
+      <div class="page-name">Death Recap</div>
+      <div class="page-desc">Who killed you and how</div>
+    </a>
+    <a href="./spectator-mode.html" class="page-card">
+      <span class="page-number">12</span>
+      <div class="page-icon">👁️</div>
+      <div class="page-name">Spectator Mode</div>
+      <div class="page-desc">Watch matches live</div>
+    </a>
+    <a href="./replay-viewer.html" class="page-card">
+      <span class="page-number">13</span>
+      <div class="page-icon">▶️</div>
+      <div class="page-name">Replay Viewer</div>
+      <div class="page-desc">Watch saved replays</div>
+    </a>
+    <a href="./tournament-bracket.html" class="page-card">
+      <span class="page-number">14</span>
+      <div class="page-icon">🏅</div>
+      <div class="page-name">Tournament</div>
+      <div class="page-desc">Bracket and standings</div>
+    </a>
+    <a href="./emote-wheel.html" class="page-card">
+      <span class="page-number">15</span>
+      <div class="page-icon">😎</div>
+      <div class="page-name">Emote Wheel</div>
+      <div class="page-desc">Express yourself in-game</div>
+    </a>
+
+    <!-- Live & Social -->
+    <h2 class="section-title">💬 Live & Social (16–20)</h2>
+    <a href="./store.html" class="page-card">
+      <span class="page-number">16</span>
+      <div class="page-icon">🛒</div>
+      <div class="page-name">Store</div>
+      <div class="page-desc">Buy skins, weapons, bundles</div>
+    </a>
+    <a href="./friends.html" class="page-card">
+      <span class="page-number">17</span>
+      <div class="page-icon">👥</div>
+      <div class="page-name">Friends</div>
+      <div class="page-desc">Friend list and invites</div>
+    </a>
+    <a href="./squad.html" class="page-card">
+      <span class="page-number">18</span>
+      <div class="page-icon">🫂</div>
+      <div class="page-name">Squad</div>
+      <div class="page-desc">Manage your fireteam</div>
+    </a>
+    <a href="./clan-wars.html" class="page-card">
+      <span class="page-number">19</span>
+      <div class="page-icon">⚔️</div>
+      <div class="page-name">Clan Wars</div>
+      <div class="page-desc">Guild battles and seasons</div>
+    </a>
+    <a href="./patch-notes.html" class="page-card">
+      <span class="page-number">20</span>
+      <div class="page-icon">📝</div>
+      <div class="page-name">Patch Notes</div>
+      <div class="page-desc">Latest updates and changes</div>
+    </a>
+
+    <!-- Management -->
+    <h2 class="section-title">📦 Management (21–26)</h2>
+    <a href="./token-dashboard.html" class="page-card">
+      <span class="page-number">21</span>
+      <div class="page-icon">💎</div>
+      <div class="page-name">Token Dashboard</div>
+      <div class="page-desc">Currency and earnings</div>
+    </a>
+    <a href="./daily-challenges.html" class="page-card">
+      <span class="page-number">22</span>
+      <div class="page-icon">📅</div>
+      <div class="page-name">Daily Challenges</div>
+      <div class="page-desc">Complete for rewards</div>
+    </a>
+    <a href="./inventory.html" class="page-card">
+      <span class="page-number">23</span>
+      <div class="page-icon">🎒</div>
+      <div class="page-name">Inventory</div>
+      <div class="page-desc">Your items and loadouts</div>
+    </a>
+    <a href="./loadout-builder.html" class="page-card">
+      <span class="page-number">24</span>
+      <div class="page-icon">🔧</div>
+      <div class="page-name">Loadout Builder</div>
+      <div class="page-desc">Customize weapons and gear</div>
+    </a>
+    <a href="./battle-pass.html" class="page-card">
+      <span class="page-number">25</span>
+      <div class="page-icon">🎫</div>
+      <div class="page-name">Battle Pass</div>
+      <div class="page-desc">Season progression rewards</div>
+    </a>
+    <a href="./loot-crate.html" class="page-card">
+      <span class="page-number">26</span>
+      <div class="page-icon">🎁</div>
+      <div class="page-name">Loot Crate</div>
+      <div class="page-desc">Open crates for rewards</div>
+    </a>
+
+    <!-- Tools & Systems -->
+    <h2 class="section-title">🔧 Tools & Systems (27–31)</h2>
+    <a href="./R&D-INDEX.html" class="page-card">
+      <span class="page-number">27</span>
+      <div class="page-icon">📋</div>
+      <div class="page-name">R&D Index</div>
+      <div class="page-desc">Component documentation</div>
+    </a>
+    <a href="./ai-battle-arena.html" class="page-card">
+      <span class="page-number">28</span>
+      <div class="page-icon">🤖</div>
+      <div class="page-name">AI Battle Arena</div>
+      <div class="page-desc">AI vs AI simulations</div>
+    </a>
+    <a href="./admin-dashboard.html" class="page-card">
+      <span class="page-number">29</span>
+      <div class="page-icon">🔒</div>
+      <div class="page-name">Admin Dashboard</div>
+      <div class="page-desc">Moderation tools</div>
+    </a>
+    <a href="./leaderboard.html" class="page-card">
+      <span class="page-number">30</span>
+      <div class="page-icon">🏆</div>
+      <div class="page-name">Leaderboard</div>
+      <div class="page-desc">Global rankings</div>
+    </a>
+    <a href="./settings.html" class="page-card">
+      <span class="page-number">31</span>
+      <div class="page-icon">⚙️</div>
+      <div class="page-name">Settings</div>
+      <div class="page-desc">Game preferences and keybinds</div>
+    </a>
+
+    <!-- Core Pages -->
+    <h2 class="section-title">🎯 Core Pages (32–38)</h2>
+    <a href="./design-flow-setup.html" class="page-card">
+      <span class="page-number">32</span>
+      <div class="page-icon">🚀</div>
+      <div class="page-name">Setup Page</div>
+      <div class="page-desc">Mission configuration hub</div>
+    </a>
+    <a href="./design-flow-roles.html" class="page-card">
+      <span class="page-number">33</span>
+      <div class="page-icon">🎭</div>
+      <div class="page-name">Roles Page</div>
+      <div class="page-desc">Team role assignment</div>
+    </a>
+    <a href="./design-flow-control.html" class="page-card">
+      <span class="page-number">34</span>
+      <div class="page-icon">🎮</div>
+      <div class="page-name">Control Page</div>
+      <div class="page-desc">Mission control center</div>
+    </a>
+    <a href="./action-center.html" class="page-card">
+      <span class="page-number">35</span>
+      <div class="page-icon">⚡</div>
+      <div class="page-name">Action Center</div>
+      <div class="page-desc">Live simulation dashboard</div>
+    </a>
+    <a href="./design-lab.html" class="page-card">
+      <span class="page-number">36</span>
+      <div class="page-icon">🧪</div>
+      <div class="page-name">Design Lab</div>
+      <div class="page-desc">Visual effect experiments</div>
+    </a>
+
+    <!-- Mobile -->
+    <h2 class="section-title">📱 Mobile (37–39)</h2>
+    <a href="./mobile-ui-kit.html" class="page-card">
+      <span class="page-number">37</span>
+      <div class="page-icon">📲</div>
+      <div class="page-name">Mobile UI Kit</div>
+      <div class="page-desc">Mobile component library</div>
+    </a>
+    <a href="./mobile-radar.html" class="page-card">
+      <span class="page-number">38</span>
+      <div class="page-icon">📡</div>
+      <div class="page-name">Mobile Radar</div>
+      <div class="page-desc">Pocket-sized tactical view</div>
+    </a>
+    <a href="./gps-tracker.html" class="page-card">
+      <span class="page-number">39</span>
+      <div class="page-icon">📍</div>
+      <div class="page-name">GPS Tracker</div>
+      <div class="page-desc">Location and navigation</div>
+    </a>
+
+    <!-- Design & Effects -->
+    <h2 class="section-title">✨ Design & Effects (40–43)</h2>
+    <a href="./design-system.html" class="page-card">
+      <span class="page-number">40</span>
+      <div class="page-icon">🎨</div>
+      <div class="page-name">Design System</div>
+      <div class="page-desc">Colors, typography, tokens</div>
+    </a>
+    <a href="./shader-library.html" class="page-card">
+      <span class="page-number">41</span>
+      <div class="page-icon">🌊</div>
+      <div class="page-name">Shader Library</div>
+      <div class="page-desc">WebGL visual effects</div>
+    </a>
+    <a href="./scroll-animations.html" class="page-card">
+      <span class="page-number">42</span>
+      <div class="page-icon">📜</div>
+      <div class="page-name">Scroll Animations</div>
+      <div class="page-desc">Scroll-triggered motion</div>
+    </a>
+    <a href="./page-transitions.html" class="page-card">
+      <span class="page-number">43</span>
+      <div class="page-icon">🎬</div>
+      <div class="page-name">Page Transitions</div>
+      <div class="page-desc">Transition choreography</div>
+    </a>
+  </main>
+
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+    </div>
+  </main>
+  <script src="design-system.js"></script>
+  <script src="./design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+    // Numbered pages menu toggle
+    const numberedPagesBtn = document.getElementById('numberedPagesBtn');
+    const numberedPagesMenu = document.getElementById('numberedPagesMenu');
+    if (numberedPagesBtn && numberedPagesMenu) {
+      numberedPagesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        numberedPagesMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!numberedPagesMenu.contains(e.target) && !numberedPagesBtn.contains(e.target)) {
+          numberedPagesMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

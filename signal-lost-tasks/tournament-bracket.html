@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Tournament Bracket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --body-font: 'Inter', system-ui, sans-serif;
+      --display-font: 'Space Grotesk', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--cream); font-family: var(--body-font); }
+    body { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+
+    h1 { font-family: var(--display-font); font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--ink); }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.9rem; }
+
+    .bracket {
+      display: flex;
+      gap: 3rem;
+      overflow-x: auto;
+      padding-bottom: 1rem;
+    }
+
+    .round {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-width: 220px;
+    }
+
+    .round-title {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .match {
+      background: rgba(255, 248, 220, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 12px;
+      padding: 0.75rem;
+      transition: all 0.2s;
+    }
+
+    .match:hover {
+      background: rgba(255, 248, 220, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .match-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 2rem;
+    }
+
+    .connector-line {
+      width: 2rem;
+      height: 2px;
+      background: var(--muted);
+      position: relative;
+    }
+
+    .connector-line::after {
+      content: '';
+      position: absolute;
+      right: -6px;
+      top: -5px;
+      width: 0;
+      height: 0;
+      border-left: 6px solid var(--muted);
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+    }
+
+    .team-slot {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .team-slot.winner {
+      background: rgba(0, 140, 148, 0.1);
+      border: 1px solid rgba(0, 140, 148, 0.3);
+    }
+
+    .team-slot.eliminated {
+      opacity: 0.5;
+    }
+
+    .team-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--cream);
+      flex-shrink: 0;
+    }
+
+    .team-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--ink);
+      flex: 1;
+    }
+
+    .team-score {
+      font-family: var(--mono-font);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .match-status {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+    }
+
+    .status-live { background: rgba(232, 38, 99, 0.15); color: var(--pink); }
+    .status-done { background: rgba(0, 140, 148, 0.15); color: var(--teal); }
+    .status-pending { background: rgba(112, 74, 65, 0.15); color: var(--muted); }
+  </style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="tournament-bracket" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Tournament Bracket</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<h1>🏆 Tournament Bracket</h1>
+  <p class="subtitle">Weekly Championship — 8 Teams</p>
+
+  <div class="bracket">
+    <!-- Quarterfinals -->
+    <div class="round">
+      <div class="round-title">Quarterfinals</div>
+      
+      <div class="match">
+        <div class="team-slot winner">
+          <div class="team-avatar" style="background: var(--teal);">A</div>
+          <span class="team-name">Alpha Squad</span>
+          <span class="team-score">3</span>
+        </div>
+        <div class="team-slot eliminated">
+          <div class="team-avatar" style="background: var(--pink);">B</div>
+          <span class="team-name">Bravo Squad</span>
+          <span class="team-score">1</span>
+        </div>
+        <div class="match-connector"><div class="connector-line"></div></div>
+      </div>
+
+      <div class="match">
+        <div class="team-slot winner">
+          <div class="team-avatar" style="background: var(--orange);">C</div>
+          <span class="team-name">Charlie Squad</span>
+          <span class="team-score">3</span>
+        </div>
+        <div class="team-slot eliminated">
+          <div class="team-avatar" style="background: #9B7FD0;">D</div>
+          <span class="team-name">Delta Squad</span>
+          <span class="team-score">2</span>
+        </div>
+        <div class="match-connector"><div class="connector-line"></div></div>
+      </div>
+
+      <div class="match">
+        <div class="team-slot winner">
+          <div class="team-avatar" style="background: #4ECDC4;">E</div>
+          <span class="team-name">Echo Squad</span>
+          <span class="team-score">3</span>
+        </div>
+        <div class="team-slot eliminated">
+          <div class="team-avatar" style="background: var(--gold); color: var(--ink);">F</div>
+          <span class="team-name">Foxtrot Squad</span>
+          <span class="team-score">0</span>
+        </div>
+        <div class="match-connector"><div class="connector-line"></div></div>
+      </div>
+
+      <div class="match">
+        <div class="team-slot winner">
+          <div class="team-avatar" style="background: var(--blue);">G</div>
+          <span class="team-name">Golf Squad</span>
+          <span class="team-score">3</span>
+        </div>
+        <div class="team-slot eliminated">
+          <div class="team-avatar" style="background: var(--muted);">H</div>
+          <span class="team-name">Hotel Squad</span>
+          <span class="team-score">1</span>
+        </div>
+        <div class="match-connector"><div class="connector-line"></div></div>
+      </div>
+    </div>
+
+    <!-- Semifinals -->
+    <div class="round">
+      <div class="round-title">Semifinals</div>
+      
+      <div class="match">
+        <div class="team-slot winner">
+          <div class="team-avatar" style="background: var(--teal);">A</div>
+          <span class="team-name">Alpha Squad</span>
+          <span class="team-score">3</span>
+          <span class="match-status status-done">Done</span>
+        </div>
+        <div class="team-slot eliminated">
+          <div class="team-avatar" style="background: var(--orange);">C</div>
+          <span class="team-name">Charlie Squad</span>
+          <span class="team-score">2</span>
+        </div>
+        <div class="match-connector"><div class="connector-line"></div></div>
+      </div>
+
+      <div class="match">
+        <div class="team-slot winner">
+          <div class="team-avatar" style="background: #4ECDC4;">E</div>
+          <span class="team-name">Echo Squad</span>
+          <span class="team-score">3</span>
+          <span class="match-status status-done">Done</span>
+        </div>
+        <div class="team-slot eliminated">
+          <div class="team-avatar" style="background: var(--blue);">G</div>
+          <span class="team-name">Golf Squad</span>
+          <span class="team-score">1</span>
+        </div>
+        <div class="match-connector"><div class="connector-line"></div></div>
+      </div>
+    </div>
+
+    <!-- Finals -->
+    <div class="round">
+      <div class="round-title">Finals</div>
+      
+      <div class="match">
+        <div class="team-slot">
+          <div class="team-avatar" style="background: var(--teal);">A</div>
+          <span class="team-name">Alpha Squad</span>
+          <span class="team-score">-</span>
+          <span class="match-status status-live">Live</span>
+        </div>
+        <div class="team-slot">
+          <div class="team-avatar" style="background: #4ECDC4;">E</div>
+          <span class="team-name">Echo Squad</span>
+          <span class="team-score">-</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

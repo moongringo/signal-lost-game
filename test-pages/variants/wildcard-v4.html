@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WILDCARD V4 — FRACTAL DIMENSION</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    color: #e0ffe0;
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+  #bgCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+  .hud {
+    position: fixed;
+    top: 10px; left: 10px;
+    z-index: 100;
+    font-size: 12px;
+    color: #00ffaa;
+    text-shadow: 0 0 8px #00ffaa;
+    pointer-events: none;
+    letter-spacing: 2px;
+  }
+  .container {
+    position: relative;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 8px;
+    padding: 40px 10px 10px 10px;
+    height: 100vh;
+    width: 100vw;
+  }
+  .panel {
+    border: 1px solid rgba(0,255,170,0.2);
+    background: rgba(0,10,20,0.6);
+    position: relative;
+    overflow: hidden;
+  }
+  .panel-title {
+    position: absolute;
+    top: 4px; left: 6px;
+    font-size: 10px;
+    color: #00ffaa;
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 5;
+  }
+  canvas { display: block; }
+  #radarCanvas, #loadingCanvas { width: 100%; height: 100%; }
+  .chat-panel {
+    display: flex;
+    flex-direction: column;
+    padding: 20px 10px 10px 10px;
+    overflow-y: auto;
+  }
+  .chat-bubble {
+    margin: 6px 0;
+    padding: 10px 14px;
+    max-width: 80%;
+    font-size: 13px;
+    line-height: 1.4;
+    position: relative;
+    background: rgba(0,30,40,0.7);
+    color: #aaffee;
+  }
+  .chat-bubble.sent {
+    align-self: flex-end;
+    color: #ccffcc;
+    background: rgba(0,40,20,0.7);
+  }
+  .chat-bubble.received {
+    align-self: flex-start;
+  }
+  /* Fractal border SVG for chat bubbles */
+  .chat-bubble svg.fborder {
+    position: absolute;
+    top: -3px; left: -3px;
+    width: calc(100% + 6px);
+    height: calc(100% + 6px);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .chat-bubble .txt {
+    position: relative;
+    z-index: 2;
+  }
+  .logo-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+  #logoCanvas {
+    width: 220px;
+    height: 220px;
+  }
+  .logo-text {
+    margin-top: 8px;
+    font-size: 16px;
+    letter-spacing: 6px;
+    color: #00ffaa;
+    text-shadow: 0 0 12px #00ffaa, 0 0 30px #0055ff;
+  }
+</style>
+</head>
+<body>
+
+<div class="hud">WILDCARD V4 — FRACTAL DIMENSION</div>
+<canvas id="bgCanvas"></canvas>
+
+<div class="container">
+  <div class="panel">
+    <div class="panel-title">FRACTAL RADAR — PLASMA TERRAIN</div>
+    <canvas id="radarCanvas"></canvas>
+  </div>
+  <div class="panel chat-panel" id="chatPanel">
+    <div class="panel-title">FRACTAL CHAT — KOCH EDGES</div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">MANDELBROT LOADING</div>
+    <canvas id="loadingCanvas"></canvas>
+  </div>
+  <div class="panel logo-panel">
+    <div class="panel-title">FRACTAL LOGO</div>
+    <canvas id="logoCanvas" width="440" height="440"></canvas>
+    <div class="logo-text">SIGNAL LOST</div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   SHARED UTILITIES
+   ================================================================ */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/* ================================================================
+   1. BACKGROUND — MORPHING FRACTAL PATTERNS (Julia-like + flow)
+   ================================================================ */
+const bgCanvas = document.getElementById('bgCanvas');
+const bgCtx = bgCanvas.getContext('2d');
+let bgW, bgH;
+function resizeBg() {
+  bgW = bgCanvas.width = window.innerWidth;
+  bgH = bgCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeBg);
+resizeBg();
+
+let bgTime = 0;
+function drawBackground() {
+  const img = bgCtx.createImageData(bgW, bgH);
+  const d = img.data;
+  const t = bgTime;
+  // Animated Julia-like parameter
+  const cx = Math.sin(t * 0.0003) * 0.7;
+  const cy = Math.cos(t * 0.0004) * 0.7;
+  const scale = 2.5;
+  const maxIter = 60;
+  for (let y = 0; y < bgH; y += 2) {
+    for (let x = 0; x < bgW; x += 2) {
+      const px = (x / bgW - 0.5) * scale * (bgW / bgH);
+      const py = (y / bgH - 0.5) * scale;
+      let zx = px, zy = py;
+      let iter = 0;
+      while (zx * zx + zy * zy < 4 && iter < maxIter) {
+        const xtmp = zx * zx - zy * zy + cx;
+        zy = 2 * zx * zy + cy;
+        zx = xtmp;
+        iter++;
+      }
+      // Smooth coloring
+      const smooth = iter + 1 - Math.log2(Math.log2(zx * zx + zy * zy + 1e-10));
+      const hue = (smooth * 4 + t * 0.05) % 360;
+      const sat = iter === maxIter ? 0 : 80;
+      const lit = iter === maxIter ? 5 : 15 + (iter / maxIter) * 25;
+      const rgb = hslToRgb(hue / 360, sat / 100, lit / 100);
+      // Fill 2x2 block for performance
+      for (let dy = 0; dy < 2 && y + dy < bgH; dy++) {
+        for (let dx = 0; dx < 2 && x + dx < bgW; dx++) {
+          const idx = ((y + dy) * bgW + (x + dx)) * 4;
+          d[idx] = rgb[0];
+          d[idx + 1] = rgb[1];
+          d[idx + 2] = rgb[2];
+          d[idx + 3] = 255;
+        }
+      }
+    }
+  }
+  bgCtx.putImageData(img, 0, 0);
+  bgTime += 16;
+  requestAnimationFrame(drawBackground);
+}
+
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+/* ================================================================
+   2. RADAR — FRACTAL TERRAIN WITH PLASMA / PERLIN NOISE
+   ================================================================ */
+const radarCanvas = document.getElementById('radarCanvas');
+const radarCtx = radarCanvas.getContext('2d');
+let radarW, radarH;
+function resizeRadar() {
+  const rect = radarCanvas.parentElement.getBoundingClientRect();
+  radarW = radarCanvas.width = rect.width;
+  radarH = radarCanvas.height = rect.height;
+}
+window.addEventListener('resize', resizeRadar);
+setTimeout(resizeRadar, 0);
+
+// Simplex-like noise implementation for terrain
+const perm = new Uint8Array(512);
+const p = new Uint8Array(256);
+for (let i = 0; i < 256; i++) p[i] = i;
+for (let i = 255; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [p[i], p[j]] = [p[j], p[i]];
+}
+for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+
+function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+function lerpN(a, b, t) { return a + t * (b - a); }
+function grad(hash, x, y) {
+  const h = hash & 3;
+  const u = h < 2 ? x : y;
+  const v = h < 2 ? y : x;
+  return ((h & 1) ? -u : u) + ((h & 2) ? -2 * v : 2 * v);
+}
+function noise2D(x, y) {
+  const X = Math.floor(x) & 255;
+  const Y = Math.floor(y) & 255;
+  x -= Math.floor(x);
+  y -= Math.floor(y);
+  const u = fade(x);
+  const v = fade(y);
+  const A = perm[X] + Y, B = perm[X + 1] + Y;
+  return lerpN(
+    lerpN(grad(perm[A], x, y), grad(perm[B], x - 1, y), u),
+    lerpN(grad(perm[A + 1], x, y - 1), grad(perm[B + 1], x - 1, y - 1), u),
+    v
+  );
+}
+function fbm(x, y, octaves) {
+  let val = 0, amp = 0.5, freq = 1;
+  for (let i = 0; i < octaves; i++) {
+    val += amp * noise2D(x * freq, y * freq);
+    amp *= 0.5;
+    freq *= 2;
+  }
+  return val;
+}
+
+let radarTime = 0;
+function drawRadar() {
+  const ctx = radarCtx;
+  const w = radarW, h = radarH;
+  ctx.fillStyle = '#000510';
+  ctx.fillRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+  const radius = Math.min(cx, cy) - 10;
+  const t = radarTime * 0.002;
+
+  // Draw fractal terrain as concentric rings with noise
+  const rings = 80;
+  for (let i = 0; i < rings; i++) {
+    const r = (i / rings) * radius;
+    const angleStep = Math.max(4, Math.floor(r * 0.3));
+    ctx.beginPath();
+    for (let a = 0; a <= angleStep; a++) {
+      const angle = (a / angleStep) * Math.PI * 2;
+      // Fractal displacement
+      const disp = fbm(Math.cos(angle) * 2 + t, Math.sin(angle) * 2 + i * 0.05 + t, 4) * 12;
+      const rr = r + disp;
+      const x = cx + Math.cos(angle) * rr;
+      const y = cy + Math.sin(angle) * rr;
+      if (a === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    const hue = 180 + (i / rings) * 120 + Math.sin(t + i * 0.1) * 30;
+    const alpha = 0.15 + (i / rings) * 0.35;
+    ctx.strokeStyle = `hsla(${hue}, 80%, 60%, ${alpha})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Sweep line
+  const sweepAngle = (radarTime * 0.003) % (Math.PI * 2);
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, radius, sweepAngle - 0.3, sweepAngle);
+  ctx.lineTo(cx, cy);
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  grad.addColorStop(0, 'rgba(0,255,170,0.0)');
+  grad.addColorStop(1, 'rgba(0,255,170,0.25)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.restore();
+
+  // Grid crosshairs
+  ctx.strokeStyle = 'rgba(0,255,170,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - radius, cy); ctx.lineTo(cx + radius, cy);
+  ctx.moveTo(cx, cy - radius); ctx.lineTo(cx, cy + radius);
+  ctx.stroke();
+
+  // Concentric circles
+  for (let i = 1; i <= 4; i++) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, (radius / 4) * i, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,255,170,0.1)';
+    ctx.stroke();
+  }
+
+  radarTime += 16;
+  requestAnimationFrame(drawRadar);
+}
+
+/* ================================================================
+   3. LOADING — MANDELBROT SET ZOOM ANIMATION
+   ================================================================ */
+const loadCanvas = document.getElementById('loadingCanvas');
+const loadCtx = loadCanvas.getContext('2d');
+let loadW, loadH;
+function resizeLoad() {
+  const rect = loadCanvas.parentElement.getBoundingClientRect();
+  loadW = loadCanvas.width = rect.width;
+  loadH = loadCanvas.height = rect.height;
+}
+window.addEventListener('resize', resizeLoad);
+setTimeout(resizeLoad, 0);
+
+let loadTime = 0;
+function drawLoading() {
+  const ctx = loadCtx;
+  const w = loadW, h = loadH;
+  ctx.fillStyle = '#00020a';
+  ctx.fillRect(0, 0, w, h);
+
+  // Zoom into a point in the Mandelbrot set
+  const zoom = Math.pow(1.015, loadTime * 0.5);
+  const targetX = -0.743643887037151;
+  const targetY = 0.13182590420533;
+  const scale = 3.0 / zoom;
+  const offsetX = targetX;
+  const offsetY = targetY;
+  const maxIter = Math.min(200, 30 + Math.floor(loadTime * 0.05));
+
+  const img = ctx.createImageData(w, h);
+  const d = img.data;
+  for (let y = 0; y < h; y += 2) {
+    for (let x = 0; x < w; x += 2) {
+      const px = (x / w - 0.5) * scale * (w / h) + offsetX;
+      const py = (y / h - 0.5) * scale + offsetY;
+      let zx = 0, zy = 0;
+      let iter = 0;
+      while (zx * zx + zy * zy < 4 && iter < maxIter) {
+        const xtmp = zx * zx - zy * zy + px;
+        zy = 2 * zx * zy + py;
+        zx = xtmp;
+        iter++;
+      }
+      let r, g, b;
+      if (iter === maxIter) {
+        r = 0; g = 10; b = 20;
+      } else {
+        const smooth = iter + 1 - Math.log2(Math.log2(zx * zx + zy * zy + 1e-10));
+        const hue = (smooth * 6 + loadTime * 0.2) % 360;
+        const rgb = hslToRgb(hue / 360, 0.9, 0.5);
+        r = rgb[0]; g = rgb[1]; b = rgb[2];
+      }
+      for (let dy = 0; dy < 2 && y + dy < h; dy++) {
+        for (let dx = 0; dx < 2 && x + dx < w; dx++) {
+          const idx = ((y + dy) * w + (x + dx)) * 4;
+          d[idx] = r;
+          d[idx + 1] = g;
+          d[idx + 2] = b;
+          d[idx + 3] = 255;
+        }
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // Overlay text
+  ctx.fillStyle = '#00ffaa';
+  ctx.font = 'bold 14px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillText('GENERATING FRACTAL REALITY...', w / 2, h - 20);
+
+  loadTime += 1;
+  requestAnimationFrame(drawLoading);
+}
+
+/* ================================================================
+   4. CHAT BUBBLES — KOCH SNOWFLAKE EDGES
+   ================================================================ */
+function kochPoints(p1, p2, depth) {
+  if (depth === 0) return [p1];
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const a = { x: p1.x + dx / 3, y: p1.y + dy / 3 };
+  const b = { x: p1.x + dx * 2 / 3, y: p1.y + dy * 2 / 3 };
+  const cx = (a.x + b.x) / 2 - (dy / 3) * Math.sqrt(3) / 2;
+  const cy = (a.y + b.y) / 2 + (dx / 3) * Math.sqrt(3) / 2;
+  const c = { x: cx, y: cy };
+  return [
+    ...kochPoints(p1, a, depth - 1),
+    ...kochPoints(a, c, depth - 1),
+    ...kochPoints(c, b, depth - 1),
+    ...kochPoints(b, p2, depth - 1)
+  ];
+}
+
+function buildKochPath(w, h, depth = 3) {
+  // Build Koch snowflake around a rectangle
+  const margin = 6;
+  const pts = [
+    { x: margin, y: margin },
+    { x: w - margin, y: margin },
+    { x: w - margin, y: h - margin },
+    { x: margin, y: h - margin }
+  ];
+  let allPts = [];
+  for (let i = 0; i < 4; i++) {
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % 4];
+    allPts = allPts.concat(kochPoints(p1, p2, depth));
+  }
+  allPts.push(pts[0]);
+  let d = `M ${allPts[0].x.toFixed(1)} ${allPts[0].y.toFixed(1)}`;
+  for (let i = 1; i < allPts.length; i++) {
+    d += ` L ${allPts[i].x.toFixed(1)} ${allPts[i].y.toFixed(1)}`;
+  }
+  d += ' Z';
+  return d;
+}
+
+function addChatBubble(text, type = 'received') {
+  const panel = document.getElementById('chatPanel');
+  const bubble = document.createElement('div');
+  bubble.className = `chat-bubble ${type}`;
+  const txt = document.createElement('span');
+  txt.className = 'txt';
+  txt.textContent = text;
+  bubble.appendChild(txt);
+  panel.appendChild(bubble);
+
+  // Measure and attach SVG Koch border after layout
+  requestAnimationFrame(() => {
+    const rect = bubble.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'fborder');
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    svg.style.width = (w + 6) + 'px';
+    svg.style.height = (h + 6) + 'px';
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', buildKochPath(w, h, 3));
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', type === 'sent' ? '#00ff88' : '#00ccff');
+    path.setAttribute('stroke-width', '1.2');
+    path.setAttribute('stroke-opacity', '0.8');
+    svg.appendChild(path);
+    bubble.appendChild(svg);
+  });
+
+  panel.scrollTop = panel.scrollHeight;
+}
+
+// Demo chat messages
+const demoMessages = [
+  { text: 'Signal integrity fracturing...', type: 'received' },
+  { text: 'Recursive patterns detected.', type: 'sent' },
+  { text: 'Mandelbrot boundary unstable.', type: 'received' },
+  { text: 'Zoom depth exceeding limits.', type: 'sent' },
+  { text: 'Self-similarity confirmed.', type: 'received' },
+  { text: 'Initiating infinite descent...', type: 'sent' },
+  { text: 'Plasma turbulence rising.', type: 'received' },
+  { text: 'Koch iteration: 7', type: 'sent' },
+  { text: 'Dimension approaching 2.0', type: 'received' },
+];
+let chatIdx = 0;
+function chatLoop() {
+  if (chatIdx < demoMessages.length) {
+    const m = demoMessages[chatIdx++];
+    addChatBubble(m.text, m.type);
+    setTimeout(chatLoop, 1800 + Math.random() * 1200);
+  } else {
+    setTimeout(() => { chatIdx = 0; chatLoop(); }, 4000);
+  }
+}
+
+/* ================================================================
+   5. FRACTAL LOGO — SIGNAL LOST built from fractal shapes
+   ================================================================ */
+const logoCanvas = document.getElementById('logoCanvas');
+const logoCtx = logoCanvas.getContext('2d');
+let logoTime = 0;
+
+function drawFractalTree(ctx, x, y, len, angle, depth, maxDepth) {
+  if (depth === 0) return;
+  const x2 = x + Math.cos(angle) * len;
+  const y2 = y + Math.sin(angle) * len;
+  const alpha = depth / maxDepth;
+  ctx.strokeStyle = `rgba(0, 255, 170, ${alpha * 0.8 + 0.2})`;
+  ctx.lineWidth = depth * 0.6;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  const spread = 0.5 + Math.sin(logoTime * 0.002 + depth) * 0.15;
+  drawFractalTree(ctx, x2, y2, len * 0.7, angle - spread, depth - 1, maxDepth);
+  drawFractalTree(ctx, x2, y2, len * 0.7, angle + spread, depth - 1, maxDepth);
+}
+
+function drawSierpinski(ctx, x, y, size, depth) {
+  if (depth === 0) {
+    ctx.fillStyle = 'rgba(0, 200, 255, 0.6)';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + size, y);
+    ctx.lineTo(x + size / 2, y - size * 0.866);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+  const half = size / 2;
+  const h = half * 0.866;
+  drawSierpinski(ctx, x, y, half, depth - 1);
+  drawSierpinski(ctx, x + half, y, half, depth - 1);
+  drawSierpinski(ctx, x + half / 2, y - h, half, depth - 1);
+}
+
+function drawLogo() {
+  const ctx = logoCtx;
+  const w = logoCanvas.width;
+  const h = logoCanvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Central fractal tree (antenna-like)
+  const t = logoTime * 0.001;
+  drawFractalTree(ctx, w / 2, h * 0.75, 70, -Math.PI / 2 + Math.sin(t) * 0.1, 9, 9);
+
+  // Sierpinski triangles orbiting
+  const orbitR = 90 + Math.sin(t * 2) * 10;
+  for (let i = 0; i < 3; i++) {
+    const angle = t + (i * Math.PI * 2) / 3;
+    const sx = w / 2 + Math.cos(angle) * orbitR;
+    const sy = h / 2 + Math.sin(angle) * orbitR * 0.6;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(t * 0.5 + i);
+    drawSierpinski(ctx, -15, 10, 30, 3);
+    ctx.restore();
+  }
+
+  // Central glowing node
+  const pulse = 1 + Math.sin(t * 3) * 0.15;
+  ctx.beginPath();
+  ctx.arc(w / 2, h * 0.35, 8 * pulse, 0, Math.PI * 2);
+  ctx.fillStyle = '#00ffaa';
+  ctx.shadowColor = '#00ffaa';
+  ctx.shadowBlur = 20;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  logoTime += 16;
+  requestAnimationFrame(drawLogo);
+}
+
+/* ================================================================
+   START EVERYTHING
+   ================================================================ */
+drawBackground();
+drawRadar();
+drawLoading();
+drawLogo();
+chatLoop();
+</script>
+</body>
+</html>

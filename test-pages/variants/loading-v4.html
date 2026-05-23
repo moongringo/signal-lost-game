@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Signal Lost — LOADING V4</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0e0;font-family:'Courier New',monospace;overflow:hidden;height:100dvh;display:flex;align-items:center;justify-content:center}
+#hud{position:absolute;top:10px;left:10px;z-index:10;background:rgba(0,0,0,0.8);border:1px solid #00ff88;padding:6px 12px;border-radius:4px;font-size:11px;color:#00ff88}
+#hud span{color:#666;font-size:9px}
+#loading-screen{position:absolute;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:5;background:rgba(10,10,15,0.9)}
+#hex-canvas{position:absolute;width:100vw;height:100vh;z-index:1}
+.logo{font-size:24px;font-weight:bold;letter-spacing:5px;color:#00ff88;text-shadow:0 0 20px rgba(0,255,136,0.3);margin-bottom:16px;position:relative;z-index:10;text-align:center}
+.logo small{display:block;font-size:10px;color:#556655;letter-spacing:3px;margin-top:3px}
+.progress-container{width:260px;height:3px;background:#1a2a1a;border-radius:2px;overflow:hidden;position:relative;z-index:10}
+.progress-bar{height:100%;width:0%;background:linear-gradient(90deg,#00ff88,#00cc66);border-radius:2px;transition:width 0.3s;box-shadow:0 0 10px rgba(0,255,136,0.3)}
+.progress-text{position:relative;z-index:10;font-size:10px;color:#556655;margin-top:8px}
+.status-text{position:relative;z-index:10;font-size:9px;color:#446644;margin-top:4px;letter-spacing:1px}
+.tip-box{position:absolute;bottom:50px;z-index:10;background:rgba(0,0,0,0.6);border:1px solid #1a2a1a;padding:8px 14px;border-radius:4px;max-width:280px;text-align:center}
+.tip-box .tip-label{font-size:8px;color:#446644;letter-spacing:2px;margin-bottom:3px}
+.tip-box .tip-text{font-size:10px;color:#889988;line-height:1.3}
+.skip-btn{position:absolute;bottom:18px;z-index:10;background:transparent;border:1px solid #334433;color:#556655;font-family:'Courier New',monospace;font-size:10px;padding:5px 18px;border-radius:3px;cursor:pointer;transition:all 0.3s}
+.skip-btn:active{border-color:#00ff88;color:#00ff88}
+</style>
+</head>
+<body>
+<div id="hud">LOADING V4 <span>HEX GRID</span></div>
+<canvas id="hex-canvas"></canvas>
+<div id="loading-screen">
+<div class="logo">SIGNAL LOST<small>TACTICAL SHADOW OPS</small></div>
+<div class="progress-container"><div class="progress-bar" id="progress-bar"></div></div>
+<div class="progress-text" id="progress-text">0%</div>
+<div class="status-text" id="status-text">INITIALIZING...</div>
+</div>
+<div class="tip-box"><div class="tip-label">TACTICAL TIP</div><div class="tip-text" id="tip-text">Use cover to break line-of-sight from enemy scouts.</div></div>
+<button class="skip-btn" id="skip-btn">SKIP &gt;</button>
+<script>
+const tips=["Use cover to break line-of-sight from enemy scouts.","Extraction activates 90s after mission start.","Stick together — lone operatives are easy targets.","Radar pings reveal enemy positions for 3 seconds.","Save smoke grenades for open field crossings.","Objectives are marked on your tactical map.","Communication is key — use the command wheel.","Ammo crates respawn at capture points every 60s.","Watch your six — enemies flank wide.","Elevation gives you a tactical advantage.","Suppressive fire keeps enemy heads down.","Night vision helps in dark zones.","Enemy AI adapts to your tactics over time.","The best ambushes use natural terrain features.","Check corners before moving through doorways."];
+let tipIdx=Math.floor(Math.random()*tips.length);
+document.getElementById('tip-text').textContent=tips[tipIdx];
+setInterval(()=>{tipIdx=(tipIdx+1)%tips.length;const e=document.getElementById('tip-text');e.style.opacity=0;setTimeout(()=>{e.textContent=tips[tipIdx];e.style.opacity=1},300)},5000);
+
+// Hex grid
+const canvas=document.getElementById('hex-canvas'),ctx=canvas.getContext('2d');
+let W,H;function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight}resize();window.addEventListener('resize',resize);
+const HEX_R=22,HEX_H=HEX_R*Math.sqrt(3)/2;let filledHexes=[],totalHexes=0;
+
+function hexCenter(row,col){const x=col*HEX_R*1.5+HEX_R;const y=row*HEX_H*2+(col%2===0?HEX_H:0);return{x,y}}
+function drawHex(x,y,fillPct,glow){
+ctx.beginPath();for(let i=0;i<6;i++){const a=Math.PI/6+i*Math.PI/3;ctx.lineTo(x+HEX_R*Math.cos(a),y+HEX_R*Math.sin(a))}ctx.closePath();
+ctx.strokeStyle='rgba(0,255,136,0.1)';ctx.lineWidth=1;ctx.stroke();
+if(fillPct>0){const grad=ctx.createRadialGradient(x,y,0,x,y,HEX_R);grad.addColorStop(0,`rgba(0,255,136,${0.05+fillPct*0.25})`);grad.addColorStop(1,`rgba(0,255,136,${0.01+fillPct*0.1})`);ctx.fillStyle=grad;ctx.fill()}
+if(glow){ctx.shadowColor='#00ff88';ctx.shadowBlur=12;ctx.strokeStyle='rgba(0,255,136,0.6)';ctx.lineWidth=2;ctx.stroke();ctx.shadowBlur=0}
+}
+
+function initGrid(){filledHexes=[];totalHexes=0;const cols=Math.ceil(W/(HEX_R*1.5))+2,rows=Math.ceil(H/(HEX_H*2))+2;totalHexes=cols*rows;
+for(let r=0;r<rows;r++){for(let c=0;c<cols;c++){filledHexes.push({r,c,fill:0,glow:false,idx:filledHexes.length})}}}
+
+let fillIdx=0,complete=false;
+function animate(){ctx.clearRect(0,0,W,H);
+// Draw all hexes
+filledHexes.forEach(h=>{const p=hexCenter(h.r,h.c);drawHex(p.x,p.y,h.fill,h.glow)});
+if(!complete&&fillIdx<filledHexes.length){const batch=Math.max(1,Math.floor(filledHexes.length/80));
+for(let i=0;i<batch&&fillIdx<filledHexes.length;i++){filledHexes[fillIdx].fill=1;filledHexes[fillIdx].glow=true;fillIdx++}
+// Center hex glows stronger
+const cx=Math.floor(filledHexes.length/2);if(cx<filledHexes.length){filledHexes[cx].glow=true;filledHexes[cx].fill=1}
+}
+requestAnimationFrame(animate)}
+initGrid();animate();
+
+// Progress
+let progress=0;const statusMsgs=[
+[0,"INITIALIZING..."],[10,"CALIBRATING..."],[25,"LOADING HEX MAP..."],[40,"SYNCING GRID..."],[55,"ANALYZING TERRAIN..."],[70,"DEPLOYING ASSETS..."],[85,"FINALIZING..."],[95,"STANDBY..."]
+];
+const pb=document.getElementById('progress-bar'),pt=document.getElementById('progress-text'),st=document.getElementById('status-text');
+function tick(){if(progress<100){progress+=0.4+Math.random()*0.6;if(progress>100)progress=100;pb.style.width=progress+'%';pt.textContent=Math.floor(progress)+'%';
+const s=statusMsgs.filter(m=>progress>=m[0]);if(s.length)st.textContent=s[s.length-1][1];
+if(progress<100)setTimeout(tick,60+Math.random()*100);else{complete=true;st.textContent="MISSION READY";document.getElementById('skip-btn').textContent='LAUNCH >>'}}}
+tick();
+document.getElementById('skip-btn').addEventListener('click',()=>{
+progress=100;pb.style.width='100%';pt.textContent='100%';st.textContent='MISSION READY';complete=true;
+document.getElementById('skip-btn').textContent='LAUNCH >>';
+filledHexes.forEach(h=>{h.fill=1;h.glow=true});
+});
+</script>
+</body>
+</html>

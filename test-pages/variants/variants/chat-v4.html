@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHAT V4 — Command Center Terminal</title>
+<style>
+  :root {
+    --green: #00ff41;
+    --green-dim: #008f11;
+    --green-dark: #003b00;
+    --black: #050505;
+    --grid: rgba(0,255,65,0.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--black);
+    color: var(--green);
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.25) 2px,
+      rgba(0,0,0,0.25) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* Grid background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ─── TOP HUD ─── */
+  .top-hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--green-dim);
+    background: rgba(0,0,0,0.7);
+  }
+  .hud-left, .hud-right { display: flex; align-items: center; gap: 18px; }
+  .hud-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    letter-spacing: 3px;
+    text-shadow: 0 0 8px var(--green);
+  }
+  .timer {
+    font-size: 1.1rem;
+    background: var(--green-dark);
+    padding: 4px 12px;
+    border: 1px solid var(--green-dim);
+  }
+  .objective {
+    font-size: 0.85rem;
+    color: var(--green-dim);
+  }
+  .objective span { color: var(--green); }
+
+  /* ─── MAIN SPLIT ─── */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* Left: Chat */
+  .chat-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--green-dim);
+    min-width: 0;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--green-dim);
+    background: rgba(0,0,0,0.6);
+  }
+  .tab {
+    padding: 8px 18px;
+    cursor: pointer;
+    border-right: 1px solid var(--green-dim);
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    transition: background 0.15s;
+    user-select: none;
+  }
+  .tab:hover { background: var(--green-dark); }
+  .tab.active {
+    background: var(--green-dim);
+    color: #000;
+    font-weight: bold;
+  }
+
+  /* Chat feed */
+  .chat-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+  .chat-feed::-webkit-scrollbar { width: 6px; }
+  .chat-feed::-webkit-scrollbar-track { background: var(--black); }
+  .chat-feed::-webkit-scrollbar-thumb { background: var(--green-dim); }
+
+  .msg {
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border-left: 2px solid var(--green-dim);
+    background: rgba(0,255,65,0.03);
+    animation: fadeIn 0.25s ease;
+  }
+  @keyframes fadeIn { from { opacity:0; transform: translateX(-6px);} to { opacity:1; transform: translateX(0);} }
+  .msg-time { color: var(--green-dim); font-size: 0.75rem; margin-right: 8px; }
+  .msg-from { font-weight: bold; margin-right: 6px; }
+  .msg-team { color: #4ade80; }
+  .msg-intel { color: #fbbf24; border-left-color: #fbbf24; background: rgba(251,191,36,0.04); }
+  .msg-system { color: #38bdf8; border-left-color: #38bdf8; background: rgba(56,189,248,0.04); }
+  .msg-alert { color: #f87171; border-left-color: #f87171; background: rgba(248,113,113,0.04); }
+
+  /* Command wheel */
+  .command-wheel {
+    display: flex;
+    gap: 8px;
+    padding: 8px 16px;
+    border-top: 1px solid var(--green-dim);
+    background: rgba(0,0,0,0.6);
+    flex-wrap: wrap;
+  }
+  .wheel-btn {
+    background: transparent;
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    padding: 5px 12px;
+    font-family: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+  .wheel-btn:hover { background: var(--green-dim); color: #000; }
+
+  /* Bottom prompt */
+  .prompt-bar {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    border-top: 1px solid var(--green-dim);
+    background: rgba(0,0,0,0.7);
+  }
+  .prompt-label {
+    color: var(--green);
+    font-weight: bold;
+    margin-right: 10px;
+    white-space: nowrap;
+  }
+  .prompt-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--green);
+    font-family: inherit;
+    font-size: 0.9rem;
+    caret-color: var(--green);
+  }
+
+  /* Right: Squad status */
+  .squad-panel {
+    width: 260px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: rgba(0,0,0,0.5);
+    overflow-y: auto;
+  }
+  .squad-panel::-webkit-scrollbar { width: 5px; }
+  .squad-panel::-webkit-scrollbar-thumb { background: var(--green-dim); }
+  .squad-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--green-dim);
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    text-align: center;
+    background: rgba(0,0,0,0.4);
+  }
+  .squad-member {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--green-dim);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .member-icon {
+    width: 32px; height: 32px;
+    border: 1px solid var(--green-dim);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .member-info { flex: 1; min-width: 0; }
+  .member-name { font-size: 0.8rem; font-weight: bold; margin-bottom: 4px; }
+  .hp-track {
+    height: 6px;
+    background: var(--green-dark);
+    border: 1px solid var(--green-dim);
+    position: relative;
+  }
+  .hp-fill {
+    height: 100%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    transition: width 0.4s ease;
+  }
+  .hp-text {
+    font-size: 0.65rem;
+    color: var(--green-dim);
+    margin-top: 3px;
+  }
+  .member-status {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border: 1px solid var(--green-dim);
+    white-space: nowrap;
+  }
+  .status-ok { border-color: var(--green); color: var(--green); }
+  .status-warn { border-color: #fbbf24; color: #fbbf24; }
+  .status-crit { border-color: #f87171; color: #f87171; }
+
+  /* Blinking cursor for prompt */
+  .prompt-input::after {
+    content: '';
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- TOP HUD -->
+  <div class="top-hud">
+    <div class="hud-left">
+      <div class="hud-title">CHAT V4</div>
+      <div class="timer" id="missionTimer">T-MINUS 04:23:17</div>
+    </div>
+    <div class="hud-right">
+      <div class="objective">OBJ: <span>SECURE SECTOR 7G // EXTRACT VIP</span></div>
+    </div>
+  </div>
+
+  <!-- MAIN SPLIT -->
+  <div class="main">
+
+    <!-- LEFT: Chat -->
+    <div class="chat-panel">
+      <div class="tabs">
+        <div class="tab active" data-tab="all">ALL</div>
+        <div class="tab" data-tab="team">TEAM</div>
+        <div class="tab" data-tab="intel">INTEL</div>
+        <div class="tab" data-tab="systems">SYSTEMS</div>
+      </div>
+
+      <div class="chat-feed" id="chatFeed">
+        <div class="msg msg-system">
+          <span class="msg-time">[00:00:01]</span>
+          <span class="msg-from">SYSTEM:</span>
+          <span class="msg-body">Command center uplink established. Encryption: AES-256. Welcome, Commander.</span>
+        </div>
+        <div class="msg msg-team">
+          <span class="msg-time">[00:02:14]</span>
+          <span class="msg-from">RAIDER-1:</span>
+          <span class="msg-body">Squad Alpha moving to checkpoint Bravo. No contacts so far.</span>
+        </div>
+        <div class="msg msg-intel">
+          <span class="msg-time">[00:05:42]</span>
+          <span class="msg-from">INTEL:</span>
+          <span class="msg-body">Satellite recon update: heat signatures detected in Warehouse District. Possible hostile presence.</span>
+        </div>
+        <div class="msg msg-team">
+          <span class="msg-time">[00:08:09]</span>
+          <span class="msg-from">GHOST-3:</span>
+          <span class="msg-body">Eyes on two patrols, northwest corner. Holding position.</span>
+        </div>
+        <div class="msg msg-alert">
+          <span class="msg-time">[00:09:33]</span>
+          <span class="msg-from">ALERT:</span>
+          <span class="msg-body">Perimeter breach detected at Gate 4. Auto-turrets engaging.</span>
+        </div>
+        <div class="msg msg-team">
+          <span class="msg-time">[00:11:20]</span>
+          <span class="msg-from">Viper-2:</span>
+          <span class="msg-body">Requesting close air support. Grid ref: 7G-119. Danger close.</span>
+        </div>
+        <div class="msg msg-system">
+          <span class="msg-time">[00:12:05]</span>
+          <span class="msg-from">SYSTEM:</span>
+          <span class="msg-body">Drone swarm launched. ETA 90 seconds.</span>
+        </div>
+        <div class="msg msg-intel">
+          <span class="msg-time">[00:14:47]</span>
+          <span class="msg-from">INTEL:</span>
+          <span class="msg-body">Decrypting enemy comms... callsign 'WRAITH' mentioned. Possible field commander.</span>
+        </div>
+        <div class="msg msg-team">
+          <span class="msg-time">[00:16:11]</span>
+          <span class="msg-from">RAIDER-1:</span>
+          <span class="msg-body">Checkpoint Bravo secure. Setting up overwatch.</span>
+        </div>
+        <div class="msg msg-alert">
+          <span class="msg-time">[00:18:29]</span>
+          <span class="msg-from">ALERT:</span>
+          <span class="msg-body">VIP beacon signal lost. Last known: Sublevel 3.</span>
+        </div>
+        <div class="msg msg-team">
+          <span class="msg-time">[00:19:55]</span>
+          <span class="msg-from">GHOST-3:</span>
+          <span class="msg-body">Moving to Sublevel 3. Viper-2, cover the stairwell.</span>
+        </div>
+        <div class="msg msg-system">
+          <span class="msg-time">[00:21:03]</span>
+          <span class="msg-from">SYSTEM:</span>
+          <span class="msg-body">Medical drone dispatched to Squad Alpha. Supplies: 4x medkits, 2x stim.</span>
+        </div>
+      </div>
+
+      <!-- Command wheel -->
+      <div class="command-wheel">
+        <button class="wheel-btn" onclick="sendCmd('HOLD POSITION')">HOLD</button>
+        <button class="wheel-btn" onclick="sendCmd('MOVE TO')">MOVE</button>
+        <button class="wheel-btn" onclick="sendCmd('ENGAGE')">ENGAGE</button>
+        <button class="wheel-btn" onclick="sendCmd('FALL BACK')">RETREAT</button>
+        <button class="wheel-btn" onclick="sendCmd('REQUEST MEDEVAC')">MEDEVAC</button>
+        <button class="wheel-btn" onclick="sendCmd('STATUS REPORT')">STATUS</button>
+        <button class="wheel-btn" onclick="sendCmd('DRONE SCAN')">SCAN</button>
+        <button class="wheel-btn" onclick="sendCmd('ALL UNITS RALLY')">RALLY</button>
+      </div>
+
+      <!-- Prompt -->
+      <div class="prompt-bar">
+        <span class="prompt-label">$&gt;</span>
+        <input type="text" class="prompt-input" id="promptInput" placeholder="Enter command..." autocomplete="off" autofocus>
+      </div>
+    </div>
+
+    <!-- RIGHT: Squad Status -->
+    <div class="squad-panel">
+      <div class="squad-header">SQUAD STATUS</div>
+
+      <div class="squad-member">
+        <div class="member-icon">☠</div>
+        <div class="member-info">
+          <div class="member-name">RAIDER-1 (KOVACS)</div>
+          <div class="hp-track"><div class="hp-fill" style="width:92%"></div></div>
+          <div class="hp-text">HP 92/100</div>
+        </div>
+        <div class="member-status status-ok">OK</div>
+      </div>
+
+      <div class="squad-member">
+        <div class="member-icon">⚡</div>
+        <div class="member-info">
+          <div class="member-name">VIPER-2 (SATO)</div>
+          <div class="hp-track"><div class="hp-fill" style="width:64%"></div></div>
+          <div class="hp-text">HP 64/100</div>
+        </div>
+        <div class="member-status status-warn">WOUNDED</div>
+      </div>
+
+      <div class="squad-member">
+        <div class="member-icon">👁</div>
+        <div class="member-info">
+          <div class="member-name">GHOST-3 (REYES)</div>
+          <div class="hp-track"><div class="hp-fill" style="width:100%"></div></div>
+          <div class="hp-text">HP 100/100</div>
+        </div>
+        <div class="member-status status-ok">OK</div>
+      </div>
+
+      <div class="squad-member">
+        <div class="member-icon">🔧</div>
+        <div class="member-info">
+          <div class="member-name">BULWARK-4 (CHEN)</div>
+          <div class="hp-track"><div class="hp-fill" style="width:31%"></div></div>
+          <div class="hp-text">HP 31/100</div>
+        </div>
+        <div class="member-status status-crit">CRITICAL</div>
+      </div>
+
+      <div class="squad-member">
+        <div class="member-icon">💉</div>
+        <div class="member-info">
+          <div class="member-name">SAGE-5 (OKONKWO)</div>
+          <div class="hp-track"><div class="hp-fill" style="width:78%"></div></div>
+          <div class="hp-text">HP 78/100</div>
+        </div>
+        <div class="member-status status-ok">OK</div>
+      </div>
+
+      <div class="squad-member">
+        <div class="member-icon">📡</div>
+        <div class="member-info">
+          <div class="member-name">LINK-6 (PETROV)</div>
+          <div class="hp-track"><div class="hp-fill" style="width:55%"></div></div>
+          <div class="hp-text">HP 55/100</div>
+        </div>
+        <div class="member-status status-warn">SUPPRESSED</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Tab switching ── */
+  const tabs = document.querySelectorAll('.tab');
+  const feed = document.getElementById('chatFeed');
+  const allMsgs = Array.from(feed.children);
+
+  tabs.forEach(t => {
+    t.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      const filter = t.dataset.tab;
+      allMsgs.forEach(m => {
+        if (filter === 'all') { m.style.display = ''; }
+        else if (filter === 'team' && m.classList.contains('msg-team')) { m.style.display = ''; }
+        else if (filter === 'intel' && m.classList.contains('msg-intel')) { m.style.display = ''; }
+        else if (filter === 'systems' && m.classList.contains('msg-system')) { m.style.display = ''; }
+        else { m.style.display = 'none'; }
+      });
+    });
+  });
+
+  /* ── Prompt ── */
+  const input = document.getElementById('promptInput');
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && input.value.trim()) {
+      sendCmd(input.value.trim());
+      input.value = '';
+    }
+  });
+
+  function sendCmd(text) {
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const ts = `[${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}]`;
+    const div = document.createElement('div');
+    div.className = 'msg msg-team';
+    div.innerHTML = `<span class="msg-time">${ts}</span><span class="msg-from">CMDR:</span><span class="msg-body">${escapeHtml(text)}</span>`;
+    feed.appendChild(div);
+    feed.scrollTop = feed.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ── Mission timer tick ── */
+  let totalSeconds = 4*3600 + 23*60 + 17;
+  const timerEl = document.getElementById('missionTimer');
+  setInterval(() => {
+    if (totalSeconds > 0) totalSeconds--;
+    const h = String(Math.floor(totalSeconds/3600)).padStart(2,'0');
+    const m = String(Math.floor((totalSeconds%3600)/60)).padStart(2,'0');
+    const s = String(totalSeconds%60).padStart(2,'0');
+    timerEl.textContent = `T-MINUS ${h}:${m}:${s}`;
+  }, 1000);
+</script>
+</body>
+</html>

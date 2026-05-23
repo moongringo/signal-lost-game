@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>DRONE CONTROL — Minigame V4</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0b0f0a;
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+    color: #c8e6c9;
+    user-select: none; -webkit-user-select: none;
+  }
+  #game-container {
+    position: relative;
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column;
+  }
+  #hud {
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    background: #141a13;
+    border-bottom: 2px solid #2e7d32;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; letter-spacing: 1px;
+  }
+  #hud .title { color: #66bb6a; font-weight: bold; font-size: 16px; }
+  #hud .stat { color: #a5d6a7; }
+  #battery-wrap {
+    width: 120px; height: 14px;
+    background: #1b231a; border: 1px solid #2e7d32;
+    position: relative;
+  }
+  #battery-fill {
+    width: 100%; height: 100%;
+    background: #43a047;
+    transition: width 0.2s, background 0.3s;
+  }
+  #battery-label { position: absolute; left: 4px; top: -1px; font-size: 10px; color: #c8e6c9; }
+  canvas#game {
+    flex: 1 1 auto;
+    display: block;
+    image-rendering: pixelated;
+    touch-action: none;
+  }
+  #controls {
+    flex: 0 0 auto;
+    padding: 10px 0 14px;
+    background: #141a13;
+    border-top: 2px solid #2e7d32;
+    display: flex; justify-content: center; align-items: center; gap: 8px;
+  }
+  .ctrl-row { display: flex; gap: 8px; }
+  .ctrl-col { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .btn {
+    width: 64px; height: 52px;
+    background: #1b231a; color: #81c784;
+    border: 2px solid #2e7d32; border-radius: 6px;
+    font-size: 22px; font-weight: bold;
+    display: flex; justify-content: center; align-items: center;
+    cursor: pointer; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { background: #2e7d32; color: #fff; }
+  #overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    z-index: 10;
+  }
+  #overlay h1 { color: #66bb6a; font-size: 28px; margin-bottom: 10px; text-align: center; }
+  #overlay p { color: #a5d6a7; font-size: 14px; margin-bottom: 18px; text-align: center; max-width: 320px; line-height: 1.5; }
+  #overlay .big-btn {
+    padding: 10px 28px;
+    background: #2e7d32; color: #fff;
+    border: none; border-radius: 4px;
+    font-size: 16px; font-family: inherit; cursor: pointer;
+  }
+  #overlay .big-btn:hover { background: #388e3c; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <div id="hud">
+    <div class="title">MINIGAME V4 — DRONE</div>
+    <div class="stat">SCORE: <span id="score">0</span></div>
+    <div class="stat">WAYPOINTS: <span id="waypoints">0</span></div>
+    <div id="battery-wrap">
+      <div id="battery-fill"></div>
+      <div id="battery-label">BATTERY</div>
+    </div>
+  </div>
+  <canvas id="game"></canvas>
+  <div id="controls">
+    <div class="ctrl-col">
+      <div class="btn" data-dir="up">▲</div>
+      <div class="ctrl-row">
+        <div class="btn" data-dir="left">◀</div>
+        <div class="btn" data-dir="down">▼</div>
+        <div class="btn" data-dir="right">▶</div>
+      </div>
+    </div>
+  </div>
+  <div id="overlay">
+    <h1>DRONE CONTROL</h1>
+    <p>Navigate the drone through the battlefield. Avoid buildings and AA zones. Reach waypoints before battery runs out. Collect signal boosters to recharge.</p>
+    <button class="big-btn" id="start-btn">START MISSION</button>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict';
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const startBtn = document.getElementById('start-btn');
+  const scoreEl = document.getElementById('score');
+  const wpEl = document.getElementById('waypoints');
+  const batteryFill = document.getElementById('battery-fill');
+
+  let W, H, DPR;
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = canvas.getBoundingClientRect();
+    W = Math.floor(rect.width);
+    H = Math.floor(rect.height);
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Game constants
+  const TILE = 32;
+  const DRONE_SPEED = 160; // px per second
+  const BATTERY_MAX = 100;
+  const BATTERY_DRAIN = 6; // per second
+  const BOOST_VALUE = 25;
+  const AA_DAMAGE = 18; // per second inside AA zone
+
+  // Input
+  const keys = { up: false, down: false, left: false, right: false };
+  function setDir(dir, on) { if (keys[dir] !== undefined) keys[dir] = on; }
+  document.querySelectorAll('.btn').forEach(btn => {
+    const dir = btn.dataset.dir;
+    const on = e => { e.preventDefault(); setDir(dir, true); };
+    const off = e => { e.preventDefault(); setDir(dir, false); };
+    btn.addEventListener('mousedown', on);
+    btn.addEventListener('mouseup', off);
+    btn.addEventListener('mouseleave', off);
+    btn.addEventListener('touchstart', on, { passive: false });
+    btn.addEventListener('touchend', off, { passive: false });
+    btn.addEventListener('touchcancel', off, { passive: false });
+  });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') setDir('up', true);
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') setDir('down', true);
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setDir('left', true);
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') setDir('right', true);
+  });
+  window.addEventListener('keyup', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') setDir('up', false);
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') setDir('down', false);
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setDir('left', false);
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') setDir('right', false);
+  });
+
+  // Procedural map generation
+  function generateMap() {
+    const cols = Math.ceil(W / TILE);
+    const rows = Math.ceil(H / TILE);
+    const buildings = [];
+    const aaZones = [];
+    const boosts = [];
+    const margin = 2;
+    for (let r = margin; r < rows - margin; r++) {
+      for (let c = margin; c < cols - margin; c++) {
+        const x = c * TILE, y = r * TILE;
+        const rnd = Math.random();
+        if (rnd < 0.08) {
+          const w = TILE * (1 + Math.floor(Math.random() * 2));
+          const h = TILE * (1 + Math.floor(Math.random() * 2));
+          buildings.push({ x, y, w, h });
+        } else if (rnd < 0.14) {
+          const radius = TILE * (1.2 + Math.random() * 1.2);
+          aaZones.push({ x: x + TILE / 2, y: y + TILE / 2, radius });
+        } else if (rnd < 0.18) {
+          boosts.push({ x: x + TILE / 2, y: y + TILE / 2, collected: false });
+        }
+      }
+    }
+    return { buildings, aaZones, boosts, cols, rows };
+  }
+
+  function randomFreePos(map, marginTiles) {
+    const margin = marginTiles * TILE;
+    let x, y, safe;
+    for (let i = 0; i < 200; i++) {
+      x = margin + Math.random() * (W - margin * 2);
+      y = margin + Math.random() * (H - margin * 2);
+      safe = true;
+      for (const b of map.buildings) {
+        if (x > b.x - 10 && x < b.x + b.w + 10 && y > b.y - 10 && y < b.y + b.h + 10) { safe = false; break; }
+      }
+      if (!safe) continue;
+      for (const a of map.aaZones) {
+        const dx = x - a.x, dy = y - a.y;
+        if (Math.hypot(dx, dy) < a.radius + 10) { safe = false; break; }
+      }
+      if (safe) break;
+    }
+    return { x, y };
+  }
+
+  // Pixel-art drone sprite (16x16 scaled up)
+  const DRONE_SPRITE = [
+    [0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],
+    [0,0,0,1,1,2,2,2,2,2,2,1,1,0,0,0],
+    [0,0,1,2,2,2,2,2,2,2,2,2,2,1,0,0],
+    [0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0],
+    [0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,2,2,2,2,2,2,3,3,2,2,2,2,2,2,1],
+    [1,2,2,2,2,2,3,3,3,3,2,2,2,2,2,1],
+    [1,2,2,2,2,2,3,3,3,3,2,2,2,2,2,1],
+    [1,2,2,2,2,2,2,3,3,2,2,2,2,2,2,1],
+    [0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0],
+    [0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0],
+    [0,0,1,2,2,2,2,2,2,2,2,2,2,1,0,0],
+    [0,0,0,1,1,2,2,2,2,2,2,1,1,0,0,0],
+    [0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  ];
+  const PALETTE = {
+    0: null,
+    1: '#4caf50',
+    2: '#81c784',
+    3: '#1b5e20',
+  };
+
+  function drawDrone(ctx, x, y, size) {
+    const px = size / 16;
+    for (let r = 0; r < 16; r++) {
+      for (let c = 0; c < 16; c++) {
+        const col = PALETTE[DRONE_SPRITE[r][c]];
+        if (col) {
+          ctx.fillStyle = col;
+          ctx.fillRect(Math.floor(x + c * px), Math.floor(y + r * px), Math.ceil(px), Math.ceil(px));
+        }
+      }
+    }
+  }
+
+  // Game state
+  let running = false;
+  let lastTime = 0;
+  let drone = { x: 0, y: 0, size: 28 };
+  let waypoint = { x: 0, y: 0 };
+  let map = null;
+  let battery = BATTERY_MAX;
+  let score = 0;
+  let waypointsReached = 0;
+  let gameOver = false;
+  let crashAnim = 0;
+  let particles = [];
+
+  function spawnWaypoint() {
+    const pos = randomFreePos(map, 3);
+    waypoint.x = pos.x;
+    waypoint.y = pos.y;
+  }
+
+  function resetGame() {
+    map = generateMap();
+    const start = randomFreePos(map, 2);
+    drone.x = start.x;
+    drone.y = start.y;
+    spawnWaypoint();
+    battery = BATTERY_MAX;
+    score = 0;
+    waypointsReached = 0;
+    gameOver = false;
+    crashAnim = 0;
+    particles = [];
+    scoreEl.textContent = '0';
+    wpEl.textContent = '0';
+    updateBatteryUI();
+    running = true;
+    lastTime = performance.now();
+    overlay.classList.add('hidden');
+    requestAnimationFrame(loop);
+  }
+
+  function updateBatteryUI() {
+    const pct = Math.max(0, (battery / BATTERY_MAX) * 100);
+    batteryFill.style.width = pct + '%';
+    if (pct > 50) batteryFill.style.background = '#43a047';
+    else if (pct > 25) batteryFill.style.background = '#fbc02d';
+    else batteryFill.style.background = '#e53935';
+  }
+
+  function rectCollide(x, y, size, b) {
+    return x + size > b.x && x < b.x + b.w && y + size > b.y && y < b.y + b.h;
+  }
+
+  function tryMove(dx, dy, dt) {
+    let nx = drone.x + dx;
+    let ny = drone.y + dy;
+    // Clamp to screen
+    nx = Math.max(0, Math.min(W - drone.size, nx));
+    ny = Math.max(0, Math.min(H - drone.size, ny));
+    // Building collision (slide)
+    let cx = nx, cy = ny;
+    for (const b of map.buildings) {
+      if (rectCollide(cx, drone.y, drone.size, b)) cx = drone.x;
+      if (rectCollide(drone.x, cy, drone.size, b)) cy = drone.y;
+    }
+    // If both blocked, don't move
+    let blockedX = false, blockedY = false;
+    for (const b of map.buildings) {
+      if (rectCollide(cx, drone.y, drone.size, b)) blockedX = true;
+      if (rectCollide(drone.x, cy, drone.size, b)) blockedY = true;
+    }
+    if (!blockedX) drone.x = cx;
+    if (!blockedY) drone.y = cy;
+  }
+
+  function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 30 + Math.random() * 80;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.5 + Math.random() * 0.5,
+        maxLife: 1,
+        color,
+        size: 2 + Math.random() * 3,
+      });
+    }
+  }
+
+  function update(dt) {
+    if (gameOver) {
+      crashAnim += dt;
+      // update crash particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+      if (crashAnim > 2) {
+        running = false;
+        overlay.querySelector('h1').textContent = 'DRONE LOST';
+        overlay.querySelector('p').textContent = `Waypoints reached: ${waypointsReached} | Score: ${score}\nBattery depleted over hostile terrain.`;
+        overlay.querySelector('.big-btn').textContent = 'RETRY MISSION';
+        overlay.classList.remove('hidden');
+      }
+      return;
+    }
+
+    // Movement
+    let dx = 0, dy = 0;
+    if (keys.up) dy -= 1;
+    if (keys.down) dy += 1;
+    if (keys.left) dx -= 1;
+    if (keys.right) dx += 1;
+    if (dx !== 0 || dy !== 0) {
+      const len = Math.hypot(dx, dy);
+      dx = (dx / len) * DRONE_SPEED * dt;
+      dy = (dy / len) * DRONE_SPEED * dt;
+      tryMove(dx, dy, dt);
+    }
+
+    // Battery drain
+    battery -= BATTERY_DRAIN * dt;
+    if (battery <= 0) {
+      battery = 0;
+      gameOver = true;
+      spawnParticles(drone.x + drone.size / 2, drone.y + drone.size / 2, '#e53935', 40);
+      spawnParticles(drone.x + drone.size / 2, drone.y + drone.size / 2, '#ff9800', 20);
+    }
+
+    // AA damage
+    const cx = drone.x + drone.size / 2;
+    const cy = drone.y + drone.size / 2;
+    for (const a of map.aaZones) {
+      const dist = Math.hypot(cx - a.x, cy - a.y);
+      if (dist < a.radius) {
+        battery -= AA_DAMAGE * dt;
+        // spawn warning particles occasionally
+        if (Math.random() < dt * 6) {
+          spawnParticles(cx, cy, '#ff5252', 2);
+        }
+      }
+    }
+
+    // Boost collect
+    for (const b of map.boosts) {
+      if (b.collected) continue;
+      const dist = Math.hypot(cx - b.x, cy - b.y);
+      if (dist < drone.size * 0.8) {
+        b.collected = true;
+        battery = Math.min(BATTERY_MAX, battery + BOOST_VALUE);
+        score += 50;
+        scoreEl.textContent = String(score);
+        spawnParticles(b.x, b.y, '#66bb6a', 12);
+      }
+    }
+
+    // Waypoint reach
+    const wdist = Math.hypot(cx - waypoint.x, cy - waypoint.y);
+    if (wdist < drone.size * 0.9) {
+      waypointsReached += 1;
+      score += 200 + Math.floor(battery) * 2;
+      wpEl.textContent = String(waypointsReached);
+      scoreEl.textContent = String(score);
+      spawnParticles(waypoint.x, waypoint.y, '#fff176', 20);
+      spawnParticles(waypoint.x, waypoint.y, '#66bb6a', 10);
+      spawnWaypoint();
+      // add a little battery bonus
+      battery = Math.min(BATTERY_MAX, battery + 8);
+    }
+
+    updateBatteryUI();
+
+    // Particles update
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  function draw() {
+    // Background (battlefield grid)
+    ctx.fillStyle = '#0f140f';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#1b231a';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += TILE) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += TILE) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Buildings
+    for (const b of map.buildings) {
+      ctx.fillStyle = '#263238';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = '#37474f';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // roof detail
+      ctx.fillStyle = '#37474f';
+      ctx.fillRect(b.x + 4, b.y + 4, b.w - 8, b.h - 8);
+    }
+
+    // AA zones
+    for (const a of map.aaZones) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(229, 57, 53, 0.12)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(229, 57, 53, 0.35)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // pulsing ring
+      const pulse = (Date.now() % 1200) / 1200;
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, a.radius * (0.6 + pulse * 0.4), 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(229, 57, 53, ${0.2 - pulse * 0.15})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Boosts
+    for (const b of map.boosts) {
+      if (b.collected) continue;
+      const t = Date.now() / 800;
+      const bounce = Math.sin(t * 3) * 3;
+      ctx.save();
+      ctx.translate(b.x, b.y + bounce);
+      // cross shape
+      ctx.fillStyle = '#66bb6a';
+      const s = 8;
+      ctx.fillRect(-s, -2, s * 2, 4);
+      ctx.fillRect(-2, -s, 4, s * 2);
+      ctx.fillStyle = '#a5d6a7';
+      ctx.fillRect(-s + 2, -1, s * 2 - 4, 2);
+      ctx.fillRect(-1, -s + 2, 2, s * 2 - 4);
+      ctx.restore();
+    }
+
+    // Waypoint
+    const wPulse = (Date.now() % 1000) / 1000;
+    ctx.save();
+    ctx.translate(waypoint.x, waypoint.y);
+    ctx.beginPath();
+    ctx.arc(0, 0, 10 + wPulse * 6, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 241, 118, ${0.25 - wPulse * 0.15})`;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff176';
+    ctx.fill();
+    ctx.strokeStyle = '#fdd835';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    // Drone
+    if (!gameOver) {
+      drawDrone(ctx, drone.x, drone.y, drone.size);
+      // shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(drone.x + drone.size / 2, drone.y + drone.size + 4, drone.size / 2.5, drone.size / 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Particles
+    for (const p of particles) {
+      const alpha = Math.max(0, p.life / p.maxLife);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+
+    // Vignette
+    const grad = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.min(W, H) * 0.75);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Game over text
+    if (gameOver) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#e53935';
+      ctx.font = 'bold 22px Courier New';
+      ctx.textAlign = 'center';
+      ctx.fillText('SIGNAL LOST — DRONE DOWN', W / 2, H / 2);
+      ctx.fillStyle = '#a5d6a7';
+      ctx.font = '14px Courier New';
+      ctx.fillText(`Waypoints: ${waypointsReached}  Score: ${score}`, W / 2, H / 2 + 26);
+    }
+  }
+
+  function loop(now) {
+    if (!running) return;
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  startBtn.addEventListener('click', resetGame);
+})();
+</script>
+</body>
+</html>

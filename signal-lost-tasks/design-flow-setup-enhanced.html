@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Mission Setup (Enhanced)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================
+       ENHANCED SETUP — HIGH FIDELITY DESIGN SYSTEM
+       ============================================ */
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --cream-soft: #fff8dc;
+      --peach: #ffc0a0;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --glass-bg: rgba(255, 248, 220, 0.15);
+      --glass-border: rgba(255, 255, 255, 0.25);
+      --display-font: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+      --body-font: 'Inter', 'Bookman Old Style', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { min-height: 100%; background: var(--cream); font-family: var(--body-font); -webkit-font-smoothing: antialiased; }
+    body { min-height: 100vh; color: var(--ink); overflow-x: hidden; }
+
+    /* Background */
+    .enhanced-bg { position: fixed; inset: 0; z-index: -2; background: var(--cream); }
+    .enhanced-bg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+
+    /* Header */
+    .flow-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.5rem 2rem;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(150%);
+      -webkit-backdrop-filter: blur(20px) saturate(150%);
+      border-bottom: 1px solid var(--glass-border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .flow-header h1 {
+      font-family: var(--display-font);
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .flow-header .eyebrow {
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+    }
+
+    .flow-nav {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .flow-nav a {
+      padding: 0.5rem 1rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 8px;
+      transition: all 0.3s var(--ease-out);
+      position: relative;
+    }
+
+    .flow-nav a:hover {
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .flow-nav a[aria-current="page"] {
+      color: var(--teal);
+      background: rgba(0, 140, 148, 0.1);
+      font-weight: 600;
+    }
+
+    /* Main Layout */
+    .flow-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 2rem;
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 1024px) {
+      .flow-layout { grid-template-columns: 1fr; }
+    }
+
+    /* Enhanced Panels */
+    .flow-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      transition: all 0.4s var(--ease-out);
+      animation: fadeInUp 0.6s var(--ease-out) forwards;
+      opacity: 0;
+    }
+
+    .flow-panel:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      box-shadow: 0 16px 48px rgba(32, 17, 22, 0.2);
+      transform: translateY(-4px);
+    }
+
+    .flow-panel:nth-child(1) { animation-delay: 0.1s; }
+    .flow-panel:nth-child(2) { animation-delay: 0.2s; }
+
+    .kicker {
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 1rem;
+    }
+
+    .flow-panel h2 {
+      font-family: var(--display-font);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    /* Form Fields */
+    .setup-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .setup-grid { grid-template-columns: 1fr; }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .field span {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .field input, .field select {
+      padding: 0.875rem 1rem;
+      background: rgba(255, 255, 255, 0.5);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      font-family: var(--body-font);
+      font-size: 0.95rem;
+      color: var(--ink);
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .field input:focus, .field select:focus {
+      outline: none;
+      border-color: var(--teal);
+      background: rgba(255, 255, 255, 0.7);
+      box-shadow: 0 0 0 4px rgba(0, 140, 148, 0.1);
+    }
+
+    .field input:hover, .field select:hover {
+      border-color: var(--peach);
+    }
+
+    /* Join Code */
+    .join-code {
+      margin-top: 1.5rem;
+      padding: 1.5rem;
+      background: rgba(0, 140, 148, 0.08);
+      border-radius: 16px;
+      border: 2px dashed rgba(0, 140, 148, 0.2);
+      text-align: center;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .join-code:hover {
+      border-color: var(--teal);
+      background: rgba(0, 140, 148, 0.12);
+    }
+
+    .join-code strong {
+      display: block;
+      font-family: var(--mono-font);
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--teal);
+      margin: 0.5rem 0;
+      letter-spacing: 0.05em;
+    }
+
+    .join-code p {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    /* Map */
+    .map-stage {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2rem;
+      transition: all 0.4s var(--ease-out);
+      animation: fadeInUp 0.6s var(--ease-out) 0.3s forwards;
+      opacity: 0;
+    }
+
+    .map-stage:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      box-shadow: 0 16px 48px rgba(32, 17, 22, 0.2);
+    }
+
+    .setup-map {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      margin: 1rem 0;
+      background: var(--blue);
+    }
+
+    .map-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      background: rgba(0, 0, 0, 0.3);
+      color: var(--cream);
+      font-size: 0.85rem;
+    }
+
+    .map-toolbar button {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--cream);
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .map-toolbar button:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+
+    .world-svg {
+      width: 100%;
+      display: block;
+    }
+
+    .world-svg .graticule {
+      stroke: rgba(255, 255, 255, 0.15);
+      stroke-width: 1;
+      fill: none;
+    }
+
+    .world-svg .continent {
+      fill: rgba(0, 140, 148, 0.3);
+      stroke: rgba(255, 255, 255, 0.2);
+      stroke-width: 1;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .world-svg .continent:hover {
+      fill: rgba(0, 140, 148, 0.5);
+    }
+
+    .world-svg .route-line {
+      stroke: var(--gold);
+      stroke-width: 2;
+      stroke-dasharray: 8 4;
+      animation: dashMove 2s linear infinite;
+      fill: none;
+    }
+
+    @keyframes dashMove {
+      to { stroke-dashoffset: -24; }
+    }
+
+    .map-pin {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-family: var(--mono-font);
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--cream);
+      animation: pinPulse 2s ease-in-out infinite;
+    }
+
+    .map-pin.hq {
+      background: var(--teal);
+      top: 25%;
+      left: 48%;
+    }
+
+    .map-pin.cache {
+      background: var(--gold);
+      color: var(--ink);
+      top: 60%;
+      left: 55%;
+    }
+
+    .map-pin.danger {
+      background: var(--pink);
+      top: 45%;
+      left: 35%;
+    }
+
+    @keyframes pinPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.3); }
+      50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+    }
+
+    .draft-marker {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.6);
+      color: var(--cream);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-family: var(--mono-font);
+    }
+
+    .map-legend {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* Marker List */
+    .marker-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .marker-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.875rem 1rem;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 12px;
+      transition: all 0.3s var(--ease-out);
+      border: 1px solid transparent;
+    }
+
+    .marker-row:hover {
+      background: rgba(255, 255, 255, 0.6);
+      border-color: var(--peach);
+      transform: translateX(4px);
+    }
+
+    .marker-row b {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .marker-row small {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .role-token {
+      padding: 0.4rem 0.8rem;
+      background: rgba(255, 255, 255, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .role-token:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .role-token.is-active {
+      background: var(--teal);
+      color: var(--cream);
+      border-color: var(--teal);
+    }
+
+    /* Sidebar */
+    .flow-side {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .theme-console, .song-console, .flow-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 1.5rem;
+      transition: all 0.4s var(--ease-out);
+      animation: fadeInUp 0.6s var(--ease-out) 0.4s forwards;
+      opacity: 0;
+    }
+
+    .theme-console:hover, .song-console:hover, .flow-card:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      box-shadow: 0 8px 24px rgba(32, 17, 22, 0.15);
+    }
+
+    .theme-console h3, .song-console h3, .flow-card h3 {
+      font-family: var(--display-font);
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .theme-console label, .song-console label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .theme-console select, .song-console select {
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.5);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 10px;
+      font-family: var(--body-font);
+      font-size: 0.9rem;
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .theme-console select:focus {
+      outline: none;
+      border-color: var(--teal);
+    }
+
+    /* VU Strip */
+    .vu-strip {
+      display: flex;
+      gap: 4px;
+      height: 40px;
+      align-items: end;
+      margin: 1rem 0;
+    }
+
+    .vu-strip i {
+      flex: 1;
+      background: linear-gradient(to top, var(--teal), var(--gold));
+      border-radius: 2px;
+      animation: vuBounce 0.5s ease-in-out infinite alternate;
+    }
+
+    .vu-strip i:nth-child(1) { height: 30%; animation-delay: 0s; }
+    .vu-strip i:nth-child(2) { height: 60%; animation-delay: 0.1s; }
+    .vu-strip i:nth-child(3) { height: 45%; animation-delay: 0.2s; }
+    .vu-strip i:nth-child(4) { height: 80%; animation-delay: 0.3s; }
+    .vu-strip i:nth-child(5) { height: 55%; animation-delay: 0.4s; }
+    .vu-strip i:nth-child(6) { height: 70%; animation-delay: 0.5s; }
+    .vu-strip i:nth-child(7) { height: 40%; animation-delay: 0.6s; }
+    .vu-strip i:nth-child(8) { height: 65%; animation-delay: 0.7s; }
+
+    @keyframes vuBounce {
+      from { transform: scaleY(0.7); }
+      to { transform: scaleY(1); }
+    }
+
+    /* Buttons */
+    .mod-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(135deg, var(--teal), var(--blue));
+      color: var(--cream);
+      border: none;
+      border-radius: 12px;
+      font-family: var(--body-font);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+      box-shadow: 0 4px 16px rgba(0, 140, 148, 0.3);
+    }
+
+    .mod-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 140, 148, 0.4);
+    }
+
+    .mod-button.is-active {
+      background: linear-gradient(135deg, var(--gold), var(--orange));
+      color: var(--ink);
+      box-shadow: 0 4px 16px rgba(255, 217, 101, 0.3);
+    }
+
+    .volume-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .volume-field input[type="range"] {
+      width: 100%;
+      accent-color: var(--teal);
+    }
+
+    /* Module Cards */
+    .module-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .module-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.875rem 1rem;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+      border: 2px solid transparent;
+    }
+
+    .module-card:hover {
+      background: rgba(255, 255, 255, 0.6);
+      transform: translateX(4px);
+    }
+
+    .module-card.is-on {
+      border-color: var(--teal);
+      background: rgba(0, 140, 148, 0.1);
+    }
+
+    .module-card.is-on::after {
+      content: '✓';
+      color: var(--teal);
+      font-weight: 700;
+    }
+
+    .module-card b {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .module-card p {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    /* Cursor Spotlight */
+    .cursor-spotlight {
+      position: fixed;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(0, 140, 148, 0.08) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.3s;
+      opacity: 0;
+    }
+
+    body:hover .cursor-spotlight { opacity: 1; }
+
+    /* Animations */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="design-flow-setup-enhanced" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Mission Setup (Enhanced)</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <div class="enhanced-bg"></div>
+  <main class="flow-shell">
+    <section class="flow-layout" aria-label="Mission setup layout option">
+      <div class="flow-main">
+        <section class="flow-panel">
+          <p class="kicker">Game Runner</p>
+          <h2>Create The Operation</h2>
+          <div class="setup-grid">
+            <label class="field"><span>Organizer Identity</span><input value="Morgan / Host Signal" /></label>
+            <label class="field"><span>Country</span><select><option>Norway</option><option>United Kingdom</option><option>United States</option><option>Sweden</option></select></label>
+            <label class="field"><span>Mission City</span><select><option>Oslo</option><option>Bergen</option><option>London</option><option>New York</option></select></label>
+            <label class="field"><span>Players</span><select><option>2 players</option><option>4 players</option><option>6 players</option><option>8 players</option></select></label>
+            <label class="field"><span>Duration</span><select><option>45 minutes</option><option>60 minutes</option><option>90 minutes</option></select></label>
+            <label class="field"><span>Game Access</span><select><option>Private code required</option><option>Public joinable</option><option>Locked preview</option></select></label>
+          </div>
+          <div class="join-code">
+            <span class="kicker">Unique join code</span>
+            <strong>AQUA-RADAR-42</strong>
+            <p>Creator gets this code after setup. Other players enter it on their phones or tablets to join the same mission.</p>
+          </div>
+        </section>
+
+        <section class="map-stage">
+          <p class="kicker">Setup Map Custom Markers</p>
+          <h2>Stage The Playfield</h2>
+          <div class="setup-map" role="img" aria-label="World setup map with HQ, cache, and danger markers">
+            <div class="map-toolbar">
+              <span>World Map / Oslo, Norway</span>
+              <div>
+                <button type="button">−</button>
+                <button type="button">+</button>
+              </div>
+            </div>
+            <svg class="world-svg" viewBox="0 0 1000 520" aria-hidden="true">
+              <path class="graticule" d="M120 40v440M300 40v440M500 40v440M700 40v440M880 40v440M40 120h920M40 260h920M40 400h920" />
+              <path class="continent" d="M109 155c40-71 106-87 183-70 57 13 105 51 122 105 13 43-8 82-42 111-35 30-84 30-123 56-33 22-45 76-91 77-55 1-85-69-104-116-24-59 18-105 55-163Z" />
+              <path class="continent" d="M356 76c59-22 138 2 184 42 41 36 38 88 18 134-21 49-58 72-100 101-43 29-71 83-126 81-53-2-98-48-111-99-15-61 46-90 71-139 22-43 14-101 64-120Z" />
+              <path class="continent" d="M601 111c72-42 167-32 237 10 47 28 98 79 77 133-20 52-92 39-139 62-59 29-82 107-149 109-61 2-99-59-118-113-17-47-11-102 25-138 20-20 43-47 67-63Z" />
+              <path class="continent small" d="M504 355c36-15 82 3 105 32 24 30 26 80-8 102-39 26-92 2-124-27-29-27-11-90 27-107Z" />
+              <path class="route-line" d="M468 126C562 167 641 223 704 305" />
+            </svg>
+            <span class="map-pin hq">HQ</span>
+            <span class="map-pin cache">C</span>
+            <span class="map-pin danger">D</span>
+            <span class="draft-marker">Click map to stage marker</span>
+            <div class="map-legend"><span>HQ</span><span>Custom</span><span>Draft</span></div>
+          </div>
+          <div class="marker-list">
+            <div class="marker-row"><div><b>Safehouse Clue</b><br><small>Armed clue / 70m radius</small></div><span class="role-token is-active">Edit</span></div>
+            <div class="marker-row"><div><b>Emergency Cache</b><br><small>Cache reward / restore signal</small></div><span class="role-token">Arm</span></div>
+            <div class="marker-row"><div><b>Danger Zone</b><br><small>Hazard / jamming pulse</small></div><span class="role-token">Plan</span></div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="flow-side">
+        <section class="theme-console">
+          <p class="kicker">Background Theme</p>
+          <h3>Game Look</h3>
+          <label>
+            Moving background
+            <select id="backgroundSelect">
+              <option value="sunset-grid">Sunset Grid</option>
+              <option value="signal-candy">Signal Candy</option>
+              <option value="night-static">Night Static</option>
+              <option value="psychedelic-waves" selected>Psychedelic Waves</option>
+              <option value="blue-blocks">Blue Console Blocks</option>
+              <option value="hourglass">Hourglass Repeat</option>
+              <option value="teal-sonar">Teal Sonar</option>
+              <option value="paisley">Black Paisley</option>
+            </select>
+          </label>
+        </section>
+        <section class="song-console">
+          <p class="kicker">Theme Song</p>
+          <h3>Signal Soundtrack</h3>
+          <div class="vu-strip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <button class="mod-button" id="audioToggle" type="button">▶ Play Theme</button>
+          <label class="volume-field"><span>Volume</span><input id="volumeControl" type="range" min="0" max="100" value="70" /></label>
+          <p id="audioStatus" style="font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem;">Theme idle</p>
+        </section>
+        <section class="flow-card">
+          <p class="kicker">Mission Modules</p>
+          <h3>Clean Selection</h3>
+          <div class="module-grid">
+            <article class="module-card is-on"><div><b>Ciphers</b><p>Decoder tasks</p></div></article>
+            <article class="module-card is-on"><div><b>Treasure</b><p>Cache hunt</p></div></article>
+            <article class="module-card"><div><b>Voice</b><p>Relay mode</p></div></article>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    // Cursor Spotlight
+    const spotlight = document.getElementById('cursorSpotlight');
+    document.addEventListener('mousemove', (e) => {
+      spotlight.style.left = e.clientX + 'px';
+      spotlight.style.top = e.clientY + 'px';
+    });
+
+    // Magnetic Buttons
+    document.querySelectorAll('button, .role-token').forEach(btn => {
+      btn.addEventListener('mousemove', (e) => {
+        const rect = btn.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        btn.style.transform = `translate(${x * 0.2}px, ${y * 0.2}px)`;
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.transform = '';
+      });
+    });
+
+    // Module Cards Toggle
+    document.querySelectorAll('.module-card').forEach(card => {
+      card.addEventListener('click', () => {
+        card.classList.toggle('is-on');
+      });
+    });
+
+    // Marker Row Tokens
+    document.querySelectorAll('.marker-row .role-token').forEach(token => {
+      token.addEventListener('click', (e) => {
+        e.stopPropagation();
+        token.classList.toggle('is-active');
+      });
+    });
+
+    // Audio Toggle
+    const audioToggle = document.getElementById('audioToggle');
+    let isPlaying = false;
+    audioToggle.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      audioToggle.textContent = isPlaying ? '⏸ Pause Theme' : '▶ Play Theme';
+      audioToggle.classList.toggle('is-active', isPlaying);
+      document.getElementById('audioStatus').textContent = isPlaying ? 'Playing...' : 'Theme idle';
+    });
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

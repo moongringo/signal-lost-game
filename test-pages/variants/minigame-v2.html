@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>MINIGAME V2 — LOCKPICK</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #0a0a0b;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #e6e6e6;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Flashlight overlay */
+    #flashlight {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      background: radial-gradient(circle 220px at 50% 55%, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.92) 100%);
+    }
+
+    /* HUD */
+    #hud {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      text-align: center;
+      pointer-events: none;
+    }
+    #hud h1 {
+      font-size: 14px;
+      letter-spacing: 4px;
+      color: #8ecae6;
+      text-shadow: 0 0 8px rgba(142,202,230,0.35);
+      margin-bottom: 6px;
+    }
+    #hud .sub {
+      font-size: 11px;
+      color: #6b7f8e;
+      letter-spacing: 2px;
+    }
+
+    /* Canvas */
+    canvas#lockCanvas {
+      z-index: 5;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Controls hint */
+    #controls {
+      position: absolute;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      font-size: 12px;
+      color: #4a5c68;
+      letter-spacing: 1.5px;
+      pointer-events: none;
+      text-align: center;
+    }
+
+    /* Win overlay */
+    #winOverlay {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10,10,11,0.85);
+      backdrop-filter: blur(4px);
+    }
+    #winOverlay.show { display: flex; }
+    #winOverlay h2 {
+      font-size: 22px;
+      letter-spacing: 6px;
+      color: #8ecae6;
+      text-shadow: 0 0 16px rgba(142,202,230,0.5);
+      margin-bottom: 12px;
+    }
+    #winOverlay p {
+      font-size: 12px;
+      color: #6b7f8e;
+      letter-spacing: 2px;
+    }
+    #winOverlay .btn {
+      margin-top: 24px;
+      padding: 10px 28px;
+      border: 1px solid #3a4f5c;
+      background: rgba(20,28,32,0.8);
+      color: #8ecae6;
+      font-size: 12px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      border-radius: 4px;
+      pointer-events: auto;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    #winOverlay .btn:hover {
+      background: rgba(30,45,52,0.9);
+      border-color: #5a7f8e;
+    }
+
+    /* Tension bars overlay */
+    #tensionHUD {
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      gap: 14px;
+      pointer-events: none;
+    }
+    .tension-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .tension-label {
+      font-size: 9px;
+      color: #3a4f5c;
+      letter-spacing: 1px;
+    }
+    .tension-bar {
+      width: 6px;
+      height: 48px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+    .tension-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #c94c4c;
+      border-radius: 3px;
+      transition: height 0.05s linear, background 0.15s;
+    }
+    .tension-fill.ok {
+      background: #4cc982;
+    }
+    .tension-fill.warn {
+      background: #c9a84c;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="flashlight"></div>
+
+    <div id="hud">
+      <h1>MINIGAME V2 — LOCKPICK</h1>
+      <div class="sub">RAISE EACH PIN TO THE SWEET SPOT</div>
+    </div>
+
+    <div id="tensionHUD"></div>
+
+    <canvas id="lockCanvas"></canvas>
+
+    <div id="controls">TAP / HOLD PIN TO RAISE • RELEASE TO DROP</div>
+
+    <div id="winOverlay">
+      <h2>LOCK OPENED</h2>
+      <p>ALL PINS SET</p>
+      <button class="btn" id="retryBtn">PICK AGAIN</button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      const canvas = document.getElementById('lockCanvas');
+      const ctx = canvas.getContext('2d');
+      const winOverlay = document.getElementById('winOverlay');
+      const retryBtn = document.getElementById('retryBtn');
+      const tensionHUD = document.getElementById('tensionHUD');
+      const flashlight = document.getElementById('flashlight');
+
+      let W, H, DPR;
+      let animId;
+      let won = false;
+      let clickAnim = 0; // 0..1 click animation after win
+
+      const PIN_COUNT = 5;
+      const PIN_WIDTH = 28;
+      const PIN_GAP = 18;
+      const PIN_MAX_RAISE = 110; // px the pin can move up
+      const SWEET_ZONE = 10;     // px tolerance around target
+      const RAISE_SPEED = 180;   // px/sec while holding
+      const DROP_SPEED = 260;    // px/sec while releasing
+      const JITTER_AMP = 1.2;    // subtle visual jitter
+
+      let pins = [];
+      let activePinIndex = -1;   // -1 = none, or index of pin being raised
+      let mouseX = 0, mouseY = 0;
+
+      function resize() {
+        DPR = Math.min(window.devicePixelRatio || 1, 2);
+        W = window.innerWidth;
+        H = window.innerHeight;
+        canvas.width = W * DPR;
+        canvas.height = H * DPR;
+        canvas.style.width = W + 'px';
+        canvas.style.height = H + 'px';
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+
+      function randRange(min, max) {
+        return min + Math.random() * (max - min);
+      }
+
+      function resetGame() {
+        won = false;
+        clickAnim = 0;
+        winOverlay.classList.remove('show');
+        pins = [];
+        tensionHUD.innerHTML = '';
+
+        const totalWidth = PIN_COUNT * PIN_WIDTH + (PIN_COUNT - 1) * PIN_GAP;
+        const startX = (W - totalWidth) / 2;
+        const baseY = H * 0.62;
+
+        for (let i = 0; i < PIN_COUNT; i++) {
+          const target = randRange(PIN_MAX_RAISE * 0.25, PIN_MAX_RAISE * 0.85);
+          const pin = {
+            index: i,
+            x: startX + i * (PIN_WIDTH + PIN_GAP),
+            y: baseY,
+            w: PIN_WIDTH,
+            h: 70, // pin body height
+            raise: 0, // current raise amount (0..PIN_MAX_RAISE)
+            target: target,
+            set: false,
+            jitter: 0,
+            tension: 0, // 0..1
+          };
+          pins.push(pin);
+
+          // Build tension HUD
+          const col = document.createElement('div');
+          col.className = 'tension-col';
+          const lbl = document.createElement('div');
+          lbl.className = 'tension-label';
+          lbl.textContent = 'P' + (i + 1);
+          const bar = document.createElement('div');
+          bar.className = 'tension-bar';
+          const fill = document.createElement('div');
+          fill.className = 'tension-fill';
+          fill.id = 'tension-' + i;
+          bar.appendChild(fill);
+          col.appendChild(lbl);
+          col.appendChild(bar);
+          tensionHUD.appendChild(col);
+        }
+      }
+
+      function updateTensionHUD() {
+        for (let i = 0; i < PIN_COUNT; i++) {
+          const p = pins[i];
+          const el = document.getElementById('tension-' + i);
+          if (!el) continue;
+          el.style.height = Math.round(p.tension * 100) + '%';
+          el.classList.remove('ok', 'warn');
+          if (p.set) {
+            el.classList.add('ok');
+          } else if (p.tension > 0.7) {
+            el.classList.add('warn');
+          }
+        }
+      }
+
+      function hitTestPin(x, y) {
+        for (let i = 0; i < PIN_COUNT; i++) {
+          const p = pins[i];
+          const margin = 10;
+          if (x >= p.x - margin && x <= p.x + p.w + margin &&
+              y >= p.y - PIN_MAX_RAISE - 20 && y <= p.y + p.h + 20) {
+            return i;
+          }
+        }
+        return -1;
+      }
+
+      function update(dt) {
+        if (won) {
+          clickAnim = Math.min(1, clickAnim + dt * 1.2);
+          return;
+        }
+
+        let allSet = true;
+        for (let i = 0; i < PIN_COUNT; i++) {
+          const p = pins[i];
+          if (p.set) {
+            p.tension = Math.max(0, p.tension - dt * 1.5);
+            continue;
+          }
+
+          allSet = false;
+
+          if (activePinIndex === i) {
+            p.raise = Math.min(PIN_MAX_RAISE, p.raise + RAISE_SPEED * dt);
+          } else {
+            p.raise = Math.max(0, p.raise - DROP_SPEED * dt);
+          }
+
+          // Check sweet spot
+          const diff = Math.abs(p.raise - p.target);
+          if (diff <= SWEET_ZONE) {
+            p.set = true;
+            p.raise = p.target; // snap
+            p.tension = 0;
+          } else {
+            // Tension builds near target, max at edges
+            const closeness = 1 - Math.min(1, diff / (PIN_MAX_RAISE * 0.5));
+            p.tension = closeness;
+          }
+
+          // Jitter
+          p.jitter = Math.sin(Date.now() * 0.02 + i * 3.7) * JITTER_AMP * p.tension;
+        }
+
+        updateTensionHUD();
+
+        if (allSet) {
+          won = true;
+          winOverlay.classList.add('show');
+        }
+      }
+
+      function drawLockBody() {
+        const totalWidth = PIN_COUNT * PIN_WIDTH + (PIN_COUNT - 1) * PIN_GAP;
+        const startX = (W - totalWidth) / 2;
+        const baseY = H * 0.62;
+        const lockH = 90;
+        const lockW = totalWidth + 40;
+        const lockX = startX - 20;
+        const lockY = baseY + 10;
+
+        // Outer casing
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#14181c';
+        ctx.beginPath();
+        ctx.roundRect(lockX, lockY, lockW, lockH, 8);
+        ctx.fill();
+        ctx.restore();
+
+        // Casing highlight edge
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(lockX + 0.5, lockY + 0.5, lockW - 1, lockH - 1, 8);
+        ctx.stroke();
+
+        // Keyway slot
+        ctx.fillStyle = '#0a0c0e';
+        const slotW = totalWidth + 10;
+        const slotH = 18;
+        const slotX = startX - 5;
+        const slotY = baseY - 6;
+        ctx.beginPath();
+        ctx.roundRect(slotX, slotY, slotW, slotH, 4);
+        ctx.fill();
+
+        // Slot inner shadow
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(slotX + 1, slotY + 1, slotW - 2, slotH - 2, 3);
+        ctx.stroke();
+      }
+
+      function drawPin(p) {
+        const cx = p.x + p.w / 2;
+        const pinTopY = p.y - p.raise + p.jitter;
+        const pinBottomY = pinTopY + p.h;
+
+        // Pin shaft
+        ctx.save();
+        ctx.fillStyle = p.set ? '#6b8a7a' : '#8a9aa8';
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.roundRect(p.x + 6, pinTopY, p.w - 12, p.h, 4);
+        ctx.fill();
+        ctx.restore();
+
+        // Pin head (wider)
+        ctx.save();
+        ctx.fillStyle = p.set ? '#7aad94' : '#a0b4c4';
+        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.roundRect(p.x + 2, pinTopY - 8, p.w - 4, 18, 5);
+        ctx.fill();
+        ctx.restore();
+
+        // Head highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.beginPath();
+        ctx.roundRect(p.x + 4, pinTopY - 6, p.w - 8, 6, 2);
+        ctx.fill();
+
+        // Spring (coil) above pin when raised
+        if (p.raise > 2) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          const springTop = pinTopY - 28;
+          const coils = 5;
+          const springH = 20;
+          for (let c = 0; c <= coils; c++) {
+            const sy = springTop + (c / coils) * springH;
+            const sx = cx + (c % 2 === 0 ? -4 : 4);
+            if (c === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
+          }
+          ctx.stroke();
+        }
+
+        // Sweet spot indicator (faint mark on shaft)
+        const spotY = p.y - p.target;
+        ctx.strokeStyle = p.set ? 'rgba(100,200,140,0.55)' : 'rgba(255,255,255,0.18)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(p.x + 4, spotY);
+        ctx.lineTo(p.x + p.w - 4, spotY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Glow when near target
+        if (!p.set && p.tension > 0.3) {
+          const alpha = (p.tension - 0.3) / 0.7 * 0.25;
+          ctx.save();
+          ctx.shadowColor = 'rgba(200,220,240,' + alpha + ')';
+          ctx.shadowBlur = 18;
+          ctx.strokeStyle = 'rgba(200,220,240,' + (alpha * 0.8) + ')';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(p.x + 3, pinTopY - 2, p.w - 6, p.h + 4, 4);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Tension micro-shake visual
+        if (!p.set && p.tension > 0.6) {
+          const shake = Math.sin(Date.now() * 0.05 + p.index) * 0.8 * p.tension;
+          ctx.save();
+          ctx.strokeStyle = 'rgba(201,76,76,0.35)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(p.x - 2, pinTopY + shake);
+          ctx.lineTo(p.x - 6, pinTopY + shake);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      function drawPickTool() {
+        if (activePinIndex < 0) return;
+        const p = pins[activePinIndex];
+        const cx = p.x + p.w / 2;
+        const tipY = p.y - p.raise + p.jitter - 10;
+
+        ctx.save();
+        ctx.strokeStyle = '#b8c8d4';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.moveTo(cx, tipY);
+        ctx.lineTo(cx + 18, tipY - 8);
+        ctx.lineTo(cx + 90, tipY - 35);
+        ctx.stroke();
+        ctx.restore();
+
+        // Tip highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.beginPath();
+        ctx.arc(cx, tipY, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawClickEffect() {
+        if (clickAnim <= 0) return;
+        const totalWidth = PIN_COUNT * PIN_WIDTH + (PIN_COUNT - 1) * PIN_GAP;
+        const startX = (W - totalWidth) / 2;
+        const baseY = H * 0.62;
+        const cx = startX + totalWidth / 2;
+        const cy = baseY + 30;
+        const r = 20 + clickAnim * 120;
+        const alpha = 1 - clickAnim;
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(142,202,230,' + (alpha * 0.8) + ')';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(142,202,230,' + (alpha * 0.15) + ')';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        drawLockBody();
+
+        for (let i = 0; i < PIN_COUNT; i++) {
+          drawPin(pins[i]);
+        }
+
+        drawPickTool();
+        drawClickEffect();
+      }
+
+      let lastTime = performance.now();
+      function loop(now) {
+        const dt = Math.min(0.05, (now - lastTime) / 1000);
+        lastTime = now;
+        update(dt);
+        draw();
+        animId = requestAnimationFrame(loop);
+      }
+
+      // Input
+      function onPointerDown(e) {
+        if (won) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+        const idx = hitTestPin(x, y);
+        if (idx >= 0) activePinIndex = idx;
+      }
+      function onPointerUp(e) {
+        activePinIndex = -1;
+      }
+      function onPointerMove(e) {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) - rect.left;
+        mouseY = (e.clientY || (e.touches ? e.touches[0].clientY : 0)) - rect.top;
+
+        // Move flashlight center slightly toward pointer
+        const fx = 30 + (mouseX / W) * 40; // 30% to 70%
+        const fy = 45 + (mouseY / H) * 20; // 45% to 65%
+        flashlight.style.background = `radial-gradient(circle 220px at ${fx}% ${fy}%, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.92) 100%)`;
+      }
+
+      canvas.addEventListener('mousedown', onPointerDown);
+      canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+      window.addEventListener('mouseup', onPointerUp);
+      window.addEventListener('touchend', onPointerUp);
+      window.addEventListener('touchcancel', onPointerUp);
+      canvas.addEventListener('mousemove', onPointerMove);
+      canvas.addEventListener('touchmove', onPointerMove, { passive: false });
+
+      retryBtn.addEventListener('click', () => {
+        resetGame();
+      });
+
+      window.addEventListener('resize', () => {
+        resize();
+        resetGame();
+      });
+
+      resize();
+      resetGame();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>

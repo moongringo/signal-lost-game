@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Audio Controller</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --teal: #008c94;
+      --blue: #18364b;
+      --body-font: 'Inter', system-ui, sans-serif;
+      --display-font: 'Space Grotesk', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--cream); font-family: var(--body-font); }
+    body { padding: 2rem; max-width: 500px; margin: 0 auto; }
+
+    h1 { font-family: var(--display-font); font-size: 1.5rem; margin-bottom: 2rem; color: var(--ink); }
+
+    /* Audio Panel */
+    .audio-panel {
+      background: rgba(255, 248, 220, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+
+    .audio-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+    .audio-row:last-child { border-bottom: none; }
+
+    .audio-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .audio-info { flex: 1; }
+    .audio-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .audio-value {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* Custom Range Slider */
+    .range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 120px;
+      height: 4px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--teal);
+      cursor: pointer;
+      transition: transform 0.2s;
+      box-shadow: 0 0 8px rgba(0, 140, 148, 0.4);
+    }
+
+    .range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .range-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--teal);
+      cursor: pointer;
+      border: none;
+    }
+
+    /* Mute Button */
+    .mute-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 1rem;
+      opacity: 0.6;
+      transition: all 0.2s;
+    }
+    .mute-btn:hover { opacity: 1; }
+    .mute-btn.muted { opacity: 1; color: var(--pink); }
+
+    /* VU Meter */
+    .vu-meter {
+      display: flex;
+      gap: 2px;
+      height: 24px;
+      align-items: flex-end;
+    }
+
+    .vu-bar {
+      width: 4px;
+      background: var(--teal);
+      border-radius: 2px;
+      transition: height 0.1s ease;
+      opacity: 0.6;
+    }
+
+    .vu-bar.active { opacity: 1; }
+
+    /* Master Toggle */
+    .master-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 26px;
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 13px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .toggle-switch.active { background: var(--teal); }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.3s var(--ease-out);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .toggle-switch.active::after {
+      transform: translateX(22px);
+    }
+  </style>
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="audio-controller" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Audio Controller</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <h1>🔊 Audio Controller</h1>
+
+  <div class="audio-panel">
+    <div class="master-row">
+      <div>
+        <div class="audio-label">Master Audio</div>
+        <div class="audio-value">All channels</div>
+      </div>
+      <div class="toggle-switch active" id="masterToggle" onclick="audio.toggleMaster()"></div>
+    </div>
+
+    <div class="audio-row">
+      <div class="audio-icon" style="background: var(--teal); color: var(--cream);">♫</div>
+      <div class="audio-info">
+        <div class="audio-label">Music</div>
+        <div class="audio-value" id="musicValue">75%</div>
+      </div>
+      <input type="range" class="range-slider" id="musicSlider" min="0" max="100" value="75" oninput="audio.setVolume('music', this.value)">
+      <button class="mute-btn" id="musicMute" onclick="audio.toggleMute('music')">🔊</button>
+    </div>
+
+    <div class="audio-row">
+      <div class="audio-icon" style="background: var(--gold); color: var(--ink);">🔔</div>
+      <div class="audio-info">
+        <div class="audio-label">SFX</div>
+        <div class="audio-value" id="sfxValue">60%</div>
+      </div>
+      <input type="range" class="range-slider" id="sfxSlider" min="0" max="100" value="60" oninput="audio.setVolume('sfx', this.value)">
+      <button class="mute-btn" id="sfxMute" onclick="audio.toggleMute('sfx')">🔊</button>
+    </div>
+
+    <div class="audio-row">
+      <div class="audio-icon" style="background: var(--blue); color: var(--cream);">🎤</div>
+      <div class="audio-info">
+        <div class="audio-label">Voice</div>
+        <div class="audio-value" id="voiceValue">90%</div>
+      </div>
+      <input type="range" class="range-slider" id="voiceSlider" min="0" max="100" value="90" oninput="audio.setVolume('voice', this.value)">
+      <button class="mute-btn" id="voiceMute" onclick="audio.toggleMute('voice')">🔊</button>
+    </div>
+
+    <div class="audio-row">
+      <div class="audio-icon" style="background: var(--orange); color: var(--cream);">📻</div>
+      <div class="audio-info">
+        <div class="audio-label">Ambient</div>
+        <div class="audio-value" id="ambientValue">40%</div>
+      </div>
+      <input type="range" class="range-slider" id="ambientSlider" min="0" max="100" value="40" oninput="audio.setVolume('ambient', this.value)">
+      <button class="mute-btn" id="ambientMute" onclick="audio.toggleMute('ambient')">🔊</button>
+    </div>
+
+    <div class="audio-row" style="margin-top: 1rem;">
+      <div class="audio-info">
+        <div class="audio-label">Live Output</div>
+      </div>
+      <div class="vu-meter" id="vuMeter">
+        <!-- Bars generated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    class AudioController {
+      constructor() {
+        this.channels = {
+          music: { volume: 75, muted: false },
+          sfx: { volume: 60, muted: false },
+          voice: { volume: 90, muted: false },
+          ambient: { volume: 40, muted: false }
+        };
+        this.masterEnabled = true;
+        this.initVUMeter();
+        this.simulateAudio();
+      }
+
+      toggleMaster() {
+        this.masterEnabled = !this.masterEnabled;
+        document.getElementById('masterToggle').classList.toggle('active', this.masterEnabled);
+        // Mute/unmute all
+        Object.keys(this.channels).forEach(ch => {
+          this.updateChannel(ch);
+        });
+      }
+
+      setVolume(channel, value) {
+        this.channels[channel].volume = parseInt(value);
+        document.getElementById(channel + 'Value').textContent = value + '%';
+        this.updateChannel(channel);
+      }
+
+      toggleMute(channel) {
+        this.channels[channel].muted = !this.channels[channel].muted;
+        this.updateChannel(channel);
+      }
+
+      updateChannel(channel) {
+        const btn = document.getElementById(channel + 'Mute');
+        const slider = document.getElementById(channel + 'Slider');
+        const isMuted = this.channels[channel].muted || !this.masterEnabled;
+
+        btn.classList.toggle('muted', isMuted);
+        btn.textContent = isMuted ? '🔇' : '🔊';
+        slider.disabled = isMuted;
+      }
+
+      initVUMeter() {
+        const container = document.getElementById('vuMeter');
+        for (let i = 0; i < 12; i++) {
+          const bar = document.createElement('div');
+          bar.className = 'vu-bar';
+          bar.style.height = '4px';
+          container.appendChild(bar);
+        }
+      }
+
+      simulateAudio() {
+        const bars = document.querySelectorAll('.vu-bar');
+        setInterval(() => {
+          bars.forEach((bar, i) => {
+            const height = Math.random() * 20 + 4;
+            bar.style.height = height + 'px';
+            bar.classList.toggle('active', height > 15);
+          });
+        }, 100);
+      }
+    }
+
+    const audio = new AudioController();
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

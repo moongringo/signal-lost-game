@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MAP V2 — FACTIONS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* HUD Header */
+        .hud {
+            width: 100%;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(10,10,15,0.95) 0%, rgba(10,10,15,0.7) 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .hud-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255,255,255,0.15);
+        }
+
+        .hud-subtitle {
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+        }
+
+        .hud-line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            margin: 0 20px;
+        }
+
+        /* Main Container */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .instruction {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.5);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            width: 100%;
+        }
+
+        /* Card Flip Container */
+        .card-container {
+            perspective: 1200px;
+            height: 480px;
+            cursor: pointer;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 16px;
+        }
+
+        .card-container.selected .card {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        /* Card Front */
+        .card-front {
+            background: linear-gradient(180deg, rgba(20,20,30,0.95) 0%, rgba(10,10,15,0.98) 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 35px 25px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .card-container:hover .card-front {
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        /* Emblem */
+        .emblem {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 25px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Phantom Ops Emblem - Diamond/Target */
+        .emblem-phantom .shape-outer {
+            width: 100px;
+            height: 100px;
+            border: 3px solid #00d4aa;
+            transform: rotate(45deg);
+            position: absolute;
+            box-shadow: 0 0 30px rgba(0,212,170,0.3);
+        }
+
+        .emblem-phantom .shape-inner {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #00d4aa;
+            transform: rotate(45deg);
+            position: absolute;
+            box-shadow: 0 0 20px rgba(0,212,170,0.4);
+        }
+
+        .emblem-phantom .shape-dot {
+            width: 12px;
+            height: 12px;
+            background: #00d4aa;
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 15px rgba(0,212,170,0.6);
+        }
+
+        /* Iron Guard Emblem - Shield */
+        .emblem-iron .shape-shield {
+            width: 90px;
+            height: 100px;
+            border: 3px solid #ff6b35;
+            border-radius: 0 0 45px 45px;
+            position: absolute;
+            box-shadow: 0 0 30px rgba(255,107,53,0.3);
+        }
+
+        .emblem-iron .shape-shield::before {
+            content: '';
+            position: absolute;
+            top: -45px;
+            left: -3px;
+            width: 90px;
+            height: 45px;
+            border: 3px solid #ff6b35;
+            border-bottom: none;
+            border-radius: 45px 45px 0 0;
+            box-shadow: 0 0 30px rgba(255,107,53,0.3);
+        }
+
+        .emblem-iron .shape-cross-v {
+            width: 4px;
+            height: 50px;
+            background: #ff6b35;
+            position: absolute;
+            box-shadow: 0 0 15px rgba(255,107,53,0.5);
+        }
+
+        .emblem-iron .shape-cross-h {
+            width: 30px;
+            height: 4px;
+            background: #ff6b35;
+            position: absolute;
+            box-shadow: 0 0 15px rgba(255,107,53,0.5);
+        }
+
+        /* Shadow Collective Emblem - Hexagon/Network */
+        .emblem-shadow .shape-hex {
+            width: 100px;
+            height: 58px;
+            border: 3px solid #a855f7;
+            position: absolute;
+            box-shadow: 0 0 30px rgba(168,85,247,0.3);
+        }
+
+        .emblem-shadow .shape-hex::before {
+            content: '';
+            position: absolute;
+            top: -29px;
+            left: -3px;
+            width: 100px;
+            height: 29px;
+            border: 3px solid #a855f7;
+            border-bottom: none;
+            transform: skewX(-30deg);
+            transform-origin: bottom left;
+            box-shadow: 0 0 30px rgba(168,85,247,0.3);
+        }
+
+        .emblem-shadow .shape-hex::after {
+            content: '';
+            position: absolute;
+            bottom: -29px;
+            left: -3px;
+            width: 100px;
+            height: 29px;
+            border: 3px solid #a855f7;
+            border-top: none;
+            transform: skewX(30deg);
+            transform-origin: top left;
+            box-shadow: 0 0 30px rgba(168,85,247,0.3);
+        }
+
+        .emblem-shadow .shape-node {
+            width: 10px;
+            height: 10px;
+            background: #a855f7;
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 12px rgba(168,85,247,0.7);
+        }
+
+        /* Faction Name */
+        .faction-name {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .faction-name.phantom { color: #00d4aa; text-shadow: 0 0 20px rgba(0,212,170,0.3); }
+        .faction-name.iron { color: #ff6b35; text-shadow: 0 0 20px rgba(255,107,53,0.3); }
+        .faction-name.shadow { color: #a855f7; text-shadow: 0 0 20px rgba(168,85,247,0.3); }
+
+        /* Description */
+        .description {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: rgba(255,255,255,0.6);
+            text-align: center;
+            margin-bottom: 20px;
+            max-width: 280px;
+        }
+
+        /* Bonuses */
+        .bonuses {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .bonus-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .bonus-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            transform: rotate(45deg);
+            flex-shrink: 0;
+        }
+
+        .bonus-icon.phantom { background: #00d4aa; box-shadow: 0 0 8px rgba(0,212,170,0.5); }
+        .bonus-icon.iron { background: #ff6b35; box-shadow: 0 0 8px rgba(255,107,53,0.5); }
+        .bonus-icon.shadow { background: #a855f7; box-shadow: 0 0 8px rgba(168,85,247,0.5); }
+
+        /* Color Scheme Preview */
+        .color-scheme {
+            display: flex;
+            gap: 0;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: auto;
+        }
+
+        .color-bar {
+            flex: 1;
+            height: 100%;
+        }
+
+        .color-bar.phantom-1 { background: #00d4aa; }
+        .color-bar.phantom-2 { background: #00a884; }
+        .color-bar.phantom-3 { background: #007a5e; }
+
+        .color-bar.iron-1 { background: #ff6b35; }
+        .color-bar.iron-2 { background: #cc5529; }
+        .color-bar.iron-3 { background: #993f1f; }
+
+        .color-bar.shadow-1 { background: #a855f7; }
+        .color-bar.shadow-2 { background: #853ec7; }
+        .color-bar.shadow-3 { background: #632d97; }
+
+        /* Card Back */
+        .card-back {
+            background: linear-gradient(180deg, rgba(20,20,30,0.98) 0%, rgba(10,10,15,0.99) 100%);
+            transform: rotateY(180deg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 35px 25px;
+            border: 2px solid;
+        }
+
+        .card-back.phantom-back { border-color: rgba(0,212,170,0.5); }
+        .card-back.iron-back { border-color: rgba(255,107,53,0.5); }
+        .card-back.shadow-back { border-color: rgba(168,85,247,0.5); }
+
+        .selected-emblem {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.8;
+            transform: scale(0.8);
+        }
+
+        .selected-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .selected-text.phantom { color: #00d4aa; }
+        .selected-text.iron { color: #ff6b35; }
+        .selected-text.shadow { color: #a855f7; }
+
+        .selected-sub {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.4);
+            letter-spacing: 2px;
+        }
+
+        /* Pulse Animation for Selected */
+        @keyframes pulsePhantom {
+            0%, 100% { box-shadow: 0 0 20px rgba(0,212,170,0.2), inset 0 0 20px rgba(0,212,170,0.05); }
+            50% { box-shadow: 0 0 40px rgba(0,212,170,0.5), inset 0 0 30px rgba(0,212,170,0.1); }
+        }
+
+        @keyframes pulseIron {
+            0%, 100% { box-shadow: 0 0 20px rgba(255,107,53,0.2), inset 0 0 20px rgba(255,107,53,0.05); }
+            50% { box-shadow: 0 0 40px rgba(255,107,53,0.5), inset 0 0 30px rgba(255,107,53,0.1); }
+        }
+
+        @keyframes pulseShadow {
+            0%, 100% { box-shadow: 0 0 20px rgba(168,85,247,0.2), inset 0 0 20px rgba(168,85,247,0.05); }
+            50% { box-shadow: 0 0 40px rgba(168,85,247,0.5), inset 0 0 30px rgba(168,85,247,0.1); }
+        }
+
+        .card-container.selected.phantom-selected .card-back {
+            animation: pulsePhantom 2s ease-in-out infinite;
+        }
+
+        .card-container.selected.iron-selected .card-back {
+            animation: pulseIron 2s ease-in-out infinite;
+        }
+
+        .card-container.selected.shadow-selected .card-back {
+            animation: pulseShadow 2s ease-in-out infinite;
+        }
+
+        /* Hover glow on front */
+        .card-container.phantom-card:hover .card-front {
+            box-shadow: 0 0 30px rgba(0,212,170,0.15);
+        }
+
+        .card-container.iron-card:hover .card-front {
+            box-shadow: 0 0 30px rgba(255,107,53,0.15);
+        }
+
+        .card-container.shadow-card:hover .card-front {
+            box-shadow: 0 0 30px rgba(168,85,247,0.15);
+        }
+
+        /* Confirm Button */
+        .confirm-section {
+            margin-top: 20px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s, transform 0.5s;
+            pointer-events: none;
+        }
+
+        .confirm-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .confirm-btn {
+            padding: 16px 50px;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .confirm-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.4);
+            box-shadow: 0 0 30px rgba(255,255,255,0.1);
+        }
+
+        /* Background Grid Effect */
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.03;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+            }
+
+            .hud-title {
+                font-size: 1.1rem;
+                letter-spacing: 2px;
+            }
+
+            .card-container {
+                height: 440px;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1100px) {
+            .cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+
+    <!-- HUD Header -->
+    <header class="hud">
+        <div>
+            <div class="hud-title">MAP V2 — FACTIONS</div>
+            <div class="hud-subtitle">Select Your Allegiance</div>
+        </div>
+        <div class="hud-line"></div>
+        <div class="hud-subtitle" id="status-text">Awaiting Selection</div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <div class="instruction">Choose Your Faction</div>
+
+        <div class="cards-grid">
+            <!-- Phantom Ops -->
+            <div class="card-container phantom-card" data-faction="phantom" onclick="selectFaction('phantom')">
+                <div class="card">
+                    <!-- Front -->
+                    <div class="card-face card-front">
+                        <div class="emblem emblem-phantom">
+                            <div class="shape-outer"></div>
+                            <div class="shape-inner"></div>
+                            <div class="shape-dot"></div>
+                        </div>
+                        <div class="faction-name phantom">Phantom Ops</div>
+                        <div class="description">
+                            Elite covert operatives specializing in infiltration, sabotage, and precision strikes. Masters of the unseen.
+                        </div>
+                        <div class="bonuses">
+                            <div class="bonus-item">
+                                <div class="bonus-icon phantom"></div>
+                                <span>+10% Stealth Duration</span>
+                            </div>
+                            <div class="bonus-item">
+                                <div class="bonus-icon phantom"></div>
+                                <span>+15% Critical Hit Chance</span>
+                            </div>
+                            <div class="bonus-item">
+                                <div class="bonus-icon phantom"></div>
+                                <span>+20% Movement Speed</span>
+                            </div>
+                        </div>
+                        <div class="color-scheme">
+                            <div class="color-bar phantom-1"></div>
+                            <div class="color-bar phantom-2"></div>
+                            <div class="color-bar phantom-3"></div>
+                        </div>
+                    </div>
+                    <!-- Back -->
+                    <div class="card-face card-back phantom-back">
+                        <div class="emblem emblem-phantom selected-emblem">
+                            <div class="shape-outer"></div>
+                            <div class="shape-inner"></div>
+                            <div class="shape-dot"></div>
+                        </div>
+                        <div class="selected-text phantom">Selected</div>
+                        <div class="selected-sub">Phantom Ops</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Iron Guard -->
+            <div class="card-container iron-card" data-faction="iron" onclick="selectFaction('iron')">
+                <div class="card">
+                    <!-- Front -->
+                    <div class="card-face card-front">
+                        <div class="emblem emblem-iron">
+                            <div class="shape-shield"></div>
+                            <div class="shape-cross-v"></div>
+                            <div class="shape-cross-h"></div>
+                        </div>
+                        <div class="faction-name iron">Iron Guard</div>
+                        <div class="description">
+                            Heavily armored frontline warriors built to withstand punishment and hold ground against any assault.
+                        </div>
+                        <div class="bonuses">
+                            <div class="bonus-item">
+                                <div class="bonus-icon iron"></div>
+                                <span>+15% Armor Rating</span>
+                            </div>
+                            <div class="bonus-item">
+                                <div class="bonus-icon iron"></div>
+                                <span>+20% Health Pool</span>
+                            </div>
+                            <div class="bonus-item">
+                                <div class="bonus-icon iron"></div>
+                                <span>+10% Damage Resistance</span>
+                            </div>
+                        </div>
+                        <div class="color-scheme">
+                            <div class="color-bar iron-1"></div>
+                            <div class="color-bar iron-2"></div>
+                            <div class="color-bar iron-3"></div>
+                        </div>
+                    </div>
+                    <!-- Back -->
+                    <div class="card-face card-back iron-back">
+                        <div class="emblem emblem-iron selected-emblem">
+                            <div class="shape-shield"></div>
+                            <div class="shape-cross-v"></div>
+                            <div class="shape-cross-h"></div>
+                        </div>
+                        <div class="selected-text iron">Selected</div>
+                        <div class="selected-sub">Iron Guard</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shadow Collective -->
+            <div class="card-container shadow-card" data-faction="shadow" onclick="selectFaction('shadow')">
+                <div class="card">
+                    <!-- Front -->
+                    <div class="card-face card-front">
+                        <div class="emblem emblem-shadow">
+                            <div class="shape-hex"></div>
+                            <div class="shape-node" style="top: 30px;"></div>
+                            <div class="shape-node" style="bottom: 30px; left: 25px;"></div>
+                            <div class="shape-node" style="bottom: 30px; right: 25px;"></div>
+                        </div>
+                        <div class="faction-name shadow">Shadow Collective</div>
+                        <div class="description">
+                            A network of rogue agents and hackers manipulating battles from the shadows with tech and deception.
+                        </div>
+                        <div class="bonuses">
+                            <div class="bonus-item">
+                                <div class="bonus-icon shadow"></div>
+                                <span>+20% Hacking Speed</span>
+                            </div>
+                            <div class="bonus-item">
+                                <div class="bonus-icon shadow"></div>
+                                <span>+15% Ability Cooldown</span>
+                            </div>
+                            <div class="bonus-item">
+                                <div class="bonus-icon shadow"></div>
+                                <span>+10% Resource Generation</span>
+                            </div>
+                        </div>
+                        <div class="color-scheme">
+                            <div class="color-bar shadow-1"></div>
+                            <div class="color-bar shadow-2"></div>
+                            <div class="color-bar shadow-3"></div>
+                        </div>
+                    </div>
+                    <!-- Back -->
+                    <div class="card-face card-back shadow-back">
+                        <div class="emblem emblem-shadow selected-emblem">
+                            <div class="shape-hex"></div>
+                            <div class="shape-node" style="top: 24px;"></div>
+                            <div class="shape-node" style="bottom: 24px; left: 20px;"></div>
+                            <div class="shape-node" style="bottom: 24px; right: 20px;"></div>
+                        </div>
+                        <div class="selected-text shadow">Selected</div>
+                        <div class="selected-sub">Shadow Collective</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Button -->
+        <div class="confirm-section" id="confirm-section">
+            <button class="confirm-btn" onclick="confirmSelection()">Lock In Selection</button>
+        </div>
+    </main>
+
+    <script>
+        let selectedFaction = null;
+
+        function selectFaction(faction) {
+            // Deselect all
+            document.querySelectorAll('.card-container').forEach(card => {
+                card.classList.remove('selected', 'phantom-selected', 'iron-selected', 'shadow-selected');
+            });
+
+            // Select clicked
+            const card = document.querySelector(`[data-faction="${faction}"]`);
+            card.classList.add('selected', `${faction}-selected`);
+            selectedFaction = faction;
+
+            // Update HUD status
+            const names = {
+                phantom: 'Phantom Ops',
+                iron: 'Iron Guard',
+                shadow: 'Shadow Collective'
+            };
+            document.getElementById('status-text').textContent = names[faction];
+            document.getElementById('status-text').style.color = getFactionColor(faction);
+
+            // Show confirm button
+            document.getElementById('confirm-section').classList.add('visible');
+        }
+
+        function getFactionColor(faction) {
+            const colors = {
+                phantom: '#00d4aa',
+                iron: '#ff6b35',
+                shadow: '#a855f7'
+            };
+            return colors[faction];
+        }
+
+        function confirmSelection() {
+            if (!selectedFaction) return;
+            const names = {
+                phantom: 'Phantom Ops',
+                iron: 'Iron Guard',
+                shadow: 'Shadow Collective'
+            };
+            alert(`Faction Locked: ${names[selectedFaction]}\n\nPreparing deployment...`);
+        }
+    </script>
+</body>
+</html>

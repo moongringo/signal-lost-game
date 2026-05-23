@@ -1,0 +1,121 @@
+body[data-variant="night-ops"] {
+  color-scheme: dark;
+  --bg: #030712;
+  --surface: rgba(9, 16, 30, 0.78);
+  --surface-soft: rgba(14, 26, 46, 0.86);
+  --surface-strong: rgba(25, 43, 70, 0.9);
+  --line: rgba(103, 232, 249, 0.2);
+  --text: #eefaff;
+  --muted: #91a6bb;
+  --soft-text: #617991;
+  --accent: #22d3ee;
+  --accent-2: #fb923c;
+  --warning: #fb923c;
+  --success: #34d399;
+  --danger: #f87171;
+  --shadow: 0 28px 82px rgba(0, 0, 0, 0.42);
+  background:
+    radial-gradient(circle at 18% 18%, rgba(34, 211, 238, 0.18), transparent 34vw),
+    radial-gradient(circle at 84% 8%, rgba(251, 146, 60, 0.12), transparent 24vw),
+    linear-gradient(135deg, #020617 0%, #07111f 48%, #050816 100%);
+}
+
+body[data-variant="night-ops"]::before,
+body[data-variant="night-ops"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+body[data-variant="night-ops"]::before {
+  background:
+    linear-gradient(rgba(34, 211, 238, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(to bottom, black, transparent 85%);
+}
+
+body[data-variant="night-ops"]::after {
+  opacity: 0.14;
+  background: repeating-linear-gradient(0deg, transparent 0 6px, rgba(255, 255, 255, 0.18) 7px);
+  mix-blend-mode: screen;
+}
+
+body[data-variant="night-ops"] .side-rail,
+body[data-variant="night-ops"] .metric,
+body[data-variant="night-ops"] .panel,
+body[data-variant="night-ops"] .map-panel,
+body[data-variant="night-ops"] .search-box {
+  backdrop-filter: blur(20px);
+  border-color: rgba(34, 211, 238, 0.18);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+body[data-variant="night-ops"] .brand-mark,
+body[data-variant="night-ops"] .icon-button,
+body[data-variant="night-ops"] .agent-card,
+body[data-variant="night-ops"] .objective-card,
+body[data-variant="night-ops"] .theme-card,
+body[data-variant="night-ops"] .chat-message,
+body[data-variant="night-ops"] .role-detail-row {
+  background: linear-gradient(145deg, rgba(15, 27, 48, 0.88), rgba(5, 10, 20, 0.84));
+  border-color: rgba(34, 211, 238, 0.14);
+}
+
+body[data-variant="night-ops"] h1 {
+  color: #f8fdff;
+  text-shadow: 0 0 28px rgba(34, 211, 238, 0.22);
+}
+
+body[data-variant="night-ops"] .eyebrow,
+body[data-variant="night-ops"] .session-code {
+  color: #67e8f9;
+}
+
+body[data-variant="night-ops"] .primary-button,
+body[data-variant="night-ops"] .role-tabs button[aria-selected="true"] {
+  border-color: rgba(34, 211, 238, 0.34);
+  background: linear-gradient(135deg, #0e7490, #22d3ee 52%, #fb923c);
+  color: #03101a;
+  box-shadow: 0 0 30px rgba(34, 211, 238, 0.24);
+}
+
+body[data-variant="night-ops"] .map-wrap {
+  border-color: rgba(34, 211, 238, 0.22);
+  background:
+    radial-gradient(circle at center, rgba(34, 211, 238, 0.2), transparent 30%),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(34, 211, 238, 0.08) 1px, transparent 1px),
+    #07111f;
+  box-shadow: inset 0 0 90px rgba(34, 211, 238, 0.12), 0 28px 90px rgba(0, 0, 0, 0.32);
+}
+
+body[data-variant="night-ops"] .map-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(34, 211, 238, 0.08), transparent);
+  animation: night-scan 4.5s linear infinite;
+}
+
+body[data-variant="night-ops"] .player-marker,
+body[data-variant="night-ops"] .objective-marker {
+  border-color: rgba(238, 250, 255, 0.94);
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.45), 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+body[data-variant="night-ops"] .objective-marker {
+  box-shadow: 0 0 22px rgba(251, 146, 60, 0.52), 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes night-scan {
+  from {
+    translate: 0 -100%;
+  }
+  to {
+    translate: 0 100%;
+  }
+}

@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHAT V13 — Tactical Map</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #2a2520;
+    height: 100vh;
+    overflow: hidden;
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- Wood table surface --- */
+  .table-surface {
+    position: fixed;
+    inset: 0;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        #3d3228 0px,
+        #3d3228 2px,
+        #4a3f35 2px,
+        #4a3f35 60px,
+        #3d3228 60px,
+        #3d3228 62px,
+        #43382e 62px,
+        #43382e 120px
+      );
+    z-index: 0;
+  }
+
+  /* --- Coffee stain --- */
+  .coffee-stain {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background:
+      radial-gradient(ellipse 55% 45% at 45% 40%, transparent 30%, rgba(101, 67, 33, 0.18) 35%, rgba(101, 67, 33, 0.25) 42%, rgba(101, 67, 33, 0.15) 50%, transparent 55%),
+      radial-gradient(ellipse 70% 60% at 50% 50%, transparent 55%, rgba(101, 67, 33, 0.12) 60%, rgba(101, 67, 33, 0.08) 68%, transparent 72%),
+      radial-gradient(ellipse 85% 75% at 52% 48%, transparent 70%, rgba(101, 67, 33, 0.06) 75%, transparent 80%);
+    pointer-events: none;
+    z-index: 1;
+    transform: rotate(-15deg);
+  }
+
+  .coffee-stain::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: 20px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(101, 67, 33, 0.15) 0%, transparent 70%);
+  }
+
+  .coffee-stain::after {
+    content: '';
+    position: absolute;
+    bottom: 10px;
+    right: -15px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(101, 67, 33, 0.1) 0%, transparent 70%);
+  }
+
+  /* --- Main map paper --- */
+  .map-container {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    margin: 20px;
+    background: #f0e8d8;
+    border-radius: 2px;
+    box-shadow:
+      0 1px 3px rgba(0,0,0,0.4),
+      0 8px 25px rgba(0,0,0,0.3),
+      inset 0 0 80px rgba(139, 119, 90, 0.15);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Paper texture overlay */
+  .map-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Paper edge wear */
+  .map-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(101, 85, 65, 0.3);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* --- Map grid and terrain --- */
+  .map-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      /* Grid lines */
+      linear-gradient(rgba(120, 100, 70, 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120, 100, 70, 0.12) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Contour lines */
+  .contour-lines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.25;
+  }
+
+  .contour-lines svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Terrain markings */
+  .terrain-forest {
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.2;
+  }
+
+  .terrain-forest::before {
+    content: '▲▲▲ ▲▲ ▲▲▲▲ ▲▲ ▲▲▲';
+    font-size: 10px;
+    color: #4a5a3a;
+    letter-spacing: 2px;
+    line-height: 14px;
+    white-space: pre;
+    display: block;
+  }
+
+  .terrain-water {
+    position: absolute;
+    border: 2px solid rgba(60, 90, 120, 0.25);
+    border-radius: 40% 60% 50% 50%;
+    background: rgba(60, 90, 120, 0.06);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .terrain-road {
+    position: absolute;
+    height: 3px;
+    background: rgba(140, 110, 70, 0.3);
+    border-radius: 1px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Hand-drawn unit positions */
+  .unit-marker {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .unit-marker .unit-symbol {
+    width: 24px;
+    height: 24px;
+    border: 1.5px solid #3a3a3a;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #3a3a3a;
+    background: rgba(240, 232, 216, 0.7);
+    transform: rotate(-3deg);
+  }
+
+  .unit-marker .unit-label {
+    font-size: 8px;
+    color: #555;
+    margin-top: 2px;
+    white-space: nowrap;
+    transform: rotate(1deg);
+  }
+
+  /* --- HUD Header --- */
+  .hud-header {
+    position: relative;
+    z-index: 10;
+    padding: 10px 20px;
+    border-bottom: 2px solid rgba(80, 70, 50, 0.3);
+    background: rgba(240, 232, 216, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .hud-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #3a3228;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .hud-coords {
+    font-size: 10px;
+    color: #6a5a48;
+    letter-spacing: 1px;
+  }
+
+  /* --- Chat area --- */
+  .chat-area {
+    position: relative;
+    z-index: 10;
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .chat-area::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .chat-area::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .chat-area::-webkit-scrollbar-thumb {
+    background: rgba(100, 85, 65, 0.3);
+    border-radius: 3px;
+  }
+
+  /* --- Sticky note messages --- */
+  .message {
+    max-width: 75%;
+    padding: 12px 16px;
+    position: relative;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #2a2520;
+    box-shadow: 2px 3px 8px rgba(0,0,0,0.15);
+    transform-origin: top center;
+  }
+
+  .message.sent {
+    align-self: flex-end;
+    background: #fef9c3;
+    border-radius: 2px 2px 2px 12px;
+    transform: rotate(0.5deg);
+  }
+
+  .message.received {
+    align-self: flex-start;
+    background: #e8f4f8;
+    border-radius: 2px 2px 12px 2px;
+    transform: rotate(-0.5deg);
+  }
+
+  /* Tape effect on sticky notes */
+  .message::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    width: 40px;
+    height: 16px;
+    background: rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(200, 200, 200, 0.3);
+    transform: rotate(-2deg);
+  }
+
+  .message.sent::before {
+    right: 20px;
+  }
+
+  .message.received::before {
+    left: 20px;
+    transform: rotate(2deg);
+  }
+
+  /* Handwritten text style */
+  .message-text {
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #2a2018;
+  }
+
+  .message-meta {
+    font-size: 9px;
+    color: #7a6a58;
+    margin-top: 6px;
+    text-align: right;
+    font-style: italic;
+  }
+
+  .message.received .message-meta {
+    text-align: left;
+  }
+
+  /* Pencil underline decoration */
+  .message::after {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    left: 12px;
+    right: 12px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(100, 80, 60, 0.1) 20%, rgba(100, 80, 60, 0.1) 80%, transparent);
+  }
+
+  /* --- Command wheel / Field guide --- */
+  .command-wheel {
+    position: relative;
+    z-index: 10;
+    padding: 14px 20px;
+    background: #f5f0e6;
+    border-top: 2px solid rgba(80, 70, 50, 0.25);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 -4px 15px rgba(0,0,0,0.08);
+  }
+
+  /* Fold marks on field guide */
+  .command-wheel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 33%;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(to bottom, transparent, rgba(100, 85, 65, 0.15) 30%, rgba(100, 85, 65, 0.15) 70%, transparent);
+  }
+
+  .command-wheel::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 66%;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(to bottom, transparent, rgba(100, 85, 65, 0.15) 30%, rgba(100, 85, 65, 0.15) 70%, transparent);
+  }
+
+  .field-guide-label {
+    font-size: 9px;
+    color: #8a7a68;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    position: relative;
+    z-index: 2;
+  }
+
+  .command-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1.5px solid rgba(100, 85, 65, 0.3);
+    border-radius: 2px;
+    background: #faf8f2;
+    font-family: monospace;
+    font-size: 12px;
+    color: #3a3228;
+    outline: none;
+    position: relative;
+    z-index: 2;
+  }
+
+  .command-input::placeholder {
+    color: #a09888;
+    font-style: italic;
+  }
+
+  .command-input:focus {
+    border-color: rgba(100, 85, 65, 0.5);
+    background: #fff;
+  }
+
+  .send-btn {
+    padding: 10px 20px;
+    border: 1.5px solid rgba(100, 85, 65, 0.4);
+    border-radius: 2px;
+    background: #e8e0d0;
+    font-family: monospace;
+    font-size: 11px;
+    color: #4a4035;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 2;
+    transition: all 0.15s ease;
+  }
+
+  .send-btn:hover {
+    background: #ddd5c5;
+    border-color: rgba(100, 85, 65, 0.6);
+  }
+
+  .send-btn:active {
+    transform: translateY(1px);
+  }
+
+  /* --- Compass rose decoration --- */
+  .compass-rose {
+    position: absolute;
+    top: 60px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.3;
+  }
+
+  .compass-rose svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* --- Scale bar --- */
+  .scale-bar {
+    position: absolute;
+    bottom: 80px;
+    left: 20px;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  .scale-bar-line {
+    width: 100px;
+    height: 2px;
+    background: #5a4a3a;
+    position: relative;
+  }
+
+  .scale-bar-line::before,
+  .scale-bar-line::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    width: 1px;
+    height: 8px;
+    background: #5a4a3a;
+  }
+
+  .scale-bar-line::before { left: 0; }
+  .scale-bar-line::after { right: 0; }
+
+  .scale-bar-label {
+    font-size: 8px;
+    color: #5a4a3a;
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+
+  /* --- Map legend --- */
+  .map-legend {
+    position: absolute;
+    bottom: 80px;
+    right: 30px;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.35;
+    font-size: 8px;
+    color: #4a3a2a;
+    line-height: 1.8;
+    text-align: right;
+  }
+
+  /* --- Pencil sketch decorations --- */
+  .sketch-arrow {
+    position: absolute;
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0.2;
+  }
+
+  /* --- North indicator --- */
+  .north-indicator {
+    position: absolute;
+    top: 60px;
+    left: 20px;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.35;
+    font-size: 10px;
+    color: #4a3a2a;
+  }
+
+  .north-indicator .north-arrow {
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  /* --- Date stamp --- */
+  .date-stamp {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.3;
+    font-size: 9px;
+    color: #5a4a3a;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: 1px solid rgba(90, 74, 58, 0.3);
+    padding: 2px 10px;
+    border-radius: 1px;
+  }
+
+  /* --- Grid coordinates along edges --- */
+  .grid-coords-top {
+    position: absolute;
+    top: 45px;
+    left: 60px;
+    right: 60px;
+    z-index: 5;
+    pointer-events: none;
+    display: flex;
+    justify-content: space-between;
+    opacity: 0.25;
+    font-size: 8px;
+    color: #5a4a3a;
+  }
+
+  .grid-coords-left {
+    position: absolute;
+    top: 60px;
+    bottom: 100px;
+    left: 8px;
+    z-index: 5;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    opacity: 0.25;
+    font-size: 8px;
+    color: #5a4a3a;
+    text-align: center;
+    width: 20px;
+  }
+</style>
+</head>
+<body>
+
+<div class="table-surface"></div>
+<div class="coffee-stain"></div>
+
+<div class="map-container">
+  <!-- Map grid -->
+  <div class="map-grid"></div>
+
+  <!-- Contour lines -->
+  <div class="contour-lines">
+    <svg viewBox="0 0 1000 800" preserveAspectRatio="none">
+      <path d="M100,600 Q200,550 300,580 T500,520 T700,560 T900,500" fill="none" stroke="#6a5a40" stroke-width="1.5"/>
+      <path d="M80,500 Q180,450 280,480 T480,420 T680,460 T880,400" fill="none" stroke="#6a5a40" stroke-width="1.5"/>
+      <path d="M120,400 Q220,350 320,380 T520,320 T720,360 T920,300" fill="none" stroke="#6a5a40" stroke-width="1"/>
+      <path d="M50,300 Q150,250 250,280 T450,220 T650,260 T850,200" fill="none" stroke="#6a5a40" stroke-width="1"/>
+      <path d="M150,700 Q250,650 350,680 T550,620 T750,660 T950,600" fill="none" stroke="#6a5a40" stroke-width="1"/>
+      <ellipse cx="750" cy="250" rx="120" ry="80" fill="none" stroke="#6a5a40" stroke-width="1"/>
+      <ellipse cx="750" cy="250" rx="90" ry="60" fill="none" stroke="#6a5a40" stroke-width="1"/>
+      <ellipse cx="750" cy="250" rx="60" ry="40" fill="none" stroke="#6a5a40" stroke-width="1"/>
+      <ellipse cx="250" cy="450" rx="100" ry="70" fill="none" stroke="#6a5a40" stroke-width="1"/>
+      <ellipse cx="250" cy="450" rx="70" ry="50" fill="none" stroke="#6a5a40" stroke-width="1"/>
+    </svg>
+  </div>
+
+  <!-- Terrain features -->
+  <div class="terrain-forest" style="top: 120px; left: 150px;">▲▲▲ ▲▲ ▲▲▲▲</div>
+  <div class="terrain-forest" style="top: 134px; left: 150px;">▲▲ ▲▲▲ ▲▲</div>
+  <div class="terrain-forest" style="top: 148px; left: 150px;">▲▲▲▲ ▲▲ ▲▲▲</div>
+  <div class="terrain-forest" style="top: 400px; left: 700px;">▲▲ ▲▲▲ ▲▲</div>
+  <div class="terrain-forest" style="top: 414px; left: 700px;">▲▲▲ ▲▲ ▲▲▲▲</div>
+
+  <div class="terrain-water" style="top: 200px; left: 600px; width: 120px; height: 80px;"></div>
+  <div class="terrain-water" style="top: 500px; left: 300px; width: 80px; height: 60px;"></div>
+
+  <div class="terrain-road" style="top: 350px; left: 50px; width: 300px; transform: rotate(5deg);"></div>
+  <div class="terrain-road" style="top: 380px; left: 350px; width: 250px; transform: rotate(-8deg);"></div>
+  <div class="terrain-road" style="top: 600px; left: 200px; width: 400px; transform: rotate(2deg);"></div>
+
+  <!-- Unit markers -->
+  <div class="unit-marker" style="top: 280px; left: 220px;">
+    <div class="unit-symbol">A</div>
+    <div class="unit-label">Alpha</div>
+  </div>
+  <div class="unit-marker" style="top: 320px; left: 480px;">
+    <div class="unit-symbol">B</div>
+    <div class="unit-label">Bravo</div>
+  </div>
+  <div class="unit-marker" style="top: 450px; left: 650px;">
+    <div class="unit-symbol">C</div>
+    <div class="unit-label">Charlie</div>
+  </div>
+  <div class="unit-marker" style="top: 550px; left: 380px;">
+    <div class="unit-symbol">D</div>
+    <div class="unit-label">Delta</div>
+  </div>
+
+  <!-- Compass rose -->
+  <div class="compass-rose">
+    <svg viewBox="0 0 60 60">
+      <polygon points="30,5 26,25 30,22 34,25" fill="#4a3a2a"/>
+      <polygon points="30,55 26,35 30,38 34,35" fill="#8a7a6a"/>
+      <line x1="30" y1="8" x2="30" y2="52" stroke="#4a3a2a" stroke-width="0.5"/>
+      <line x1="8" y1="30" x2="52" y2="30" stroke="#4a3a2a" stroke-width="0.5"/>
+      <circle cx="30" cy="30" r="20" fill="none" stroke="#4a3a2a" stroke-width="0.5"/>
+      <text x="30" y="4" text-anchor="middle" font-size="7" fill="#4a3a2a" font-family="monospace">N</text>
+    </svg>
+  </div>
+
+  <!-- North indicator -->
+  <div class="north-indicator">
+    <div class="north-arrow">↑</div>
+    <div>N</div>
+  </div>
+
+  <!-- Date stamp -->
+  <div class="date-stamp">18 MAY 2026</div>
+
+  <!-- Grid coordinates -->
+  <div class="grid-coords-top">
+    <span>01</span><span>02</span><span>03</span><span>04</span><span>05</span>
+    <span>06</span><span>07</span><span>08</span><span>09</span><span>10</span>
+  </div>
+  <div class="grid-coords-left">
+    <span>A</span><span>B</span><span>C</span><span>D</span><span>E</span>
+    <span>F</span><span>G</span><span>H</span><span>I</span><span>J</span>
+  </div>
+
+  <!-- Scale bar -->
+  <div class="scale-bar">
+    <div class="scale-bar-line"></div>
+    <div class="scale-bar-label">1:50,000</div>
+  </div>
+
+  <!-- Map legend -->
+  <div class="map-legend">
+    ▲ Forest&nbsp;&nbsp;≋ Water&nbsp;&nbsp;— Road<br>
+    □ Unit Position
+  </div>
+
+  <!-- Sketch arrows -->
+  <svg class="sketch-arrow" style="top: 200px; left: 300px; width: 80px; height: 40px;" viewBox="0 0 80 40">
+    <path d="M5,35 Q30,5 70,15" fill="none" stroke="#4a3a2a" stroke-width="1" stroke-dasharray="4,3"/>
+    <polygon points="70,15 65,10 65,20" fill="#4a3a2a"/>
+  </svg>
+  <svg class="sketch-arrow" style="top: 480px; left: 550px; width: 60px; height: 50px;" viewBox="0 0 60 50">
+    <path d="M10,45 Q35,25 50,5" fill="none" stroke="#4a3a2a" stroke-width="1" stroke-dasharray="3,3"/>
+    <polygon points="50,5 45,12 55,10" fill="#4a3a2a"/>
+  </svg>
+
+  <!-- HUD Header -->
+  <div class="hud-header">
+    <div class="hud-title">CHAT V13</div>
+    <div class="hud-coords">GRID: 48°N 011°E // SECURE</div>
+  </div>
+
+  <!-- Chat messages -->
+  <div class="chat-area" id="chatArea">
+    <div class="message received">
+      <div class="message-text">Sitrep requested for Sector 7. Any movement on the northern ridge?</div>
+      <div class="message-meta">Cmdr. Vance — 14:32</div>
+    </div>
+    <div class="message sent">
+      <div class="message-text">Negative on movement. Visibility poor due to fog. Thermal imaging shows nothing significant.</div>
+      <div class="message-meta">Outpost 4 — 14:35</div>
+    </div>
+    <div class="message received">
+      <div class="message-text">Copy that. Maintain observation. Report any changes immediately.</div>
+      <div class="message-meta">Cmdr. Vance — 14:36</div>
+    </div>
+    <div class="message sent">
+      <div class="message-text">Roger. Also noting unusual radio silence from Echo team. Last contact 13:00.</div>
+      <div class="message-meta">Outpost 4 — 14:40</div>
+    </div>
+    <div class="message received">
+      <div class="message-text">Understood. Dispatching recon to last known position. Stand by.</div>
+      <div class="message-meta">Cmdr. Vance — 14:42</div>
+    </div>
+  </div>
+
+  <!-- Command wheel / Field guide -->
+  <div class="command-wheel">
+    <span class="field-guide-label">Field Msg</span>
+    <input type="text" class="command-input" placeholder="Write message..." id="messageInput">
+    <button class="send-btn" onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script>
+  function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const chatArea = document.getElementById('chatArea');
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    const now = new Date();
+    const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+    const msg = document.createElement('div');
+    msg.className = 'message sent';
+    msg.innerHTML = `
+      <div class="message-text">${escapeHtml(text)}</div>
+      <div class="message-meta">Operator — ${timeStr}</div>
+    `;
+
+    // Random slight rotation for handwritten feel
+    const rot = (Math.random() - 0.5) * 1.5;
+    msg.style.transform = `rotate(${rot}deg)`;
+
+    chatArea.appendChild(msg);
+    chatArea.scrollTop = chatArea.scrollHeight;
+    input.value = '';
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  document.getElementById('messageInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') sendMessage();
+  });
+</script>
+
+</body>
+</html>

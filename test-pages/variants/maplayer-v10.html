@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAPLAYER V10 — TIMELAPSE</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    color: #e0e0e0;
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #hud-top {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 40px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 100%);
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 100;
+    font-size: 13px;
+    letter-spacing: 2px;
+  }
+  #hud-top .title {
+    color: #ffaa00;
+    font-weight: bold;
+  }
+  #hud-top .status {
+    color: #888;
+  }
+  #hud-top .clock {
+    color: #00ff88;
+    font-family: monospace;
+  }
+
+  #map-container {
+    position: absolute;
+    top: 40px;
+    bottom: 100px;
+    left: 0;
+    right: 0;
+    background: #111;
+    overflow: hidden;
+  }
+
+  canvas#battleMap {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Timeline HUD at bottom */
+  #timeline-hud {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 100px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 100%);
+    border-top: 1px solid #333;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 20px;
+  }
+
+  #timeline-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  #time-display {
+    color: #ffaa00;
+    font-size: 16px;
+    font-weight: bold;
+    min-width: 120px;
+  }
+  #event-display {
+    color: #ccc;
+    flex: 1;
+    text-align: center;
+    padding: 0 20px;
+  }
+  #playback-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #ccc;
+    padding: 4px 14px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .btn:hover {
+    background: #2a2a2a;
+    border-color: #666;
+    color: #fff;
+  }
+  .btn.active {
+    background: #ffaa00;
+    color: #000;
+    border-color: #ffaa00;
+  }
+
+  #slider-container {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
+
+  #time-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: #222;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+  }
+  #time-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #ffaa00;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #000;
+    box-shadow: 0 0 8px rgba(255,170,0,0.5);
+  }
+  #time-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #ffaa00;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #000;
+    box-shadow: 0 0 8px rgba(255,170,0,0.5);
+  }
+
+  /* Tick marks */
+  #ticks {
+    position: absolute;
+    top: 18px;
+    left: 0;
+    right: 0;
+    height: 14px;
+    pointer-events: none;
+  }
+  .tick {
+    position: absolute;
+    top: 0;
+    width: 1px;
+    height: 6px;
+    background: #555;
+  }
+  .tick-label {
+    position: absolute;
+    top: 8px;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: #777;
+    white-space: nowrap;
+  }
+
+  /* Legend */
+  #legend {
+    position: absolute;
+    top: 55px;
+    right: 15px;
+    background: rgba(0,0,0,0.8);
+    border: 1px solid #333;
+    padding: 12px;
+    z-index: 90;
+    font-size: 11px;
+    min-width: 140px;
+  }
+  #legend .leg-title {
+    color: #ffaa00;
+    margin-bottom: 8px;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  .leg-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+    gap: 8px;
+  }
+  .leg-color {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #555;
+  }
+
+  /* Event popup */
+  #event-popup {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9);
+    border: 1px solid #ffaa00;
+    padding: 16px 24px;
+    z-index: 200;
+    font-size: 14px;
+    text-align: center;
+    display: none;
+    pointer-events: none;
+    max-width: 300px;
+  }
+  #event-popup .evt-time {
+    color: #ffaa00;
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  #event-popup .evt-title {
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+  #event-popup .evt-desc {
+    color: #aaa;
+    font-size: 12px;
+  }
+
+  /* Scanline overlay */
+  .scanlines {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 80;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+  }
+</style>
+</head>
+<body>
+
+<div id="hud-top">
+  <div class="title">MAPLAYER V10 — TIMELAPSE</div>
+  <div class="status" id="status-text">BATTLEFIELD HISTORY // RECONSTRUCTED</div>
+  <div class="clock" id="clock">00:00:00</div>
+</div>
+
+<div id="map-container">
+  <canvas id="battleMap"></canvas>
+  <div class="scanlines"></div>
+
+  <div id="legend">
+    <div class="leg-title">LEGEND</div>
+    <div class="leg-item"><div class="leg-color" style="background:#3388ff;opacity:0.3"></div><span>Allied Control</span></div>
+    <div class="leg-item"><div class="leg-color" style="background:#ff3333;opacity:0.3"></div><span>Enemy Control</span></div>
+    <div class="leg-item"><div class="leg-color" style="background:#888"></div><span>Intact Building</span></div>
+    <div class="leg-item"><div class="leg-color" style="background:#444"></div><span>Destroyed</span></div>
+    <div class="leg-item"><div class="leg-color" style="background:#00ff88"></div><span>Allied Troops</span></div>
+    <div class="leg-item"><div class="leg-color" style="background:#ff4444"></div><span>Enemy Troops</span></div>
+  </div>
+
+  <div id="event-popup">
+    <div class="evt-time" id="evt-time"></div>
+    <div class="evt-title" id="evt-title"></div>
+    <div class="evt-desc" id="evt-desc"></div>
+  </div>
+</div>
+
+<div id="timeline-hud">
+  <div id="timeline-info">
+    <div id="time-display">T-30:00</div>
+    <div id="event-display">—</div>
+    <div id="playback-controls">
+      <button class="btn" id="btn-play">PLAY</button>
+      <button class="btn" id="btn-speed">1x</button>
+    </div>
+  </div>
+  <div id="slider-container">
+    <input type="range" id="time-slider" min="0" max="1800" value="0" step="1">
+    <div id="ticks"></div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   MAPLAYER V10 — TIMELAPSE BATTLEFIELD
+   ================================================================ */
+
+const canvas = document.getElementById('battleMap');
+const ctx = canvas.getContext('2d');
+const slider = document.getElementById('time-slider');
+const timeDisplay = document.getElementById('time-display');
+const eventDisplay = document.getElementById('event-display');
+const btnPlay = document.getElementById('btn-play');
+const btnSpeed = document.getElementById('btn-speed');
+const evtPopup = document.getElementById('event-popup');
+const evtTime = document.getElementById('evt-time');
+const evtTitle = document.getElementById('evt-title');
+const evtDesc = document.getElementById('evt-desc');
+const clockEl = document.getElementById('clock');
+
+let W, H;
+function resize() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = canvas.width = rect.width;
+  H = canvas.height = rect.height;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Timeline: 0 = T-30min, 1800 = NOW (seconds)
+let currentTime = 0;
+let isPlaying = false;
+let playSpeed = 1;
+let lastFrame = performance.now();
+
+// Speeds: 1x, 2x, 5x, 10x
+const speeds = [1, 2, 5, 10];
+let speedIdx = 0;
+
+/* ================================================================
+   MAP DATA
+   ================================================================ */
+
+// Territory zones (polygons with control history)
+const zones = [
+  {
+    name: 'North District',
+    poly: [[0.15,0.1],[0.45,0.05],[0.5,0.35],[0.2,0.4],[0.1,0.25]],
+    history: [
+      { t: 0,    control: 'allied',  intensity: 0.6 },
+      { t: 420,  control: 'enemy',   intensity: 0.8 },
+      { t: 900,  control: 'allied',  intensity: 0.5 },
+      { t: 1500, control: 'contested', intensity: 0.3 },
+      { t: 1800, control: 'allied',  intensity: 0.7 },
+    ]
+  },
+  {
+    name: 'East Industrial',
+    poly: [[0.5,0.05],[0.9,0.1],[0.95,0.45],[0.55,0.4],[0.5,0.35]],
+    history: [
+      { t: 0,    control: 'enemy',   intensity: 0.7 },
+      { t: 300,  control: 'enemy',   intensity: 0.9 },
+      { t: 800,  control: 'contested', intensity: 0.5 },
+      { t: 1200, control: 'allied',  intensity: 0.6 },
+      { t: 1800, control: 'allied',  intensity: 0.8 },
+    ]
+  },
+  {
+    name: 'South Residential',
+    poly: [[0.1,0.4],[0.5,0.35],[0.55,0.4],[0.6,0.75],[0.2,0.8],[0.05,0.6]],
+    history: [
+      { t: 0,    control: 'allied',  intensity: 0.5 },
+      { t: 600,  control: 'allied',  intensity: 0.4 },
+      { t: 1000, control: 'enemy',   intensity: 0.7 },
+      { t: 1400, control: 'enemy',   intensity: 0.9 },
+      { t: 1800, control: 'contested', intensity: 0.4 },
+    ]
+  },
+  {
+    name: 'West Outskirts',
+    poly: [[0.05,0.6],[0.2,0.8],[0.15,0.95],[0.02,0.9]],
+    history: [
+      { t: 0,    control: 'neutral', intensity: 0.2 },
+      { t: 900,  control: 'allied',  intensity: 0.3 },
+      { t: 1800, control: 'allied',  intensity: 0.5 },
+    ]
+  },
+  {
+    name: 'Central Plaza',
+    poly: [[0.35,0.35],[0.55,0.4],[0.6,0.6],[0.4,0.65],[0.3,0.5]],
+    history: [
+      { t: 0,    control: 'contested', intensity: 0.3 },
+      { t: 200,  control: 'enemy',   intensity: 0.6 },
+      { t: 700,  control: 'allied',  intensity: 0.5 },
+      { t: 1100, control: 'contested', intensity: 0.7 },
+      { t: 1600, control: 'allied',  intensity: 0.6 },
+      { t: 1800, control: 'allied',  intensity: 0.8 },
+    ]
+  },
+];
+
+// Buildings with destruction/rebuild history
+const buildings = [
+  { x: 0.22, y: 0.18, w: 0.06, h: 0.05, label: 'A', history: [{t:0,state:'intact'},{t:450,state:'destroyed'},{t:1200,state:'rebuild'}] },
+  { x: 0.38, y: 0.12, w: 0.05, h: 0.07, label: 'B', history: [{t:0,state:'intact'},{t:200,state:'destroyed'},{t:900,state:'rebuild'},{t:1400,state:'destroyed'}] },
+  { x: 0.72, y: 0.22, w: 0.08, h: 0.04, label: 'C', history: [{t:0,state:'intact'},{t:350,state:'destroyed'}] },
+  { x: 0.82, y: 0.15, w: 0.05, h: 0.06, label: 'D', history: [{t:0,state:'intact'},{t:500,state:'destroyed'},{t:1300,state:'rebuild'}] },
+  { x: 0.65, y: 0.35, w: 0.06, h: 0.05, label: 'E', history: [{t:0,state:'intact'},{t:800,state:'destroyed'}] },
+  { x: 0.25, y: 0.55, w: 0.07, h: 0.04, label: 'F', history: [{t:0,state:'intact'},{t:600,state:'destroyed'},{t:1100,state:'rebuild'}] },
+  { x: 0.42, y: 0.48, w: 0.05, h: 0.06, label: 'G', history: [{t:0,state:'intact'},{t:300,state:'destroyed'},{t:700,state:'rebuild'},{t:1500,state:'destroyed'}] },
+  { x: 0.48, y: 0.72, w: 0.06, h: 0.05, label: 'H', history: [{t:0,state:'intact'},{t:1000,state:'destroyed'}] },
+  { x: 0.15, y: 0.75, w: 0.05, h: 0.04, label: 'I', history: [{t:0,state:'intact'},{t:550,state:'destroyed'},{t:1000,state:'rebuild'}] },
+  { x: 0.88, y: 0.55, w: 0.04, h: 0.07, label: 'J', history: [{t:0,state:'intact'},{t:400,state:'destroyed'},{t:1000,state:'rebuild'},{t:1600,state:'destroyed'}] },
+  { x: 0.35, y: 0.88, w: 0.06, h: 0.04, label: 'K', history: [{t:0,state:'intact'},{t:750,state:'destroyed'}] },
+  { x: 0.58, y: 0.82, w: 0.05, h: 0.05, label: 'L', history: [{t:0,state:'intact'},{t:850,state:'destroyed'},{t:1450,state:'rebuild'}] },
+];
+
+// Roads (static)
+const roads = [
+  { x1: 0.1, y1: 0.25, x2: 0.9, y2: 0.2, w: 3 },
+  { x1: 0.5, y1: 0.05, x2: 0.55, y2: 0.9, w: 3 },
+  { x1: 0.2, y1: 0.4, x2: 0.85, y2: 0.6, w: 2 },
+  { x1: 0.15, y1: 0.7, x2: 0.7, y2: 0.8, w: 2 },
+  { x1: 0.35, y1: 0.1, x2: 0.3, y2: 0.85, w: 2 },
+];
+
+// Troop squads with movement paths
+const squads = [
+  {
+    side: 'allied',
+    size: 12,
+    path: [
+      { t: 0,    x: 0.18, y: 0.20 },
+      { t: 300,  x: 0.28, y: 0.22 },
+      { t: 600,  x: 0.35, y: 0.30 },
+      { t: 900,  x: 0.42, y: 0.38 },
+      { t: 1200, x: 0.48, y: 0.45 },
+      { t: 1500, x: 0.52, y: 0.52 },
+      { t: 1800, x: 0.55, y: 0.55 },
+    ]
+  },
+  {
+    side: 'allied',
+    size: 8,
+    path: [
+      { t: 0,    x: 0.12, y: 0.50 },
+      { t: 400,  x: 0.20, y: 0.55 },
+      { t: 800,  x: 0.28, y: 0.58 },
+      { t: 1200, x: 0.35, y: 0.62 },
+      { t: 1600, x: 0.40, y: 0.68 },
+      { t: 1800, x: 0.42, y: 0.72 },
+    ]
+  },
+  {
+    side: 'allied',
+    size: 15,
+    path: [
+      { t: 0,    x: 0.85, y: 0.15 },
+      { t: 500,  x: 0.75, y: 0.25 },
+      { t: 1000, x: 0.68, y: 0.35 },
+      { t: 1500, x: 0.62, y: 0.45 },
+      { t: 1800, x: 0.58, y: 0.50 },
+    ]
+  },
+  {
+    side: 'enemy',
+    size: 10,
+    path: [
+      { t: 0,    x: 0.80, y: 0.50 },
+      { t: 300,  x: 0.72, y: 0.48 },
+      { t: 600,  x: 0.65, y: 0.45 },
+      { t: 900,  x: 0.58, y: 0.42 },
+      { t: 1200, x: 0.52, y: 0.40 },
+      { t: 1500, x: 0.48, y: 0.38 },
+      { t: 1800, x: 0.45, y: 0.35 },
+    ]
+  },
+  {
+    side: 'enemy',
+    size: 14,
+    path: [
+      { t: 0,    x: 0.55, y: 0.85 },
+      { t: 400,  x: 0.52, y: 0.75 },
+      { t: 800,  x: 0.50, y: 0.65 },
+      { t: 1200, x: 0.48, y: 0.55 },
+      { t: 1600, x: 0.46, y: 0.48 },
+      { t: 1800, x: 0.45, y: 0.45 },
+    ]
+  },
+  {
+    side: 'enemy',
+    size: 6,
+    path: [
+      { t: 0,    x: 0.30, y: 0.10 },
+      { t: 350,  x: 0.35, y: 0.18 },
+      { t: 700,  x: 0.40, y: 0.25 },
+      { t: 1100, x: 0.45, y: 0.32 },
+      { t: 1500, x: 0.48, y: 0.38 },
+      { t: 1800, x: 0.50, y: 0.42 },
+    ]
+  },
+];
+
+// Key events
+const events = [
+  { t: 0,    title: 'BATTLE BEGINS', desc: 'Initial contact at northern perimeter' },
+  { t: 200,  title: 'BUILDING B DESTROYED', desc: 'Artillery strike hits command post' },
+  { t: 300,  title: 'BUILDING G HIT', desc: 'Enemy advance through central district' },
+  { t: 350,  title: 'BUILDING C DESTROYED', desc: 'Airstrike on industrial complex' },
+  { t: 400,  title: 'BUILDING J DAMAGED', desc: 'Rocket barrage from east ridge' },
+  { t: 450,  title: 'BUILDING A FALLS', desc: 'Forward outpost overrun' },
+  { t: 500,  title: 'BUILDING D DESTROYED', desc: 'Secondary explosions confirmed' },
+  { t: 550,  title: 'BUILDING I HIT', desc: 'South flank under pressure' },
+  { t: 600,  title: 'BUILDING F DESTROYED', desc: 'Enemy armor pushes west' },
+  { t: 700,  title: 'BUILDING G REBUILT', desc: 'Engineers establish FOB' },
+  { t: 750,  title: 'BUILDING K DESTROYED', desc: 'Southern district collapses' },
+  { t: 800,  title: 'BUILDING E DESTROYED', desc: 'Industrial zone falls' },
+  { t: 850,  title: 'BUILDING L HIT', desc: 'East road cut off' },
+  { t: 900,  title: 'BUILDING B REBUILT', desc: 'Allied counter-offensive begins' },
+  { t: 1000, title: 'BUILDING H DESTROYED', desc: 'Enemy breakthrough south' },
+  { t: 1000, title: 'BUILDING I REBUILT', desc: 'Reinforcements arrive' },
+  { t: 1000, title: 'BUILDING J REBUILT', desc: 'Supply line restored' },
+  { t: 1100, title: 'BUILDING F REBUILT', desc: 'FOB Alpha operational' },
+  { t: 1200, title: 'BUILDING A REBUILT', desc: 'Northern perimeter secured' },
+  { t: 1300, title: 'BUILDING D REBUILT', desc: 'Industrial complex retaken' },
+  { t: 1400, title: 'BUILDING B DESTROYED', desc: 'Enemy counter-attack' },
+  { t: 1450, title: 'BUILDING L REBUILT', desc: 'East road reopened' },
+  { t: 1500, title: 'BUILDING G DESTROYED', desc: 'Central plaza contested' },
+  { t: 1600, title: 'BUILDING J DESTROYED', desc: 'Final enemy push' },
+  { t: 1800, title: 'PRESENT', desc: 'Battle ongoing — status uncertain' },
+];
+
+// Explosions / effects
+const explosions = [
+  { t: 200,  x: 0.38, y: 0.15, r: 30 },
+  { t: 300,  x: 0.42, y: 0.50, r: 25 },
+  { t: 350,  x: 0.72, y: 0.24, r: 35 },
+  { t: 450,  x: 0.22, y: 0.20, r: 28 },
+  { t: 500,  x: 0.82, y: 0.18, r: 22 },
+  { t: 600,  x: 0.25, y: 0.55, r: 30 },
+  { t: 750,  x: 0.35, y: 0.88, r: 25 },
+  { t: 800,  x: 0.65, y: 0.37, r: 32 },
+  { t: 850,  x: 0.58, y: 0.82, r: 20 },
+  { t: 1000, x: 0.48, y: 0.72, r: 28 },
+  { t: 1200, x: 0.22, y: 0.18, r: 24 },
+  { t: 1400, x: 0.38, y: 0.15, r: 26 },
+  { t: 1500, x: 0.42, y: 0.50, r: 30 },
+  { t: 1600, x: 0.88, y: 0.58, r: 22 },
+];
+
+/* ================================================================
+   UTILITIES
+   ================================================================ */
+
+function formatTime(t) {
+  const min = Math.floor((1800 - t) / 60);
+  const sec = (1800 - t) % 60;
+  if (t >= 1800) return 'NOW';
+  return `T-${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function lerp(a, b, f) { return a + (b - a) * f; }
+
+function getBuildingState(b, t) {
+  let state = 'intact';
+  for (const h of b.history) {
+    if (t >= h.t) state = h.state;
+  }
+  return state;
+}
+
+function getZoneState(z, t) {
+  let entry = z.history[0];
+  for (const h of z.history) {
+    if (t >= h.t) entry = h;
+  }
+  return entry;
+}
+
+function getSquadPos(s, t) {
+  const p = s.path;
+  if (t <= p[0].t) return { x: p[0].x, y: p[0].y };
+  if (t >= p[p.length-1].t) return { x: p[p.length-1].x, y: p[p.length-1].y };
+  for (let i = 0; i < p.length - 1; i++) {
+    if (t >= p[i].t && t < p[i+1].t) {
+      const f = (t - p[i].t) / (p[i+1].t - p[i].t);
+      return { x: lerp(p[i].x, p[i+1].x, f), y: lerp(p[i].y, p[i+1].y, f) };
+    }
+  }
+  return { x: p[p.length-1].x, y: p[p.length-1].y };
+}
+
+/* ================================================================
+   RENDER
+   ================================================================ */
+
+function drawGrid() {
+  ctx.strokeStyle = 'rgba(40,40,40,0.5)';
+  ctx.lineWidth = 1;
+  const step = 40;
+  for (let x = 0; x < W; x += step) {
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += step) {
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+}
+
+function drawRoads() {
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = 4;
+  for (const r of roads) {
+    ctx.beginPath();
+    ctx.moveTo(r.x1 * W, r.y1 * H);
+    ctx.lineTo(r.x2 * W, r.y2 * H);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#3a3a3a';
+  ctx.lineWidth = 2;
+  for (const r of roads) {
+    ctx.beginPath();
+    ctx.moveTo(r.x1 * W, r.y1 * H);
+    ctx.lineTo(r.x2 * W, r.y2 * H);
+    ctx.stroke();
+  }
+}
+
+function drawZones(t) {
+  for (const z of zones) {
+    const st = getZoneState(z, t);
+    let col;
+    if (st.control === 'allied') col = `rgba(51,136,255,${st.intensity * 0.35})`;
+    else if (st.control === 'enemy') col = `rgba(255,51,51,${st.intensity * 0.35})`;
+    else if (st.control === 'contested') col = `rgba(255,170,0,${st.intensity * 0.35})`;
+    else col = `rgba(100,100,100,${st.intensity * 0.15})`;
+
+    ctx.fillStyle = col;
+    ctx.strokeStyle = col.replace(/[\d\.]+\)$/, '0.6)');
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const p = z.poly;
+    ctx.moveTo(p[0][0]*W, p[0][1]*H);
+    for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0]*W, p[i][1]*H);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Zone label
+    let cx = 0, cy = 0;
+    for (const pt of p) { cx += pt[0]; cy += pt[1]; }
+    cx /= p.length; cy /= p.length;
+    ctx.fillStyle = '#888';
+    ctx.font = '10px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(z.name, cx*W, cy*H);
+  }
+}
+
+function drawBuildings(t) {
+  for (const b of buildings) {
+    const st = getBuildingState(b, t);
+    const bx = b.x * W, by = b.y * H;
+    const bw = b.w * W, bh = b.h * H;
+
+    if (st === 'intact') {
+      ctx.fillStyle = '#666';
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 1;
+      ctx.fillRect(bx - bw/2, by - bh/2, bw, bh);
+      ctx.strokeRect(bx - bw/2, by - bh/2, bw, bh);
+      // Window dots
+      ctx.fillStyle = '#444';
+      for (let wx = 3; wx < bw - 6; wx += 8) {
+        for (let wy = 3; wy < bh - 6; wy += 8) {
+          ctx.fillRect(bx - bw/2 + wx, by - bh/2 + wy, 3, 3);
+        }
+      }
+    } else if (st === 'destroyed') {
+      ctx.fillStyle = '#333';
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 1;
+      ctx.fillRect(bx - bw/2, by - bh/2, bw, bh);
+      ctx.strokeRect(bx - bw/2, by - bh/2, bw, bh);
+      // Rubble cross
+      ctx.strokeStyle = '#222';
+      ctx.beginPath();
+      ctx.moveTo(bx - bw/2, by - bh/2);
+      ctx.lineTo(bx + bw/2, by + bh/2);
+      ctx.moveTo(bx + bw/2, by - bh/2);
+      ctx.lineTo(bx - bw/2, by + bh/2);
+      ctx.stroke();
+    } else if (st === 'rebuild') {
+      // Scaffolding look
+      ctx.fillStyle = '#555';
+      ctx.strokeStyle = '#aa8800';
+      ctx.lineWidth = 1;
+      ctx.fillRect(bx - bw/2, by - bh/2, bw, bh);
+      ctx.strokeRect(bx - bw/2, by - bh/2, bw, bh);
+      // Scaffold lines
+      ctx.strokeStyle = '#aa8800';
+      ctx.beginPath();
+      ctx.moveTo(bx - bw/2 + 4, by - bh/2);
+      ctx.lineTo(bx - bw/2 + 4, by + bh/2);
+      ctx.moveTo(bx + bw/2 - 4, by - bh/2);
+      ctx.lineTo(bx + bw/2 - 4, by + bh/2);
+      ctx.stroke();
+    }
+
+    // Label
+    ctx.fillStyle = '#aaa';
+    ctx.font = 'bold 11px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(b.label, bx, by + 4);
+  }
+}
+
+function drawSquads(t) {
+  for (const s of squads) {
+    const pos = getSquadPos(s, t);
+    const sx = pos.x * W, sy = pos.y * H;
+    const color = s.side === 'allied' ? '#00ff88' : '#ff4444';
+    const glow = s.side === 'allied' ? 'rgba(0,255,136,0.15)' : 'rgba(255,68,68,0.15)';
+
+    // Glow
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 18, 0, Math.PI*2);
+    ctx.fill();
+
+    // Dots for squad members
+    ctx.fillStyle = color;
+    const spread = 6;
+    const seed = s.side.charCodeAt(0) + s.size;
+    for (let i = 0; i < s.size; i++) {
+      const angle = ((i * 137.5 + seed) % 360) * Math.PI / 180;
+      const dist = ((i * 7 + seed) % 10) / 10 * spread;
+      const dx = sx + Math.cos(angle) * dist;
+      const dy = sy + Math.sin(angle) * dist;
+      ctx.beginPath();
+      ctx.arc(dx, dy, 2, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // Label
+    ctx.fillStyle = color;
+    ctx.font = '9px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(s.side === 'allied' ? 'A' : 'E', sx, sy - 12);
+  }
+}
+
+function drawExplosions(t) {
+  for (const ex of explosions) {
+    const dt = t - ex.t;
+    if (dt < 0 || dt > 60) continue;
+    const f = 1 - dt / 60;
+    const r = ex.r * (1 + (1-f)*2);
+    const x = ex.x * W, y = ex.y * H;
+
+    ctx.strokeStyle = `rgba(255,170,0,${f*0.8})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.stroke();
+
+    ctx.fillStyle = `rgba(255,100,0,${f*0.3})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.6, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function drawCompass() {
+  const cx = 50, cy = H - 50;
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 20, 0, Math.PI*2);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ff4444';
+  ctx.font = 'bold 12px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillText('N', cx, cy - 24);
+
+  ctx.strokeStyle = '#888';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 15);
+  ctx.lineTo(cx, cy + 15);
+  ctx.moveTo(cx - 15, cy);
+  ctx.lineTo(cx + 15, cy);
+  ctx.stroke();
+}
+
+function render() {
+  ctx.fillStyle = '#0f0f0f';
+  ctx.fillRect(0, 0, W, H);
+
+  drawGrid();
+  drawRoads();
+  drawZones(currentTime);
+  drawBuildings(currentTime);
+  drawSquads(currentTime);
+  drawExplosions(currentTime);
+  drawCompass();
+
+  // Time overlay on map
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(10, 10, 110, 22);
+  ctx.fillStyle = '#ffaa00';
+  ctx.font = 'bold 14px Courier New';
+  ctx.textAlign = 'left';
+  ctx.fillText(formatTime(currentTime), 18, 26);
+}
+
+/* ================================================================
+   TIMELINE UI
+   ================================================================ */
+
+function buildTicks() {
+  const tickContainer = document.getElementById('ticks');
+  tickContainer.innerHTML = '';
+  for (let m = 0; m <= 30; m += 5) {
+    const t = 1800 - m * 60;
+    const pct = (t / 1800) * 100;
+    const tick = document.createElement('div');
+    tick.className = 'tick';
+    tick.style.left = pct + '%';
+    tickContainer.appendChild(tick);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'tick-label';
+    lbl.style.left = pct + '%';
+    lbl.textContent = m === 0 ? 'NOW' : `T-${m}m`;
+    tickContainer.appendChild(lbl);
+  }
+}
+
+function updateUI() {
+  timeDisplay.textContent = formatTime(currentTime);
+  slider.value = currentTime;
+
+  // Find current event
+  let ev = null;
+  for (const e of events) {
+    if (currentTime >= e.t) ev = e;
+  }
+  if (ev) {
+    eventDisplay.textContent = `${formatTime(ev.t)} — ${ev.title}`;
+  } else {
+    eventDisplay.textContent = '—';
+  }
+
+  // Clock
+  const now = new Date();
+  clockEl.textContent = now.toLocaleTimeString('en-US', {hour12:false});
+}
+
+let popupTimer = null;
+let lastEventIdx = -1;
+
+function checkEventPopup() {
+  let idx = -1;
+  for (let i = 0; i < events.length; i++) {
+    if (currentTime >= events[i].t) idx = i;
+  }
+  if (idx !== lastEventIdx && idx >= 0) {
+    lastEventIdx = idx;
+    const ev = events[idx];
+    evtTime.textContent = formatTime(ev.t);
+    evtTitle.textContent = ev.title;
+    evtDesc.textContent = ev.desc;
+    evtPopup.style.display = 'block';
+    if (popupTimer) clearTimeout(popupTimer);
+    popupTimer = setTimeout(() => {
+      evtPopup.style.display = 'none';
+    }, 2500);
+  }
+}
+
+/* ================================================================
+   PLAYBACK
+   ================================================================ */
+
+function tick(now) {
+  const dt = (now - lastFrame) / 1000;
+  lastFrame = now;
+
+  if (isPlaying) {
+    currentTime += dt * 30 * playSpeed; // 30 sec per real sec at 1x
+    if (currentTime >= 1800) {
+      currentTime = 1800;
+      isPlaying = false;
+      btnPlay.textContent = 'PLAY';
+      btnPlay.classList.remove('active');
+    }
+    checkEventPopup();
+  }
+
+  updateUI();
+  render();
+  requestAnimationFrame(tick);
+}
+
+slider.addEventListener('input', () => {
+  currentTime = parseFloat(slider.value);
+  lastEventIdx = -1;
+  checkEventPopup();
+  updateUI();
+  render();
+});
+
+btnPlay.addEventListener('click', () => {
+  isPlaying = !isPlaying;
+  if (currentTime >= 1800 && isPlaying) currentTime = 0;
+  btnPlay.textContent = isPlaying ? 'PAUSE' : 'PLAY';
+  btnPlay.classList.toggle('active', isPlaying);
+});
+
+btnSpeed.addEventListener('click', () => {
+  speedIdx = (speedIdx + 1) % speeds.length;
+  playSpeed = speeds[speedIdx];
+  btnSpeed.textContent = playSpeed + 'x';
+});
+
+/* ================================================================
+   INIT
+   ================================================================ */
+
+buildTicks();
+updateUI();
+render();
+requestAnimationFrame(tick);
+
+</script>
+</body>
+</html>

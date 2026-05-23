@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOADOUT V2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a1a;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #c4b896;
+            overflow: hidden;
+        }
+
+        .screen {
+            background: #2a2a2a;
+            border: 2px solid #4a4a3a;
+            padding: 24px;
+            width: 520px;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0,0,0,0.8), inset 0 0 60px rgba(0,0,0,0.3);
+        }
+
+        .screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.03) 2px,
+                rgba(0,0,0,0.03) 4px
+            );
+            pointer-events: none;
+        }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #4a4a3a;
+        }
+
+        .hud-title {
+            font-size: 14px;
+            letter-spacing: 4px;
+            color: #8a9a6a;
+            text-shadow: 0 0 8px rgba(138,154,106,0.3);
+        }
+
+        .hud-status {
+            font-size: 10px;
+            color: #6a6a5a;
+            letter-spacing: 2px;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 2px;
+            background: #1e1e1e;
+            border: 1px solid #3a3a2a;
+            padding: 4px;
+            position: relative;
+        }
+
+        .slot {
+            aspect-ratio: 1;
+            border: 1px dashed #4a4a3a;
+            background: #252520;
+            position: relative;
+        }
+
+        .item {
+            position: absolute;
+            background: #3a3a2a;
+            border: 1px solid #5a5a4a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.15s ease;
+            overflow: hidden;
+        }
+
+        .item:hover {
+            background: #4a4a3a;
+            border-color: #8a9a6a;
+            z-index: 20;
+        }
+
+        .item.selected {
+            background: #4a4a3a;
+            border-color: #8a9a6a;
+            box-shadow: 0 0 12px rgba(138,154,106,0.2);
+        }
+
+        .item-icon {
+            font-size: 20px;
+            opacity: 0.7;
+        }
+
+        .item-label {
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            right: 2px;
+            font-size: 7px;
+            color: #8a8a7a;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            letter-spacing: 0.5px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #1a1a1a;
+            border: 1px solid #5a5a4a;
+            padding: 10px 14px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            min-width: 180px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip-name {
+            font-size: 11px;
+            color: #8a9a6a;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .tooltip-desc {
+            font-size: 10px;
+            color: #7a7a6a;
+            line-height: 1.5;
+        }
+
+        .tooltip-weight {
+            font-size: 9px;
+            color: #6a6a5a;
+            margin-top: 6px;
+            padding-top: 4px;
+            border-top: 1px solid #3a3a2a;
+        }
+
+        .weight-bar {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #4a4a3a;
+        }
+
+        .weight-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+            color: #6a6a5a;
+        }
+
+        .weight-track {
+            height: 6px;
+            background: #1e1e1e;
+            border: 1px solid #3a3a2a;
+            position: relative;
+        }
+
+        .weight-fill {
+            height: 100%;
+            background: #6a7a4a;
+            width: 61.67%;
+            position: relative;
+            transition: width 0.3s ease;
+        }
+
+        .weight-fill::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #8a9a6a;
+            box-shadow: 0 0 6px rgba(138,154,106,0.5);
+        }
+
+        .corner {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-color: #5a5a4a;
+            border-style: solid;
+        }
+
+        .corner-tl { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+        .corner-tr { top: -1px; right: -1px; border-width: 1px 1px 0 0; }
+        .corner-bl { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
+        .corner-br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 1px,
+                rgba(0,0,0,0.05) 1px,
+                rgba(0,0,0,0.05) 2px
+            );
+            pointer-events: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+    
+    <div class="screen">
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-tr"></div>
+        <div class="corner corner-bl"></div>
+        <div class="corner corner-br"></div>
+        
+        <div class="hud-header">
+            <div class="hud-title">LOADOUT V2</div>
+            <div class="hud-status">BACKPACK // INVENTORY</div>
+        </div>
+        
+        <div class="grid-container" id="grid">
+        </div>
+        
+        <div class="weight-bar">
+            <div class="weight-label">
+                <span>WEIGHT</span>
+                <span>18.5 / 30.0 KG</span>
+            </div>
+            <div class="weight-track">
+                <div class="weight-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip">
+        <div class="tooltip-name" id="tooltip-name"></div>
+        <div class="tooltip-desc" id="tooltip-desc"></div>
+        <div class="tooltip-weight" id="tooltip-weight"></div>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const tooltip = document.getElementById('tooltip');
+        const tooltipName = document.getElementById('tooltip-name');
+        const tooltipDesc = document.getElementById('tooltip-desc');
+        const tooltipWeight = document.getElementById('tooltip-weight');
+        
+        const cols = 8;
+        const rows = 5;
+        
+        const items = [
+            {
+                id: 'rifle',
+                name: 'ASSAULT RIFLE',
+                icon: '⌖',
+                w: 2,
+                h: 4,
+                x: 0,
+                y: 0,
+                desc: '5.56mm selective-fire rifle. Reliable medium-range combat weapon with picatinny rail system.',
+                weight: '4.2 kg'
+            },
+            {
+                id: 'ammo',
+                name: 'AMMO BOX',
+                icon: '◉',
+                w: 1,
+                h: 1,
+                x: 3,
+                y: 0,
+                desc: 'Sealed box of 5.56mm ammunition. 30-round magazines x6. Waterproof packaging.',
+                weight: '1.8 kg'
+            },
+            {
+                id: 'medkit',
+                name: 'MEDKIT',
+                icon: '+',
+                w: 1,
+                h: 2,
+                x: 5,
+                y: 0,
+                desc: 'IFAK individual first aid kit. Contains gauze, tourniquet, chest seal, and hemostatic agent.',
+                weight: '0.6 kg'
+            },
+            {
+                id: 'grenade',
+                name: 'FRAG GRENADE',
+                icon: '●',
+                w: 1,
+                h: 1,
+                x: 7,
+                y: 0,
+                desc: 'M67 fragmentation grenade. Lethal radius: 5m. Casualty radius: 15m. Fuse delay: 4-5s.',
+                weight: '0.4 kg'
+            },
+            {
+                id: 'radio',
+                name: 'TACTICAL RADIO',
+                icon: '◈',
+                w: 2,
+                h: 2,
+                x: 2,
+                y: 2,
+                desc: 'Encrypted VHF/UHF field radio. Range: 8km. Waterproof to 1m. 12-hour battery life.',
+                weight: '1.1 kg'
+            },
+            {
+                id: 'knife',
+                name: 'COMBAT KNIFE',
+                icon: '/',
+                w: 1,
+                h: 1,
+                x: 6,
+                y: 3,
+                desc: '7-inch fixed blade. Full tang construction. Serrated spine with glass breaker pommel.',
+                weight: '0.3 kg'
+            }
+        ];
+        
+        const slotSize = 58;
+        const gap = 2;
+        
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const slot = document.createElement('div');
+                slot.className = 'slot';
+                grid.appendChild(slot);
+            }
+        }
+        
+        items.forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'item';
+            el.style.left = (item.x * (slotSize + gap) + 4) + 'px';
+            el.style.top = (item.y * (slotSize + gap) + 4) + 'px';
+            el.style.width = (item.w * slotSize + (item.w - 1) * gap) + 'px';
+            el.style.height = (item.h * slotSize + (item.h - 1) * gap) + 'px';
+            el.dataset.id = item.id;
+            
+            el.innerHTML = `
+                <span class="item-icon">${item.icon}</span>
+                <span class="item-label">${item.name}</span>
+            `;
+            
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.item').forEach(i => i.classList.remove('selected'));
+                el.classList.add('selected');
+                showTooltip(item, el);
+            });
+            
+            grid.appendChild(el);
+        });
+        
+        function showTooltip(item, el) {
+            tooltipName.textContent = item.name;
+            tooltipDesc.textContent = item.desc;
+            tooltipWeight.textContent = `WEIGHT: ${item.weight}`;
+            
+            const rect = el.getBoundingClientRect();
+            tooltip.style.left = (rect.right + 10) + 'px';
+            tooltip.style.top = rect.top + 'px';
+            tooltip.classList.add('visible');
+        }
+        
+        document.addEventListener('click', () => {
+            tooltip.classList.remove('visible');
+            document.querySelectorAll('.item').forEach(i => i.classList.remove('selected'));
+        });
+    </script>
+</body>
+</html>

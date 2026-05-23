@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>R&D Shader Library — WebGL Effects</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #ffffff;
+      --accent: #00f0ff;
+      --accent2: #ff0055;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
+    
+    .shader-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 2rem;
+      padding: 2rem;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    
+    .shader-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    
+    .shader-card h3 {
+      padding: 1rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .shader-card canvas {
+      width: 100%;
+      height: 300px;
+      display: block;
+    }
+    
+    .shader-info {
+      padding: 1rem 1.5rem;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    .shader-info code {
+      display: block;
+      background: rgba(255,255,255,0.05);
+      padding: 0.75rem;
+      border-radius: 8px;
+      margin-top: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      overflow-x: auto;
+    }
+    
+    header {
+      padding: 3rem 2rem;
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    header h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 900;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    header p {
+      color: rgba(255,255,255,0.6);
+      font-size: 1.1rem;
+    }
+  </style>
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="./design-flow.css" />
+</head><body data-flow-page="shader-library" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>R&D Shader Library — WebGL Effects</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./design-flow-setup.html">Setup</a>
+        <a href="./design-flow-roles.html">Roles</a>
+        <a href="./design-flow-control.html">Control</a>
+
+        <a href="./design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="./login.html">Login</a>
+              <a href="./server-browser.html">Server Browser</a>
+              <a href="./map-selection.html">Map Selection</a>
+              <a href="./role-selection.html">Role Selection</a>
+              <a href="./matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="./player-profile.html">Player Profile</a>
+              <a href="./career-stats.html">Career Stats</a>
+              <a href="./match-result.html">Match Result</a>
+              <a href="./post-match-report.html">Post-Match Report</a>
+              <a href="./kill-cam.html">Kill Cam</a>
+              <a href="./death-recap.html">Death Recap</a>
+              <a href="./spectator-mode.html">Spectator Mode</a>
+              <a href="./replay-viewer.html">Replay Viewer</a>
+              <a href="./tournament-bracket.html">Tournament</a>
+              <a href="./emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="./store.html">Store</a>
+              <a href="./friends.html">Friends</a>
+              <a href="./squad.html">Squad</a>
+              <a href="./clan-wars.html">Clan Wars</a>
+              <a href="./patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="./token-dashboard.html">Token Dashboard</a>
+              <a href="./daily-challenges.html">Daily Challenges</a>
+              <a href="./inventory.html">Inventory</a>
+              <a href="./loadout-builder.html">Loadout Builder</a>
+              <a href="./battle-pass.html">Battle Pass</a>
+              <a href="./loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="./R&D-INDEX.html">R&D Index</a>
+              <a href="./ai-battle-arena.html">AI Battle Arena</a>
+              <a href="./admin-dashboard.html">Admin Dashboard</a>
+              <a href="./leaderboard.html">Leaderboard</a>
+              <a href="./settings.html">Settings</a>
+              <a href="./design-system.html">Design System</a>
+              <a href="./design-flow-setup.html">Setup Page</a>
+              <a href="./design-flow-roles.html">Roles Page</a>
+              <a href="./design-flow-control.html">Control Page</a>
+              <a href="./action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="./mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="./mobile-radar.html">Mobile Radar</a>
+              <a href="./gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="numberedPagesBtn">🔢 All Pages (1-50+) ▾</button>
+          <div class="page-menu" id="numberedPagesMenu">
+            <div class="page-menu-group"><div class="page-menu-title">Auth & Flow (1-5)</div><a href="./login.html">1 — Login</a><a href="./server-browser.html">2 — Server Browser</a><a href="./map-selection.html">3 — Map Selection</a><a href="./role-selection.html">4 — Role Selection</a><a href="./matchmaking.html">5 — Matchmaking</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Game Screens (6-15)</div><a href="./player-profile.html">6 — Player Profile</a><a href="./career-stats.html">7 — Career Stats</a><a href="./match-result.html">8 — Match Result</a><a href="./post-match-report.html">9 — Post-Match Report</a><a href="./kill-cam.html">10 — Kill Cam</a><a href="./death-recap.html">11 — Death Recap</a><a href="./spectator-mode.html">12 — Spectator Mode</a><a href="./replay-viewer.html">13 — Replay Viewer</a><a href="./tournament-bracket.html">14 — Tournament</a><a href="./emote-wheel.html">15 — Emote Wheel</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Live & Social (16-20)</div><a href="./store.html">16 — Store</a><a href="./friends.html">17 — Friends</a><a href="./squad.html">18 — Squad</a><a href="./clan-wars.html">19 — Clan Wars</a><a href="./patch-notes.html">20 — Patch Notes</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Management (21-26)</div><a href="./token-dashboard.html">21 — Token Dashboard</a><a href="./daily-challenges.html">22 — Daily Challenges</a><a href="./inventory.html">23 — Inventory</a><a href="./loadout-builder.html">24 — Loadout Builder</a><a href="./battle-pass.html">25 — Battle Pass</a><a href="./loot-crate.html">26 — Loot Crate</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Tools & Systems (27-36)</div><a href="./R&D-INDEX.html">27 — R&D Index</a><a href="./ai-battle-arena.html">28 — AI Battle Arena</a><a href="./admin-dashboard.html">29 — Admin Dashboard</a><a href="./leaderboard.html">30 — Leaderboard</a><a href="./settings.html">31 — Settings</a><a href="./design-system.html">32 — Design System</a><a href="./design-flow-setup.html">33 — Setup Page</a><a href="./design-flow-roles.html">34 — Roles Page</a><a href="./design-flow-control.html">35 — Control Page</a><a href="./action-center.html">36 — Action Center</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Mobile (37-39)</div><a href="./mobile-ui-kit.html">37 — Mobile UI Kit</a><a href="./mobile-radar.html">38 — Mobile Radar</a><a href="./gps-tracker.html">39 — GPS Tracker</a></div>
+          </div>
+        </div>
+
+        <a href="./design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <header>
+    <h1>WebGL Shader Library</h1>
+    <p>Production-ready GLSL shaders for high-fidelity websites. Based on top 200 Awwwards winners.</p>
+  </header>
+  
+  <div class="shader-grid">
+    <!-- Shader 1: Grain/Noise -->
+    <div class="shader-card">
+      <h3>🎞️ Film Grain</h3>
+      <canvas id="grainCanvas"></canvas>
+      <div class="shader-info">
+        Organic film grain with animated noise. Used by 60% of award sites for texture.
+        <code>grain = fract(sin(dot(uv, vec2(12.9898,78.233))) * 43758.5453);</code>
+      </div>
+    </div>
+    
+    <!-- Shader 2: Liquid Distortion -->
+    <div class="shader-card">
+      <h3>🌊 Liquid Distortion</h3>
+      <canvas id="liquidCanvas"></canvas>
+      <div class="shader-info">
+        Mouse-reactive fluid distortion. Perfect for hero sections.
+        <code>distortion = sin(uv.y * 10.0 + time) * 0.02;</code>
+      </div>
+    </div>
+    
+    <!-- Shader 3: Kinetic Gradient -->
+    <div class="shader-card">
+      <h3>✨ Kinetic Gradient</h3>
+      <canvas id="gradientCanvas"></canvas>
+      <div class="shader-info">
+        Animated mesh gradient with organic movement. 2025 trend.
+        <code>color = mix(c1, c2, sin(time + uv.x * 3.14) * 0.5 + 0.5);</code>
+      </div>
+    </div>
+    
+    <!-- Shader 4: Vignette Spotlight -->
+    <div class="shader-card">
+      <h3>🔦 Vignette Spotlight</h3>
+      <canvas id="spotlightCanvas"></canvas>
+      <div class="shader-info">
+        Mouse-tracking radial spotlight with vignette. Atmospheric depth.
+        <code>vignette = 1.0 - smoothstep(0.3, 0.8, length(uv - mouse));</code>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // WebGL Helper
+    function createShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    }
+
+    function createProgram(gl, vsSource, fsSource) {
+      const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
+      const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+      const program = gl.createProgram();
+      gl.attachShader(program, vs);
+      gl.attachShader(program, fs);
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error(gl.getProgramInfoLog(program));
+        return null;
+      }
+      return program;
+    }
+
+    const vertexShader = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    // Shader 1: Film Grain
+    const grainFragment = `
+      precision mediump float;
+      uniform float time;
+      uniform vec2 resolution;
+      
+      float random(vec2 st) {
+        return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+      }
+      
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        float grain = random(uv + time * 0.1) * 0.15;
+        vec3 color = vec3(0.04 + grain);
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+    // Shader 2: Liquid Distortion
+    const liquidFragment = `
+      precision mediump float;
+      uniform float time;
+      uniform vec2 resolution;
+      uniform vec2 mouse;
+      
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        float dist = distance(uv, mouse);
+        float distortion = sin(uv.y * 10.0 + time * 2.0) * 0.03 * (1.0 - smoothstep(0.0, 0.5, dist));
+        uv.x += distortion;
+        
+        vec3 c1 = vec3(0.0, 0.94, 1.0);
+        vec3 c2 = vec3(1.0, 0.0, 0.33);
+        float mixFactor = sin(uv.x * 3.14159 + time) * 0.5 + 0.5;
+        vec3 color = mix(c1, c2, mixFactor) * (1.0 - dist * 0.5);
+        
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+    // Shader 3: Kinetic Gradient
+    const gradientFragment = `
+      precision mediump float;
+      uniform float time;
+      uniform vec2 resolution;
+      
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        
+        float t = time * 0.5;
+        vec3 c1 = vec3(0.0, 0.94, 1.0);
+        vec3 c2 = vec3(1.0, 0.0, 0.33);
+        vec3 c3 = vec3(0.04, 0.04, 0.06);
+        
+        float wave1 = sin(uv.x * 3.14159 + t) * 0.5 + 0.5;
+        float wave2 = cos(uv.y * 2.0 + t * 0.7) * 0.5 + 0.5;
+        
+        vec3 color = mix(c3, mix(c1, c2, wave1), wave2 * 0.6);
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+    // Shader 4: Vignette Spotlight
+    const spotlightFragment = `
+      precision mediump float;
+      uniform float time;
+      uniform vec2 resolution;
+      uniform vec2 mouse;
+      
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        vec2 center = mouse;
+        
+        float dist = length(uv - center);
+        float spotlight = 1.0 - smoothstep(0.2, 0.6, dist);
+        float vignette = 1.0 - smoothstep(0.5, 1.2, length(uv - 0.5));
+        
+        vec3 bg = vec3(0.04, 0.04, 0.06);
+        vec3 light = vec3(0.0, 0.94, 1.0) * spotlight;
+        vec3 color = bg + light;
+        color *= vignette;
+        
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+    // Initialize Shader
+    function initShader(canvasId, fragmentShader, hasMouse = false) {
+      const canvas = document.getElementById(canvasId);
+      const gl = canvas.getContext('webgl');
+      if (!gl) return;
+      
+      const program = createProgram(gl, vertexShader, fragmentShader);
+      if (!program) return;
+      
+      const positionBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1, -1, 1, -1, -1, 1,
+        -1, 1, 1, -1, 1, 1
+      ]), gl.STATIC_DRAW);
+      
+      const positionLocation = gl.getAttribLocation(program, 'position');
+      gl.enableVertexAttribArray(positionLocation);
+      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+      
+      gl.useProgram(program);
+      
+      const timeLocation = gl.getUniformLocation(program, 'time');
+      const resolutionLocation = gl.getUniformLocation(program, 'resolution');
+      const mouseLocation = hasMouse ? gl.getUniformLocation(program, 'mouse') : null;
+      
+      let mouse = { x: 0.5, y: 0.5 };
+      if (hasMouse) {
+        canvas.addEventListener('mousemove', (e) => {
+          const rect = canvas.getBoundingClientRect();
+          mouse.x = (e.clientX - rect.left) / rect.width;
+          mouse.y = 1.0 - (e.clientY - rect.top) / rect.height;
+        });
+      }
+      
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * window.devicePixelRatio;
+        canvas.height = rect.height * window.devicePixelRatio;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      }
+      
+      resize();
+      window.addEventListener('resize', resize);
+      
+      function render(time) {
+        gl.uniform1f(timeLocation, time * 0.001);
+        gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+        if (mouseLocation) {
+          gl.uniform2f(mouseLocation, mouse.x, mouse.y);
+        }
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        requestAnimationFrame(render);
+      }
+      
+      requestAnimationFrame(render);
+    }
+
+    // Initialize all shaders
+    initShader('grainCanvas', grainFragment, false);
+    initShader('liquidCanvas', liquidFragment, true);
+    initShader('gradientCanvas', gradientFragment, false);
+    initShader('spotlightCanvas', spotlightFragment, true);
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+    </div>
+  </main>
+  <script src="design-system.js"></script>
+  <script src="./design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+    // Numbered pages menu toggle
+    const numberedPagesBtn = document.getElementById('numberedPagesBtn');
+    const numberedPagesMenu = document.getElementById('numberedPagesMenu');
+    if (numberedPagesBtn && numberedPagesMenu) {
+      numberedPagesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        numberedPagesMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!numberedPagesMenu.contains(e.target) && !numberedPagesBtn.contains(e.target)) {
+          numberedPagesMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

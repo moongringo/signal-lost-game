@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Lost — VHS Loading</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --green: #39ff14;
+    --purple: #b026ff;
+    --cyan: #00f0ff;
+    --red: #ff2a6d;
+    --dark: #0a0a0a;
+    --vhs-white: #e8e8e8;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: var(--dark);
+    overflow: hidden;
+    font-family: 'VT323', monospace;
+  }
+
+  /* ========================
+     CRT BASE + SCANLINES
+     ======================== */
+  .crt-screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, #1a1a1a 0%, #050505 100%);
+    overflow: hidden;
+  }
+
+  /* Subtle curved vignette */
+  .crt-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 30;
+  }
+
+  /* Scanlines */
+  .scanlines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 25;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.18) 0px,
+      rgba(0,0,0,0.18) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+
+  /* ========================
+     STATIC NOISE (CSS ONLY)
+     ======================== */
+  .noise-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 20;
+    opacity: 0.12;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+    animation: noiseShift 0.15s steps(4) infinite;
+  }
+
+  @keyframes noiseShift {
+    0%   { background-position: 0 0; }
+    25%  { background-position: 64px 32px; }
+    50%  { background-position: -32px 64px; }
+    75%  { background-position: 96px -16px; }
+    100% { background-position: 0 0; }
+  }
+
+  /* ========================
+     TRACKING LINES
+     ======================== */
+  .tracking-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(255,255,255,0.25);
+    pointer-events: none;
+    z-index: 22;
+    box-shadow: 0 0 4px rgba(255,255,255,0.3);
+  }
+
+  .tracking-line.t1 {
+    top: 25%;
+    animation: trackMove1 3.2s linear infinite;
+  }
+  .tracking-line.t2 {
+    top: 60%;
+    animation: trackMove2 4.5s linear infinite;
+    opacity: 0.6;
+  }
+  .tracking-line.t3 {
+    top: 80%;
+    animation: trackMove3 2.8s linear infinite;
+    opacity: 0.4;
+    height: 1px;
+  }
+
+  @keyframes trackMove1 {
+    0%   { transform: translateY(0); opacity: 0; }
+    10%  { opacity: 0.25; }
+    90%  { opacity: 0.25; }
+    100% { transform: translateY(120px); opacity: 0; }
+  }
+  @keyframes trackMove2 {
+    0%   { transform: translateY(0); opacity: 0; }
+    15%  { opacity: 0.2; }
+    85%  { opacity: 0.2; }
+    100% { transform: translateY(-90px); opacity: 0; }
+  }
+  @keyframes trackMove3 {
+    0%   { transform: translateY(0); opacity: 0; }
+    20%  { opacity: 0.15; }
+    80%  { opacity: 0.15; }
+    100% { transform: translateY(60px); opacity: 0; }
+  }
+
+  /* ========================
+     COLOR FRINGING (RGB SPLIT)
+     ======================== */
+  .fringe-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 18;
+    mix-blend-mode: screen;
+  }
+  .fringe-green {
+    background: rgba(57,255,20,0.04);
+    animation: fringeWobbleG 2.1s ease-in-out infinite alternate;
+  }
+  .fringe-purple {
+    background: rgba(176,38,255,0.04);
+    animation: fringeWobbleP 2.4s ease-in-out infinite alternate;
+  }
+
+  @keyframes fringeWobbleG {
+    0%   { transform: translateX(-2px) scaleX(1.002); }
+    100% { transform: translateX(2px) scaleX(0.998); }
+  }
+  @keyframes fringeWobbleP {
+    0%   { transform: translateX(2px) scaleX(1.002); }
+    100% { transform: translateX(-2px) scaleX(0.998); }
+  }
+
+  /* ========================
+     MAIN CONTENT AREA
+     ======================== */
+  .content {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  /* ========================
+     HUD: LOADING V8
+     ======================== */
+  .hud {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.1rem;
+    letter-spacing: 0.35em;
+    color: var(--vhs-white);
+    opacity: 0.55;
+    text-transform: uppercase;
+    z-index: 15;
+    text-shadow: 0 0 6px rgba(255,255,255,0.2);
+  }
+
+  /* ========================
+     SIGNAL LOST LOGO
+     ======================== */
+  .logo-wrap {
+    position: relative;
+    margin-bottom: 2.5rem;
+  }
+
+  .logo {
+    font-size: clamp(2.5rem, 8vw, 5.5rem);
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--vhs-white);
+    text-shadow:
+      2px 0 0 rgba(57,255,20,0.45),
+      -2px 0 0 rgba(176,38,255,0.45),
+      0 0 20px rgba(255,255,255,0.15);
+    animation: logoWobble 3s ease-in-out infinite;
+    position: relative;
+  }
+
+  /* Glitch bars on logo */
+  .logo::before,
+  .logo::after {
+    content: 'SIGNAL LOST';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    overflow: hidden;
+    clip-path: inset(0 0 0 0);
+  }
+  .logo::before {
+    color: var(--green);
+    animation: glitchBar1 2.5s infinite linear alternate-reverse;
+    opacity: 0.35;
+    transform: translateX(1px);
+  }
+  .logo::after {
+    color: var(--purple);
+    animation: glitchBar2 3s infinite linear alternate-reverse;
+    opacity: 0.35;
+    transform: translateX(-1px);
+  }
+
+  @keyframes logoWobble {
+    0%, 100% { transform: translateX(0) skewX(0deg); }
+    20% { transform: translateX(-1px) skewX(-0.3deg); }
+    40% { transform: translateX(1px) skewX(0.3deg); }
+    60% { transform: translateX(-0.5px) skewX(-0.15deg); }
+    80% { transform: translateX(0.5px) skewX(0.15deg); }
+  }
+
+  @keyframes glitchBar1 {
+    0%   { clip-path: inset(10% 0 75% 0); }
+    20%  { clip-path: inset(60% 0 15% 0); }
+    40%  { clip-path: inset(30% 0 50% 0); }
+    60%  { clip-path: inset(80% 0 5% 0); }
+    80%  { clip-path: inset(45% 0 35% 0); }
+    100% { clip-path: inset(15% 0 70% 0); }
+  }
+  @keyframes glitchBar2 {
+    0%   { clip-path: inset(70% 0 10% 0); }
+    20%  { clip-path: inset(20% 0 55% 0); }
+    40%  { clip-path: inset(50% 0 25% 0); }
+    60%  { clip-path: inset(5% 0 80% 0); }
+    80%  { clip-path: inset(35% 0 40% 0); }
+    100% { clip-path: inset(65% 0 15% 0); }
+  }
+
+  /* ========================
+     VHS COUNTER (Progress)
+     ======================== */
+  .vhs-counter {
+    font-size: clamp(1.6rem, 4vw, 2.6rem);
+    letter-spacing: 0.12em;
+    color: var(--vhs-white);
+    margin-bottom: 1rem;
+    font-variant-numeric: tabular-nums;
+    text-shadow:
+      1px 0 0 rgba(57,255,20,0.35),
+      -1px 0 0 rgba(176,38,255,0.35);
+    animation: counterFlicker 0.1s steps(2) infinite;
+  }
+
+  @keyframes counterFlicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.92; }
+  }
+
+  /* ========================
+     PROGRESS BAR (VHS STYLE)
+     ======================== */
+  .progress-wrap {
+    width: min(420px, 80vw);
+    height: 14px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.5);
+    position: relative;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg,
+      rgba(57,255,20,0.7) 0%,
+      rgba(0,240,255,0.6) 50%,
+      rgba(176,38,255,0.7) 100%
+    );
+    box-shadow:
+      0 0 8px rgba(57,255,20,0.4),
+      0 0 16px rgba(176,38,255,0.2);
+    transition: width 0.05s linear;
+    position: relative;
+  }
+
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--vhs-white);
+    box-shadow: 0 0 6px rgba(255,255,255,0.5);
+  }
+
+  /* ========================
+     CYCLING TIPS
+     ======================== */
+  .tip-area {
+    height: 2.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2.5rem;
+    position: relative;
+    overflow: hidden;
+    width: min(520px, 90vw);
+  }
+
+  .tip {
+    position: absolute;
+    font-size: 1.15rem;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.08em;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    text-shadow: 0 0 4px rgba(255,255,255,0.1);
+    width: 100%;
+    text-align: center;
+  }
+
+  .tip.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ========================
+     SKIP BUTTON
+     ======================== */
+  .skip-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.45);
+    font-family: 'VT323', monospace;
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 0.5rem 1.8rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .skip-btn:hover {
+    border-color: rgba(57,255,20,0.5);
+    color: var(--green);
+    text-shadow: 0 0 8px rgba(57,255,20,0.4);
+    box-shadow: 0 0 12px rgba(57,255,20,0.1);
+  }
+
+  .skip-btn:active {
+    transform: scale(0.97);
+  }
+
+  /* ========================
+     WOBBLING TEXT CLASS
+     ======================== */
+  .wobble {
+    display: inline-block;
+    animation: textWobble 2.8s ease-in-out infinite;
+  }
+
+  @keyframes textWobble {
+    0%, 100% { transform: translateY(0) skewX(0deg); }
+    25% { transform: translateY(-1.5px) skewX(0.2deg); }
+    50% { transform: translateY(1px) skewX(-0.2deg); }
+    75% { transform: translateY(-0.5px) skewX(0.1deg); }
+  }
+
+  /* ========================
+     VHS ARTIFACT FLASHES
+     ======================== */
+  .artifact-flash {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 24;
+    background: rgba(255,255,255,0.03);
+    opacity: 0;
+    animation: artifactFlash 4s infinite;
+  }
+
+  @keyframes artifactFlash {
+    0%, 90%, 100% { opacity: 0; }
+    91% { opacity: 1; }
+    92% { opacity: 0; }
+    95% { opacity: 0.6; }
+    96% { opacity: 0; }
+  }
+
+  /* Horizontal hold tear */
+  .tear-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(255,255,255,0.15);
+    pointer-events: none;
+    z-index: 23;
+    animation: tearMove 5s ease-in-out infinite;
+  }
+
+  @keyframes tearMove {
+    0%, 100% { top: 40%; opacity: 0; }
+    48% { opacity: 0; }
+    50% { opacity: 0.4; transform: translateX(8px); }
+    52% { opacity: 0; transform: translateX(-4px); }
+    54% { opacity: 0.2; transform: translateX(2px); }
+    56% { opacity: 0; }
+  }
+
+  /* ========================
+     CRT FLICKER / BLOOM
+     ======================== */
+  .crt-flicker {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 26;
+    background: rgba(255,255,255,0.015);
+    animation: crtFlicker 0.08s steps(2) infinite;
+  }
+
+  @keyframes crtFlicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  /* ========================
+     BOTTOM CORNER DECOR
+     ======================== */
+  .corner-deco {
+    position: absolute;
+    bottom: 14px;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 0.15em;
+    z-index: 15;
+  }
+  .corner-deco.left { left: 18px; }
+  .corner-deco.right { right: 18px; }
+
+  /* ========================
+     DONE STATE
+     ======================== */
+  .done .progress-fill {
+    background: linear-gradient(90deg,
+      rgba(57,255,20,0.9) 0%,
+      rgba(0,240,255,0.8) 50%,
+      rgba(176,38,255,0.9) 100%
+    );
+    box-shadow:
+      0 0 12px rgba(57,255,20,0.6),
+      0 0 24px rgba(176,38,255,0.3);
+  }
+
+  .done .vhs-counter {
+    color: var(--green);
+    text-shadow:
+      0 0 10px rgba(57,255,20,0.5),
+      1px 0 0 rgba(57,255,20,0.5),
+      -1px 0 0 rgba(176,38,255,0.5);
+  }
+
+</style>
+</head>
+<body>
+
+<div class="crt-screen" id="screen">
+  <!-- Overlays -->
+  <div class="noise-overlay"></div>
+  <div class="scanlines"></div>
+  <div class="crt-flicker"></div>
+  <div class="artifact-flash"></div>
+  <div class="fringe-layer fringe-green"></div>
+  <div class="fringe-layer fringe-purple"></div>
+
+  <!-- Tracking lines -->
+  <div class="tracking-line t1"></div>
+  <div class="tracking-line t2"></div>
+  <div class="tracking-line t3"></div>
+
+  <!-- Horizontal tear -->
+  <div class="tear-line"></div>
+
+  <!-- HUD -->
+  <div class="hud">Loading V8</div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <div class="logo-wrap">
+      <div class="logo">SIGNAL LOST</div>
+    </div>
+
+    <div class="vhs-counter" id="counter">00:00:00</div>
+
+    <div class="progress-wrap">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="tip-area" id="tipArea">
+      <div class="tip active">Adjust tracking for clearer signal...</div>
+      <div class="tip">Rewinding tape sector 7...</div>
+      <div class="tip">Head alignment in progress...</div>
+      <div class="tip">Degaussing magnetic interference...</div>
+      <div class="tip">Synchronizing vertical hold...</div>
+      <div class="tip">Signal degradation detected...</div>
+      <div class="tip">Calibrating chroma phase...</div>
+      <div class="tip">Tape speed: SP (Standard Play)</div>
+    </div>
+
+    <button class="skip-btn" id="skipBtn">Skip</button>
+  </div>
+
+  <!-- Corner decorations -->
+  <div class="corner-deco left">REC ●</div>
+  <div class="corner-deco right">SLP</div>
+</div>
+
+<script>
+  (function() {
+    const DURATION = 5000; // 5 seconds
+    const TIP_INTERVAL = 2200; // ms between tip cycles
+
+    const counterEl = document.getElementById('counter');
+    const progressFill = document.getElementById('progressFill');
+    const screen = document.getElementById('screen');
+    const skipBtn = document.getElementById('skipBtn');
+    const tips = document.querySelectorAll('.tip');
+
+    let progress = 0;
+    let startTime = null;
+    let animationId = null;
+    let tipIndex = 0;
+    let tipTimer = null;
+    let skipped = false;
+
+    function formatVHS(pct) {
+      // Map 0-100 to a VHS counter: HH:MM:SS (max 02:00:00)
+      const totalSeconds = Math.floor((pct / 100) * 7200);
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      return String(h).padStart(2,'0') + ':' +
+             String(m).padStart(2,'0') + ':' +
+             String(s).padStart(2,'0');
+    }
+
+    function update(ts) {
+      if (!startTime) startTime = ts;
+      const elapsed = ts - startTime;
+      progress = Math.min((elapsed / DURATION) * 100, 100);
+
+      counterEl.textContent = formatVHS(progress);
+      progressFill.style.width = progress + '%';
+
+      if (progress >= 100) {
+        finish();
+        return;
+      }
+      animationId = requestAnimationFrame(update);
+    }
+
+    function finish() {
+      cancelAnimationFrame(animationId);
+      clearInterval(tipTimer);
+      counterEl.textContent = '02:00:00';
+      progressFill.style.width = '100%';
+      screen.classList.add('done');
+      // Keep last tip visible
+      tips.forEach((t, i) => t.classList.toggle('active', i === tipIndex));
+    }
+
+    function cycleTips() {
+      tips[tipIndex].classList.remove('active');
+      tipIndex = (tipIndex + 1) % tips.length;
+      tips[tipIndex].classList.add('active');
+    }
+
+    function skip() {
+      if (skipped) return;
+      skipped = true;
+      finish();
+    }
+
+    skipBtn.addEventListener('click', skip);
+
+    // Start
+    animationId = requestAnimationFrame(update);
+    tipTimer = setInterval(cycleTips, TIP_INTERVAL);
+
+    // Random occasional glitch on counter
+    setInterval(() => {
+      if (progress >= 100) return;
+      if (Math.random() > 0.7) {
+        const original = counterEl.textContent;
+        counterEl.style.transform = 'translateX(' + (Math.random() > 0.5 ? 2 : -2) + 'px)';
+        counterEl.style.color = Math.random() > 0.5 ? 'var(--green)' : 'var(--purple)';
+        setTimeout(() => {
+          counterEl.style.transform = 'translateX(0)';
+          counterEl.style.color = '';
+        }, 80);
+      }
+    }, 400);
+
+  })();
+</script>
+
+</body>
+</html>

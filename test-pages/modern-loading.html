@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Signal Lost — Modern Tactical Loading</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0e0;font-family:'Courier New',monospace;overflow:hidden;height:100dvh;display:flex;align-items:center;justify-content:center}
+#screen{width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;background:radial-gradient(ellipse at 50% 0%,#0d1a10 0%,#0a0a0f 70%)}
+/* Background photo simulation */
+#bg-layer{position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden;z-index:0;opacity:0.15}
+#bg-layer .terrain{position:absolute;width:200%;height:200%;top:-50%;left:-50%;background:
+radial-gradient(ellipse at 30% 40%,#1a3a1a 0%,transparent 40%),
+radial-gradient(ellipse at 70% 60%,#0a1a0a 0%,transparent 30%),
+radial-gradient(ellipse at 50% 30%,#2a4a2a 0%,transparent 50%);
+filter:blur(20px);animation:bgDrift 20s ease-in-out infinite}
+@keyframes bgDrift{0%,100%{transform:translate(0,0)}50%{transform:translate(-5%,-3%)}}
+/* Scan line overlay */
+#scanlines{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,136,0.03) 2px,rgba(0,255,136,0.03) 4px)}
+/* Content */
+#content{position:relative;z-index:5;text-align:center;width:100%;max-width:400px;padding:0 20px}
+/* Phase indicator */
+#phase{font-size:9px;color:#446644;letter-spacing:3px;margin-bottom:20px;height:14px;transition:all 0.3s}
+/* Logo */
+.logo{font-size:26px;font-weight:bold;letter-spacing:6px;color:#00ff88;text-shadow:0 0 30px rgba(0,255,136,0.2);margin-bottom:8px;opacity:0;animation:logoFade 1s ease forwards}
+@keyframes logoFade{to{opacity:1}}
+.logo small{display:block;font-size:10px;color:#446644;letter-spacing:4px;margin-top:4px;font-weight:normal}
+/* Briefing text */
+#briefing{margin:24px 0;text-align:left;max-width:320px;margin-left:auto;margin-right:auto;min-height:100px}
+.brf-line{font-size:10px;color:#889988;margin-bottom:6px;opacity:0;line-height:1.6}
+.brf-line .label{color:#446644}
+.brf-line .value{color:#00ff88}
+.brf-line .blink{animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+/* Progress */
+.progress-container{width:280px;max-width:80vw;height:2px;background:#1a2a1a;border-radius:1px;overflow:hidden;margin-top:20px;position:relative}
+.progress-bar{height:100%;width:0%;background:linear-gradient(90deg,#00ff88,#00cc66);border-radius:1px;transition:width 0.3s;box-shadow:0 0 8px rgba(0,255,136,0.3)}
+#progress-text{font-size:9px;color:#556655;margin-top:8px;letter-spacing:1px}
+/* Tip */
+#tip-box{position:absolute;bottom:60px;z-index:5;max-width:300px;padding:0 20px;text-align:center}
+#tip-box .tip-label{font-size:7px;color:#334433;letter-spacing:2px;margin-bottom:4px}
+#tip-box .tip-text{font-size:9px;color:#556655;line-height:1.4;transition:opacity 0.3s}
+/* Skip */
+#skip-btn{position:absolute;bottom:20px;z-index:5;background:transparent;border:1px solid #1a2a1a;color:#334433;font-family:'Courier New',monospace;font-size:9px;padding:5px 16px;border-radius:2px;cursor:pointer;transition:all 0.3s;letter-spacing:1px}
+#skip-btn:hover{border-color:#00ff88;color:#00ff88}
+/* Pulse at end */
+#ready-flash{position:absolute;top:0;left:0;width:100%;height:100%;z-index:3;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,rgba(0,255,136,0.05),transparent 70%)}
+#ready-flash.active{animation:flash 0.5s ease forwards}
+@keyframes flash{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+</style>
+</head>
+<body>
+<div id="screen">
+<div id="bg-layer"><div class="terrain"></div></div>
+<div id="scanlines"></div>
+<div id="ready-flash"></div>
+<div id="content">
+<div id="phase">ESTABLISHING SECURE LINK</div>
+<div class="logo">SIGNAL LOST<small>TACTICAL SHADOW OPS</small></div>
+<div id="briefing"></div>
+<div class="progress-container"><div class="progress-bar" id="progress-bar"></div></div>
+<div id="progress-text">0%</div>
+</div>
+<div id="tip-box"><div class="tip-label">TACTICAL ADVISORY</div><div class="tip-text" id="tip-text">Use cover to break line-of-sight from enemy scouts.</div></div>
+<button id="skip-btn">SKIP >> </button>
+</div>
+<script>
+const tips=["Use cover to break line-of-sight from enemy scouts.","Extraction activates 90s after mission start.","Stick together — lone operatives are easy targets.","Radar pings reveal enemy positions for 3 seconds.","Save smoke grenades for open field crossings.","Objectives are marked on your tactical map.","Ammo crates respawn at capture points every 60s.","Watch your six — enemies flank wide.","Elevation gives you a tactical advantage.","Night vision helps in dark zones.","Enemy AI adapts to your tactics.","The best ambushes use natural terrain."];
+let tipIdx=Math.floor(Math.random()*tips.length);
+document.getElementById('tip-text').textContent=tips[tipIdx];
+setInterval(()=>{tipIdx=(tipIdx+1)%tips.length;const e=document.getElementById('tip-text');e.style.opacity=0;setTimeout(()=>{e.textContent=tips[tipIdx];e.style.opacity=1},300)},5000);
+
+const briefing=document.getElementById('briefing');
+const phaseEl=document.getElementById('phase');
+const pb=document.getElementById('progress-bar');
+const pt=document.getElementById('progress-text');
+const skip=document.getElementById('skip-btn');
+
+const phases=[
+{name:"CONNECTING",start:0,end:10,lines:[":",".","..","..."]},
+{name:"AUTHENTICATING...",start:10,end:25,lines:["OPERATOR ID: AGENT-07 [VERIFIED]","SIGNAL: STRONG (98%)","NETWORK: SECURE"]},
+{name:"MISSION BRIEFING",start:25,end:55,lines:["OP NAME: NIGHTFALL","LOCATION: SECTOR 7-B","THREAT LEVEL: ALPHA","OBJECTIVE: SECURE LZ","TEAM: 6 OPERATIVES","TIMELINE: T+00:45:00"]},
+{name:"LOADING ASSETS",start:55,end:85,lines:["TACTICAL MAP [OK]","WEAPON PROFILES [OK]","COMMS CHANNELS [OK]","GPS SYNC [OK]","AI THREAT MODELS [LOADING...]"]},
+{name:"FINALIZING",start:85,end:100,lines:["RUNNING SYSTEMS CHECK...","ALL SYSTEMS NOMINAL","MISSION READY"]}
+];
+
+let progress=0,phaseIdx=0,complete=false;
+let briefingHtml='';
+
+function buildBriefing(phase,subProgress){
+let html='';
+phase.lines.forEach((line,i)=>{
+const shown=i<=subProgress;
+if(shown){
+if(line.startsWith('OP')||line.startsWith('LOC')||line.startsWith('THR')||line.startsWith('OBJ')||line.startsWith('TEAM')||line.startsWith('TIM')||line.startsWith('OPE')){
+const [label,...rest]=line.split(': ');
+html+=`<div class="brf-line" style="opacity:1"><span class="label">${label}:</span> <span class="value">${rest.join(': ')}</span></div>`
+}else if(line===':'||line==='.'||line==='..'||line==='...'){
+html+=`<div class="brf-line" style="opacity:0.3;text-align:center">${line}</div>`
+}else if(line.endsWith('...]')){
+html+=`<div class="brf-line" style="opacity:1;color:#ffaa00">${line}</div>`
+}else{
+html+=`<div class="brf-line" style="opacity:1;color:#889988">${line}</div>`
+}
+}
+});
+if(subProgress<phase.lines.length-1){
+html+=`<div class="brf-line" style="opacity:0.5"><span class="blink">▌</span></div>`
+}
+return html;
+}
+
+function tick(){
+if(complete)return;
+progress+=0.5+Math.random()*0.8;
+if(progress>100){progress=100;complete=true}
+pb.style.width=progress+'%';
+pt.textContent=Math.floor(progress)+'%';
+
+// Find current phase
+let currentPhase=phases[0];
+for(let i=phases.length-1;i>=0;i--){if(progress>=phases[i].start){currentPhase=phases[i];phaseIdx=i;break}}
+phaseEl.textContent=currentPhase.name;
+const phaseProgress=Math.min(currentPhase.lines.length-1,Math.floor((progress-currentPhase.start)/(currentPhase.end-currentPhase.start)*currentPhase.lines.length));
+briefing.innerHTML=buildBriefing(currentPhase,phaseProgress);
+
+if(!complete){
+setTimeout(tick,60+Math.random()*80)
+}else{
+phaseEl.textContent='MISSION READY';
+pt.textContent='100%';
+skip.textContent='LAUNCH >> ';
+// Flash effect
+document.getElementById('ready-flash').classList.add('active');
+setTimeout(()=>document.getElementById('ready-flash').classList.remove('active'),600);
+// Briefing all complete
+let html='';
+phases.forEach(p=>{p.lines.forEach(l=>{
+if(l.startsWith('OP')||l.startsWith('LOC')||l.startsWith('THR')||l.startsWith('OBJ')||l.startsWith('TEAM')||l.startsWith('TIM')||l.startsWith('OPE')){
+const [label,...rest]=l.split(': ');
+html+=`<div class="brf-line" style="opacity:1"><span class="label">${label}:</span> <span class="value">${rest.join(': ')}</span></div>`
+}})});
+html+=`<div class="brf-line" style="opacity:1"><span class="label">STATUS:</span> <span class="value" style="color:#00ff88">ALL SYSTEMS GO</span></div>`;
+briefing.innerHTML=html;
+}
+}
+
+tick();
+
+skip.addEventListener('click',()=>{
+if(!complete){
+progress=100;complete=true;pb.style.width='100%';pt.textContent='100%';phaseEl.textContent='MISSION READY';skip.textContent='LAUNCH >> ';
+document.getElementById('ready-flash').classList.add('active');
+setTimeout(()=>document.getElementById('ready-flash').classList.remove('active'),600);
+}
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marker V1 — NATO Icons</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    color: #e0e0e0;
+    font-family: 'Courier New', Courier, monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* Grid background */
+  .grid-bg {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image:
+      linear-gradient(rgba(30,80,30,0.15) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30,80,30,0.15) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* HUD Header */
+  .hud-header {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 24px 16px 8px;
+    border-bottom: 1px solid #2a4a2a;
+    background: rgba(10,10,10,0.85);
+  }
+  .hud-header h1 {
+    font-size: 1.4rem;
+    letter-spacing: 4px;
+    color: #7ec87e;
+    text-shadow: 0 0 8px rgba(126,200,126,0.3);
+  }
+  .hud-header .sub {
+    font-size: 0.75rem;
+    color: #5a8a5a;
+    margin-top: 4px;
+    letter-spacing: 2px;
+  }
+  /* Gallery */
+  .gallery {
+    position: relative;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 24px;
+    padding: 32px 24px 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .card {
+    background: rgba(20,20,20,0.9);
+    border: 1px solid #2a4a2a;
+    border-radius: 4px;
+    padding: 16px 12px 12px;
+    text-align: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .card:hover {
+    border-color: #7ec87e;
+    box-shadow: 0 0 12px rgba(126,200,126,0.15);
+  }
+  .card canvas {
+    display: block;
+    margin: 0 auto 10px;
+    image-rendering: pixelated;
+  }
+  .card .label {
+    font-size: 0.8rem;
+    letter-spacing: 1.5px;
+    color: #a0c8a0;
+    text-transform: uppercase;
+  }
+  .card .sublabel {
+    font-size: 0.65rem;
+    color: #5a7a5a;
+    margin-top: 2px;
+    letter-spacing: 1px;
+  }
+  /* Footer */
+  .hud-footer {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 12px;
+    border-top: 1px solid #2a4a2a;
+    font-size: 0.65rem;
+    color: #4a6a4a;
+    letter-spacing: 2px;
+    background: rgba(10,10,10,0.85);
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<div class="hud-header">
+  <h1>MARKER V1 — NATO ICONS</h1>
+  <div class="sub">STANDARD MILITARY MAP SYMBOLS &nbsp;//&nbsp; TACTICAL REFERENCE</div>
+</div>
+
+<div class="gallery" id="gallery"></div>
+
+<div class="hud-footer">
+  NATO APP-6(D) COMPLIANT &nbsp;//&nbsp; DISPLAY ONLY
+</div>
+
+<script>
+(function() {
+  const gallery = document.getElementById('gallery');
+  const SIZE = 120; // canvas size
+  const PAD = 10;
+
+  const icons = [
+    { name: 'FRIENDLY',   sub: 'Unit — Blue',        color: '#4a9eff', draw: drawFriendly },
+    { name: 'HOSTILE',    sub: 'Unit — Red',         color: '#ff4a4a', draw: drawHostile },
+    { name: 'NEUTRAL',    sub: 'Unit — Green',       color: '#4aff4a', draw: drawNeutral },
+    { name: 'UNKNOWN',    sub: 'Unit — Yellow',      color: '#ffcc4a', draw: drawUnknown },
+    { name: 'INFANTRY',   sub: 'Combat — Foot',      color: '#4a9eff', draw: drawInfantry },
+    { name: 'VEHICLE',    sub: 'Combat — Wheeled',   color: '#4a9eff', draw: drawVehicle },
+    { name: 'HELICOPTER', sub: 'Aviation — Rotary',  color: '#4a9eff', draw: drawHelicopter },
+    { name: 'MEDIC',      sub: 'Medical — Aid',      color: '#ff4a4a', draw: drawMedic },
+    { name: 'AMMO',       sub: 'Supply — Munitions', color: '#ffcc4a', draw: drawAmmo },
+    { name: 'OBJECTIVE',  sub: 'Mission — Target',   color: '#ffcc4a', draw: drawObjective },
+  ];
+
+  function makeCanvas() {
+    const c = document.createElement('canvas');
+    c.width = SIZE;
+    c.height = SIZE;
+    return c;
+  }
+
+  function clear(ctx, color) {
+    ctx.clearRect(0, 0, SIZE, SIZE);
+    // subtle frame
+    ctx.strokeStyle = 'rgba(126,200,126,0.08)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(PAD, PAD, SIZE - PAD*2, SIZE - PAD*2);
+  }
+
+  // ---- Draw helpers ----
+  function drawFriendly(ctx, color) {
+    clear(ctx, color);
+    const cx = SIZE/2, cy = SIZE/2, r = 32;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.stroke();
+    // cross
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r + 4);
+    ctx.lineTo(cx, cy + r - 4);
+    ctx.moveTo(cx - r + 4, cy);
+    ctx.lineTo(cx + r - 4, cy);
+    ctx.stroke();
+  }
+
+  function drawHostile(ctx, color) {
+    clear(ctx, color);
+    const cx = SIZE/2, cy = SIZE/2, s = 40;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    // diamond
+    ctx.moveTo(cx, cy - s);
+    ctx.lineTo(cx + s, cy);
+    ctx.lineTo(cx, cy + s);
+    ctx.lineTo(cx - s, cy);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  function drawNeutral(ctx, color) {
+    clear(ctx, color);
+    const cx = SIZE/2, cy = SIZE/2, s = 32;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(cx - s, cy - s, s*2, s*2);
+  }
+
+  function drawUnknown(ctx, color) {
+    clear(ctx, color);
+    const cx = SIZE/2, cy = SIZE/2, r = 34;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.stroke();
+    // question mark
+    ctx.fillStyle = color;
+    ctx.font = 'bold 32px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('?', cx, cy + 1);
+  }
+
+  function drawInfantry(ctx, color) {
+    clear(ctx, color);
+    const cx = SIZE/2, cy = SIZE/2, r = 32;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.stroke();
+    // diagonal cross
+    const d = r - 5;
+    ctx.beginPath();
+    ctx.moveTo(cx - d, cy - d);
+    ctx.lineTo(cx + d, cy + d);
+    ctx.moveTo(cx + d, cy - d);
+    ctx.lineTo(cx - d, cy + d);
+    ctx.stroke();
+  }
+
+  function drawVehicle(ctx, color) {
+    clear(ctx, color);
+    const cx = SIZE/2, cy = SIZE/2, s = 30;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(cx - s, cy - s, s*2, s*2);
+    // diagonal cross
+    const d = s - 4;
+    ctx.beginPath();
+    ctx.moveTo(cx - d, cy - d);
+    ctx.lineTo(cx + d, cy + d);
+    ctx.moveTo(cx + d, cy - d);
+    ctx.lineTo(cx - d, cy + d);
+    ctx.stroke();
+  }
+
+  function drawHelicopter(ctx, color) {
+    clear(ctx, color);
+    const cx = SIZE/2, cy = SIZE/2, r = 32;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.stroke();
+    // H
+    ctx.fillStyle = color;
+    ctx.font = 'bold 28px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('H', cx, cy + 1);
+  }
+
+  function drawMedic(ctx, color) {
+    clear(ctx, color);
+    const cx = SIZE/2, cy = SIZE/2, r = 32;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.stroke();
+    // cross
+    const arm = 12, th = 5;
+    ctx.fillStyle = color;
+    ctx.fillRect(cx - th/2, cy - arm, th, arm*2);
+    ctx.fillRect(cx - arm, cy - th/2, arm*2, th);
+  }
+
+  function drawAmmo(ctx, color) {
+    clear(ctx, color);
+    const cx = SIZE/2, cy = SIZE/2 + 4, s = 34;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - s);
+    ctx.lineTo(cx + s, cy + s*0.6);
+    ctx.lineTo(cx - s, cy + s*0.6);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  function drawObjective(ctx, color) {
+    clear(ctx, color);
+    const cx = SIZE/2, cy = SIZE/2 + 2, outer = 36, inner = 14, points = 5;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i < points * 2; i++) {
+      const angle = (Math.PI / points) * i - Math.PI / 2;
+      const radius = i % 2 === 0 ? outer : inner;
+      const x = cx + Math.cos(angle) * radius;
+      const y = cy + Math.sin(angle) * radius;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // ---- Build gallery ----
+  icons.forEach(icon => {
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const c = makeCanvas();
+    const ctx = c.getContext('2d');
+    icon.draw(ctx, icon.color);
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = icon.name;
+
+    const sub = document.createElement('div');
+    sub.className = 'sublabel';
+    sub.textContent = icon.sub;
+
+    card.appendChild(c);
+    card.appendChild(label);
+    card.appendChild(sub);
+    gallery.appendChild(card);
+  });
+})();
+</script>
+</body>
+</html>

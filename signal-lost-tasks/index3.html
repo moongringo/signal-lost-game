@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signal Lost</title>
+  <style>
+    /* ─── RESET ─── */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #050508;
+      --bg-elevated: #0a0a10;
+      --bg-card: #0f0f16;
+      --text: #e8e8e8;
+      --text-dim: #888;
+      --text-muted: #444;
+      --accent: #ffd965;
+      --accent-dim: rgba(255, 217, 101, 0.15);
+      --accent-glow: rgba(255, 217, 101, 0.3);
+      --border: rgba(255, 255, 255, 0.06);
+      --border-hover: rgba(255, 255, 255, 0.15);
+      --danger: #ff4444;
+      --success: #33ff88;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* ─── CUSTOM CURSOR ─── */
+    .cursor {
+      position: fixed;
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      mix-blend-mode: difference;
+      transition: transform 0.15s ease;
+    }
+
+    .cursor.hover {
+      transform: scale(3);
+      opacity: 0.5;
+    }
+
+    .cursor-ring {
+      position: fixed;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--accent);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .cursor-ring.hover {
+      width: 60px;
+      height: 60px;
+      border-color: rgba(255, 217, 101, 0.5);
+    }
+
+    @media (pointer: coarse) {
+      .cursor, .cursor-ring { display: none; }
+      body { cursor: auto; }
+    }
+
+    /* ─── NAVIGATION ─── */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 20px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.4s ease;
+    }
+
+    .nav.scrolled {
+      background: rgba(5, 5, 8, 0.9);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 15px 40px;
+    }
+
+    .nav-logo {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-logo span {
+      color: var(--accent);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 30px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.3s;
+      position: relative;
+    }
+
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .nav-links a:hover::after {
+      width: 100%;
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      padding: 0 40px;
+      overflow: hidden;
+    }
+
+    #particleCanvas {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.6;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      max-width: 900px;
+    }
+
+    .hero-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 30px;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .hero-label.visible {
+      animation: fadeUp 0.8s ease forwards;
+    }
+
+    .hero-title {
+      font-size: clamp(3rem, 10vw, 8rem);
+      font-weight: 900;
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      margin-bottom: 30px;
+    }
+
+    .hero-title .word {
+      display: inline-block;
+      overflow: hidden;
+    }
+
+    .hero-title .word span {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(100%);
+    }
+
+    .hero-title.visible .word span {
+      animation: slideUp 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .hero-title .word:nth-child(2) span {
+      animation-delay: 0.15s;
+      color: var(--accent);
+    }
+
+    @keyframes slideUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .hero-desc {
+      font-size: 17px;
+      color: var(--text-dim);
+      max-width: 500px;
+      margin: 0 auto 50px;
+      line-height: 1.7;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .hero-desc.visible {
+      animation: fadeUp 0.8s ease 0.6s forwards;
+    }
+
+    @keyframes fadeUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Magnetic CTA */
+    .magnetic-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 40px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      cursor: none;
+      transition: border-color 0.4s, background 0.4s;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .magnetic-btn.visible {
+      animation: fadeUp 0.8s ease 0.9s forwards;
+    }
+
+    .magnetic-btn:hover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .magnetic-btn .arrow {
+      width: 20px;
+      height: 1px;
+      background: var(--accent);
+      position: relative;
+      transition: width 0.3s ease;
+    }
+
+    .magnetic-btn .arrow::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: -3px;
+      width: 8px;
+      height: 8px;
+      border-right: 1px solid var(--accent);
+      border-top: 1px solid var(--accent);
+      transform: rotate(45deg);
+    }
+
+    .magnetic-btn:hover .arrow {
+      width: 30px;
+    }
+
+    .scroll-hint {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 1.5s forwards;
+    }
+
+    .scroll-hint span {
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .scroll-hint .line {
+      width: 1px;
+      height: 40px;
+      background: linear-gradient(to bottom, var(--accent), transparent);
+      animation: linePulse 2s ease infinite;
+    }
+
+    @keyframes linePulse {
+      0%, 100% { opacity: 0.3; transform: scaleY(1); }
+      50% { opacity: 1; transform: scaleY(1.2); }
+    }
+
+    /* ─── STATS STRIP ─── */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat-item {
+      padding: 50px 30px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+      transition: background 0.4s;
+    }
+
+    .stat-item:last-child {
+      border-right: none;
+    }
+
+    .stat-item:hover {
+      background: var(--bg-elevated);
+    }
+
+    .stat-item .number {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+      transition: color 0.3s;
+    }
+
+    .stat-item:hover .number {
+      color: var(--accent);
+    }
+
+    .stat-item .label {
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    @media (max-width: 768px) {
+      .stats-strip {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .stat-item:nth-child(2) {
+        border-right: none;
+      }
+      .stat-item:nth-child(1),
+      .stat-item:nth-child(2) {
+        border-bottom: 1px solid var(--border);
+      }
+    }
+
+    /* ─── FEATURES (Asymmetric Grid) ─── */
+    .features {
+      padding: 150px 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      margin-bottom: 80px;
+    }
+
+    .section-header .eyebrow {
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    .section-header h2 {
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      max-width: 600px;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .feature-cell {
+      background: var(--bg);
+      padding: 50px;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.4s;
+    }
+
+    .feature-cell:hover {
+      background: var(--bg-card);
+    }
+
+    .feature-cell .icon {
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 25px;
+      transition: border-color 0.3s, color 0.3s;
+    }
+
+    .feature-cell:hover .icon {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .feature-cell h3 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 12px;
+    }
+
+    .feature-cell p {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+
+    .feature-cell .index {
+      position: absolute;
+      top: 20px;
+      right: 25px;
+      font-size: 80px;
+      font-weight: 900;
+      color: rgba(255, 255, 255, 0.02);
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    @media (max-width: 768px) {
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ─── HORIZONTAL SCROLL MISSIONS ─── */
+    .missions-section {
+      height: 300vh;
+      position: relative;
+    }
+
+    .missions-sticky {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      background: var(--bg-elevated);
+    }
+
+    .missions-header {
+      position: absolute;
+      top: 60px;
+      left: 60px;
+      z-index: 2;
+    }
+
+    .missions-header .eyebrow {
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 15px;
+    }
+
+    .missions-header h2 {
+      font-size: clamp(1.5rem, 3vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .missions-track {
+      display: flex;
+      gap: 30px;
+      padding: 0 60px;
+      will-change: transform;
+    }
+
+    .mission-card {
+      min-width: 380px;
+      max-width: 380px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 40px;
+      position: relative;
+      transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+      cursor: none;
+    }
+
+    .mission-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-8px);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .mission-card .tag {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      display: inline-block;
+      margin-bottom: 20px;
+      color: var(--text-dim);
+    }
+
+    .mission-card:hover .tag {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .mission-card h3 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      margin-bottom: 15px;
+    }
+
+    .mission-card p {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      margin-bottom: 25px;
+    }
+
+    .mission-card .meta {
+      display: flex;
+      gap: 20px;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .mission-card .meta .difficulty {
+      color: var(--danger);
+    }
+
+    .mission-card .index {
+      position: absolute;
+      bottom: 20px;
+      right: 25px;
+      font-size: 60px;
+      font-weight: 900;
+      color: rgba(255, 255, 255, 0.03);
+      line-height: 1;
+    }
+
+    /* ─── CTA SECTION ─── */
+    .cta-section {
+      padding: 200px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 50%, var(--accent-dim) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .cta-content {
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .cta-content h2 {
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      margin-bottom: 30px;
+    }
+
+    .cta-content h2 span {
+      color: var(--accent);
+    }
+
+    .cta-content p {
+      font-size: 17px;
+      color: var(--text-dim);
+      margin-bottom: 50px;
+      line-height: 1.7;
+    }
+
+    /* ─── FOOTER ─── */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 60px 40px;
+    }
+
+    .footer-grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
+    }
+
+    .footer-brand {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 15px;
+    }
+
+    .footer-brand span {
+      color: var(--accent);
+    }
+
+    .footer-desc {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      max-width: 300px;
+    }
+
+    .footer-col h4 {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    .footer-col ul {
+      list-style: none;
+    }
+
+    .footer-col li {
+      margin-bottom: 10px;
+    }
+
+    .footer-col a {
+      font-size: 13px;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .footer-col a:hover {
+      color: var(--text);
+    }
+
+    .footer-bottom {
+      max-width: 1200px;
+      margin: 60px auto 0;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+
+    @media (max-width: 768px) {
+      .footer-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .footer-bottom {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+    }
+
+    /* ─── REVEAL ANIMATIONS ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Stagger children */
+    .reveal-stagger > * {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .reveal-stagger.visible > *:nth-child(1) { transition-delay: 0s; }
+    .reveal-stagger.visible > *:nth-child(2) { transition-delay: 0.1s; }
+    .reveal-stagger.visible > *:nth-child(3) { transition-delay: 0.2s; }
+    .reveal-stagger.visible > *:nth-child(4) { transition-delay: 0.3s; }
+
+    .reveal-stagger.visible > * {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+  <link rel="stylesheet" href="design-system-subdir.css" />
+
+</head>
+<body>
+
+  <!-- Custom Cursor -->
+  <div class="cursor" id="cursor"></div>
+  <div class="cursor-ring" id="cursorRing"></div>
+
+  <!-- Navigation -->
+  <nav class="nav" id="nav">
+    <a href="#" class="nav-logo">Signal<span>Lost</span></a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#missions">Missions</a></li>
+      <li><a href="#cta">Play</a></li>
+    </ul>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <canvas id="particleCanvas"></canvas>
+    
+    <div class="hero-content">
+      <div class="hero-label" id="heroLabel">Tactical Combat Simulation</div>
+      
+      <h1 class="hero-title" id="heroTitle">
+        <div class="word"><span>Signal</span></div>
+        <div class="word"><span>Lost</span></div>
+      </h1>
+      
+      <p class="hero-desc" id="heroDesc">
+        A high-fidelity tactical shooter built for operators who demand precision, strategy, and raw intensity.
+      </p>
+      
+      <a href="action-center-radar.html" class="magnetic-btn" id="heroBtn" data-magnetic>
+        <span>Enter Combat</span>
+        <div class="arrow"></div>
+      </a>
+    </div>
+    
+    <div class="scroll-hint">
+      <span>Scroll</span>
+      <div class="line"></div>
+    </div>
+  </section>
+
+  <!-- Stats Strip -->
+  <section class="stats-strip reveal-stagger" id="stats">
+    <div class="stat-item">
+      <div class="number">2,847</div>
+      <div class="label">Active Operators</div>
+    </div>
+    <div class="stat-item">
+      <div class="number">12</div>
+      <div class="label">Combat Zones</div>
+    </div>
+    <div class="stat-item">
+      <div class="number">66</div>
+      <div class="label">System Nodes</div>
+    </div>
+    <div class="stat-item">
+      <div class="number">94%</div>
+      <div class="label">Engagement Rate</div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <div class="section-header reveal">
+      <div class="eyebrow">Capabilities</div>
+      <h2>Built for operators. <br>Designed for dominance.</h2>
+    </div>
+    
+    <div class="feature-grid reveal-stagger">
+      <div class="feature-cell">
+        <div class="index">01</div>
+        <div class="icon">◈</div>
+        <h3>Realistic Ballistics</h3>
+        <p>Every weapon behaves like its real-world counterpart. Bullet drop, penetration, ricochet — all simulated with precision.</p>
+      </div>
+      
+      <div class="feature-cell">
+        <div class="index">02</div>
+        <div class="icon">◉</div>
+        <h3>Dynamic Radar</h3>
+        <p>Live tactical map with real-time blip tracking, threat assessment, and range calculations across all combat zones.</p>
+      </div>
+      
+      <div class="feature-cell">
+        <div class="index">03</div>
+        <div class="icon">◆</div>
+        <h3>Squad-Based Tactics</h3>
+        <p>Form fireteams, assign roles, coordinate via encrypted comms. Every operator has a purpose. Every death matters.</p>
+      </div>
+      
+      <div class="feature-cell">
+        <div class="index">04</div>
+        <div class="icon">▣</div>
+        <h3>Immersive HUD</h3>
+        <p>Minimal, information-dense interface inspired by real military systems. No clutter. Only what you need, when you need it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Horizontal Scroll Missions -->
+  <section class="missions-section" id="missions">
+    <div class="missions-sticky">
+      <div class="missions-header">
+        <div class="eyebrow">Operations</div>
+        <h2>Mission Select</h2>
+      </div>
+      
+      <div class="missions-track" id="missionsTrack">
+        <div class="mission-card">
+          <div class="index">01</div>
+          <div class="tag">Urban</div>
+          <h3>Urban Infiltration</h3>
+          <p>Night assault on enemy-occupied industrial complex. Stealth approach recommended. Multiple entry points confirmed.</p>
+          <div class="meta">
+            <span class="difficulty">Extreme</span>
+            <span>4-6 Players</span>
+            <span>45 Min</span>
+          </div>
+        </div>
+        
+        <div class="mission-card">
+          <div class="index">02</div>
+          <div class="tag">Hardcore</div>
+          <h3>Radio Silence</h3>
+          <p>No HUD. No map markers. No respawn. Authentic Vietnam-era equipment only. Squad comms only. Pure skill.</p>
+          <div class="meta">
+            <span class="difficulty">Hardcore</span>
+            <span>2-4 Players</span>
+            <span>60 Min</span>
+          </div>
+        </div>
+        
+        <div class="mission-card">
+          <div class="index">03</div>
+          <div class="tag">Defense</div>
+          <h3>Firebase Defense</h3>
+          <p>Hold the line. Wave-based defense of forward operating base. Artillery support available. Mines encouraged.</p>
+          <div class="meta">
+            <span style="color: var(--accent);">Moderate</span>
+            <span>8 Players</span>
+            <span>30 Min</span>
+          </div>
+        </div>
+        
+        <div class="mission-card">
+          <div class="index">04</div>
+          <div class="tag">Search</div>
+          <h3>Search & Destroy</h3>
+          <p>Locate and neutralize enemy weapons cache. Intelligence suggests underground bunker network. Bring explosives.</p>
+          <div class="meta">
+            <span style="color: var(--accent);">Moderate</span>
+            <span>4 Players</span>
+            <span>35 Min</span>
+          </div>
+        </div>
+        
+        <div class="mission-card">
+          <div class="index">05</div>
+          <div class="tag">Extraction</div>
+          <h3>Downed Pilot</h3>
+          <p>Rescue pilot behind enemy lines. Fast movers inbound. Time-sensitive. Helicopter insertion at dawn.</p>
+          <div class="meta">
+            <span class="difficulty">Extreme</span>
+            <span>6 Players</span>
+            <span>40 Min</span>
+          </div>
+        </div>
+        
+        <div class="mission-card">
+          <div class="index">06</div>
+          <div class="tag">CQB</div>
+          <h3>Tunnel Rat</h3>
+          <p>Underground tunnel clearance. NVG required. Close-quarters combat. Traps and ambushes likely. Not for the faint.</p>
+          <div class="meta">
+            <span class="difficulty">Hardcore</span>
+            <span>2 Players</span>
+            <span>50 Min</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section" id="cta">
+    <div class="cta-content reveal">
+      <h2>Ready to <span>deploy?</span></h2>
+      <p>Join 2,847 active operators across 12 combat zones. Your squad is waiting.</p>
+      <a href="action-center-radar.html" class="magnetic-btn" data-magnetic>
+        <span>Launch Operation</span>
+        <div class="arrow"></div>
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">Signal<span>Lost</span></div>
+        <p class="footer-desc">Tactical combat simulation built with precision. Inspired by real military systems, designed for competitive play.</p>
+      </div>
+      
+      <div class="footer-col">
+        <h4>Game</h4>
+        <ul>
+          <li><a href="matchmaking.html">Matchmaking</a></li>
+          <li><a href="player-profile.html">Profile</a></li>
+          <li><a href="leaderboard.html">Leaderboard</a></li>
+          <li><a href="career-stats.html">Stats</a></li>
+        </ul>
+      </div>
+      
+      <div class="footer-col">
+        <h4>Systems</h4>
+        <ul>
+          <li><a href="system-map.html">System Map</a></li>
+          <li><a href="index-1960s.html">1960s Theme</a></li>
+          <li><a href="index2-1960s.html">Index 2</a></li>
+          <li><a href="action-center-radar.html">Radar</a></li>
+        </ul>
+      </div>
+      
+      <div class="footer-col">
+        <h4>Connect</h4>
+        <ul>
+          <li><a href="squad.html">Squad</a></li>
+          <li><a href="friends.html">Friends</a></li>
+          <li><a href="clan-wars.html">Clan Wars</a></li>
+          <li><a href="chat-system.html">Comms</a></li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="footer-bottom">
+      <span>Signal Lost v2.1.4</span>
+      <span>NATO-7 Command // 2026</span>
+    </div>
+  </footer>
+
+  <script>
+    // ─── CUSTOM CURSOR ───
+    const cursor = document.getElementById('cursor');
+    const cursorRing = document.getElementById('cursorRing');
+    let mouseX = 0, mouseY = 0;
+    let ringX = 0, ringY = 0;
+
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      cursor.style.left = mouseX - 4 + 'px';
+      cursor.style.top = mouseY - 4 + 'px';
+    });
+
+    function animateRing() {
+      ringX += (mouseX - ringX) * 0.15;
+      ringY += (mouseY - ringY) * 0.15;
+      cursorRing.style.left = ringX - 20 + 'px';
+      cursorRing.style.top = ringY - 20 + 'px';
+      requestAnimationFrame(animateRing);
+    }
+    animateRing();
+
+    // Cursor hover states
+    document.querySelectorAll('a, button, .mission-card, .feature-cell, .stat-item').forEach(el => {
+      el.addEventListener('mouseenter', () => {
+        cursor.classList.add('hover');
+        cursorRing.classList.add('hover');
+      });
+      el.addEventListener('mouseleave', () => {
+        cursor.classList.remove('hover');
+        cursorRing.classList.remove('hover');
+      });
+    });
+
+    // ─── MAGNETIC BUTTONS ───
+    document.querySelectorAll('[data-magnetic]').forEach(btn => {
+      btn.addEventListener('mousemove', (e) => {
+        const rect = btn.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        btn.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.transform = 'translate(0, 0)';
+      });
+    });
+
+    // ─── PARTICLE CANVAS ───
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const particles = [];
+    const PARTICLE_COUNT = 80;
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: (Math.random() - 0.5) * 0.2,
+        size: Math.random() * 1.5 + 0.5,
+        opacity: Math.random() * 0.3 + 0.1
+      });
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, width, height);
+
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0 || p.x > width) p.vx *= -1;
+        if (p.y < 0 || p.y > height) p.vy *= -1;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 217, 101, ${p.opacity})`;
+        ctx.fill();
+      });
+
+      // Connect nearby particles
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 120) {
+            const opacity = (1 - dist / 120) * 0.08;
+            ctx.strokeStyle = `rgba(255, 217, 101, ${opacity})`;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    // ─── NAV SCROLL EFFECT ───
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 50) {
+        nav.classList.add('scrolled');
+      } else {
+        nav.classList.remove('scrolled');
+      }
+    });
+
+    // ─── HERO ANIMATIONS ───
+    setTimeout(() => {
+      document.getElementById('heroLabel').classList.add('visible');
+      document.getElementById('heroTitle').classList.add('visible');
+      document.getElementById('heroDesc').classList.add('visible');
+      document.getElementById('heroBtn').classList.add('visible');
+    }, 300);
+
+    // ─── SCROLL REVEAL ───
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.reveal, .reveal-stagger').forEach(el => {
+      revealObserver.observe(el);
+    });
+
+    // ─── HORIZONTAL SCROLL MISSIONS ───
+    const missionsSection = document.getElementById('missions');
+    const missionsTrack = document.getElementById('missionsTrack');
+
+    window.addEventListener('scroll', () => {
+      const rect = missionsSection.getBoundingClientRect();
+      const sectionTop = rect.top;
+      const sectionHeight = missionsSection.offsetHeight - window.innerHeight;
+
+      if (sectionTop <= 0 && sectionTop >= -sectionHeight) {
+        const progress = Math.abs(sectionTop) / sectionHeight;
+        const trackWidth = missionsTrack.scrollWidth - window.innerWidth + 120;
+        missionsTrack.style.transform = `translateX(-${progress * trackWidth}px)`;
+      }
+    });
+
+    // ─── PARALLAX ON MOUSE MOVE FOR HERO ───
+    document.addEventListener('mousemove', (e) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 20;
+      const y = (e.clientY / window.innerHeight - 0.5) * 20;
+
+      canvas.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+    });
+  </script>
+</body>
+</html>

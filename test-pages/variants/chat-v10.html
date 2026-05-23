@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CHAT V10 — Hologram 3D</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #0ff;
+    }
+    #canvas-container {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 1;
+    }
+    canvas { display: block; }
+
+    /* HUD */
+    .hud {
+      position: fixed;
+      top: 18px; left: 24px;
+      z-index: 10;
+      pointer-events: none;
+      user-select: none;
+    }
+    .hud-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: #0ff;
+      text-shadow:
+        0 0 6px #0ff,
+        0 0 14px #0ff,
+        0 0 28px #0ff;
+    }
+    .hud-line {
+      width: 140px; height: 2px;
+      background: #0ff;
+      margin-top: 6px;
+      box-shadow: 0 0 8px #0ff;
+    }
+    .hud-sub {
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: #0aa;
+      margin-top: 6px;
+      text-shadow: 0 0 4px #0aa;
+    }
+
+    /* 2D Input overlay */
+    .input-overlay {
+      position: fixed;
+      bottom: 0; left: 0;
+      width: 100%;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 16px 20px 22px;
+      background: linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.0));
+      pointer-events: auto;
+    }
+    .input-overlay input {
+      flex: 1;
+      max-width: 640px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #0ff;
+      background: rgba(0, 255, 255, 0.06);
+      border: 1px solid rgba(0, 255, 255, 0.35);
+      border-radius: 6px;
+      outline: none;
+      backdrop-filter: blur(6px);
+      caret-color: #0ff;
+      text-shadow: 0 0 4px #0ff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-overlay input::placeholder { color: #088; }
+    .input-overlay input:focus {
+      border-color: #0ff;
+      box-shadow: 0 0 12px rgba(0, 255, 255, 0.35);
+    }
+    .input-overlay button {
+      padding: 12px 22px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #000;
+      background: #0ff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      text-shadow: none;
+      box-shadow: 0 0 14px rgba(0, 255, 255, 0.5);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .input-overlay button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 22px rgba(0, 255, 255, 0.7);
+    }
+    .input-overlay button:active { transform: translateY(0); }
+
+    /* Scanline overlay */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          rgba(0, 255, 255, 0.03) 0px,
+          rgba(0, 255, 255, 0.03) 1px,
+          transparent 1px,
+          transparent 3px
+        );
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <div class="hud">
+    <div class="hud-title">CHAT V10</div>
+    <div class="hud-line"></div>
+    <div class="hud-sub">HOLOGRAM LINK // ONLINE</div>
+  </div>
+
+  <div class="scanlines"></div>
+
+  <div class="input-overlay">
+    <input id="msgInput" type="text" placeholder="Transmit message..." autocomplete="off" />
+    <button id="sendBtn">SEND</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ── Scene setup ──
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.018);
+
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 300);
+    camera.position.set(0, 4, 14);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ReinhardToneMapping;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.4;
+    controls.enablePan = false;
+    controls.minDistance = 6;
+    controls.maxDistance = 28;
+    controls.target.set(0, 1, 0);
+
+    // ── Lights ──
+    const ambient = new THREE.AmbientLight(0x001111, 0.6);
+    scene.add(ambient);
+
+    const point1 = new THREE.PointLight(0x00ffff, 1.2, 60);
+    point1.position.set(8, 10, 8);
+    scene.add(point1);
+
+    const point2 = new THREE.PointLight(0xff00aa, 0.8, 60);
+    point2.position.set(-8, -4, -6);
+    scene.add(point2);
+
+    const point3 = new THREE.PointLight(0x00ffaa, 0.6, 50);
+    point3.position.set(0, 12, -10);
+    scene.add(point3);
+
+    // ── Floating particles ──
+    const particleCount = 1800;
+    const pGeo = new THREE.BufferGeometry();
+    const pPos = new Float32Array(particleCount * 3);
+    const pVel = [];
+    for (let i = 0; i < particleCount; i++) {
+      pPos[i*3]   = (Math.random() - 0.5) * 60;
+      pPos[i*3+1] = (Math.random() - 0.5) * 40;
+      pPos[i*3+2] = (Math.random() - 0.5) * 60;
+      pVel.push({
+        x: (Math.random() - 0.5) * 0.008,
+        y: (Math.random() - 0.5) * 0.008,
+        z: (Math.random() - 0.5) * 0.008
+      });
+    }
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    const pMat = new THREE.PointsMaterial({
+      color: 0x00ffff,
+      size: 0.08,
+      transparent: true,
+      opacity: 0.55,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const particles = new THREE.Points(pGeo, pMat);
+    scene.add(particles);
+
+    // ── Helpers ──
+    function createTextCanvas(text, opts = {}) {
+      const fontSize = opts.fontSize || 28;
+      const font = opts.font || `600 ${fontSize}px "Segoe UI", sans-serif`;
+      const pad = opts.pad || 20;
+      const lineHeight = fontSize * 1.35;
+      const maxWidth = opts.maxWidth || 380;
+
+      const tmp = document.createElement('canvas');
+      const tctx = tmp.getContext('2d');
+      tctx.font = font;
+
+      const words = text.split(' ');
+      const lines = [];
+      let line = '';
+      for (let w = 0; w < words.length; w++) {
+        const test = line + words[w] + ' ';
+        if (tctx.measureText(test).width > maxWidth && line !== '') {
+          lines.push(line.trim());
+          line = words[w] + ' ';
+        } else {
+          line = test;
+        }
+      }
+      lines.push(line.trim());
+
+      const W = maxWidth + pad * 2;
+      const H = lines.length * lineHeight + pad * 2;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext('2d');
+
+      // Panel background
+      ctx.fillStyle = 'rgba(0, 20, 30, 0.55)';
+      roundRect(ctx, 0, 0, W, H, 10);
+      ctx.fill();
+
+      // Border glow
+      ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+      ctx.lineWidth = 2;
+      roundRect(ctx, 1, 1, W-2, H-2, 10);
+      ctx.stroke();
+
+      // Inner accent line
+      ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
+      ctx.lineWidth = 1;
+      roundRect(ctx, 6, 6, W-12, H-12, 6);
+      ctx.stroke();
+
+      // Text
+      ctx.font = font;
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#e0ffff';
+      ctx.shadowColor = '#0ff';
+      ctx.shadowBlur = 10;
+      for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], pad, pad + i * lineHeight);
+      }
+      ctx.shadowBlur = 0;
+
+      return { canvas, W, H };
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    // ── Message system ──
+    const messages = [];
+    const messageGroup = new THREE.Group();
+    scene.add(messageGroup);
+
+    function spawnMessage(text, isUser = true) {
+      const color = isUser ? '#00ffff' : '#ff00aa';
+      const { canvas, W, H } = createTextCanvas(text, {
+        fontSize: 26,
+        maxWidth: 360,
+        pad: 18
+      });
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+
+      const geo = new THREE.PlaneGeometry(W / 45, H / 45);
+      const mat = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+
+      // Position in a cloud around center
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 2 + Math.random() * 5;
+      const yOff = (Math.random() - 0.5) * 6;
+      mesh.position.set(
+        Math.cos(angle) * radius,
+        1 + yOff,
+        Math.sin(angle) * radius
+      );
+      mesh.lookAt(0, 1, 0);
+
+      // Hologram projection effect: start scaled down, bright, then pop
+      mesh.scale.set(0.1, 0.1, 0.1);
+
+      messageGroup.add(mesh);
+
+      const msg = {
+        mesh,
+        birth: performance.now(),
+        life: 0,
+        drift: {
+          x: (Math.random() - 0.5) * 0.004,
+          y: (Math.random() - 0.5) * 0.003 + 0.001,
+          z: (Math.random() - 0.5) * 0.004
+        },
+        rotSpeed: (Math.random() - 0.5) * 0.001,
+        popDone: false
+      };
+      messages.push(msg);
+
+      // Light flash on spawn
+      const flash = new THREE.PointLight(color, 2, 8);
+      flash.position.copy(mesh.position);
+      flash.position.z += 1;
+      scene.add(flash);
+      let flashAge = 0;
+      const flashInt = setInterval(() => {
+        flashAge += 0.05;
+        flash.intensity = Math.max(0, 2 - flashAge * 3);
+        if (flash.intensity <= 0) {
+          scene.remove(flash);
+          clearInterval(flashInt);
+        }
+      }, 16);
+    }
+
+    // ── Seed messages ──
+    const seedTexts = [
+      { text: "NeonDrifter: Anyone picking up the signal from Sector 7?", user: false },
+      { text: "GhostLine: Static everywhere. Something's interfering.", user: false },
+      { text: "PulseWeaver: I traced it to the old relay tower.", user: false },
+      { text: "You: I'm en route. ETA 14 minutes.", user: true },
+      { text: "NeonDrifter: Watch the perimeter. Drones active.", user: false },
+      { text: "GhostLine: Uploading interference pattern now...", user: false },
+      { text: "PulseWeaver: Pattern matches the blackout from last month.", user: false },
+      { text: "You: Copy. Switching to encrypted channel.", user: true },
+      { text: "NeonDrifter: Encrypted. Stay sharp out there.", user: false },
+      { text: "GhostLine: Relay tower is pulsing. Not natural.", user: false },
+      { text: "PulseWeaver: Frequency spike! 4.2 gigahertz.", user: false },
+      { text: "You: Visual contact. It's... broadcasting something.", user: true }
+    ];
+    seedTexts.forEach((s, i) => {
+      setTimeout(() => spawnMessage(s.text, s.user), i * 350);
+    });
+
+    // ── Input handling ──
+    const input = document.getElementById('msgInput');
+    const btn = document.getElementById('sendBtn');
+    function send() {
+      const val = input.value.trim();
+      if (!val) return;
+      spawnMessage(`You: ${val}`, true);
+      input.value = '';
+      input.focus();
+    }
+    btn.addEventListener('click', send);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+
+    // ── Resize ──
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // ── Animation loop ──
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      const now = performance.now();
+
+      controls.update();
+
+      // Particles
+      const positions = particles.geometry.attributes.position.array;
+      for (let i = 0; i < particleCount; i++) {
+        positions[i*3]   += pVel[i].x;
+        positions[i*3+1] += pVel[i].y;
+        positions[i*3+2] += pVel[i].z;
+        if (Math.abs(positions[i*3]) > 30) pVel[i].x *= -1;
+        if (Math.abs(positions[i*3+1]) > 20) pVel[i].y *= -1;
+        if (Math.abs(positions[i*3+2]) > 30) pVel[i].z *= -1;
+      }
+      particles.geometry.attributes.position.needsUpdate = true;
+      particles.rotation.y += 0.0006;
+
+      // Messages
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const m = messages[i];
+        const age = (now - m.birth) / 1000;
+        m.life = age;
+
+        // Pop-in
+        if (!m.popDone) {
+          const t = Math.min(age / 0.5, 1);
+          const ease = 1 - Math.pow(1 - t, 3);
+          m.mesh.scale.set(ease, ease, ease);
+          m.mesh.material.opacity = ease * 0.95;
+          if (t >= 1) m.popDone = true;
+        }
+
+        // Drift
+        m.mesh.position.x += m.drift.x;
+        m.mesh.position.y += m.drift.y;
+        m.mesh.position.z += m.drift.z;
+        m.mesh.rotation.z += m.rotSpeed;
+
+        // Billboard-ish: gently face camera
+        const targetQ = new THREE.Quaternion();
+        const lookM = new THREE.Matrix4();
+        lookM.lookAt(camera.position, m.mesh.position, camera.up);
+        targetQ.setFromRotationMatrix(lookM);
+        m.mesh.quaternion.slerp(targetQ, 0.02);
+
+        // Fade out old messages
+        if (age > 18) {
+          const fade = Math.max(0, 1 - (age - 18) / 6);
+          m.mesh.material.opacity = fade * 0.95;
+          // Drift away faster when fading
+          m.mesh.position.y += 0.008;
+          m.mesh.position.x += m.drift.x * 2;
+          m.mesh.position.z += m.drift.z * 2;
+        }
+
+        // Remove dead
+        if (age > 26) {
+          messageGroup.remove(m.mesh);
+          m.mesh.geometry.dispose();
+          m.mesh.material.map.dispose();
+          m.mesh.material.dispose();
+          messages.splice(i, 1);
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

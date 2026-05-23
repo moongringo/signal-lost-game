@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marker V4 — Objectives</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --bg: #0b0f14;
+    --grid: #1a2330;
+    --blue: #00aaff;
+    --green: #00ff88;
+    --gold: #ffcc00;
+    --yellow: #ffee33;
+    --cyan: #00ffff;
+    --white: #e8eef2;
+    --dim: #4a5a6a;
+    --panel-bg: rgba(10,16,24,0.92);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--white);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ---- tactical grid background ---- */
+  .grid-bg {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.35;
+    z-index: 0;
+  }
+
+  /* ---- HUD header ---- */
+  .hud-header {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+    z-index: 20;
+    pointer-events: none;
+  }
+  .hud-title {
+    font-size: 1.15rem;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-shadow: 0 0 8px var(--cyan);
+  }
+  .hud-coords {
+    font-size: 0.75rem;
+    color: var(--dim);
+    letter-spacing: 1px;
+  }
+
+  /* ---- map container ---- */
+  .map-wrap {
+    position: absolute; inset: 0;
+    z-index: 1;
+    cursor: crosshair;
+  }
+
+  /* ---- marker base ---- */
+  .marker {
+    position: absolute;
+    transform: translate(-50%, -100%) scale(0);
+    animation: placeIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    display: flex; flex-direction: column; align-items: center;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  @keyframes placeIn {
+    to { transform: translate(-50%, -100%) scale(1); }
+  }
+
+  /* icon wrapper */
+  .marker-icon {
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+
+  /* ---- PRIMARY OBJ: large pulsing star ---- */
+  .marker-primary .marker-icon {
+    color: var(--blue);
+    filter: drop-shadow(0 0 6px var(--blue));
+  }
+  .marker-primary .star-shape {
+    width: 36px; height: 36px;
+    background: var(--blue);
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    animation: pulseStar 1.6s ease-in-out infinite;
+  }
+  @keyframes pulseStar {
+    0%,100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.7; }
+  }
+  .marker-primary .ring {
+    position: absolute; inset: -8px;
+    border: 2px solid var(--blue);
+    border-radius: 50%;
+    opacity: 0;
+    animation: ringExpand 2s ease-out infinite;
+  }
+  .marker-primary .ring:nth-child(2) { animation-delay: 0.6s; }
+  @keyframes ringExpand {
+    0% { transform: scale(0.6); opacity: 0.6; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  /* ---- SECONDARY OBJ: diamond ---- */
+  .marker-secondary .marker-icon {
+    color: var(--green);
+    filter: drop-shadow(0 0 5px var(--green));
+  }
+  .marker-secondary .diamond-shape {
+    width: 28px; height: 28px;
+    background: var(--green);
+    transform: rotate(45deg);
+    animation: diamondPulse 2s ease-in-out infinite;
+  }
+  @keyframes diamondPulse {
+    0%,100% { transform: rotate(45deg) scale(1); }
+    50% { transform: rotate(45deg) scale(1.15); }
+  }
+
+  /* ---- BONUS OBJ: circle ---- */
+  .marker-bonus .marker-icon {
+    color: var(--gold);
+    filter: drop-shadow(0 0 5px var(--gold));
+  }
+  .marker-bonus .circle-shape {
+    width: 30px; height: 30px;
+    border: 3px solid var(--gold);
+    border-radius: 50%;
+    background: rgba(255,204,0,0.12);
+    animation: circleGlow 2.2s ease-in-out infinite;
+  }
+  @keyframes circleGlow {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,204,0,0.4); }
+    50% { box-shadow: 0 0 12px 4px rgba(255,204,0,0.15); }
+  }
+
+  /* ---- EXTRACTION: helipad H ---- */
+  .marker-extraction .marker-icon {
+    color: var(--yellow);
+    filter: drop-shadow(0 0 5px var(--yellow));
+  }
+  .marker-extraction .helipad {
+    width: 36px; height: 36px;
+    border: 3px solid var(--yellow);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,238,51,0.08);
+    animation: helipadSpin 8s linear infinite;
+  }
+  .marker-extraction .helipad span {
+    font-weight: 900;
+    font-size: 1.1rem;
+    color: var(--yellow);
+    animation: helipadSpinText 8s linear infinite;
+  }
+  @keyframes helipadSpin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes helipadSpinText {
+    to { transform: rotate(-360deg); }
+  }
+
+  /* ---- SAFE ZONE: shield ---- */
+  .marker-safe .marker-icon {
+    color: #00ddff;
+    filter: drop-shadow(0 0 5px #00ddff);
+  }
+  .marker-safe .shield-shape {
+    width: 30px; height: 34px;
+    background: #00ddff;
+    clip-path: polygon(50% 0, 100% 15%, 100% 55%, 50% 100%, 0 55%, 0 15%);
+    opacity: 0.9;
+    animation: shieldPulse 2.5s ease-in-out infinite;
+  }
+  @keyframes shieldPulse {
+    0%,100% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.1); opacity: 1; }
+  }
+
+  /* ---- LOOT CACHE: chest icon ---- */
+  .marker-loot .marker-icon {
+    color: #cc88ff;
+    filter: drop-shadow(0 0 5px #cc88ff);
+  }
+  .marker-loot .chest-shape {
+    width: 32px; height: 24px;
+    background: #cc88ff;
+    border-radius: 3px 3px 6px 6px;
+    position: relative;
+    animation: chestBounce 2s ease-in-out infinite;
+  }
+  .marker-loot .chest-shape::before {
+    content: '';
+    position: absolute; top: -6px; left: 4px; right: 4px;
+    height: 8px;
+    background: #cc88ff;
+    border-radius: 2px 2px 0 0;
+  }
+  .marker-loot .chest-shape::after {
+    content: '';
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px; height: 10px;
+    background: var(--bg);
+    border-radius: 1px;
+  }
+  @keyframes chestBounce {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
+  /* ---- WEAPON CACHE: rifle icon ---- */
+  .marker-weapon .marker-icon {
+    color: #ff5555;
+    filter: drop-shadow(0 0 5px #ff5555);
+  }
+  .marker-weapon .rifle-shape {
+    width: 34px; height: 10px;
+    background: #ff5555;
+    border-radius: 2px;
+    position: relative;
+    transform: rotate(-15deg);
+    animation: rifleIdle 2.2s ease-in-out infinite;
+  }
+  .marker-weapon .rifle-shape::before {
+    content: '';
+    position: absolute; right: -6px; top: -4px;
+    width: 10px; height: 14px;
+    background: #ff5555;
+    border-radius: 1px;
+  }
+  .marker-weapon .rifle-shape::after {
+    content: '';
+    position: absolute; left: -4px; bottom: -6px;
+    width: 6px; height: 12px;
+    background: #ff5555;
+    border-radius: 1px;
+  }
+  @keyframes rifleIdle {
+    0%,100% { transform: rotate(-15deg) translateY(0); }
+    50% { transform: rotate(-15deg) translateY(-2px); }
+  }
+
+  /* ---- VEHICLE DROP: truck icon ---- */
+  .marker-vehicle .marker-icon {
+    color: #ffaa44;
+    filter: drop-shadow(0 0 5px #ffaa44);
+  }
+  .marker-vehicle .truck-shape {
+    width: 32px; height: 18px;
+    background: #ffaa44;
+    border-radius: 3px 8px 3px 3px;
+    position: relative;
+    animation: truckIdle 2.4s ease-in-out infinite;
+  }
+  .marker-vehicle .truck-shape::before {
+    content: '';
+    position: absolute; left: -8px; top: 4px;
+    width: 10px; height: 14px;
+    background: #ffaa44;
+    border-radius: 3px 0 0 3px;
+  }
+  .marker-vehicle .truck-shape::after {
+    content: '';
+    position: absolute; bottom: -5px;
+    width: 6px; height: 6px;
+    background: var(--bg);
+    border-radius: 50%;
+    left: 2px;
+    box-shadow: 14px 0 0 var(--bg), 22px 0 0 var(--bg);
+  }
+  @keyframes truckIdle {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+  }
+
+  /* ---- label + distance/bearing ---- */
+  .marker-label {
+    margin-top: 6px;
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 0 4px currentColor;
+  }
+  .marker-meta {
+    margin-top: 2px;
+    font-size: 0.6rem;
+    color: var(--dim);
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+  }
+
+  /* color overrides per type */
+  .marker-primary   .marker-label { color: var(--blue); }
+  .marker-secondary .marker-label { color: var(--green); }
+  .marker-bonus     .marker-label { color: var(--gold); }
+  .marker-extraction .marker-label { color: var(--yellow); }
+  .marker-safe      .marker-label { color: #00ddff; }
+  .marker-loot      .marker-label { color: #cc88ff; }
+  .marker-weapon    .marker-label { color: #ff5555; }
+  .marker-vehicle   .marker-label { color: #ffaa44; }
+
+  /* ---- legend panel ---- */
+  .legend {
+    position: absolute; bottom: 20px; left: 20px;
+    background: var(--panel-bg);
+    border: 1px solid #223344;
+    border-radius: 6px;
+    padding: 14px 18px;
+    z-index: 20;
+    backdrop-filter: blur(4px);
+  }
+  .legend-title {
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  .legend-row {
+    display: flex; align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 0.7rem;
+  }
+  .legend-row:last-child { margin-bottom: 0; }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .legend-dot.primary   { background: var(--blue); box-shadow: 0 0 4px var(--blue); }
+  .legend-dot.secondary { background: var(--green); box-shadow: 0 0 4px var(--green); }
+  .legend-dot.bonus     { background: var(--gold); box-shadow: 0 0 4px var(--gold); }
+  .legend-dot.extraction{ background: var(--yellow); box-shadow: 0 0 4px var(--yellow); }
+  .legend-dot.safe      { background: #00ddff; box-shadow: 0 0 4px #00ddff; }
+  .legend-dot.loot      { background: #cc88ff; box-shadow: 0 0 4px #cc88ff; }
+  .legend-dot.weapon    { background: #ff5555; box-shadow: 0 0 4px #ff5555; }
+  .legend-dot.vehicle   { background: #ffaa44; box-shadow: 0 0 4px #ffaa44; }
+
+  /* ---- scanline overlay ---- */
+  .scanlines {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 15;
+  }
+
+  /* ---- compass ring ---- */
+  .compass {
+    position: absolute; bottom: 20px; right: 20px;
+    width: 90px; height: 90px;
+    border: 1px solid #223344;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem;
+    color: var(--dim);
+    z-index: 20;
+    background: var(--panel-bg);
+  }
+  .compass::before {
+    content: '';
+    position: absolute; inset: 6px;
+    border: 1px dashed #334455;
+    border-radius: 50%;
+  }
+  .compass-needle {
+    position: absolute;
+    width: 2px; height: 28px;
+    background: linear-gradient(180deg, var(--cyan) 50%, transparent 50%);
+    transform-origin: bottom center;
+    bottom: 50%;
+    animation: compassSpin 12s linear infinite;
+  }
+  @keyframes compassSpin {
+    to { transform: rotate(360deg); }
+  }
+  .compass-n { position: absolute; top: 6px; font-size: 0.6rem; color: var(--cyan); }
+  .compass-s { position: absolute; bottom: 6px; font-size: 0.6rem; }
+  .compass-e { position: absolute; right: 8px; font-size: 0.6rem; }
+  .compass-w { position: absolute; left: 8px; font-size: 0.6rem; }
+
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="scanlines"></div>
+
+<div class="hud-header">
+  <div class="hud-title">MARKER V4 — OBJECTIVES</div>
+  <div class="hud-coords">GRID 38°24'12"N  27°08'45"W  |  ALT 142m</div>
+</div>
+
+<div class="map-wrap" id="mapWrap"></div>
+
+<div class="legend">
+  <div class="legend-title">Marker Types</div>
+  <div class="legend-row"><div class="legend-dot primary"></div>Primary Objective</div>
+  <div class="legend-row"><div class="legend-dot secondary"></div>Secondary Objective</div>
+  <div class="legend-row"><div class="legend-dot bonus"></div>Bonus Objective</div>
+  <div class="legend-row"><div class="legend-dot extraction"></div>Extraction</div>
+  <div class="legend-row"><div class="legend-dot safe"></div>Safe Zone</div>
+  <div class="legend-row"><div class="legend-dot loot"></div>Loot Cache</div>
+  <div class="legend-row"><div class="legend-dot weapon"></div>Weapon Cache</div>
+  <div class="legend-row"><div class="legend-dot vehicle"></div>Vehicle Drop</div>
+</div>
+
+<div class="compass">
+  <span class="compass-n">N</span>
+  <span class="compass-s">S</span>
+  <span class="compass-e">E</span>
+  <span class="compass-w">W</span>
+  <div class="compass-needle"></div>
+</div>
+
+<script>
+  const mapWrap = document.getElementById('mapWrap');
+
+  const objectives = [
+    { type: 'primary',    label: 'PRIMARY OBJ',    dist: '1.2km', bearing: '042°', x: 22, y: 28 },
+    { type: 'secondary',  label: 'SECONDARY OBJ',  dist: '2.8km', bearing: '118°', x: 72, y: 34 },
+    { type: 'bonus',      label: 'BONUS OBJ',      dist: '0.9km', bearing: '275°', x: 18, y: 62 },
+    { type: 'extraction', label: 'EXTRACTION',     dist: '3.5km', bearing: '195°', x: 55, y: 78 },
+    { type: 'safe',       label: 'SAFE ZONE',      dist: '0.4km', bearing: '310°', x: 35, y: 55 },
+    { type: 'loot',       label: 'LOOT CACHE',     dist: '1.7km', bearing: '088°', x: 80, y: 20 },
+    { type: 'weapon',     label: 'WEAPON CACHE',   dist: '2.1km', bearing: '155°', x: 60, y: 50 },
+    { type: 'vehicle',    label: 'VEHICLE DROP',   dist: '4.0km', bearing: '220°', x: 40, y: 85 },
+  ];
+
+  const iconHTML = {
+    primary:    `<div class="ring"></div><div class="ring"></div><div class="star-shape"></div>`,
+    secondary:  `<div class="diamond-shape"></div>`,
+    bonus:      `<div class="circle-shape"></div>`,
+    extraction: `<div class="helipad"><span>H</span></div>`,
+    safe:       `<div class="shield-shape"></div>`,
+    loot:       `<div class="chest-shape"></div>`,
+    weapon:     `<div class="rifle-shape"></div>`,
+    vehicle:    `<div class="truck-shape"></div>`,
+  };
+
+  objectives.forEach((obj, i) => {
+    const el = document.createElement('div');
+    el.className = `marker marker-${obj.type}`;
+    el.style.left = obj.x + '%';
+    el.style.top = obj.y + '%';
+    el.style.animationDelay = (i * 0.18) + 's';
+
+    el.innerHTML = `
+      <div class="marker-icon">${iconHTML[obj.type]}</div>
+      <div class="marker-label">${obj.label}</div>
+      <div class="marker-meta">${obj.dist}  ·  ${obj.bearing}</div>
+    `;
+
+    mapWrap.appendChild(el);
+  });
+
+  // subtle parallax on mouse move
+  mapWrap.addEventListener('mousemove', (e) => {
+    const mx = (e.clientX / window.innerWidth - 0.5) * 2;
+    const my = (e.clientY / window.innerHeight - 0.5) * 2;
+    document.querySelectorAll('.marker').forEach((m, i) => {
+      const depth = 1 + (i % 3) * 0.4;
+      m.style.transform = `translate(calc(-50% + ${mx * 4 * depth}px), calc(-100% + ${my * 4 * depth}px)) scale(1)`;
+    });
+  });
+</script>
+
+</body>
+</html>

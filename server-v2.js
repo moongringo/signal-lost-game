@@ -21,6 +21,8 @@ app.use(express.static(path.join(__dirname)));
 
 // ── Game State ──
 const games = new Map(); // joinCode -> game session
+const spectators = new Map(); // joinCode -> Set of socket ids
+const lastPosUpdate = new Map(); // socketId -> timestamp (throttle position sync)
 
 function generateCode() {
   const adj = ['AQUA','ECHO','FIELD','GOLD','IRON','JADE','LUNAR','NOVA','OMEGA','RADAR','SIGMA','TOWER','ULTR','VENUS','WAVE','YUKON','ZEBRA','ALPHA','BRAVO','DELTA'];
@@ -99,6 +101,62 @@ io.on('connection', (socket) => {
     console.log(`[join] ${code} by ${player.name}`);
   });
 
+  // Spectate a game
+  socket.on('spectate-game', ({ code }) => {
+    const game = games.get(code?.toUpperCase());
+    if (!game) return socket.emit('error-msg', 'Mission code not found.');
+    if (game.state !== 'mission') return socket.emit('error-msg', 'Mission not live yet.');
+
+    currentGame = code;
+    if (!spectators.has(code)) spectators.set(code, new Set());
+    spectators.get(code).add(socket.id);
+
+    socket.join(code);
+    socket.emit('spectate-joined', { code, players: game.players, settings: game.settings });
+    // Notify players of new spectator
+    io.to(code).emit('spectator-count', spectators.get(code).size);
+    console.log(`[spectate] ${code} by ${socket.id}`);
+  });
+
+  // Spectator requests live state snapshot
+  socket.on('request-spectator-state', () => {
+    if (!currentGame) return;
+    const game = games.get(currentGame);
+    if (!game) return;
+    socket.emit('spectator-state', {
+      players: game.players,
+      settings: game.settings,
+      spectatorCount: spectators.get(currentGame)?.size || 0
+    });
+  });
+
+  // Latency ping-pong
+  socket.on('ping-latency', (clientTs) => {
+    socket.emit('pong-latency', clientTs);
+  });
+
+  // Reconnection state sync request
+  socket.on('request-state-sync', ({ code }) => {
+    const game = games.get(code?.toUpperCase());
+    if (!game) return;
+    socket.emit('game-state-sync', {
+      agents: Object.values(game.players),
+      objectives: game.missionState?.objectives || [],
+      threats: game.missionState?.threats || [],
+      scores: game.missionState?.scores || { North: 0, South: 0 },
+      remaining: game.missionState?.remaining || game.settings.duration * 60,
+      extracting: game.missionState?.extracting || false,
+      extractCountdown: game.missionState?.extractCountdown || 0,
+      weather: game.missionState?.weather || { type: 'clear' },
+      downedAgents: game.missionState?.downedAgents || {},
+      supplyCaches: game.missionState?.supplyCaches || [],
+      terrainZones: game.missionState?.terrainZones || [],
+      traps: game.missionState?.traps || [],
+      pings: game.missionState?.pings || [],
+      waypoints: game.missionState?.waypoints || []
+    });
+  });
+
   // Player selects a role
   socket.on('select-role', ({ role, team }) => {
     if (!currentGame || !currentPlayer) return;
@@ -110,9 +168,13 @@ io.on('connection', (socket) => {
     io.to(currentGame).emit('players-update', game.players);
   });
 
-  // Update position
+  // Update position (throttled to ~2.5s per client)
   socket.on('update-position', ({ lat, lng, heading }) => {
     if (!currentGame || !currentPlayer) return;
+    const now = Date.now();
+    const last = lastPosUpdate.get(socket.id) || 0;
+    if (now - last < 2000) return; // throttle: min 2s between updates
+    lastPosUpdate.set(socket.id, now);
     currentPlayer.lat = lat;
     currentPlayer.lng = lng;
     if (heading !== undefined) currentPlayer.heading = heading;
@@ -184,21 +246,68 @@ io.on('connection', (socket) => {
     console.log(`[launch] ${currentGame} — mission started`);
   });
 
-  // Objective progress
+  // Objective progress / completion
   socket.on('objective-update', ({ id, found, progress }) => {
     if (!currentGame) return;
-    socket.to(currentGame).emit('objective-sync', { id, found, progress, playerId: socket.id });
+    io.to(currentGame).emit('objective-sync', { id, found, progress, playerId: socket.id });
+  });
+
+  // Objective fully decoded / found
+  socket.on('objective-decoded', ({ id }) => {
+    if (!currentGame) return;
+    const p = currentPlayer;
+    io.to(currentGame).emit('objective-sync', { id, found: true, decodedBy: p?.name || 'Unknown', playerId: socket.id });
+  });
+
+  // Extraction state sync
+  socket.on('extraction-start', () => {
+    if (!currentGame) return;
+    const p = currentPlayer;
+    io.to(currentGame).emit('extraction-sync', { state: 'started', by: p?.name || 'Unknown', playerId: socket.id });
+  });
+
+  socket.on('extraction-complete', () => {
+    if (!currentGame) return;
+    const p = currentPlayer;
+    io.to(currentGame).emit('extraction-sync', { state: 'completed', by: p?.name || 'Unknown', playerId: socket.id });
+  });
+
+  // Score sync (host or any player broadcasts local score changes)
+  socket.on('score-update', ({ team, delta, total }) => {
+    if (!currentGame) return;
+    io.to(currentGame).emit('score-sync', { team, delta, total, playerId: socket.id });
+  });
+
+  // Host broadcasts mission state snapshot for spectators
+  socket.on('mission-state-snapshot', (snapshot) => {
+    if (!currentGame) return;
+    const game = games.get(currentGame);
+    if (!game || game.host !== socket.id) return;
+    // Broadcast to spectators only
+    const specSet = spectators.get(currentGame);
+    if (!specSet || specSet.size === 0) return;
+    specSet.forEach(sid => {
+      io.to(sid).emit('spectator-snapshot', snapshot);
+    });
   });
 
   // Disconnect
   socket.on('disconnect', () => {
     console.log(`[disconnect] ${socket.id}`);
     if (currentGame) {
+      // Remove from spectators if applicable
+      const specSet = spectators.get(currentGame);
+      if (specSet && specSet.has(socket.id)) {
+        specSet.delete(socket.id);
+        if (specSet.size === 0) spectators.delete(currentGame);
+        io.to(currentGame).emit('spectator-count', specSet?.size || 0);
+      }
       const game = games.get(currentGame);
       if (game) {
         delete game.players[socket.id];
         if (Object.keys(game.players).length === 0) {
           games.delete(currentGame);
+          spectators.delete(currentGame);
           console.log(`[cleanup] ${currentGame} — empty game removed`);
         } else {
           io.to(currentGame).emit('players-update', game.players);

@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Memory Nexus</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000000;
+            --text: #f1f5f9;
+            --text-muted: #64748b;
+            --accent: #94a3b8;
+            --accent-glow: rgba(148, 163, 184, 0.12);
+            --glass: rgba(255, 255, 255, 0.02);
+            --glass-border: rgba(255, 255, 255, 0.05);
+            --glass-hover: rgba(255, 255, 255, 0.04);
+            --success: #94a3b8;
+            --warning: #cbd5e1;
+            --danger: #f87171;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #000;
+            color: var(--text);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        #fiber-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .content-layer { position: relative; z-index: 1; }
+
+        /* ===== HERO ===== */
+        .hero {
+            min-height: auto;
+            padding: 1rem 2rem 0.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.6rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 100px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            backdrop-filter: blur(20px);
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .hero-badge .pulse {
+            width: 6px; height: 6px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .hero h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(1.75rem, 4vw, 3rem);
+            font-weight: 700;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.35rem;
+            animation: fadeInUp 1s ease-out 0.2s both;
+        }
+
+        .hero h1 .gradient {
+            background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 50%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(0.8rem, 1.5vw, 1rem);
+            color: var(--text-muted);
+            font-weight: 300;
+            max-width: 420px;
+            line-height: 1.4;
+            animation: fadeInUp 1s ease-out 0.4s both;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            animation: fadeInUp 1s ease-out 0.6s both;
+        }
+
+        .hero-stat { text-align: center; }
+        .hero-stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .scroll-hint { display: none; }
+
+        .hero-inline {
+            text-align: center;
+            padding: 0 0 0.25rem;
+        }
+        .hero-inline .hero-badge {
+            margin-bottom: 0.5rem;
+        }
+        .hero-inline h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(1.75rem, 4vw, 3rem);
+            font-weight: 700;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.35rem;
+        }
+        .hero-inline h1 .gradient {
+            background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 50%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-inline .hero-subtitle {
+            font-size: clamp(0.8rem, 1.5vw, 1rem);
+            color: var(--text-muted);
+            font-weight: 300;
+            max-width: 420px;
+            margin: 0 auto;
+            line-height: 1.4;
+        }
+        .hero-inline .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 0.75rem;
+        }
+        .hero-inline .hero-stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-inline .hero-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.15rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* ===== UPLOAD ZONE ===== */
+        .upload-section {
+            padding: 0;
+            max-width: 420px;
+            margin: 0 auto;
+            width: 100%;
+            text-align: center;
+        }
+        .upload-zone {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 3rem 2rem;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(24px);
+            transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .upload-zone::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 24px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(148,163,184,0.35), transparent 40%, transparent 60%, rgba(148,163,184,0.3));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity 0.4s;
+        }
+        .upload-zone:hover::before, .upload-zone.dragover::before { opacity: 1; }
+        .upload-zone::after {
+            content: '';
+            position: absolute;
+            top: -2px; left: -2px; right: -2px; bottom: -2px;
+            border-radius: 26px;
+            background: linear-gradient(90deg, transparent, rgba(148,163,184,0.2), transparent);
+            z-index: -1;
+            opacity: 1;
+            transition: opacity 0.4s;
+        }
+        .upload-zone:hover::after, .upload-zone.dragover::after { opacity: 1; }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: rgba(255, 255, 255, 0.35);
+            background: rgba(0, 0, 0, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 0 60px rgba(148, 163, 184, 0.12), 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .upload-zone.dragover {
+            border-color: rgba(148, 163, 184, 0.5);
+            background: rgba(148, 163, 184, 0.05);
+            box-shadow: 0 0 80px rgba(148, 163, 184, 0.2), 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .upload-zone h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .upload-zone p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        .upload-zone .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.5rem;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-zone .upload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        #fileInput, #folderInput { display: none; }
+
+        .upload-status {
+            margin-top: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: rgba(148, 163, 184, 0.08);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--accent);
+            text-align: center;
+            animation: pulse-subtle 2s ease-in-out infinite;
+        }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text);
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(20px);
+            z-index: 10000;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast-success {
+            border-color: rgba(148, 163, 184, 0.3);
+            background: rgba(15, 23, 42, 0.95);
+        }
+        .toast-error {
+            border-color: rgba(248, 113, 113, 0.3);
+            background: rgba(15, 23, 42, 0.95);
+        }
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .upload-btn.folder-btn {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.12);
+        }
+        .upload-btn.folder-btn:hover {
+            background: rgba(255,255,255,0.10);
+            border-color: rgba(255,255,255,0.25);
+        }
+
+        .file-list {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        .file-item:hover {
+            background: var(--glass-hover);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        .file-item .file-icon { font-size: 1.2rem; }
+        .file-item .file-info { flex: 1; min-width: 0; }
+        .file-item .file-name { font-weight: 500; margin-bottom: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-item .file-meta { color: var(--text-muted); font-size: 0.7rem; }
+        .file-item .file-actions {
+            display: flex;
+            gap: 0.4rem;
+        }
+        .file-item .file-actions button {
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        .file-item .file-actions button:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+        }
+
+        /* ===== FILE EXPLORER ===== */
+        .file-explorer-section {
+            padding: 0;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .file-explorer {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 1.5rem 1.5rem 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(24px);
+            position: relative;
+            overflow: hidden;
+        }
+        .file-explorer::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 24px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(148,163,184,0.35), transparent 40%, transparent 60%, rgba(148,163,184,0.3));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 1;
+        }
+        .explorer-header {
+            display: grid;
+            grid-template-columns: 1fr 80px 120px 60px;
+            gap: 0.75rem;
+            padding: 0 0.5rem 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.35);
+            margin-bottom: 0.75rem;
+        }
+        .explorer-col-name { text-align: left; }
+        .explorer-col-size { text-align: right; }
+        .explorer-col-date { text-align: right; }
+        .explorer-col-action { text-align: right; }
+        .explorer-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .explorer-row {
+            display: grid;
+            grid-template-columns: 1fr 80px 120px 60px;
+            gap: 0.75rem;
+            align-items: center;
+            padding: 0.6rem 0.5rem;
+            border-radius: 12px;
+            transition: background 0.2s;
+            font-size: 0.78rem;
+        }
+        .explorer-row:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .explorer-row-name {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            overflow: hidden;
+        }
+        .explorer-row-name .file-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: rgba(148, 163, 184, 0.5);
+            flex-shrink: 0;
+        }
+        .explorer-row-name span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+        .explorer-row-size {
+            text-align: right;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+        }
+        .explorer-row-date {
+            text-align: right;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+        }
+        .explorer-row-action {
+            text-align: right;
+        }
+        .explorer-row-action button {
+            background: none; border: none; color: rgba(255, 255, 255, 0.3);
+            cursor: pointer; padding: 0.2rem; font-size: 0.85rem;
+            transition: color 0.2s;
+        }
+        .explorer-row-action button:hover { color: var(--text); }
+        .explorer-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 2rem 0;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        .explorer-empty-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* ===== SIDE LAYOUT ===== */
+        .side-layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 2rem;
+            margin: 0;
+            padding: 0 2rem 2rem 0;
+            align-items: start;
+        }
+        .side-left {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 0;
+            padding: 0.25rem;
+            backdrop-filter: blur(30px);
+            position: sticky;
+            top: 0;
+            align-self: start;
+        }
+        .side-left .section-header {
+            text-align: left;
+            margin-bottom: 0.75rem;
+            margin-top: 0;
+        }
+        .side-left .section-header h2 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 0;
+            margin-bottom: 0.25rem;
+        }
+        .side-left .section-header p {
+            margin: 0;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.3);
+        }
+        .side-left .leaderboard-grid {
+            gap: 0.5rem;
+        }
+        .side-left .progress-grid {
+            gap: 0.6rem;
+        }
+        .side-left .leader-card {
+            padding: 0.7rem 0.8rem;
+        }
+        .side-left .progress-card {
+            padding: 0.8rem;
+        }
+        .side-left .leader-avatar {
+            width: 28px; height: 28px;
+            font-size: 0.7rem;
+            border-radius: 8px;
+        }
+        .side-left .leader-rank {
+            font-size: 0.9rem;
+            width: 20px;
+        }
+        .side-left .leader-name {
+            font-size: 0.75rem;
+        }
+        .side-left .leader-meta {
+            font-size: 0.6rem;
+        }
+        .side-left .leader-score {
+            font-size: 0.8rem;
+        }
+        .side-left .progress-ring {
+            width: 48px; height: 48px;
+        }
+        .side-left .progress-ring svg {
+            width: 48px; height: 48px;
+        }
+        .side-left .progress-ring-text {
+            font-size: 0.7rem;
+        }
+        .side-left .progress-value {
+            font-size: 0.9rem;
+        }
+        .side-left .progress-label {
+            font-size: 0.6rem;
+        }
+        .side-left .activity-item {
+            padding: 0.6rem 0.6rem;
+        }
+        .side-left .activity-title {
+            font-size: 0.72rem;
+        }
+        .side-left .activity-time {
+            font-size: 0.6rem;
+        }
+        .side-left .activity-status {
+            font-size: 0.55rem;
+            padding: 0.15rem 0.4rem;
+        }
+        .side-left .progress-card h3 {
+            font-size: 0.7rem;
+            margin-bottom: 0.6rem;
+        }
+        .side-left .progress-ring-wrap {
+            gap: 0.75rem;
+        }
+        .side-left .progress-details {
+            min-width: 0;
+        }
+        .side-right {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding-top: 0;
+            justify-content: flex-start;
+            min-height: calc(100vh - 40px);
+        }
+        @media (max-width: 768px) {
+            .side-layout { grid-template-columns: 1fr; }
+            .side-left { position: static; }
+        }
+        .side-right {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            padding-top: 2rem;
+        }
+
+        /* ===== GLASS CARD ===== */
+        .glass-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            backdrop-filter: blur(24px);
+            transition: all 0.4s ease;
+        }
+        .glass-card:hover {
+            background: var(--glass-hover);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ===== LEADERBOARD ===== */
+        .leaderboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .leader-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .leader-card::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 3px;
+            border-radius: 2px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .leader-card:hover::before { opacity: 1; }
+        .leader-card.rank-1::before { background: linear-gradient(to bottom, #e2e8f0, #94a3b8); opacity: 1; }
+        .leader-card.rank-2::before { background: linear-gradient(to bottom, #94a3b8, #64748b); }
+        .leader-card.rank-3::before { background: linear-gradient(to bottom, #64748b, #475569); }
+
+        .leader-rank {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            width: 40px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+        .leader-card.rank-1 .leader-rank { color: #e2e8f0; }
+        .leader-card.rank-2 .leader-rank { color: #94a3b8; }
+        .leader-card.rank-3 .leader-rank { color: #64748b; }
+
+        .leader-avatar {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #475569, #334155);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .leader-info { flex: 1; min-width: 0; }
+        .leader-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.15rem; }
+        .leader-meta { font-size: 0.75rem; color: var(--text-muted); }
+        .leader-score {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        /* ===== PROGRESS ===== */
+        .progress-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        .progress-card h3 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 1rem;
+        }
+        .progress-ring-wrap {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+        .progress-ring {
+            position: relative;
+            width: 80px; height: 80px;
+            flex-shrink: 0;
+        }
+        .progress-ring svg { transform: rotate(-90deg); }
+        .progress-ring-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 6;
+        }
+        .progress-ring-fill {
+            fill: none;
+            stroke: url(#progressGradient);
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 226;
+            stroke-dashoffset: 226;
+            transition: stroke-dashoffset 2s ease-out;
+        }
+        .progress-ring-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .progress-details { flex: 1; }
+        .progress-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        .progress-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+        .progress-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #64748b, #94a3b8);
+            border-radius: 2px;
+            transition: width 2s ease-out;
+        }
+
+        /* ===== ACTIVITY ===== */
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-radius: 14px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .activity-item:hover { background: var(--glass-hover); }
+        .upload-section .section-header h2 {
+            color: #475569;
+        }
+        .upload-section .section-header p {
+            color: #334155;
+        }
+        .activity-icon {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+            opacity: 0.5;
+        }
+        .activity-icon.complete { background: var(--accent); }
+        .activity-icon.active { background: var(--text); opacity: 0.8; }
+        .activity-content { flex: 1; min-width: 0; }
+        .activity-title { font-weight: 500; font-size: 0.85rem; margin-bottom: 0.15rem; }
+        .activity-time { font-size: 0.7rem; color: var(--text-muted); }
+        .activity-status {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 100px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .status-complete { background: rgba(148, 163, 184, 0.08); color: #94a3b8; }
+        .status-pending { background: rgba(203, 213, 225, 0.08); color: #cbd5e1; }
+        .status-active { background: rgba(226, 232, 240, 0.08); color: #e2e8f0; }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            text-align: center;
+            padding: 4rem 2rem 3rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        .footer .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .animate-on-scroll.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .hero-stats { gap: 1.5rem; }
+            .side-layout { grid-template-columns: 1fr; gap: 2rem; padding: 2rem 1rem; }
+            .side-left .section-header { text-align: center; }
+            .side-left .section-header p { margin: 0 auto; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="fiber-canvas"></canvas>
+
+<svg width="0" height="0" style="position:absolute;">
+    <defs>
+        <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#64748b"/>
+            <stop offset="100%" style="stop-color:#94a3b8"/>
+        </linearGradient>
+    </defs>
+</svg>
+
+<div class="content-layer">
+
+
+    <!-- LEFT / RIGHT LAYOUT -->
+    <div class="side-layout">
+        <div class="side-left">
+            <section>
+                <div class="section-header animate-on-scroll">
+                    <h2>System Health</h2>
+                    <p>Real-time synchronization and storage metrics</p>
+                </div>
+                <div class="progress-grid">
+                    <div class="glass-card progress-card animate-on-scroll">
+                        <h3>Memory Sync</h3>
+                        <div class="progress-ring-wrap">
+                            <div class="progress-ring">
+                                <svg width="80" height="80" viewBox="0 0 80 80">
+                                    <circle class="progress-ring-bg" cx="40" cy="40" r="36"/>
+                                    <circle class="progress-ring-fill" cx="40" cy="40" r="36" data-target="94"/>
+                                </svg>
+                                <div class="progress-ring-text">94%</div>
+                            </div>
+                            <div class="progress-details">
+                                <div class="progress-value">2,673</div>
+                                <div class="progress-label">of 2,847 synced</div>
+                                <div class="progress-bar">
+                                    <div class="progress-bar-fill" style="width: 94%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card progress-card animate-on-scroll">
+                        <h3>Storage</h3>
+                        <div class="progress-ring-wrap">
+                            <div class="progress-ring">
+                                <svg width="80" height="80" viewBox="0 0 80 80">
+                                    <circle class="progress-ring-bg" cx="40" cy="40" r="36"/>
+                                    <circle class="progress-ring-fill" cx="40" cy="40" r="36" data-target="67"/>
+                                </svg>
+                                <div class="progress-ring-text">67%</div>
+                            </div>
+                            <div class="progress-details">
+                                <div class="progress-value">4.2 GB</div>
+                                <div class="progress-label">of 10 GB used</div>
+                                <div class="progress-bar">
+                                    <div class="progress-bar-fill" style="width: 67%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card progress-card animate-on-scroll">
+                        <h3>Network</h3>
+                        <div class="progress-ring-wrap">
+                            <div class="progress-ring">
+                                <svg width="80" height="80" viewBox="0 0 80 80">
+                                    <circle class="progress-ring-bg" cx="40" cy="40" r="36"/>
+                                    <circle class="progress-ring-fill" cx="40" cy="40" r="36" data-target="89"/>
+                                </svg>
+                                <div class="progress-ring-text">89%</div>
+                            </div>
+                            <div class="progress-details">
+                                <div class="progress-value">11/12</div>
+                                <div class="progress-label">nodes online</div>
+                                <div class="progress-bar">
+                                    <div class="progress-bar-fill" style="width: 89%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+<section>
+                <div class="section-header animate-on-scroll">
+                    <h2>Recent Activity</h2>
+                    <p>Latest memory operations across the network</p>
+                </div>
+                <div class="glass-card animate-on-scroll">
+                    <div class="activity-list">
+                        <div class="activity-item">
+                        <div class="activity-icon complete"></div>
+                        <div class="activity-content">
+                            <div class="activity-title">Batch sync completed — 47 memories</div>
+                            <div class="activity-time">2 minutes ago from Node-4</div>
+                        </div>
+                        <span class="activity-status status-complete">Done</span>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon active"></div>
+                        <div class="activity-content">
+                            <div class="activity-title">Memory merge: Project Phoenix context</div>
+                            <div class="activity-time">15 minutes ago from Workspace-3</div>
+                        </div>
+                        <span class="activity-status status-active">Active</span>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon complete"></div>
+                        <div class="activity-content">
+                            <div class="activity-title">Semantic search: 12 results</div>
+                            <div class="activity-time">32 minutes ago from Research Bot</div>
+                        </div>
+                        <span class="activity-status status-complete">Done</span>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon complete"></div>
+                        <div class="activity-content">
+                            <div class="activity-title">Archived 200 older memories</div>
+                            <div class="activity-time">1 hour ago from Sync Daemon</div>
+                        </div>
+                        <span class="activity-status status-complete">Done</span>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon active"></div>
+                        <div class="activity-content">
+                            <div class="activity-title">New node registered: Mobile-2</div>
+                            <div class="activity-time">2 hours ago</div>
+                        </div>
+                        <span class="activity-status status-active">Active</span>
+                    </div>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <div class="section-header animate-on-scroll">
+                    <h2>Memory Leaders</h2>
+                    <p>Top contributors to the collective knowledge base</p>
+                </div>
+                <div class="leaderboard-grid">
+                    <div class="glass-card leader-card rank-1 animate-on-scroll">
+                        <div class="leader-rank">1</div>
+                        <div class="leader-avatar">MK</div>
+                        <div class="leader-info">
+                            <div class="leader-name">Moongringo Kimi</div>
+                            <div class="leader-meta">342 memories this week</div>
+                        </div>
+                        <div class="leader-score">12.4k</div>
+                    </div>
+                    <div class="glass-card leader-card rank-2 animate-on-scroll">
+                        <div class="leader-rank">2</div>
+                        <div class="leader-avatar">AI</div>
+                        <div class="leader-info">
+                            <div class="leader-name">AI Assistant #7</div>
+                            <div class="leader-meta">298 memories this week</div>
+                        </div>
+                        <div class="leader-score">10.1k</div>
+                    </div>
+                    <div class="glass-card leader-card rank-3 animate-on-scroll">
+                        <div class="leader-rank">3</div>
+                        <div class="leader-avatar">N4</div>
+                        <div class="leader-info">
+                            <div class="leader-name">Node-4 Desktop</div>
+                            <div class="leader-meta">256 memories this week</div>
+                        </div>
+                        <div class="leader-score">8.7k</div>
+                    </div>
+                    <div class="glass-card leader-card animate-on-scroll">
+                        <div class="leader-rank">4</div>
+                        <div class="leader-avatar">W3</div>
+                        <div class="leader-info">
+                            <div class="leader-name">Workspace-3</div>
+                            <div class="leader-meta">189 memories this week</div>
+                        </div>
+                        <div class="leader-score">6.2k</div>
+                    </div>
+                    <div class="glass-card leader-card animate-on-scroll">
+                        <div class="leader-rank">5</div>
+                        <div class="leader-avatar">R2</div>
+                        <div class="leader-info">
+                            <div class="leader-name">Research Bot</div>
+                            <div class="leader-meta">167 memories this week</div>
+                        </div>
+                        <div class="leader-score">5.1k</div>
+                    </div>
+                    <div class="glass-card leader-card animate-on-scroll">
+                        <div class="leader-rank">6</div>
+                        <div class="leader-avatar">S1</div>
+                        <div class="leader-info">
+                            <div class="leader-name">Sync Daemon</div>
+                            <div class="leader-meta">134 memories this week</div>
+                        </div>
+                        <div class="leader-score">4.3k</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="side-right">
+        <div class="hero-inline">
+            <div class="hero-badge">
+            <span class="pulse"></span>
+            Live Nexus
+            </div>
+            <h1>
+            Your Memories,<br>
+            <span class="gradient">Connected.</span>
+            </h1>
+            <p class="hero-subtitle">
+            A shared space where every AI conversation, every insight, every connection lives and breathes.
+            </p>
+            <div class="hero-stats">
+            <div class="hero-stat">
+            <div class="hero-stat-value" id="stat-memories">2,847</div>
+            <div class="hero-stat-label">Memories</div>
+            </div>
+            <div class="hero-stat">
+            <div class="hero-stat-value" id="stat-claw">12</div>
+            <div class="hero-stat-label">Claw Nodes</div>
+            </div>
+            <div class="hero-stat">
+            <div class="hero-stat-value" id="stat-sync">99.9%</div>
+            <div class="hero-stat-label">Sync Rate</div>
+            </div>
+            </div>
+        </div>
+
+            <!-- FILE UPLOAD -->
+    <section class="upload-section">
+        <div class="section-header animate-on-scroll">
+            <h2>Share Files</h2>
+            <p>Drop files here to share across your AI nodes</p>
+        </div>
+        <div class="upload-zone animate-on-scroll" id="uploadZone">
+            <h3>Drop files or folders to share</h3>
+            <p>PDFs, images, text files, entire folders — anything your AI needs</p>
+            <div class="upload-actions">
+                <button class="upload-btn" id="uploadBtn">Choose Files</button>
+                <button class="upload-btn folder-btn" id="folderBtn">Choose Folder</button>
+            </div>
+            <input type="file" id="fileInput" multiple accept="*/*">
+            <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none">
+            <div class="upload-status" id="uploadStatus" style="display:none"></div>
+            <div class="file-list" id="fileList"></div>
+        </div>
+    </section>
+
+    <!-- FILE EXPLORER -->
+    <section class="file-explorer-section">
+        <div class="section-header animate-on-scroll">
+            <h2>File Explorer</h2>
+            <p>All shared files across your AI nodes</p>
+        </div>
+        <div class="file-explorer animate-on-scroll" id="fileExplorer">
+            <div class="explorer-header">
+                <span class="explorer-col-name">Name</span>
+                <span class="explorer-col-size">Size</span>
+                <span class="explorer-col-date">Uploaded</span>
+                <span class="explorer-col-action"></span>
+            </div>
+            <div class="explorer-list" id="explorerList">
+                <div class="explorer-empty">
+                    <span class="explorer-empty-dot"></span>
+                    <p>No files uploaded yet</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="logo">Memory Nexus</div>
+        <p>Fiber Loop Engine · OpenClaw Connected</p>
+    </footer>
+</div>
+
+<!-- Fiber Loop Background -->
+<script>
+const canvas = document.getElementById('fiber-canvas');
+const gl = canvas.getContext('webgl2', { alpha: false, antialias: false });
+
+let time = 0;
+let mouseX = 0, mouseY = 0, targetMouseX = 0, targetMouseY = 0;
+const dpr = Math.min(window.devicePixelRatio, 2);
+
+function resize() {
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+}
+window.addEventListener('resize', resize);
+resize();
+
+document.addEventListener('mousemove', (e) => {
+    targetMouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+    targetMouseY = -(e.clientY / window.innerHeight - 0.5) * 2;
+});
+
+const vertexShader = `#version 300 es
+in vec2 a_position;
+void main() { gl_Position = vec4(a_position, 0.0, 1.0); }`;
+
+const fiberFrag = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform vec2 u_mouse;
+
+vec3 hash33(vec3 p) {
+    p = vec3(dot(p, vec3(127.1, 311.7, 74.7)),
+             dot(p, vec3(269.5, 183.3, 246.1)),
+             dot(p, vec3(113.5, 271.9, 124.6)));
+    return fract(sin(p) * 43758.5453);
+}
+
+float hash12(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash12(i);
+    float b = hash12(i + vec2(1.0, 0.0));
+    float c = hash12(i + vec2(0.0, 1.0));
+    float d = hash12(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+float fbm(vec2 p) {
+    float sum = 0.0;
+    float amp = 0.5;
+    float freq = 1.0;
+    for (int i = 0; i < 6; i++) {
+        sum += amp * noise(p * freq);
+        amp *= 0.5;
+        freq *= 2.0;
+    }
+    return sum;
+}
+
+float anisoSpec(vec2 p, vec2 dir, float roughness) {
+    vec2 toPoint = p;
+    float along = dot(toPoint, normalize(dir));
+    float across = length(toPoint - along * normalize(dir));
+    return exp(-across * across / roughness) * exp(-along * along * 0.5);
+}
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_resolution;
+    vec2 p = (uv - 0.5) * vec2(u_resolution.x / u_resolution.y, 1.0);
+    float t = u_time * 0.08;
+    p += u_mouse * vec2(0.008, 0.005);
+    
+    vec3 col = vec3(0.0);
+    
+    // 30 strands across 6 depth layers
+    for (int layer = 0; layer < 6; layer++) {
+        float fi = float(layer);
+        float depth = 1.0 - fi / 5.0;
+        for (int strand = 0; strand < 5; strand++) {
+            float si = float(strand);
+            float seed = fi * 13.7 + si * 7.3;
+            float baseY = (fi / 5.0 - 0.5) * 1.5 + sin(t * 0.3 + seed) * 0.15;
+            float waveX = sin(p.y * 2.5 + t * 0.5 + seed * 3.0) * 0.12;
+            float waveY = cos(p.x * 1.8 + t * 0.4 + seed * 2.0) * 0.08;
+            vec2 strandCenter = vec2(waveX, baseY + waveY);
+            float dist = length(p - strandCenter);
+            float thickness = 0.002 + 0.003 * depth + sin(t * 0.7 + seed) * 0.001;
+            float core = smoothstep(thickness, 0.0, dist);
+            float halo = smoothstep(thickness * 8.0, thickness * 2.0, dist) * 0.15 * depth;
+            vec2 fiberDir = vec2(cos(t * 0.2 + seed), sin(t * 0.15 + seed));
+            float spec = anisoSpec(p - strandCenter, fiberDir, thickness * 50.0) * depth * 0.3;
+            float brightness = 0.7 + 0.3 * depth;
+            vec3 strandCol = vec3(brightness);
+            float curl = fbm(vec2(p.x * 3.0 + t * 0.2 + seed, p.y * 3.0 - t * 0.15));
+            strandCol += vec3(curl * 0.08);
+            col += strandCol * (core + halo + spec);
+        }
+    }
+    
+    // 40 drifting particles
+    for (int i = 0; i < 40; i++) {
+        float fi = float(i);
+        vec2 particlePos = vec2(
+            fract(sin(fi * 127.1 + t * 0.03) * 43758.5453) * 2.6 - 1.3,
+            fract(sin(fi * 311.7 + t * 0.02) * 43758.5453) * 2.0 - 1.0
+        );
+        particlePos += vec2(
+            sin(t * 0.1 + fi * 2.0) * 0.05,
+            cos(t * 0.08 + fi * 1.5) * 0.03
+        );
+        float size = 0.001 + fract(sin(fi * 74.7) * 43758.5453) * 0.003;
+        float brightness = fract(sin(fi * 53.1) * 43758.5453) * 0.5;
+        float dist = length(p - particlePos);
+        float particle = smoothstep(size, 0.0, dist);
+        brightness *= sin(t * 1.5 + fi * 4.0) * 0.5 + 0.5;
+        brightness = mix(brightness * 0.1, brightness, sin(t * 0.3 + fi) * 0.5 + 0.5);
+        col += vec3(0.85, 0.88, 0.92) * particle * brightness * 0.25;
+    }
+    
+    // Volumetric dust
+    float dust = fbm(vec2(p.x * 4.0 + t * 0.05, p.y * 4.0 + t * 0.03)) * 0.5 + 0.5;
+    dust *= fbm(vec2(p.x * 8.0 - t * 0.02, p.y * 8.0 + t * 0.04)) * 0.5 + 0.5;
+    col += vec3(0.06, 0.07, 0.08) * dust * 0.12;
+    
+    // Vignette
+    float d = length(uv - 0.5);
+    float vig = smoothstep(0.4, 1.1, d);
+    col *= 1.0 - vig * 0.4;
+    
+    // Chromatic at edges
+    float edgeDist = max(abs(uv.x - 0.5), abs(uv.y - 0.5)) * 2.0;
+    float ca = smoothstep(0.5, 1.0, edgeDist) * 0.003;
+    col.r += ca;
+    col.b -= ca;
+    
+    // Film grain
+    float grain = fract(sin(dot(floor(gl_FragCoord.xy * 0.5) + floor(t * 30.0) * vec2(0.1, 0.3), vec2(12.9898, 78.233))) * 43758.5453);
+    col += (grain - 0.5) * 0.018;
+    
+    // ACES
+    float a = 2.51, b = 0.03, c = 2.43, d_tm = 0.59, e = 0.14;
+    col = clamp((col * (a * col + b)) / (col * (c * col + d_tm) + e), 0.0, 1.0);
+    col = mix(col, col * vec3(0.92, 0.95, 1.05), smoothstep(0.0, 0.25, col.x + col.y + col.z) * 0.1);
+    
+    fragColor = vec4(col, 1.0);
+}`;
+
+function createProgram(fragSrc) {
+    const vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs, vertexShader);
+    gl.compileShader(vs);
+    const fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs, fragSrc);
+    gl.compileShader(fs);
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    return prog;
+}
+
+const program = createProgram(fiberFrag);
+const quadBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+
+function render(now) {
+    time = now * 0.001;
+    mouseX += (targetMouseX - mouseX) * 0.05;
+    mouseY += (targetMouseY - mouseY) * 0.05;
+    gl.useProgram(program);
+    const posLoc = gl.getAttribLocation(program, 'a_position');
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), canvas.width, canvas.height);
+    gl.uniform1f(gl.getUniformLocation(program, 'u_time'), time);
+    gl.uniform2f(gl.getUniformLocation(program, 'u_mouse'), mouseX, mouseY);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+
+// ===== UPLOAD QUEUE =====
+const uploadQueue = [];
+let uploadingCount = 0;
+const MAX_CONCURRENT = 3;
+
+function updateUploadStatus() {
+    const status = document.getElementById('uploadStatus');
+    if (!status) return;
+    const total = uploadQueue.length + uploadingCount;
+    if (total === 0) {
+        status.style.display = 'none';
+        return;
+    }
+    status.style.display = 'block';
+    status.textContent = uploadingCount > 0
+        ? `Uploading ${uploadingCount} file${uploadingCount > 1 ? 's' : ''}... (${uploadQueue.length} queued)`
+        : `${uploadQueue.length} file${uploadQueue.length > 1 ? 's' : ''} queued`;
+}
+
+function enqueueUpload(file) {
+    uploadQueue.push(file);
+    updateUploadStatus();
+    processQueue();
+}
+
+async function processQueue() {
+    while (uploadQueue.length > 0 && uploadingCount < MAX_CONCURRENT) {
+        const file = uploadQueue.shift();
+        uploadingCount++;
+        updateUploadStatus();
+        await FileStore.add(file);
+        uploadingCount--;
+        updateUploadStatus();
+    }
+    if (uploadQueue.length === 0 && uploadingCount === 0) {
+        showToast('All uploads complete', 'success');
+    }
+}
+
+// ===== TOAST NOTIFICATIONS =====
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+    }, 3000);
+}
+
+// ===== FILE UPLOAD =====
+const uploadZone = document.getElementById('uploadZone');
+const uploadBtn = document.getElementById('uploadBtn');
+const folderBtn = document.getElementById('folderBtn');
+const fileInput = document.getElementById('fileInput');
+const folderInput = document.getElementById('folderInput');
+const fileList = document.getElementById('fileList');
+
+// Recursive folder traversal for drag-and-drop
+async function getFilesFromDataTransferItems(dataTransferItems) {
+    const files = [];
+    const promises = [];
+    for (let i = 0; i < dataTransferItems.length; i++) {
+        const item = dataTransferItems[i];
+        if (item.kind === 'file') {
+            const entry = item.webkitGetAsEntry();
+            if (entry) {
+                promises.push(traverseEntry(entry, files));
+            }
+        }
+    }
+    await Promise.all(promises);
+    return files;
+}
+
+function traverseEntry(entry, files) {
+    return new Promise((resolve) => {
+        if (entry.isFile) {
+            entry.file((file) => {
+                // Preserve relative path
+                Object.defineProperty(file, 'webkitRelativePath', {
+                    value: entry.fullPath.substring(1)
+                });
+                files.push(file);
+                resolve();
+            });
+        } else if (entry.isDirectory) {
+            const reader = entry.createReader();
+            reader.readEntries(async (entries) => {
+                const subPromises = entries.map(e => traverseEntry(e, files));
+                await Promise.all(subPromises);
+                resolve();
+            });
+        } else {
+            resolve();
+        }
+    });
+}
+
+uploadBtn.addEventListener('click', () => fileInput.click());
+folderBtn.addEventListener('click', () => folderInput.click());
+
+fileInput.addEventListener('change', (e) => {
+    Array.from(e.target.files).forEach(file => enqueueUpload(file));
+    e.target.value = '';
+});
+
+folderInput.addEventListener('change', (e) => {
+    Array.from(e.target.files).forEach(file => enqueueUpload(file));
+    e.target.value = '';
+});
+
+uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+});
+
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+
+uploadZone.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    const items = e.dataTransfer.items;
+    if (items && items.length > 0 && items[0].webkitGetAsEntry) {
+        const files = await getFilesFromDataTransferItems(items);
+        files.forEach(file => enqueueUpload(file));
+    } else {
+        Array.from(e.dataTransfer.files).forEach(file => enqueueUpload(file));
+    }
+});
+
+// ===== FILE STORE (Server-Side) =====
+const API_BASE = '';
+const FileStore = {
+    files: [],
+    async load() {
+        try {
+            const res = await fetch(`${API_BASE}/api/files`);
+            const data = await res.json();
+            this.files = data.files || [];
+            this.render();
+        } catch (e) {
+            console.error('Failed to load files:', e);
+        }
+    },
+    async add(file) {
+        try {
+            console.log('[Upload] Starting upload:', file.name, 'size:', file.size, 'path:', file.webkitRelativePath || '(root)');
+            const formData = new FormData();
+            formData.append('file', file);
+            const path = file.webkitRelativePath || '';
+            if (path) formData.append('path', path);
+            console.log('[Upload] Fetching /api/upload...');
+            const res = await fetch(`${API_BASE}/api/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            console.log('[Upload] Response status:', res.status);
+            const data = await res.json();
+            if (res.ok) {
+                console.log('[Upload] Success:', data.name || data.files?.length + ' files');
+                if (data.files) {
+                    this.files.push(...data.files);
+                } else {
+                    this.files.push(data);
+                }
+                this.render();
+            } else {
+                console.error('[Upload] Server error:', data);
+                showToast('Upload failed: ' + (data.error || `HTTP ${res.status}`), 'error');
+            }
+        } catch (e) {
+            console.error('[Upload] Network/exception error:', e);
+            showToast('Upload failed: ' + e.message, 'error');
+        }
+    },
+    async remove(id) {
+        try {
+            const res = await fetch(`${API_BASE}/api/files/${encodeURIComponent(id)}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                this.files = this.files.filter(f => f.id !== id);
+                this.render();
+            }
+        } catch (e) {
+            console.error('Delete failed:', e);
+        }
+    },
+    download(id) {
+        const a = document.createElement('a');
+        a.href = `${API_BASE}/api/download/${encodeURIComponent(id)}`;
+        a.download = id;
+        a.click();
+    },
+    formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    },
+    getIcon(type) {
+        if (type.startsWith('image/')) return '🖼';
+        if (type.startsWith('video/')) return '🎬';
+        if (type.startsWith('audio/')) return '🎵';
+        if (type.includes('pdf')) return '📄';
+        if (type.includes('text') || type.includes('markdown')) return '📝';
+        if (type.includes('json') || type.includes('xml')) return '🔧';
+        if (type.includes('zip') || type.includes('archive')) return '📦';
+        return '📎';
+    },
+    render() {
+        fileList.innerHTML = '';
+        this.files.forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.innerHTML = `
+                <span class="file-icon">${this.getIcon(file.type || '')}</span>
+                <div class="file-info">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-meta">${this.formatSize(file.size)} · ${new Date(file.date * 1000).toLocaleTimeString()}</div>
+                </div>
+                <div class="file-actions">
+                    <button onclick="FileStore.download('${file.id}')" title="Download">⬇</button>
+                    <button onclick="FileStore.remove('${file.id}')" title="Remove">×</button>
+                </div>
+            `;
+            fileList.appendChild(item);
+        });
+        this.renderExplorer();
+    },
+    renderExplorer() {
+        const explorerList = document.getElementById('explorerList');
+        if (!explorerList) return;
+        explorerList.innerHTML = '';
+        if (this.files.length === 0) {
+            explorerList.innerHTML = `
+                <div class="explorer-empty">
+                    <span class="explorer-empty-dot"></span>
+                    <p>No files uploaded yet</p>
+                </div>
+            `;
+            return;
+        }
+        this.files.forEach(file => {
+            const row = document.createElement('div');
+            row.className = 'explorer-row';
+            row.innerHTML = `
+                <div class="explorer-row-name">
+                    <span class="file-dot"></span>
+                    <span>${file.name}</span>
+                </div>
+                <div class="explorer-row-size">${this.formatSize(file.size)}</div>
+                <div class="explorer-row-date">${new Date(file.date * 1000).toLocaleDateString()}</div>
+                <div class="explorer-row-action">
+                    <button onclick="FileStore.download('${file.id}')" title="Download">⬇</button>
+                    <button onclick="FileStore.remove('${file.id}')" title="Remove">×</button>
+                </div>
+            `;
+            explorerList.appendChild(row);
+        });
+    }
+};
+
+// Load files on page start
+FileStore.load();
+
+// ===== SCROLL ANIMATIONS =====
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('visible');
+    });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+
+const progressObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const circle = entry.target.querySelector('.progress-ring-fill');
+            if (circle) {
+                const target = parseInt(circle.dataset.target);
+                const circumference = 2 * Math.PI * 36;
+                circle.style.strokeDashoffset = circumference - (target / 100) * circumference;
+            }
+        }
+    });
+}, { threshold: 0.5 });
+
+document.querySelectorAll('.progress-card').forEach(el => progressObserver.observe(el));
+
+function animateValue(id, target, duration, suffix = '') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const startTime = performance.now();
+    function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.floor(target * eased).toLocaleString() + suffix;
+        if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+}
+
+const heroObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            animateValue('stat-memories', 2847, 2000);
+            animateValue('stat-claw', 12, 1500);
+            setTimeout(() => { document.getElementById('stat-sync').textContent = '99.9%'; }, 1000);
+            heroObserver.unobserve(entry.target);
+        }
+    });
+}, { threshold: 0.5 });
+
+heroObserver.observe(document.querySelector('.hero-stats'));
+
+console.log('Memory Nexus v2 — Fiber Loop Engine + File Share');
+</script>
+
+</body>
+</html>

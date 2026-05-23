@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mixed Battlefield View — Marker V10</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0a0f0a;
+    color:#b0c4b0;
+    font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+    overflow:hidden;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  #hud {
+    background:#0d1a0d;
+    border-bottom:2px solid #2a4a2a;
+    padding:8px 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    flex-shrink:0;
+  }
+  #hud .title { color:#7ec47e; font-weight:700; font-size:15px; }
+  #hud .coords { color:#5a8a5a; font-family:monospace; }
+  canvas { flex:1; display:block; background:#0f1a0f; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="title">MARKER V10 — FULL MAP</div>
+  <div class="coords" id="coords">X:0000 Y:0000</div>
+</div>
+<canvas id="map"></canvas>
+<script>
+const canvas = document.getElementById('map');
+const ctx = canvas.getContext('2d');
+const coordsEl = document.getElementById('coords');
+
+let W, H;
+function resize(){
+  W = canvas.width = canvas.offsetWidth;
+  H = canvas.height = canvas.offsetHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ── helpers ── */
+function drawHatch(cx,cy,r,angle,color){
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.arc(0,0,r,0,Math.PI*2);
+  ctx.clip();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.45;
+  for(let i=-r*2;i<r*2;i+=8){
+    ctx.beginPath();
+    ctx.moveTo(i,-r); ctx.lineTo(i+r*2,r);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawCompass(x,y,sz){
+  ctx.save();
+  ctx.translate(x,y);
+  const r=sz/2;
+  ctx.strokeStyle='#5a8a5a';
+  ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle='#7ec47e'; ctx.font='bold 11px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('N',0,-r-8);
+  ctx.fillStyle='#b0c4b0';
+  ctx.fillText('E',r+8,0); ctx.fillText('W',-r-8,0); ctx.fillText('S',0,r+8);
+  // needle
+  const a = -Math.PI/2 + Math.sin(Date.now()/1200)*0.15;
+  ctx.strokeStyle='#c44';
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*r*0.8, Math.sin(a)*r*0.8); ctx.stroke();
+  ctx.strokeStyle='#5a8a5a';
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a+Math.PI)*r*0.5, Math.sin(a+Math.PI)*r*0.5); ctx.stroke();
+  ctx.restore();
+}
+function drawSignal(cx,cy,str){
+  const bars = Math.round(str*4);
+  ctx.save();
+  ctx.translate(cx+18,cy-12);
+  for(let i=0;i<4;i++){
+    ctx.fillStyle = i<bars ? '#7ec47e' : '#2a4a2a';
+    ctx.fillRect(i*4, 12-(i+1)*3, 3, (i+1)*3);
+  }
+  ctx.restore();
+}
+function drawPing(x,y,txt){
+  const age = (Date.now()%2000)/2000;
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.strokeStyle='#c44'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(0,0,6+age*18,0,Math.PI*2); ctx.stroke();
+  ctx.globalAlpha=1-age;
+  ctx.beginPath(); ctx.arc(0,0,6+age*18,0,Math.PI*2); ctx.stroke();
+  ctx.globalAlpha=1;
+  // label
+  ctx.fillStyle='#c44'; ctx.font='bold 11px monospace'; ctx.textAlign='center';
+  ctx.fillText(txt,0,-22);
+  ctx.restore();
+}
+
+/* ── positions ── */
+const players = [
+  {x:0.22,y:0.35,cls:'ASSAULT',icon:'A',col:'#7ec47e'},
+  {x:0.35,y:0.62,cls:'MEDIC',icon:'+',col:'#7e9ec4'},
+  {x:0.58,y:0.28,cls:'SNIPER',icon:'S',col:'#c47ec4'},
+  {x:0.72,y:0.55,cls:'ENGINEER',icon:'E',col:'#c4a47e'},
+];
+const enemies = [
+  {x:0.45,y:0.40},{x:0.52,y:0.48},{x:0.65,y:0.38}
+];
+const objectives = [
+  {x:0.28,y:0.22,label:'ALPHA'},{x:0.75,y:0.72,label:'BRAVO'}
+];
+const danger = {x:0.50,y:0.50,r:0.12};
+const supply = {x:0.18,y:0.75};
+const extraction = {x:0.82,y:0.20};
+const ping = {x:0.48,y:0.42,txt:'ENEMY SPOTTED'};
+
+/* ── loop ── */
+function draw(){
+  ctx.fillStyle='#0f1a0f'; ctx.fillRect(0,0,W,H);
+
+  // grid
+  ctx.strokeStyle='#162616'; ctx.lineWidth=1;
+  const gs=40;
+  for(let x=0;x<W;x+=gs){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for(let y=0;y<H;y+=gs){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // terrain hints (roads)
+  ctx.strokeStyle='#1a2e1a'; ctx.lineWidth=6;
+  ctx.beginPath(); ctx.moveTo(W*0.1,H*0.5); ctx.lineTo(W*0.9,H*0.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W*0.5,H*0.1); ctx.lineTo(W*0.5,H*0.9); ctx.stroke();
+
+  // danger zone
+  const dcx=W*danger.x, dcy=H*danger.y, dr=Math.min(W,H)*danger.r;
+  drawHatch(dcx,dcy,dr,Math.PI/6,'#c44');
+  ctx.strokeStyle='#c44'; ctx.lineWidth=2; ctx.setLineDash([6,4]);
+  ctx.beginPath(); ctx.arc(dcx,dcy,dr,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#c44'; ctx.font='bold 12px monospace'; ctx.textAlign='center';
+  ctx.fillText('DANGER ZONE',dcx,dcy-dr-8);
+
+  // objectives
+  objectives.forEach(o=>{
+    const ox=W*o.x, oy=H*o.y;
+    ctx.strokeStyle='#c4c47e'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(ox,oy-14); ctx.lineTo(ox+12,oy+10); ctx.lineTo(ox-12,oy+10); ctx.closePath(); ctx.stroke();
+    ctx.fillStyle='#c4c47e'; ctx.font='bold 11px monospace'; ctx.textAlign='center';
+    ctx.fillText(o.label,ox,oy+24);
+    // waypoint line
+    ctx.strokeStyle='#c4c47e44'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(ox,oy+10); ctx.lineTo(ox,oy+40); ctx.stroke(); ctx.setLineDash([]);
+  });
+
+  // supply drop
+  const sx=W*supply.x, sy=H*supply.y;
+  const t = 30 - Math.floor((Date.now()/1000)%31);
+  ctx.fillStyle='#7ec4c4'; ctx.font='bold 14px monospace'; ctx.textAlign='center';
+  ctx.fillText('SUPPLY',sx,sy-18);
+  ctx.fillStyle='#7ec4c4'; ctx.font='bold 16px monospace';
+  ctx.fillText('00:'+(t<10?'0':'')+t,sx,sy+4);
+  ctx.strokeStyle='#7ec4c4'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(sx,sy,22,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx-10,sy-10); ctx.lineTo(sx+10,sy+10); ctx.moveTo(sx+10,sy-10); ctx.lineTo(sx-10,sy+10); ctx.stroke();
+
+  // extraction
+  const ex=W*extraction.x, ey=W*extraction.y;
+  ctx.strokeStyle='#7ec47e'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(ex,ey-16); ctx.lineTo(ex+14,ey); ctx.lineTo(ex,ey+16); ctx.lineTo(ex-14,ey); ctx.closePath(); ctx.stroke();
+  ctx.fillStyle='#7ec47e'; ctx.font='bold 11px monospace'; ctx.textAlign='center';
+  ctx.fillText('EXTRACTION',ex,ey+28);
+
+  // compass
+  drawCompass(W-60,60,70);
+
+  // enemies
+  enemies.forEach(e=>{
+    const ex=W*e.x, ey=H*e.y;
+    ctx.fillStyle='#c44';
+    ctx.beginPath(); ctx.arc(ex,ey,5,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#c44'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(ex,ey,9,0,Math.PI*2); ctx.stroke();
+  });
+
+  // players
+  players.forEach(p=>{
+    const px=W*p.x, py=H*p.y;
+    // ring
+    ctx.strokeStyle=p.col; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(px,py,16,0,Math.PI*2); ctx.stroke();
+    // fill
+    ctx.fillStyle='#0f1a0f';
+    ctx.beginPath(); ctx.arc(px,py,14,0,Math.PI*2); ctx.fill();
+    // icon
+    ctx.fillStyle=p.col; ctx.font='bold 12px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(p.icon,px,py+1);
+    // class label
+    ctx.font='10px monospace'; ctx.fillText(p.cls,px,py+26);
+    // signal
+    drawSignal(px,py,0.5+Math.sin(Date.now()/800+p.x*10)*0.5);
+  });
+
+  // ping
+  drawPing(W*ping.x, H*ping.y, ping.txt);
+
+  // crosshair center
+  ctx.strokeStyle='#2a4a2a'; ctx.lineWidth=1;
+  const cx=W/2, cy=H/2;
+  ctx.beginPath(); ctx.moveTo(cx-8,cy); ctx.lineTo(cx+8,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy-8); ctx.lineTo(cx,cy+8); ctx.stroke();
+
+  requestAnimationFrame(draw);
+}
+draw();
+
+// mouse coords
+canvas.addEventListener('mousemove', e=>{
+  const r=canvas.getBoundingClientRect();
+  const x=Math.round(e.clientX-r.left);
+  const y=Math.round(e.clientY-r.top);
+  coordsEl.textContent = `X:${String(x).padStart(4,'0')} Y:${String(y).padStart(4,'0')}`;
+});
+</script>
+</body>
+</html>

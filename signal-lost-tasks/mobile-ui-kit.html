@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Signal Lost — Mobile Role UI Kit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --cream-soft: #fff8dc;
+      --peach: #ffc0a0;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --glass-bg: rgba(255, 248, 220, 0.15);
+      --glass-border: rgba(255, 255, 255, 0.25);
+      --display-font: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+      --body-font: 'Inter', 'Bookman Old Style', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    
+    html { background: var(--cream); font-family: var(--body-font); -webkit-font-smoothing: antialiased; }
+    
+    body {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      background: var(--cream);
+      color: var(--ink);
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Phone Frame (for demo) */
+    .phone-frame {
+      max-width: 430px;
+      margin: 2rem auto;
+      border: 12px solid #333;
+      border-radius: 40px;
+      overflow: hidden;
+      background: var(--cream);
+      box-shadow: 0 24px 48px rgba(0,0,0,0.3);
+    }
+
+    /* Header */
+    .mobile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(150%);
+      border-bottom: 1px solid var(--glass-border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .mobile-header .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mobile-header .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--teal), var(--blue));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cream);
+      font-family: var(--mono-font);
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .mobile-header .brand-text {
+      font-family: var(--display-font);
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .mobile-header .status {
+      width: 10px;
+      height: 10px;
+      background: #00c853;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #00c853;
+      animation: statusPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes statusPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* GPS / Location Bar */
+    .location-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(0, 140, 148, 0.08);
+      border-bottom: 1px solid rgba(0, 140, 148, 0.15);
+    }
+
+    .location-bar .gps-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--teal);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cream);
+      font-size: 1rem;
+      animation: gpsPing 2s ease-in-out infinite;
+    }
+
+    @keyframes gpsPing {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0, 140, 148, 0.4); }
+      50% { box-shadow: 0 0 0 10px rgba(0, 140, 148, 0); }
+    }
+
+    .location-bar .coords {
+      flex: 1;
+    }
+
+    .location-bar .coords .latlng {
+      font-family: var(--mono-font);
+      font-size: 0.8rem;
+      color: var(--teal);
+      font-weight: 600;
+    }
+
+    .location-bar .coords .accuracy {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .location-bar .signal-strength {
+      display: flex;
+      gap: 2px;
+      align-items: end;
+      height: 20px;
+    }
+
+    .location-bar .signal-strength span {
+      width: 4px;
+      background: var(--teal);
+      border-radius: 2px;
+      animation: signalBars 1.5s ease-in-out infinite alternate;
+    }
+
+    .location-bar .signal-strength span:nth-child(1) { height: 30%; animation-delay: 0s; }
+    .location-bar .signal-strength span:nth-child(2) { height: 50%; animation-delay: 0.1s; }
+    .location-bar .signal-strength span:nth-child(3) { height: 70%; animation-delay: 0.2s; }
+    .location-bar .signal-strength span:nth-child(4) { height: 100%; animation-delay: 0.3s; }
+
+    @keyframes signalBars {
+      from { opacity: 0.5; }
+      to { opacity: 1; }
+    }
+
+    /* Role Switcher */
+    .role-switcher {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .role-switcher::-webkit-scrollbar { display: none; }
+
+    .role-chip {
+      flex-shrink: 0;
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.4);
+      border: 2px solid transparent;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+      white-space: nowrap;
+    }
+
+    .role-chip:hover {
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    .role-chip.active {
+      background: var(--teal);
+      color: var(--cream);
+      border-color: var(--teal);
+      box-shadow: 0 4px 12px rgba(0, 140, 148, 0.3);
+    }
+
+    /* Main Content */
+    .mobile-content {
+      padding: 1rem;
+    }
+
+    /* Cards */
+    .mobile-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      transition: all 0.4s var(--ease-out);
+    }
+
+    .mobile-card:active {
+      transform: scale(0.98);
+    }
+
+    .mobile-card .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .mobile-card .card-title {
+      font-family: var(--display-font);
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .mobile-card .card-badge {
+      padding: 0.25rem 0.5rem;
+      background: rgba(0, 140, 148, 0.1);
+      border-radius: 6px;
+      font-family: var(--mono-font);
+      font-size: 0.65rem;
+      color: var(--teal);
+      text-transform: uppercase;
+    }
+
+    .mobile-card .card-value {
+      font-family: var(--mono-font);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--teal);
+    }
+
+    .mobile-card .card-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* Compass / Direction */
+    .compass-ring {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 3px solid rgba(0, 140, 148, 0.3);
+      position: relative;
+      margin: 1rem auto;
+      background: radial-gradient(circle, rgba(0, 140, 148, 0.05) 0%, transparent 70%);
+    }
+
+    .compass-ring .needle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 3px;
+      height: 45%;
+      background: linear-gradient(to top, var(--teal), var(--gold));
+      transform-origin: bottom center;
+      transform: translate(-50%, -100%) rotate(45deg);
+      border-radius: 2px;
+      transition: transform 0.5s var(--ease-out);
+    }
+
+    .compass-ring .needle::after {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: -4px;
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 8px solid var(--gold);
+    }
+
+    .compass-labels {
+      position: absolute;
+      inset: 0;
+    }
+
+    .compass-labels span {
+      position: absolute;
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .compass-labels .n { top: 5px; left: 50%; transform: translateX(-50%); }
+    .compass-labels .e { right: 5px; top: 50%; transform: translateY(-50%); }
+    .compass-labels .s { bottom: 5px; left: 50%; transform: translateX(-50%); }
+    .compass-labels .w { left: 5px; top: 50%; transform: translateY(-50%); }
+
+    /* Action Buttons */
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.4);
+      border: 2px solid transparent;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+      touch-action: manipulation;
+    }
+
+    .action-btn:active {
+      transform: scale(0.95);
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.6);
+      border-color: var(--peach);
+      transform: translateY(-2px);
+    }
+
+    .action-btn .icon {
+      font-size: 1.5rem;
+    }
+
+    .action-btn .label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    /* Bottom Nav */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 430px;
+      display: flex;
+      justify-content: space-around;
+      padding: 0.75rem 0;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(150%);
+      border-top: 1px solid var(--glass-border);
+      z-index: 100;
+    }
+
+    .bottom-nav .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 1rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.65rem;
+      font-weight: 500;
+      transition: all 0.3s var(--ease-out);
+      border-radius: 8px;
+    }
+
+    .bottom-nav .nav-item .icon {
+      font-size: 1.25rem;
+    }
+
+    .bottom-nav .nav-item.active {
+      color: var(--teal);
+    }
+
+    .bottom-nav .nav-item:active {
+      transform: scale(0.9);
+    }
+
+    /* Threat Alert */
+    .threat-alert {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1rem;
+      background: rgba(232, 38, 99, 0.1);
+      border: 2px solid rgba(232, 38, 99, 0.2);
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      animation: threatPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes threatPulse {
+      0%, 100% { border-color: rgba(232, 38, 99, 0.2); }
+      50% { border-color: rgba(232, 38, 99, 0.5); }
+    }
+
+    .threat-alert .alert-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--pink);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      animation: alertShake 0.5s ease-in-out infinite;
+    }
+
+    @keyframes alertShake {
+      0%, 100% { transform: rotate(0); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+
+    .threat-alert .alert-text {
+      flex: 1;
+    }
+
+    .threat-alert .alert-text strong {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--pink);
+    }
+
+    .threat-alert .alert-text span {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* Distance Badge */
+    .distance-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: linear-gradient(135deg, var(--teal), var(--blue));
+      color: var(--cream);
+      border-radius: 20px;
+      font-family: var(--mono-font);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    /* Progress Ring */
+    .progress-ring {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto;
+    }
+
+    .progress-ring circle {
+      fill: none;
+      stroke-width: 6;
+      stroke-linecap: round;
+    }
+
+    .progress-ring .bg {
+      stroke: rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-ring .fill {
+      stroke: var(--teal);
+      stroke-dasharray: 220;
+      stroke-dashoffset: 55;
+      transition: stroke-dashoffset 1s var(--ease-out);
+      transform: rotate(-90deg);
+      transform-origin: center;
+    }
+
+    /* Chat Messages */
+    .chat-bubble {
+      padding: 0.75rem 1rem;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 14px;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+      animation: slideUp 0.3s var(--ease-out);
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .chat-bubble .sender {
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      color: var(--teal);
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+
+    /* Safe Zone Warning */
+    .safe-zone-bar {
+      padding: 0.75rem 1rem;
+      background: rgba(255, 139, 31, 0.1);
+      border: 2px solid var(--orange);
+      border-radius: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .safe-zone-bar .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .safe-zone-bar .header span {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--orange);
+    }
+
+    .safe-zone-bar .header .timer {
+      font-family: var(--mono-font);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--orange);
+    }
+
+    .safe-zone-bar .progress {
+      height: 6px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .safe-zone-bar .progress .fill {
+      height: 100%;
+      width: 65%;
+      background: linear-gradient(90deg, var(--gold), var(--orange));
+      border-radius: 3px;
+      transition: width 1s linear;
+    }
+
+    /* Demo Label */
+    .demo-label {
+      text-align: center;
+      padding: 1rem;
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+  </style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="mobile-ui-kit" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Mobile Role UI Kit</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <div class="phone-frame">
+    <!-- Header -->
+    <header class="mobile-header">
+      <div class="brand">
+        <div class="brand-icon">SL</div>
+        <div class="brand-text">Signal Lost</div>
+      </div>
+      <div class="status"></div>
+    </header>
+
+    <!-- GPS Location Bar -->
+    <div class="location-bar">
+      <div class="gps-icon">📍</div>
+      <div class="coords">
+        <div class="latlng">59.9139°N, 10.7522°E</div>
+        <div class="accuracy">± 4.2m accuracy</div>
+      </div>
+      <div class="signal-strength">
+        <span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <!-- Role Switcher -->
+    <div class="role-switcher">
+      <div class="role-chip active">Mission Control</div>
+      <div class="role-chip">Navigator</div>
+      <div class="role-chip">Decoder</div>
+      <div class="role-chip">Medic</div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="mobile-content">
+      <!-- Threat Alert -->
+      <div class="threat-alert">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-text">
+          <strong>Patrol Drone Nearby</strong>
+          <span>Distance: 120m • Closing</span>
+        </div>
+      </div>
+
+      <!-- Safe Zone -->
+      <div class="safe-zone-bar">
+        <div class="header">
+          <span>⚡ Safe Zone Shrinking</span>
+          <span class="timer">02:34</span>
+        </div>
+        <div class="progress">
+          <div class="fill"></div>
+        </div>
+      </div>
+
+      <!-- Distance Badge -->
+      <div style="text-align: center; margin-bottom: 1rem;">
+        <div class="distance-badge">📍 Objective: 450m NW</div>
+      </div>
+
+      <!-- Compass -->
+      <div class="compass-ring">
+        <div class="compass-labels">
+          <span class="n">N</span>
+          <span class="e">E</span>
+          <span class="s">S</span>
+          <span class="w">W</span>
+        </div>
+        <div class="needle"></div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="mobile-card">
+        <div class="card-header">
+          <div class="card-title">Signal Strength</div>
+          <div class="card-badge">Live</div>
+        </div>
+        <div class="card-value">72%</div>
+        <div class="card-label">Squad signal stable</div>
+      </div>
+
+      <div class="mobile-card">
+        <div class="card-header">
+          <div class="card-title">Team Status</div>
+          <div class="card-badge">4 Active</div>
+        </div>
+        <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+          <div style="text-align: center;">
+            <div style="font-family: var(--mono-font); font-size: 1.5rem; font-weight: 700; color: var(--teal);">M</div>
+            <div style="font-size: 0.65rem; color: var(--muted);">Maverick</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-family: var(--mono-font); font-size: 1.5rem; font-weight: 700; color: var(--orange);">R</div>
+            <div style="font-size: 0.65rem; color: var(--muted);">Ripper</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-family: var(--mono-font); font-size: 1.5rem; font-weight: 700; color: var(--pink);">V</div>
+            <div style="font-size: 0.65rem; color: var(--muted);">Vortex</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-family: var(--mono-font); font-size: 1.5rem; font-weight: 700; color: var(--gold);">P</div>
+            <div style="font-size: 0.65rem; color: var(--muted);">Phantom</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat -->
+      <div class="chat-bubble">
+        <div class="sender">Mission Control</div>
+        <div>Move to sector 7. Drone patrol moving east.</div>
+      </div>
+
+      <div class="chat-bubble">
+        <div class="sender">Navigator</div>
+        <div>Route adjusted. 340m to safehouse.</div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-grid">
+        <div class="action-btn">
+          <div class="icon">🗺️</div>
+          <div class="label">Map</div>
+        </div>
+        <div class="action-btn">
+          <div class="icon">📡</div>
+          <div class="label">Radar</div>
+        </div>
+        <div class="action-btn">
+          <div class="icon">🔊</div>
+          <div class="label">Comms</div>
+        </div>
+        <div class="action-btn">
+          <div class="icon">⚡</div>
+          <div class="label">Signal</div>
+        </div>
+      </div>
+
+      <!-- Progress Ring -->
+      <div class="mobile-card" style="text-align: center;">
+        <div class="card-title" style="margin-bottom: 1rem;">Mission Progress</div>
+        <svg class="progress-ring" viewBox="0 0 80 80">
+          <circle class="bg" cx="40" cy="40" r="35"></circle>
+          <circle class="fill" cx="40" cy="40" r="35"></circle>
+        </svg>
+        <div style="font-family: var(--mono-font); font-size: 1.25rem; font-weight: 700; color: var(--teal); margin-top: 0.5rem;">75%</div>
+        <div style="font-size: 0.75rem; color: var(--muted);">3 of 4 objectives</div>
+      </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+      <a href="#" class="nav-item active">
+        <span class="icon">📊</span>
+        <span>Status</span>
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">🗺️</span>
+        <span>Map</span>
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">📡</span>
+        <span>Radar</span>
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">⚙️</span>
+        <span>Settings</span>
+      </a>
+    </nav>
+  </div>
+
+  <div class="demo-label">Mobile UI Kit — 430px viewport</div>
+
+  <script>
+    // Role switcher
+    document.querySelectorAll('.role-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.role-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+      });
+    });
+
+    // Animate compass needle
+    let angle = 45;
+    setInterval(() => {
+      angle += (Math.random() - 0.5) * 10;
+      document.querySelector('.needle').style.transform = `translate(-50%, -100%) rotate(${angle}deg)`;
+    }, 2000);
+
+    // Bottom nav
+    document.querySelectorAll('.bottom-nav .nav-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.querySelectorAll('.bottom-nav .nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+      });
+    });
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

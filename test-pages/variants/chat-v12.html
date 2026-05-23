@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEURAL LINK — Chat V12</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #02040a;
+    color: #a0f0ff;
+    font-family: 'Segoe UI', 'Roboto', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+  #bgCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+  #uiLayer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+  }
+  .hud-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 28px;
+    pointer-events: auto;
+  }
+  .hud-title {
+    font-size: 1.1rem;
+    letter-spacing: 4px;
+    color: #00e5ff;
+    text-shadow: 0 0 12px #00e5ff88;
+    font-weight: 700;
+  }
+  .hud-status {
+    font-size: 0.75rem;
+    color: #4dd0e1;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #00e5ff;
+    box-shadow: 0 0 8px #00e5ff;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  #chatArea {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  .msg-bubble {
+    position: absolute;
+    padding: 10px 18px;
+    border-radius: 18px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    max-width: 320px;
+    backdrop-filter: blur(8px);
+    border: 1px solid;
+    box-shadow: 0 0 20px;
+    opacity: 0;
+    transform: scale(0.7);
+    animation: thoughtIn 0.7s cubic-bezier(.22,1,.36,1) forwards;
+    pointer-events: auto;
+    cursor: default;
+    transition: transform 0.2s;
+  }
+  .msg-bubble:hover { transform: scale(1.03); }
+  @keyframes thoughtIn {
+    to { opacity: 1; transform: scale(1); }
+  }
+  .msg-sender {
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .msg-text { color: #e0f7ff; }
+  .msg-time {
+    font-size: 0.65rem;
+    margin-top: 6px;
+    opacity: 0.6;
+    text-align: right;
+  }
+  .neural-node {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #00e5ff;
+    box-shadow: 0 0 14px #00e5ff;
+    animation: nodePulse 1.5s infinite;
+    pointer-events: none;
+  }
+  @keyframes nodePulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.6); opacity: 0.3; }
+  }
+  #inputArea {
+    padding: 16px 28px 24px;
+    pointer-events: auto;
+    display: flex;
+    gap: 14px;
+    align-items: flex-end;
+  }
+  #msgInput {
+    flex: 1;
+    background: rgba(0, 20, 40, 0.7);
+    border: 1px solid #00e5ff44;
+    border-radius: 14px;
+    padding: 12px 18px;
+    color: #a0f0ff;
+    font-size: 0.95rem;
+    outline: none;
+    backdrop-filter: blur(6px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  #msgInput:focus {
+    border-color: #00e5ff;
+    box-shadow: 0 0 16px #00e5ff33;
+  }
+  #msgInput::placeholder { color: #4dd0e188; }
+  #sendBtn {
+    background: linear-gradient(135deg, #00e5ff22, #00e5ff55);
+    border: 1px solid #00e5ff88;
+    color: #00e5ff;
+    padding: 12px 28px;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 700;
+    text-shadow: 0 0 8px #00e5ff;
+  }
+  #sendBtn:hover {
+    background: linear-gradient(135deg, #00e5ff44, #00e5ff88);
+    box-shadow: 0 0 24px #00e5ff44;
+  }
+  #neuralGrid {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) scale(0.9);
+    display: grid;
+    grid-template-columns: repeat(4, 56px);
+    gap: 10px;
+    padding: 14px;
+    background: rgba(2, 8, 20, 0.85);
+    border: 1px solid #00e5ff33;
+    border-radius: 16px;
+    backdrop-filter: blur(12px);
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  #neuralGrid.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) scale(1);
+  }
+  .grid-cell {
+    width: 56px; height: 56px;
+    border-radius: 12px;
+    border: 1px solid #00e5ff22;
+    background: rgba(0, 20, 40, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: all 0.25s;
+    color: #4dd0e1;
+  }
+  .grid-cell:hover {
+    border-color: #00e5ff;
+    background: rgba(0, 229, 255, 0.12);
+    box-shadow: 0 0 14px #00e5ff33;
+    transform: scale(1.1);
+  }
+  #toggleGrid {
+    background: rgba(0, 20, 40, 0.6);
+    border: 1px solid #00e5ff44;
+    color: #00e5ff;
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 700;
+  }
+  #toggleGrid:hover {
+    border-color: #00e5ff;
+    box-shadow: 0 0 16px #00e5ff33;
+  }
+  .signature-canvas {
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+  }
+</style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+<div id="uiLayer">
+  <div class="hud-top">
+    <div class="hud-title">CHAT V12</div>
+    <div class="hud-status"><span class="status-dot"></span>NEURAL LINK ACTIVE</div>
+  </div>
+  <div id="chatArea"></div>
+  <div id="neuralGrid">
+    <div class="grid-cell" data-cmd="wave">∿</div>
+    <div class="grid-cell" data-cmd="pulse">◉</div>
+    <div class="grid-cell" data-cmd="sync">⟲</div>
+    <div class="grid-cell" data-cmd="scan">◎</div>
+    <div class="grid-cell" data-cmd="boost">▲</div>
+    <div class="grid-cell" data-cmd="calm">▽</div>
+    <div class="grid-cell" data-cmd="link">∞</div>
+    <div class="grid-cell" data-cmd="break">✕</div>
+  </div>
+  <div id="inputArea">
+    <button id="toggleGrid">NEURAL</button>
+    <input type="text" id="msgInput" placeholder="Transmit thought..." autocomplete="off">
+    <button id="sendBtn">SEND</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  const chatArea = document.getElementById('chatArea');
+  const msgInput = document.getElementById('msgInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const toggleGrid = document.getElementById('toggleGrid');
+  const neuralGrid = document.getElementById('neuralGrid');
+
+  let W, H;
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // EEG / brainwave background
+  const eegLines = 5;
+  const eegPoints = 200;
+  let eegData = [];
+  for (let i = 0; i < eegLines; i++) {
+    eegData.push(new Array(eegPoints).fill(0));
+  }
+  let eegSpike = 0;
+
+  function updateEEG() {
+    for (let i = 0; i < eegLines; i++) {
+      eegData[i].shift();
+      let base = Math.sin(Date.now() * 0.001 + i * 1.3) * 0.3;
+      base += Math.sin(Date.now() * 0.003 + i * 2.1) * 0.15;
+      let noise = (Math.random() - 0.5) * 0.2;
+      let spike = eegSpike * (Math.random() * 0.5 + 0.5) * (i % 2 === 0 ? 1 : -1);
+      eegData[i].push(base + noise + spike);
+    }
+    eegSpike *= 0.92;
+  }
+
+  function drawEEG() {
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    for (let i = 0; i < eegLines; i++) {
+      const yBase = H * 0.15 + (H * 0.7 / eegLines) * i;
+      ctx.beginPath();
+      ctx.strokeStyle = '#00e5ff';
+      ctx.lineWidth = 1.5;
+      for (let j = 0; j < eegPoints; j++) {
+        const x = (W / eegPoints) * j;
+        const y = yBase + eegData[i][j] * (H * 0.06);
+        if (j === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // glow
+      ctx.beginPath();
+      ctx.strokeStyle = '#00e5ff';
+      ctx.globalAlpha = 0.08;
+      ctx.lineWidth = 6;
+      for (let j = 0; j < eegPoints; j++) {
+        const x = (W / eegPoints) * j;
+        const y = yBase + eegData[i][j] * (H * 0.06);
+        if (j === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 0.25;
+    }
+    ctx.restore();
+  }
+
+  // Neural network nodes
+  const nodes = [];
+  const nodeCount = 40;
+  for (let i = 0; i < nodeCount; i++) {
+    nodes.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      r: Math.random() * 2 + 1.5,
+      pulse: Math.random() * Math.PI * 2
+    });
+  }
+
+  function updateNodes() {
+    for (const n of nodes) {
+      n.x += n.vx;
+      n.y += n.vy;
+      if (n.x < 0 || n.x > W) n.vx *= -1;
+      if (n.y < 0 || n.y > H) n.vy *= -1;
+      n.pulse += 0.03;
+    }
+  }
+
+  function drawNodes() {
+    ctx.save();
+    // connections
+    ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x;
+        const dy = nodes[i].y - nodes[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 160) {
+          ctx.globalAlpha = (1 - dist / 160) * 0.15;
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    // nodes
+    for (const n of nodes) {
+      const alpha = 0.4 + Math.sin(n.pulse) * 0.2;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#00e5ff';
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = alpha * 0.3;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Neural signatures (waveform patterns per player)
+  const signatures = {};
+  const players = ['Neural-1', 'Neural-2', 'Neural-3', 'Neural-4'];
+  const playerColors = {
+    'Neural-1': '#00e5ff',
+    'Neural-2': '#ff4081',
+    'Neural-3': '#76ff03',
+    'Neural-4': '#ffd740'
+  };
+
+  function getSignature(player) {
+    if (!signatures[player]) {
+      const seed = player.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+      signatures[player] = {
+        freq1: 0.02 + (seed % 7) * 0.005,
+        freq2: 0.03 + (seed % 5) * 0.007,
+        amp1: 8 + (seed % 10),
+        amp2: 5 + (seed % 8),
+        phase: seed * 0.1
+      };
+    }
+    return signatures[player];
+  }
+
+  function drawSignature(player, x, y, width) {
+    const sig = getSignature(player);
+    const color = playerColors[player] || '#00e5ff';
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    for (let i = 0; i < width; i++) {
+      const py = y + Math.sin(i * sig.freq1 + sig.phase + Date.now() * 0.003) * sig.amp1
+                   + Math.sin(i * sig.freq2 + sig.phase + Date.now() * 0.005) * sig.amp2;
+      if (i === 0) ctx.moveTo(x + i, py);
+      else ctx.lineTo(x + i, py);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Message bubbles
+  let msgId = 0;
+  const messages = [];
+  const bubblePositions = [];
+
+  function addMessage(player, text) {
+    msgId++;
+    const color = playerColors[player] || '#00e5ff';
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.id = 'msg-' + msgId;
+    bubble.style.borderColor = color + '44';
+    bubble.style.boxShadow = '0 0 20px ' + color + '22';
+    bubble.style.background = color + '11';
+
+    const sender = document.createElement('div');
+    sender.className = 'msg-sender';
+    sender.style.color = color;
+    sender.textContent = player;
+
+    const txt = document.createElement('div');
+    txt.className = 'msg-text';
+    txt.textContent = text;
+
+    const time = document.createElement('div');
+    time.className = 'msg-time';
+    time.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+    bubble.appendChild(sender);
+    bubble.appendChild(txt);
+    bubble.appendChild(time);
+
+    // Position with organic flow
+    const areaW = chatArea.clientWidth;
+    const areaH = chatArea.clientHeight;
+    let bx, by;
+    let attempts = 0;
+    do {
+      bx = 40 + Math.random() * (areaW - 400);
+      by = 20 + Math.random() * (areaH - 200);
+      attempts++;
+    } while (attempts < 20 && bubblePositions.some(p => Math.abs(p.x - bx) < 200 && Math.abs(p.y - by) < 100));
+
+    bubble.style.left = bx + 'px';
+    bubble.style.top = by + 'px';
+    chatArea.appendChild(bubble);
+
+    // Neural node at bubble
+    const node = document.createElement('div');
+    node.className = 'neural-node';
+    node.style.left = (bx - 16) + 'px';
+    node.style.top = (by + bubble.clientHeight / 2) + 'px';
+    node.style.background = color;
+    node.style.boxShadow = '0 0 14px ' + color;
+    chatArea.appendChild(node);
+
+    // Connect to previous message with SVG line
+    if (bubblePositions.length > 0) {
+      const prev = bubblePositions[bubblePositions.length - 1];
+      connectBubbles(prev.x, prev.y, bx, by, color);
+    }
+
+    bubblePositions.push({x: bx, y: by, id: msgId});
+    messages.push({id: msgId, player, text, el: bubble, node, x: bx, y: by});
+
+    // EEG spike
+    eegSpike = 1.2;
+
+    // Cleanup old
+    if (messages.length > 12) {
+      const old = messages.shift();
+      if (old.el && old.el.parentNode) old.el.parentNode.removeChild(old.el);
+      if (old.node && old.node.parentNode) old.node.parentNode.removeChild(old.node);
+      bubblePositions.shift();
+    }
+
+    // Remove connecting lines older than 12 messages
+    const lines = chatArea.querySelectorAll('.neural-line');
+    if (lines.length > 11) {
+      lines[0].parentNode.removeChild(lines[0]);
+    }
+  }
+
+  function connectBubbles(x1, y1, x2, y2, color) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.position = 'absolute';
+    svg.style.left = '0';
+    svg.style.top = '0';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.pointerEvents = 'none';
+    svg.style.zIndex = '0';
+    svg.classList.add('neural-line');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const mx = (x1 + x2) / 2;
+    const my = (y1 + y2) / 2 + 40;
+    path.setAttribute('d', `M${x1},${y1} Q${mx},${my} ${x2},${y2}`);
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width', '1');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-dasharray', '4 4');
+    path.setAttribute('opacity', '0.35');
+
+    // Animate dash
+    const animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+    animate.setAttribute('attributeName', 'stroke-dashoffset');
+    animate.setAttribute('from', '0');
+    animate.setAttribute('to', '16');
+    animate.setAttribute('dur', '1s');
+    animate.setAttribute('repeatCount', 'indefinite');
+    path.appendChild(animate);
+
+    svg.appendChild(path);
+    chatArea.appendChild(svg);
+  }
+
+  // Demo messages
+  const demoTexts = [
+    ['Neural-1', 'Synaptic handshake initiated.'],
+    ['Neural-2', 'Cortex link stable at 98%.'],
+    ['Neural-3', 'Transmitting memory fragment delta-7.'],
+    ['Neural-4', 'Hippocampus buffer clearing.'],
+    ['Neural-1', 'Thought pattern recognized.'],
+    ['Neural-2', 'Neural bridge established.'],
+    ['Neural-3', 'Dopamine levels nominal.'],
+    ['Neural-4', 'Amygdala spike detected — emotion tagged.'],
+    ['Neural-1', 'Uploading sensory stream...'],
+    ['Neural-2', 'Bandwidth optimal. Continue.'],
+    ['Neural-3', 'Collective consciousness node active.'],
+    ['Neural-4', 'Signal clarity: 99.7%'],
+  ];
+  let demoIdx = 0;
+  function postDemo() {
+    const [p, t] = demoTexts[demoIdx % demoTexts.length];
+    addMessage(p, t);
+    demoIdx++;
+    setTimeout(postDemo, 2500 + Math.random() * 2000);
+  }
+  setTimeout(postDemo, 800);
+
+  // Send
+  function send() {
+    const text = msgInput.value.trim();
+    if (!text) return;
+    addMessage('Neural-1', text);
+    msgInput.value = '';
+  }
+  sendBtn.addEventListener('click', send);
+  msgInput.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+
+  // Neural grid toggle
+  toggleGrid.addEventListener('click', () => {
+    neuralGrid.classList.toggle('active');
+  });
+  neuralGrid.querySelectorAll('.grid-cell').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const cmd = cell.dataset.cmd;
+      addMessage('Neural-1', `[${cmd.toUpperCase()}] neural pattern activated.`);
+      neuralGrid.classList.remove('active');
+    });
+  });
+
+  // Render loop
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    updateEEG();
+    drawEEG();
+    updateNodes();
+    drawNodes();
+
+    // Draw signatures near recent messages
+    for (const msg of messages.slice(-4)) {
+      const sigW = 60;
+      drawSignature(msg.player, msg.x - 70, msg.y + 20, sigW);
+    }
+
+    requestAnimationFrame(render);
+  }
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost Flow Design - Roles</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="./design-flow.css" />
+</head>
+<body data-flow-page="roles" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Choose Roles</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./design-flow-setup.html">Setup</a>
+        <a href="./design-flow-roles.html" aria-current="page">Roles</a>
+        <a href="./design-flow-control.html">Control</a>
+        <a href="./action-center.html">Action Center</a>
+      </nav>
+      <div class="compact-audio" aria-label="Theme song controls">
+        <button id="audioToggle" type="button">Play</button>
+        <label><span>Vol</span><input id="volumeControl" type="range" min="0" max="100" value="70" /></label>
+        <span id="audioStatus">Idle</span>
+        <audio id="themeAudio" src="./assets/retro-heist-run.mp3" preload="metadata" loop></audio>
+      </div>
+    </header>
+
+    <section class="flow-layout" aria-label="Role selection layout option">
+      <div class="flow-main">
+        <section class="flow-panel glass-panel reveal">
+          <p class="kicker">Team Step Two</p>
+          <h2>Assign The Crew</h2>
+          <p>Mission Control becomes a real role here, not just a screen. For two-player games, the organizer can allow role stacking so one player can carry Mission Control plus Decoder, Navigator, or Medic.</p>
+          <div class="action-row">
+            <span class="role-token is-active">Multi-role stacking on</span>
+            <span class="role-token">Phone ready</span>
+            <span class="role-token">Tablet console</span>
+          </div>
+        </section>
+
+        <section class="role-grid wide glass-panel reveal" aria-label="Role cards">
+          <article class="role-card mission-control selected">
+            <p class="kicker">New Role</p>
+            <h3>Mission Control</h3>
+            <p>Runs radar, live comms, GM actions, route decisions, and organizer fairness tools.</p>
+            <div class="role-tools"><span class="role-token is-active">Radar</span><span class="role-token">Comms</span></div>
+          </article>
+          <article class="role-card">
+            <p class="kicker">Field</p>
+            <h3>Navigator</h3>
+            <p>Guides movement and route changes from the phone map and proximity cues.</p>
+            <div class="role-tools"><span class="role-token">Route</span><span class="role-token">Map</span></div>
+          </article>
+          <article class="role-card">
+            <p class="kicker">Puzzle</p>
+            <h3>Decoder</h3>
+            <p>Solves ciphers, opens clue packets, and confirms code words with Mission Control.</p>
+            <div class="role-tools"><span class="role-token">Cipher</span><span class="role-token">Clues</span></div>
+          </article>
+          <article class="role-card">
+            <p class="kicker">Support</p>
+            <h3>Medic</h3>
+            <p>Manages signal/stamina saves and keeps the team moving when hazards hit.</p>
+            <div class="role-tools"><span class="role-token">Vitals</span><span class="role-token">Cache</span></div>
+          </article>
+        </section>
+
+        <section class="phone-row glass-panel reveal" aria-label="Device layout previews">
+          <article class="phone-preview"><div class="phone-screen"><p class="kicker">Phone</p><h3>Field Kit</h3><p>Large objective distance, threat pulse, quick role actions.</p></div></article>
+          <article class="phone-preview"><div class="phone-screen"><p class="kicker">Tablet</p><h3>Mini Control</h3><p>Radar, team feed, and broadcast controls for couch operators.</p></div></article>
+          <article class="phone-preview"><div class="phone-screen"><p class="kicker">Shared</p><h3>Stacked Roles</h3><p>Two players can split six responsibilities without losing the fantasy.</p></div></article>
+        </section>
+      </div>
+
+      <aside class="flow-side glass-panel reveal">
+        <section class="theme-console">
+          <p class="kicker">Background Theme</p>
+          <h3>Game Look</h3>
+          <label>
+            Moving background
+            <select id="backgroundSelect">
+              <option value="sunset-grid">Sunset Grid</option>
+              <option value="signal-candy">Signal Candy</option>
+              <option value="night-static">Night Static</option>
+              <option value="psychedelic-waves">Psychedelic Waves</option>
+              <option value="blue-blocks">Blue Console Blocks</option>
+              <option value="hourglass">Hourglass Repeat</option>
+              <option value="teal-sonar">Teal Sonar</option>
+              <option value="paisley">Black Paisley</option>
+            </select>
+          </label>
+        </section>
+        <section class="flow-card">
+          <p class="kicker">Brainstorm Note</p>
+          <h3>Do Not Overload</h3>
+          <p>Keep role choice playful, but gate advanced tools behind the selected role. That protects first-time players from a cockpit full of controls.</p>
+        </section>
+      </aside>
+    </section>
+  </main>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script src="./design-flow.js?v=3"></script>
+  <!-- Roles page specific scripts -->
+  <script>
+    // Role cards selection
+    document.querySelectorAll('.role-card').forEach(card => {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radar V13 - AR HUD</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #0a0a0a;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  /* Simulated camera feed background */
+  #camera-feed {
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,0.15) 0px,
+        rgba(0,0,0,0.15) 1px,
+        transparent 1px,
+        transparent 3px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        rgba(0,0,0,0.15) 0px,
+        rgba(0,0,0,0.15) 1px,
+        transparent 1px,
+        transparent 3px
+      ),
+      radial-gradient(ellipse at 30% 40%, rgba(80,120,160,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at 70% 60%, rgba(60,100,80,0.12) 0%, transparent 55%),
+      linear-gradient(180deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%);
+    filter: contrast(1.1) saturate(0.7);
+    animation: cameraDrift 20s ease-in-out infinite alternate;
+  }
+  @keyframes cameraDrift {
+    0% { transform: scale(1) translate(0,0); }
+    50% { transform: scale(1.03) translate(-5px, 3px); }
+    100% { transform: scale(1.01) translate(3px, -2px); }
+  }
+
+  /* Scanlines overlay */
+  #scanlines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(0,255,200,0.03) 2px,
+      rgba(0,255,200,0.03) 4px
+    );
+    z-index: 5;
+  }
+
+  /* Vignette */
+  #vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
+    z-index: 6;
+  }
+
+  /* Main HUD canvas */
+  #hud-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+  }
+
+  /* CSS overlay elements */
+  #hud-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  /* Top bar */
+  .top-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 30px;
+    background: linear-gradient(180deg, rgba(0,255,200,0.08) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(0,255,200,0.15);
+  }
+  .top-bar::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 10%; right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,255,200,0.4), transparent);
+  }
+  .hud-title {
+    color: rgba(0,255,200,0.9);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+  .hud-title span {
+    color: rgba(0,255,200,0.5);
+    font-weight: 300;
+  }
+  .sys-status {
+    display: flex;
+    gap: 25px;
+  }
+  .sys-item {
+    color: rgba(0,255,200,0.7);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .sys-item .label {
+    color: rgba(0,255,200,0.4);
+    margin-right: 6px;
+  }
+  .sys-item.online .value { color: #00ff88; }
+  .sys-item.warning .value { color: #ffaa00; }
+
+  /* Corner brackets */
+  .corner {
+    position: absolute;
+    width: 40px; height: 40px;
+    border-color: rgba(0,255,200,0.4);
+    border-style: solid;
+    border-width: 0;
+  }
+  .corner.tl { top: 60px; left: 20px; border-top-width: 2px; border-left-width: 2px; }
+  .corner.tr { top: 60px; right: 20px; border-top-width: 2px; border-right-width: 2px; }
+  .corner.bl { bottom: 60px; left: 20px; border-bottom-width: 2px; border-left-width: 2px; }
+  .corner.br { bottom: 60px; right: 20px; border-bottom-width: 2px; border-right-width: 2px; }
+
+  /* Bottom info bar */
+  .bottom-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 30px;
+    background: linear-gradient(0deg, rgba(0,255,200,0.06) 0%, transparent 100%);
+    border-top: 1px solid rgba(0,255,200,0.1);
+  }
+  .coord-display {
+    color: rgba(0,255,200,0.6);
+    font-size: 11px;
+    letter-spacing: 1px;
+    font-family: 'Courier New', monospace;
+  }
+  .compass-strip {
+    position: absolute;
+    bottom: 55px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 30px;
+    overflow: hidden;
+  }
+  .compass-ticks {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 20px;
+    height: 100%;
+    position: relative;
+  }
+  .compass-tick {
+    color: rgba(0,255,200,0.5);
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    position: relative;
+  }
+  .compass-tick::before {
+    content: '';
+    position: absolute;
+    top: -8px; left: 50%;
+    transform: translateX(-50%);
+    width: 1px; height: 6px;
+    background: rgba(0,255,200,0.3);
+  }
+  .compass-tick.major::before {
+    height: 10px;
+    background: rgba(0,255,200,0.6);
+  }
+  .compass-tick.major {
+    color: rgba(0,255,200,0.8);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .compass-center {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 10px solid rgba(0,255,200,0.7);
+  }
+
+  /* AR Markers (CSS positioned) */
+  .ar-marker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: none;
+  }
+
+  /* Enemy - red diamond */
+  .marker-enemy {
+    width: 40px; height: 40px;
+  }
+  .marker-enemy .diamond {
+    width: 100%; height: 100%;
+    border: 2px solid rgba(255,60,60,0.9);
+    transform: rotate(45deg) scale(0.7);
+    box-shadow: 0 0 10px rgba(255,60,60,0.5), inset 0 0 10px rgba(255,60,60,0.2);
+    animation: enemyPulse 1.5s ease-in-out infinite;
+  }
+  .marker-enemy .marker-label {
+    position: absolute;
+    top: 100%; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,100,100,0.9);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-top: 4px;
+    text-shadow: 0 0 8px rgba(255,60,60,0.6);
+  }
+  .marker-enemy .marker-dist {
+    position: absolute;
+    bottom: 100%; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,120,120,0.8);
+    font-size: 9px;
+    font-family: 'Courier New', monospace;
+    margin-bottom: 2px;
+    white-space: nowrap;
+  }
+  @keyframes enemyPulse {
+    0%, 100% { transform: rotate(45deg) scale(0.7); opacity: 0.8; }
+    50% { transform: rotate(45deg) scale(0.85); opacity: 1; }
+  }
+
+  /* Ally - green chevron */
+  .marker-ally {
+    width: 36px; height: 36px;
+  }
+  .marker-ally .chevron {
+    width: 100%; height: 100%;
+    position: relative;
+  }
+  .marker-ally .chevron::before,
+  .marker-ally .chevron::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 3px;
+    background: rgba(0,255,120,0.9);
+    top: 8px;
+    box-shadow: 0 0 8px rgba(0,255,120,0.5);
+  }
+  .marker-ally .chevron::before {
+    left: 2px;
+    transform: rotate(-35deg);
+    transform-origin: left center;
+  }
+  .marker-ally .chevron::after {
+    right: 2px;
+    transform: rotate(35deg);
+    transform-origin: right center;
+  }
+  .marker-ally .marker-label {
+    position: absolute;
+    top: 100%; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(0,255,120,0.9);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-top: 2px;
+    text-shadow: 0 0 8px rgba(0,255,120,0.5);
+  }
+  .marker-ally .marker-dist {
+    position: absolute;
+    bottom: 100%; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(80,255,160,0.8);
+    font-size: 9px;
+    font-family: 'Courier New', monospace;
+    margin-bottom: 2px;
+    white-space: nowrap;
+  }
+
+  /* Objective - pulsing blue waypoint */
+  .marker-objective {
+    width: 50px; height: 50px;
+  }
+  .marker-objective .waypoint {
+    width: 100%; height: 100%;
+    position: relative;
+  }
+  .marker-objective .waypoint-ring {
+    position: absolute;
+    inset: 0;
+    border: 2px solid rgba(0,180,255,0.8);
+    border-radius: 50%;
+    animation: waypointPulse 2s ease-out infinite;
+  }
+  .marker-objective .waypoint-ring:nth-child(2) { animation-delay: 0.5s; }
+  .marker-objective .waypoint-ring:nth-child(3) { animation-delay: 1s; }
+  .marker-objective .waypoint-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px; height: 8px;
+    background: rgba(0,200,255,0.9);
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(0,180,255,0.8);
+  }
+  .marker-objective .marker-label {
+    position: absolute;
+    top: 100%; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(0,200,255,0.9);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-top: 6px;
+    text-shadow: 0 0 8px rgba(0,180,255,0.6);
+  }
+  .marker-objective .marker-dist {
+    position: absolute;
+    bottom: 100%; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(100,210,255,0.9);
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  @keyframes waypointPulse {
+    0% { transform: scale(0.3); opacity: 1; }
+    100% { transform: scale(1.2); opacity: 0; }
+  }
+
+  /* Center reticle */
+  .center-reticle {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px; height: 60px;
+    pointer-events: none;
+  }
+  .center-reticle::before,
+  .center-reticle::after {
+    content: '';
+    position: absolute;
+    border: 1px solid rgba(0,255,200,0.4);
+  }
+  .center-reticle::before {
+    inset: 10px;
+    border-radius: 50%;
+  }
+  .center-reticle::after {
+    inset: 0;
+    border-radius: 50%;
+    border-style: dashed;
+    animation: reticleSpin 10s linear infinite;
+  }
+  .center-dot {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px; height: 4px;
+    background: rgba(0,255,200,0.8);
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(0,255,200,0.6);
+  }
+  @keyframes reticleSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* Side panels */
+  .side-panel {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 120px;
+    padding: 15px;
+    background: linear-gradient(90deg, rgba(0,255,200,0.04), transparent);
+    border-left: 1px solid rgba(0,255,200,0.1);
+  }
+  .side-panel.right {
+    right: 0;
+    background: linear-gradient(-90deg, rgba(0,255,200,0.04), transparent);
+    border-left: none;
+    border-right: 1px solid rgba(0,255,200,0.1);
+  }
+  .side-panel .panel-title {
+    color: rgba(0,255,200,0.5);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .panel-stat {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 10px;
+  }
+  .panel-stat .stat-label {
+    color: rgba(0,255,200,0.4);
+  }
+  .panel-stat .stat-value {
+    color: rgba(0,255,200,0.8);
+    font-family: 'Courier New', monospace;
+  }
+  .panel-bar {
+    width: 100%; height: 3px;
+    background: rgba(0,255,200,0.1);
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel-bar .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(0,255,200,0.6), rgba(0,255,200,0.3));
+    transition: width 0.5s ease;
+  }
+
+  /* Alert banner */
+  .alert-banner {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 20px;
+    background: rgba(255,60,60,0.15);
+    border: 1px solid rgba(255,60,60,0.3);
+    color: rgba(255,100,100,0.9);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: alertBlink 2s ease-in-out infinite;
+    display: none;
+  }
+  .alert-banner.active { display: block; }
+  @keyframes alertBlink {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div id="camera-feed"></div>
+<div id="scanlines"></div>
+<div id="vignette"></div>
+
+<canvas id="hud-canvas"></canvas>
+
+<div id="hud-overlay">
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="hud-title">RADAR <span>V13</span></div>
+    <div class="sys-status">
+      <div class="sys-item online"><span class="label">OPTICS</span><span class="value">ONLINE</span></div>
+      <div class="sys-item online"><span class="label">TRACKING</span><span class="value">ACTIVE</span></div>
+      <div class="sys-item warning"><span class="label">LINK</span><span class="value">WEAK</span></div>
+    </div>
+  </div>
+
+  <!-- Alert banner -->
+  <div class="alert-banner active" id="alert-banner">HOSTILES DETECTED — 3 CONTACTS</div>
+
+  <!-- Corner brackets -->
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <!-- Center reticle -->
+  <div class="center-reticle">
+    <div class="center-dot"></div>
+  </div>
+
+  <!-- Compass strip -->
+  <div class="compass-strip">
+    <div class="compass-center"></div>
+    <div class="compass-ticks" id="compass-ticks">
+      <span class="compass-tick">300</span>
+      <span class="compass-tick">315</span>
+      <span class="compass-tick">330</span>
+      <span class="compass-tick major">N</span>
+      <span class="compass-tick">30</span>
+      <span class="compass-tick">45</span>
+      <span class="compass-tick">60</span>
+    </div>
+  </div>
+
+  <!-- Side panels -->
+  <div class="side-panel left">
+    <div class="panel-title">Suit Status</div>
+    <div class="panel-stat">
+      <span class="stat-label">SHIELD</span>
+      <span class="stat-value">87%</span>
+    </div>
+    <div class="panel-bar"><div class="bar-fill" style="width:87%"></div></div>
+    <div class="panel-stat">
+      <span class="stat-label">ARMOR</span>
+      <span class="stat-value">64%</span>
+    </div>
+    <div class="panel-bar"><div class="bar-fill" style="width:64%"></div></div>
+    <div class="panel-stat">
+      <span class="stat-label">O2</span>
+      <span class="stat-value">92%</span>
+    </div>
+    <div class="panel-bar"><div class="bar-fill" style="width:92%"></div></div>
+  </div>
+
+  <div class="side-panel right">
+    <div class="panel-title">Tactical</div>
+    <div class="panel-stat">
+      <span class="stat-label">HOSTILES</span>
+      <span class="stat-value" style="color:rgba(255,100,100,0.9)">3</span>
+    </div>
+    <div class="panel-stat">
+      <span class="stat-label">ALLIES</span>
+      <span class="stat-value" style="color:rgba(0,255,120,0.9)">2</span>
+    </div>
+    <div class="panel-stat">
+      <span class="stat-label">OBJECTIVES</span>
+      <span class="stat-value" style="color:rgba(0,200,255,0.9)">1</span>
+    </div>
+    <div class="panel-stat">
+      <span class="stat-label">RANGE</span>
+      <span class="stat-value">450m</span>
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar">
+    <div class="coord-display" id="coords">LAT: 34.0522 | LON: -118.2437 | ELV: 89m</div>
+    <div class="coord-display" id="time">T+ 00:14:23</div>
+  </div>
+
+  <!-- AR Markers container -->
+  <div id="ar-markers"></div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('hud-canvas');
+  const ctx = canvas.getContext('2d');
+  const markersContainer = document.getElementById('ar-markers');
+  const coordsEl = document.getElementById('coords');
+  const timeEl = document.getElementById('time');
+
+  let W, H;
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Simulated world entities
+  const entities = [
+    { id: 'e1', type: 'enemy',    x: 0.25, y: 0.30, dist: 120, label: 'HOSTILE',  name: 'Drone A' },
+    { id: 'e2', type: 'enemy',    x: 0.70, y: 0.25, dist: 245, label: 'HOSTILE',  name: 'Sniper' },
+    { id: 'e3', type: 'enemy',    x: 0.80, y: 0.65, dist: 380, label: 'HOSTILE',  name: 'Mech' },
+    { id: 'a1', type: 'ally',     x: 0.15, y: 0.55, dist: 85,  label: 'ALLY',     name: 'Unit 7' },
+    { id: 'a2', type: 'ally',     x: 0.55, y: 0.40, dist: 160, label: 'ALLY',     name: 'Unit 3' },
+    { id: 'o1', type: 'objective',x: 0.45, y: 0.20, dist: 200, label: 'TARGET',   name: 'Beacon' },
+  ];
+
+  // Create DOM markers
+  const markerEls = {};
+  entities.forEach(ent => {
+    const el = document.createElement('div');
+    el.className = `ar-marker marker-${ent.type}`;
+    el.innerHTML = `
+      <div class="${ent.type === 'enemy' ? 'diamond' : ent.type === 'ally' ? 'chevron' : 'waypoint'}">
+        ${ent.type === 'objective' ? '<div class="waypoint-ring"></div><div class="waypoint-ring"></div><div class="waypoint-ring"></div><div class="waypoint-center"></div>' : ''}
+      </div>
+      <div class="marker-dist">${ent.dist}m</div>
+      <div class="marker-label">${ent.name}</div>
+    `;
+    markersContainer.appendChild(el);
+    markerEls[ent.id] = el;
+  });
+
+  // Animation state
+  let t = 0;
+  const scanAngle = { val: 0 };
+
+  function drawGrid() {
+    ctx.strokeStyle = 'rgba(0,255,200,0.06)';
+    ctx.lineWidth = 1;
+    const step = 60;
+    for (let x = 0; x < W; x += step) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+    for (let y = 0; y < H; y += step) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+  }
+
+  function drawHorizon() {
+    const y = H * 0.5 + Math.sin(t * 0.0005) * 20;
+    ctx.strokeStyle = 'rgba(0,255,200,0.15)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([10, 10]);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Horizon ticks
+    ctx.fillStyle = 'rgba(0,255,200,0.3)';
+    for (let x = 100; x < W; x += 100) {
+      ctx.fillRect(x, y - 3, 1, 6);
+    }
+  }
+
+  function drawRangeRings() {
+    const cx = W / 2, cy = H / 2;
+    const rings = [80, 160, 240];
+    rings.forEach((r, i) => {
+      ctx.strokeStyle = `rgba(0,255,200,${0.08 - i * 0.02})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+  }
+
+  function drawScanLine() {
+    const y = (t * 0.08) % (H + 100) - 50;
+    const grad = ctx.createLinearGradient(0, y - 30, 0, y + 30);
+    grad.addColorStop(0, 'rgba(0,255,200,0)');
+    grad.addColorStop(0.5, 'rgba(0,255,200,0.06)');
+    grad.addColorStop(1, 'rgba(0,255,200,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, y - 30, W, 60);
+
+    // Bright line
+    ctx.strokeStyle = 'rgba(0,255,200,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+
+  function drawBearingLines() {
+    const cx = W / 2, cy = H / 2;
+    entities.forEach(ent => {
+      const ex = ent.x * W;
+      const ey = ent.y * H;
+      const color = ent.type === 'enemy' ? '255,60,60' : ent.type === 'ally' ? '0,255,120' : '0,180,255';
+      ctx.strokeStyle = `rgba(${color},0.15)`;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  }
+
+  function drawDataStreams() {
+    ctx.fillStyle = 'rgba(0,255,200,0.08)';
+    ctx.font = '9px "Courier New", monospace';
+    for (let i = 0; i < 5; i++) {
+      const x = 30 + i * 180;
+      const y = 80 + Math.sin(t * 0.001 + i) * 5;
+      const hex = Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0');
+      ctx.fillText(`0x${hex}`, x, y);
+    }
+  }
+
+  function updateMarkers() {
+    entities.forEach(ent => {
+      const el = markerEls[ent.id];
+      // Subtle movement
+      const dx = Math.sin(t * 0.0003 + ent.id.charCodeAt(0)) * 15;
+      const dy = Math.cos(t * 0.0004 + ent.id.charCodeAt(1)) * 10;
+      el.style.left = (ent.x * W + dx) + 'px';
+      el.style.top = (ent.y * H + dy) + 'px';
+
+      // Update distance
+      const distEl = el.querySelector('.marker-dist');
+      if (distEl) {
+        const d = Math.max(10, ent.dist + Math.floor(Math.sin(t * 0.001) * 15));
+        distEl.textContent = d + 'm';
+      }
+    });
+  }
+
+  function updateCoords() {
+    const lat = (34.0522 + Math.sin(t * 0.0001) * 0.001).toFixed(4);
+    const lon = (-118.2437 + Math.cos(t * 0.0001) * 0.001).toFixed(4);
+    const elv = Math.floor(89 + Math.sin(t * 0.0005) * 3);
+    coordsEl.textContent = `LAT: ${lat} | LON: ${lon} | ELV: ${elv}m`;
+
+    const secs = Math.floor(t / 60) % 60;
+    const mins = Math.floor(t / 3600) % 60;
+    const hrs = Math.floor(t / 216000);
+    timeEl.textContent = `T+ ${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  }
+
+  function loop() {
+    t++;
+    ctx.clearRect(0, 0, W, H);
+
+    drawGrid();
+    drawHorizon();
+    drawRangeRings();
+    drawBearingLines();
+    drawScanLine();
+    drawDataStreams();
+    updateMarkers();
+    updateCoords();
+
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+})();
+</script>
+
+</body>
+</html>

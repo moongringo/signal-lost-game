@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Chat V3 — Transparent Overlay</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a0a;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Fake game viewport background */
+  #game-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 30%, rgba(0,180,120,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(180,60,0,0.12) 0%, transparent 50%),
+      linear-gradient(180deg, #0d1117 0%, #050505 100%);
+    z-index: 0;
+  }
+  #game-bg::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,255,150,0.03) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,255,150,0.03) 40px);
+  }
+
+  /* HUD */
+  #hud {
+    position: absolute; top: 12px; left: 16px;
+    color: rgba(255,255,255,0.5);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    z-index: 10;
+    pointer-events: none;
+    font-weight: 500;
+  }
+
+  /* Chat overlay */
+  #chat-overlay {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    z-index: 5;
+    pointer-events: none;
+    /* Semi-transparent gradient at bottom */
+    background: linear-gradient(to top,
+      rgba(0,0,0,0.55) 0%,
+      rgba(0,0,0,0.35) 40%,
+      rgba(0,0,0,0.15) 70%,
+      transparent 100%
+    );
+    padding: 60px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 220px;
+  }
+
+  /* Messages container */
+  #messages {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  /* Individual message */
+  .msg {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(8px);
+    animation: msgIn 0.45s ease-out forwards;
+    line-height: 1.35;
+  }
+
+  @keyframes msgIn {
+    to {
+      opacity: 1;
+      filter: blur(0px);
+      transform: translateY(0);
+    }
+  }
+
+  /* Sender tag */
+  .sender {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  /* Message text */
+  .text {
+    font-size: 13px;
+    color: rgba(255,255,255,0.88);
+    word-break: break-word;
+  }
+
+  /* Color-coded senders */
+  .sender.sys  { color: #7dd3fc; }
+  .sender.ally { color: #86efac; }
+  .sender.foe  { color: #fca5a5; }
+  .sender.neut { color: #d8b4fe; }
+  .sender.self { color: #fde047; }
+
+  /* Input area */
+  #input-wrap {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    pointer-events: auto;
+    animation: msgIn 0.25s ease-out forwards;
+  }
+  #input-wrap.active { display: flex; }
+
+  #chat-input {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: rgba(255,255,255,0.9);
+    font-size: 13px;
+    outline: none;
+    backdrop-filter: blur(4px);
+  }
+  #chat-input::placeholder { color: rgba(255,255,255,0.3); }
+
+  #send-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  #send-btn:hover { background: rgba(255,255,255,0.18); }
+
+  /* Tap hint */
+  #tap-hint {
+    position: absolute;
+    bottom: 12px; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.2);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    pointer-events: none;
+    z-index: 6;
+    transition: opacity 0.3s;
+  }
+  #tap-hint.hidden { opacity: 0; }
+</style>
+</head>
+<body>
+
+<div id="game-bg"></div>
+<div id="hud">Chat V3</div>
+
+<div id="chat-overlay">
+  <div id="messages"></div>
+  <div id="input-wrap">
+    <input id="chat-input" type="text" placeholder="Type..." autocomplete="off" maxlength="120">
+    <button id="send-btn">Send</button>
+  </div>
+</div>
+
+<div id="tap-hint">Tap to type</div>
+
+<script>
+  const messagesEl = document.getElementById('messages');
+  const inputWrap = document.getElementById('input-wrap');
+  const chatInput = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('send-btn');
+  const tapHint = document.getElementById('tap-hint');
+
+  const MAX_VISIBLE = 4;
+
+  const initialMessages = [
+    { sender: 'SYS',  cls: 'sys',  text: 'Connection established.' },
+    { sender: 'ALLY', cls: 'ally', text: 'Moving to checkpoint Bravo.' },
+    { sender: 'FOE',  cls: 'foe',  text: 'Hostiles detected north-east.' },
+    { sender: 'NEUT', cls: 'neut', text: 'Supply drop inbound, 2 minutes.' },
+    { sender: 'SELF', cls: 'self', text: 'Copy that, holding position.' },
+    { sender: 'ALLY', cls: 'ally', text: 'Tango down. Area clear.' },
+    { sender: 'SYS',  cls: 'sys',  text: 'Shield integrity at 64%.' },
+    { sender: 'FOE',  cls: 'foe',  text: 'Reinforcements approaching.' },
+    { sender: 'NEUT', cls: 'neut', text: 'Extraction point marked on map.' },
+    { sender: 'SELF', cls: 'self', text: 'Roger, moving to extract.' },
+  ];
+
+  function addMessage(sender, cls, text) {
+    const msg = document.createElement('div');
+    msg.className = 'msg';
+    msg.innerHTML = `<span class="sender ${cls}">${escapeHtml(sender)}</span><span class="text">${escapeHtml(text)}</span>`;
+    messagesEl.appendChild(msg);
+
+    // Keep only last MAX_VISIBLE
+    while (messagesEl.children.length > MAX_VISIBLE) {
+      messagesEl.removeChild(messagesEl.firstChild);
+    }
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // Load initial messages with stagger
+  initialMessages.forEach((m, i) => {
+    setTimeout(() => addMessage(m.sender, m.cls, m.text), i * 180);
+  });
+
+  // Tap to show input
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#input-wrap') || e.target.closest('#send-btn')) return;
+    inputWrap.classList.add('active');
+    tapHint.classList.add('hidden');
+    setTimeout(() => chatInput.focus(), 50);
+  });
+
+  // Send message
+  function send() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    addMessage('SELF', 'self', text);
+    chatInput.value = '';
+    chatInput.focus();
+  }
+
+  sendBtn.addEventListener('click', send);
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') send();
+    if (e.key === 'Escape') {
+      inputWrap.classList.remove('active');
+      tapHint.classList.remove('hidden');
+      chatInput.blur();
+    }
+  });
+
+  // Auto-hide input on outside tap (optional UX)
+  document.addEventListener('click', (e) => {
+    if (!inputWrap.classList.contains('active')) return;
+    if (e.target.closest('#input-wrap') || e.target.closest('#send-btn')) return;
+    // If tapping overlay background, hide input
+    if (e.target.id === 'chat-overlay' || e.target.id === 'messages') {
+      inputWrap.classList.remove('active');
+      tapHint.classList.remove('hidden');
+      chatInput.blur();
+    }
+  });
+</script>
+
+</body>
+</html>

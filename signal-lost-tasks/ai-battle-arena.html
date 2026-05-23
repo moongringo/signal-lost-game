@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — AI Battle Arena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --body-font: 'Inter', system-ui, sans-serif;
+      --display-font: 'Space Grotesk', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--ink); color: var(--cream); font-family: var(--body-font); }
+    body { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+
+    h1 { font-family: var(--display-font); font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--cream); }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.9rem; }
+
+    .arena-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .battle-stage {
+      background: rgba(255, 248, 220, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 1.5rem;
+      min-height: 400px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .battle-stage::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 80%, rgba(0, 140, 148, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 139, 31, 0.06) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .battle-map {
+      position: relative;
+      width: 100%;
+      height: 300px;
+      background: rgba(255, 248, 220, 0.03);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+
+    .battle-unit {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--cream);
+      transition: all 0.5s linear;
+      box-shadow: 0 0 12px currentColor;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .battle-unit.downed {
+      opacity: 0.3;
+      transform: scale(0.7);
+    }
+
+    .battle-log {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 1rem;
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .log-entry {
+      padding: 0.15rem 0;
+    }
+    .log-combat { color: var(--pink); }
+    .log-move { color: var(--teal); }
+    .log-loot { color: var(--gold); }
+
+    .team-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .team-card {
+      background: rgba(255, 248, 220, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 1.25rem;
+      transition: all 0.3s;
+    }
+
+    .team-card.active {
+      border-color: var(--teal);
+      background: rgba(0, 140, 148, 0.08);
+    }
+
+    .team-card.eliminated {
+      opacity: 0.4;
+    }
+
+    .team-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .team-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--cream);
+    }
+
+    .team-name {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--cream);
+    }
+
+    .team-strategy {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .hp-bar {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .hp-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+
+    .team-stats {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .team-stats span {
+      font-family: var(--mono-font);
+      color: var(--cream);
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .arena-btn {
+      padding: 0.75rem 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--cream);
+      font-family: var(--body-font);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .arena-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--gold);
+    }
+
+    .arena-btn.primary {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: var(--cream);
+    }
+    .arena-btn.primary:hover {
+      background: var(--blue);
+    }
+
+    .winner-banner {
+      display: none;
+      text-align: center;
+      padding: 2rem;
+      animation: winnerPulse 1s ease-out;
+    }
+
+    @keyframes winnerPulse {
+      0% { transform: scale(0.5); opacity: 0; }
+      70% { transform: scale(1.05); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .winner-title {
+      font-family: var(--display-font);
+      font-size: 2rem;
+      color: var(--gold);
+      margin-bottom: 0.5rem;
+    }
+
+    .winner-name {
+      font-size: 1.25rem;
+      color: var(--cream);
+    }
+  </style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="ai-battle-arena" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>AI Battle Arena</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<h1>⚔️ AI Battle Arena</h1>
+  <p class="subtitle">Watch AI teams fight to the death. Real-time battle simulation.</p>
+
+  <div class="arena-grid">
+    <div class="battle-stage">
+      <div class="winner-banner" id="winnerBanner">
+        <div class="winner-title">🏆 WINNER</div>
+        <div class="winner-name" id="winnerName">Alpha Squad</div>
+      </div>
+
+      <div class="battle-map" id="battleMap">
+        <!-- Battle units injected by JS -->
+      </div>
+
+      <div class="battle-log" id="battleLog">
+        <div class="log-entry">Battle initialized. 4 teams entering the arena.</div>
+      </div>
+
+      <div class="controls">
+        <button class="arena-btn primary" id="btnStartBattle">▶ Start Battle</button>
+        <button class="arena-btn" id="btnResetBattle">↺ Reset</button>
+        <button class="arena-btn" id="btnSpeed">⏩ 1x</button>
+      </div>
+    </div>
+
+    <div class="team-panel" id="teamPanel">
+      <!-- Team cards injected by JS -->
+    </div>
+  </div>
+
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ scrollReveal: true, reducedMotion: true });
+
+    const TEAMS = [
+      { id: 'A', name: 'Alpha Squad', color: '#008c94', strategy: 'Aggressive', hp: 100, maxHp: 100, x: 20, y: 20, kills: 0 },
+      { id: 'B', name: 'Bravo Squad', color: '#ff8b1f', strategy: 'Defensive', hp: 100, maxHp: 100, x: 80, y: 20, kills: 0 },
+      { id: 'C', name: 'Charlie Squad', color: '#e82663', strategy: 'Stealth', hp: 100, maxHp: 100, x: 20, y: 80, kills: 0 },
+      { id: 'D', name: 'Delta Squad', color: '#9B7FD0', strategy: 'Balanced', hp: 100, maxHp: 100, x: 80, y: 80, kills: 0 },
+    ];
+
+    let teams = JSON.parse(JSON.stringify(TEAMS));
+    let battleInterval = null;
+    let battleSpeed = 1;
+    let battleActive = false;
+
+    const battleMap = document.getElementById('battleMap');
+    const battleLog = document.getElementById('battleLog');
+    const teamPanel = document.getElementById('teamPanel');
+    const winnerBanner = document.getElementById('winnerBanner');
+    const winnerName = document.getElementById('winnerName');
+
+    function initTeams() {
+      battleMap.innerHTML = '';
+      teams.forEach(team => {
+        const unit = document.createElement('div');
+        unit.className = 'battle-unit';
+        unit.id = `unit-${team.id}`;
+        unit.style.background = team.color;
+        unit.style.left = `${team.x}%`;
+        unit.style.top = `${team.y}%`;
+        unit.textContent = team.id;
+        battleMap.appendChild(unit);
+      });
+      renderTeamPanel();
+    }
+
+    function renderTeamPanel() {
+      teamPanel.innerHTML = '';
+      teams.forEach(team => {
+        const card = document.createElement('div');
+        card.className = `team-card ${team.hp > 0 ? 'active' : 'eliminated'}`;
+        card.id = `card-${team.id}`;
+        card.innerHTML = `
+          <div class="team-header">
+            <div class="team-avatar" style="background: ${team.color};">${team.id}</div>
+            <div>
+              <div class="team-name">${team.name}</div>
+              <div class="team-strategy">${team.strategy}</div>
+            </div>
+          </div>
+          <div class="hp-bar"><div class="hp-fill" id="hp-${team.id}" style="width: ${team.hp}%; background: ${team.color};"></div></div>
+          <div class="team-stats">
+            <div>HP: <span id="hp-text-${team.id}">${team.hp}</span></div>
+            <div>Kills: <span id="kills-${team.id}">${team.kills}</span></div>
+          </div>
+        `;
+        teamPanel.appendChild(card);
+      });
+    }
+
+    function addLog(msg, type = 'move') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}] ${msg}`;
+      battleLog.appendChild(entry);
+      battleLog.scrollTop = battleLog.scrollHeight;
+      // Limit log size
+      while (battleLog.children.length > 50) {
+        battleLog.removeChild(battleLog.firstChild);
+      }
+    }
+
+    function moveTeam(team) {
+      if (team.hp <= 0) return;
+      const dx = (Math.random() - 0.5) * 10;
+      const dy = (Math.random() - 0.5) * 10;
+      team.x = Math.max(5, Math.min(95, team.x + dx));
+      team.y = Math.max(5, Math.min(95, team.y + dy));
+
+      const unit = document.getElementById(`unit-${team.id}`);
+      if (unit) {
+        unit.style.left = `${team.x}%`;
+        unit.style.top = `${team.y}%`;
+      }
+    }
+
+    function resolveCombat() {
+      const alive = teams.filter(t => t.hp > 0);
+      if (alive.length <= 1) {
+        endBattle(alive[0]);
+        return;
+      }
+
+      alive.forEach(team => {
+        const enemies = alive.filter(t => t.id !== team.id);
+        const target = enemies[Math.floor(Math.random() * enemies.length)];
+        const dist = Math.hypot(team.x - target.x, team.y - target.y);
+
+        if (dist < 15) {
+          const dmg = Math.floor(Math.random() * 15) + 5;
+          target.hp = Math.max(0, target.hp - dmg);
+
+          // Update visual
+          const hpFill = document.getElementById(`hp-${target.id}`);
+          const hpText = document.getElementById(`hp-text-${target.id}`);
+          if (hpFill) hpFill.style.width = `${target.hp}%`;
+          if (hpText) hpText.textContent = target.hp;
+
+          if (target.hp <= 0) {
+            team.kills++;
+            const killsText = document.getElementById(`kills-${team.id}`);
+            if (killsText) killsText.textContent = team.kills;
+
+            const unit = document.getElementById(`unit-${target.id}`);
+            if (unit) unit.classList.add('downed');
+
+            const card = document.getElementById(`card-${target.id}`);
+            if (card) card.classList.remove('active');
+            if (card) card.classList.add('eliminated');
+
+            addLog(`${team.name} eliminated ${target.name}!`, 'combat');
+          } else {
+            if (Math.random() < 0.3) {
+              addLog(`${team.name} hit ${target.name} for ${dmg} dmg`, 'combat');
+            }
+          }
+        }
+      });
+    }
+
+    function endBattle(winner) {
+      battleActive = false;
+      clearInterval(battleInterval);
+      if (winner) {
+        winnerBanner.style.display = 'block';
+        winnerName.textContent = winner.name;
+        addLog(`🏆 ${winner.name} wins the battle!`, 'loot');
+      } else {
+        addLog('💀 All teams eliminated. Draw.', 'combat');
+      }
+      document.getElementById('btnStartBattle').textContent = '▶ New Battle';
+    }
+
+    function tick() {
+      if (!battleActive) return;
+      teams.forEach(moveTeam);
+      resolveCombat();
+      if (Math.random() < 0.1) {
+        const alive = teams.filter(t => t.hp > 0);
+        if (alive.length > 0) {
+          const team = alive[Math.floor(Math.random() * alive.length)];
+          addLog(`${team.name} repositioning...`, 'move');
+        }
+      }
+    }
+
+    document.getElementById('btnStartBattle').addEventListener('click', () => {
+      if (battleActive) return;
+      if (teams.some(t => t.hp <= 0)) {
+        // Reset
+        teams = JSON.parse(JSON.stringify(TEAMS));
+        winnerBanner.style.display = 'none';
+        battleLog.innerHTML = '<div class="log-entry">New battle starting...</div>';
+      }
+      battleActive = true;
+      document.getElementById('btnStartBattle').textContent = '⏸ Pause';
+      battleInterval = setInterval(tick, 500 / battleSpeed);
+    });
+
+    document.getElementById('btnResetBattle').addEventListener('click', () => {
+      battleActive = false;
+      clearInterval(battleInterval);
+      teams = JSON.parse(JSON.stringify(TEAMS));
+      winnerBanner.style.display = 'none';
+      battleLog.innerHTML = '<div class="log-entry">Battle reset. Ready to start.</div>';
+      document.getElementById('btnStartBattle').textContent = '▶ Start Battle';
+      initTeams();
+    });
+
+    document.getElementById('btnSpeed').addEventListener('click', () => {
+      battleSpeed = battleSpeed === 1 ? 2 : battleSpeed === 2 ? 4 : 1;
+      document.getElementById('btnSpeed').textContent = `⏩ ${battleSpeed}x`;
+      if (battleActive) {
+        clearInterval(battleInterval);
+        battleInterval = setInterval(tick, 500 / battleSpeed);
+      }
+    });
+
+    initTeams();
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

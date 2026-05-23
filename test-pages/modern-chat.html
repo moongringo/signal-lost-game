@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Signal Lost — Modern Tactical Chat</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0e0;font-family:'Courier New',monospace;overflow:hidden;height:100dvh;display:flex;flex-direction:column;touch-action:none;user-select:none;-webkit-user-select:none}
+/* Top bar */
+#top-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #1a2a1a;background:rgba(0,0,0,0.8);flex-shrink:0;z-index:10}
+#top-bar .left{display:flex;align-items:center;gap:8px}
+#top-bar .left .back{color:#446644;font-size:16px;cursor:pointer;padding:0 4px}
+#top-bar .left .title{font-size:10px;color:#00ff88;letter-spacing:1px;font-weight:bold}
+#top-bar .left .lock{font-size:7px;color:#00ff88;background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.2);padding:1px 5px;border-radius:2px}
+#top-bar .right{display:flex;align-items:center;gap:6px}
+#top-bar .right .status{font-size:7px;color:#446644}
+#top-bar .right .dot{width:5px;height:5px;border-radius:50%;background:#00ff88;display:inline-block;animation:pulseC 2s infinite}
+@keyframes pulseC{0%,100%{opacity:1}50%{opacity:0.3}}
+/* Tabs */
+#tabs{display:flex;border-bottom:1px solid #1a2a1a;background:rgba(0,0,0,0.4);flex-shrink:0;z-index:10}
+#tabs .tab{flex:1;padding:6px 4px;text-align:center;font-size:8px;color:#556655;letter-spacing:1px;cursor:pointer;transition:all 0.2s;border-bottom:2px solid transparent}
+#tabs .tab.active{color:#00ff88;border-bottom-color:#00ff88;background:rgba(0,255,136,0.03)}
+/* Squad panel */
+#squad-panel{position:absolute;top:0;right:0;width:140px;height:100%;z-index:15;background:rgba(0,0,0,0.95);border-left:1px solid #1a2a1a;transform:translateX(100%);transition:transform 0.3s ease;padding:50px 10px 10px}
+#squad-panel.open{transform:translateX(0)}
+#squad-panel .squad-title{font-size:8px;color:#446644;letter-spacing:2px;margin-bottom:10px;text-align:center}
+.squad-member{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #0d1a0d;font-size:8px}
+.squad-member .s-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.squad-member .s-name{color:#889988;flex:1}
+.squad-member .s-hp{width:40px;height:3px;background:#1a2a1a;border-radius:1px;overflow:hidden}
+.squad-member .s-hp .s-hp-fill{height:100%;border-radius:1px;transition:width 0.5s}
+.squad-toggle{position:absolute;right:0;top:50px;z-index:16;background:rgba(0,0,0,0.7);border:1px solid #1a2a1a;border-right:none;color:#556655;font-size:10px;padding:6px 4px;cursor:pointer;border-radius:3px 0 0 3px;writing-mode:vertical-lr;letter-spacing:1px;transition:all 0.2s}
+.squad-toggle:active{color:#00ff88}
+/* Chat area */
+#chat-area{flex:1;position:relative;overflow:hidden;min-height:0}
+#chat-area .bg-layer{position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at 50% 0%,#0d1a10 0%,#0a0a0f 70%);z-index:0}
+#chat-messages{position:absolute;top:0;left:0;right:0;bottom:0;z-index:1;overflow-y:auto;padding:6px 10px;scrollbar-width:thin;scrollbar-color:#1a2a1a transparent;display:flex;flex-direction:column;gap:2px}
+#chat-messages::-webkit-scrollbar{width:3px}
+#chat-messages::-webkit-scrollbar-thumb{background:#1a2a1a;border-radius:2px}
+/* Messages */
+.msg{font-size:9px;line-height:1.5;padding:3px 6px;border-radius:2px;background:rgba(0,0,0,0.3);animation:msgIn 0.2s ease;display:flex;gap:4px;align-items:flex-start;flex-shrink:0}
+@keyframes msgIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.msg .ts{color:#334433;font-size:7px;flex-shrink:0;width:28px;text-align:right}
+.msg .sender{color:#00ff88;font-weight:bold;flex-shrink:0;min-width:36px}
+.msg .sender.enemy{color:#ff3344}
+.msg .sender.system{color:#ffaa00}
+.msg .text{color:#b0b0b0;word-break:break-word}
+.msg.system-msg .text{color:#ffaa00;font-style:italic}
+.msg.system-msg .sender{color:#ffaa00}
+/* Command wheel */
+#cmd-overlay{display:none;position:absolute;bottom:0;left:0;right:0;z-index:20;background:rgba(0,0,0,0.95);border-top:1px solid #1a2a1a;padding:8px;backdrop-filter:blur(8px)}
+#cmd-overlay.open{display:block}
+.cmd-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px}
+.cmd-btn{background:rgba(0,255,136,0.04);border:1px solid #1a2a1a;color:#889988;font-family:'Courier New',monospace;font-size:8px;padding:8px 4px;border-radius:2px;cursor:pointer;transition:all 0.15s;text-align:center}
+.cmd-btn:active{background:rgba(0,255,136,0.12);border-color:#00ff88;color:#00ff88}
+#cmd-close{display:block;width:100%;margin-top:4px;background:transparent;border:none;color:#334433;font-family:'Courier New',monospace;font-size:8px;padding:4px;cursor:pointer}
+/* Input */
+#input-area{display:flex;gap:4px;align-items:center;padding:4px 8px 8px;border-top:1px solid #1a2a1a;background:rgba(0,0,0,0.6);flex-shrink:0;z-index:10}
+#chat-input{flex:1;background:rgba(0,0,0,0.4);border:1px solid #1a2a1a;color:#e0e0e0;font-family:'Courier New',monospace;font-size:10px;padding:7px 8px;outline:none;border-radius:2px;min-width:0}
+#chat-input:focus{border-color:#00ff88}
+#chat-input::placeholder{color:#334433}
+#cmd-btn{background:transparent;border:1px solid #1a2a1a;color:#556655;font-family:'Courier New',monospace;font-size:9px;padding:7px 8px;border-radius:2px;cursor:pointer;flex-shrink:0;transition:all 0.15s}
+#cmd-btn:active{border-color:#00ff88;color:#00ff88}
+#send-btn{background:rgba(0,255,136,0.08);border:1px solid #00ff88;color:#00ff88;font-family:'Courier New',monospace;font-size:9px;padding:7px 12px;border-radius:2px;cursor:pointer;flex-shrink:0;transition:all 0.15s;letter-spacing:1px}
+#send-btn:active{background:rgba(0,255,136,0.2)}
+</style>
+</head>
+<body>
+<div id="top-bar">
+<div class="left"><span class="back">◄</span><span class="title">TACTICAL COMMS</span><span class="lock">🔒 ENCRYPTED</span></div>
+<div class="right"><span class="dot"></span><span class="status"><span id="player-count">6</span> ONLINE</span></div>
+</div>
+<div id="tabs">
+<div class="tab active" data-tab="all">ALL</div>
+<div class="tab" data-tab="team">TEAM</div>
+<div class="tab" data-tab="squad">SQUAD</div>
+<div class="tab" data-tab="system">SYSTEM</div>
+</div>
+<div id="chat-area">
+<div class="bg-layer"></div>
+<div id="chat-messages"></div>
+<button class="squad-toggle" id="squad-toggle">SQUAD ▸</button>
+<div id="squad-panel">
+<div class="squad-title">SQUAD STATUS</div>
+<div id="squad-list"></div>
+</div>
+</div>
+<div id="cmd-overlay">
+<div class="cmd-grid">
+<button class="cmd-btn" data-cmd="Enemy spotted">ENEMY SPOTTED</button>
+<button class="cmd-btn" data-cmd="Need backup">NEED BACKUP</button>
+<button class="cmd-btn" data-cmd="Enemy down">ENEMY DOWN</button>
+<button class="cmd-btn" data-cmd="Suppressing fire">SUPPRESSING</button>
+<button class="cmd-btn" data-cmd="Moving to objective">MOVING TO OBJ</button>
+<button class="cmd-btn" data-cmd="Cover me">COVER ME</button>
+<button class="cmd-btn" data-cmd="Regroup">REGROUP</button>
+<button class="cmd-btn" data-cmd="Fall back">FALL BACK</button>
+<button class="cmd-btn" data-cmd="Ammo low">AMMO LOW</button>
+<button class="cmd-btn" data-cmd="I'm hit">I'M HIT</button>
+<button class="cmd-btn" data-cmd="Revive me">REVIVE ME</button>
+<button class="cmd-btn" data-cmd="Area clear">AREA CLEAR</button>
+</div>
+<button id="cmd-close">CLOSE</button>
+</div>
+<div id="input-area">
+<button id="cmd-btn">CMD</button>
+<input type="text" id="chat-input" placeholder="TYPE MESSAGE..." maxlength="120" enterkeyhint="send">
+<button id="send-btn">SEND</button>
+</div>
+<script>
+const messages=document.getElementById('chat-messages');
+const input=document.getElementById('chat-input');
+const sendBtn=document.getElementById('send-btn');
+const cmdBtn=document.getElementById('cmd-btn');
+const cmdOverlay=document.getElementById('cmd-overlay');
+const cmdClose=document.getElementById('cmd-close');
+const tabs=document.querySelectorAll('.tab');
+const squadList=document.getElementById('squad-list');
+const squadToggle=document.getElementById('squad-toggle');
+const squadPanel=document.getElementById('squad-panel');
+
+let msgHistory=[],currentTab='all',currentPlayer='GHOST';
+
+const players=[
+{name:'GHOST',color:'#00ff88',hp:0.85,role:'RECON'},
+{name:'VIPER',color:'#00ff88',hp:0.72,role:'BREACH'},
+{name:'RAVEN',color:'#00ff88',hp:0.91,role:'SUPPORT'},
+{name:'SHADOW',color:'#00ff88',hp:0.64,role:'SNIPER'},
+{name:'PHANTOM',color:'#00ff88',hp:0.78,role:'MEDIC'},
+{name:'BLADE',color:'#00ff88',hp:0.55,role:'COMMS'},
+];
+
+// Squad panel
+function renderSquad(){
+squadList.innerHTML=players.map(p=>`
+<div class="squad-member"><span class="s-dot" style="background:${p.color}"></span>
+<span class="s-name">${p.name}</span>
+<span style="font-size:7px;color:#446644;width:30px">${p.role}</span>
+<div class="s-hp"><div class="s-hp-fill" style="width:${p.hp*100}%;background:${p.hp>0.5?'#00ff88':p.hp>0.25?'#ffaa00':'#ff3344'}"></div></div></div>`).join('')}
+renderSquad();
+
+squadToggle.addEventListener('click',()=>{squadPanel.classList.toggle('open');squadToggle.textContent=squadPanel.classList.contains('open')?'SQUAD ▸':'SQUAD ◂'});
+
+function addMessage(text,sender,type='normal'){
+const now=new Date();const ts=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+const msg={id:Date.now()+Math.random(),text,sender,type,timestamp:ts,time:Date.now()};
+msgHistory.push(msg);renderMessages();messages.scrollTop=messages.scrollHeight}
+
+function renderMessages(){
+const filtered=currentTab==='all'?msgHistory.slice(-50):msgHistory.filter(m=>{
+if(currentTab==='team')return m.sender!=='SYSTEM'&&m.sender!=='ENEMY';
+if(currentTab==='squad')return m.sender!=='ENEMY'&&m.sender!=='SYSTEM';
+if(currentTab==='system')return m.sender==='SYSTEM';return true}).slice(-50);
+messages.innerHTML=filtered.map(m=>{
+const sc=m.sender==='ENEMY'?'enemy':m.sender==='SYSTEM'?'system':'';
+const mc=m.type==='system'?'system-msg':'';
+return `<div class="msg ${mc}"><span class="ts">${m.timestamp}</span><span class="sender ${sc}">${m.sender}</span><span class="text">${m.text}</span></div>`}).join('')}
+
+function sendMessage(){
+const text=input.value.trim();if(!text)return;
+addMessage(text,currentPlayer);input.value='';input.focus();
+// Random reply
+if(Math.random()>0.4){setTimeout(()=>{const p=players[Math.floor(Math.random()*players.length)];
+const replies=['Copy.','Roger.','Affirmative.','On it.','Wilco.','Moving.','Standing by.'];
+addMessage(replies[Math.floor(Math.random()*replies.length)],p.name)},1500+Math.random()*2000)}}
+
+sendBtn.addEventListener('click',sendMessage);
+input.addEventListener('keydown',e=>{if(e.key==='Enter')sendMessage()});
+
+// Command wheel
+cmdBtn.addEventListener('click',()=>cmdOverlay.classList.toggle('open'));
+cmdClose.addEventListener('click',()=>cmdOverlay.classList.remove('open'));
+document.querySelectorAll('.cmd-btn[data-cmd]').forEach(b=>{b.addEventListener('click',()=>{
+addMessage(b.dataset.cmd.toUpperCase(),currentPlayer);cmdOverlay.classList.remove('open')})});
+
+// Tabs
+tabs.forEach(t=>{t.addEventListener('click',()=>{tabs.forEach(t2=>t2.classList.remove('active'));t.classList.add('active');currentTab=t.dataset.tab;renderMessages()})});
+
+// Initial messages
+const initMsgs=[
+['Welcome to COMMS. All channels secure.','SYSTEM','system'],
+['Ghost is online. Ready for deployment.','GHOST'],
+['Viper checking in.','VIPER'],
+['Raven online. Comms check.','RAVEN'],
+['All channels active. Good hunting.','SYSTEM','system'],
+['Shadow in position.','SHADOW'],
+['Phantom ready. Awaiting orders.','PHANTOM'],
+['Blade locked and loaded.','BLADE'],
+['Primary objective: Secure Landing Zone Alpha.','SYSTEM','system'],
+['Copy that. Moving to rally point.','VIPER'],
+['Contact! Enemy patrol sector 4.','GHOST'],
+['Roger. Providing overwatch.','RAVEN'],
+];
+
+initMsgs.forEach((m,i)=>{setTimeout(()=>addMessage(m[1],m[0],m[2]||'normal'),i*1200)});
+
+// Random enemy chatter
+const enemyLines=['Moving up!','Contact west!','Flanking!','Need support!'];
+setInterval(()=>{if(Math.random()>0.7)addMessage(enemyLines[Math.floor(Math.random()*enemyLines.length)],'ENEMY')},8000);
+// Player count fluctuation
+setInterval(()=>{document.getElementById('player-count').textContent=4+Math.floor(Math.random()*3)},12000);
+</script>
+</body>
+</html>

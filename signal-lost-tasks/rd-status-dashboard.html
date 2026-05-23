@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>R&D Daily Status Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg2: #12121a;
+      --bg3: #1a1a28;
+      --text: #ffffff;
+      --text2: #a0a0b0;
+      --text3: #606070;
+      --accent: #00f0ff;
+      --accent2: #ff0055;
+      --success: #00c853;
+      --warning: #ffc107;
+      --glass: rgba(255, 255, 255, 0.05);
+      --border: rgba(255, 255, 255, 0.08);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+    
+    .dashboard {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    header {
+      padding: 2rem 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+    
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    header .meta {
+      display: flex;
+      gap: 2rem;
+      margin-top: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text2);
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .card {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+    
+    .card h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text3);
+      margin-bottom: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .metric {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: var(--accent);
+    }
+    
+    .metric-label {
+      font-size: 0.85rem;
+      color: var(--text2);
+      margin-top: 0.25rem;
+    }
+    
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(0, 200, 83, 0.1);
+      border: 1px solid rgba(0, 200, 83, 0.3);
+      border-radius: 8px;
+      color: var(--success);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    
+    .status-indicator::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .task-list {
+      list-style: none;
+    }
+    
+    .task-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .task-list li:last-child {
+      border-bottom: none;
+    }
+    
+    .task-status {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+    
+    .task-status.done {
+      background: var(--success);
+      color: var(--bg);
+    }
+    
+    .task-status.pending {
+      background: var(--warning);
+      color: var(--bg);
+    }
+    
+    .task-status.active {
+      background: var(--accent);
+      color: var(--bg);
+      animation: pulse 2s infinite;
+    }
+    
+    .task-text {
+      font-size: 0.9rem;
+    }
+    
+    .task-text small {
+      display: block;
+      color: var(--text3);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+    
+    .meeting-schedule {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    
+    .meeting-slot {
+      text-align: center;
+      padding: 1rem;
+      background: var(--bg2);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    
+    .meeting-slot .time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    
+    .meeting-slot .name {
+      font-size: 0.85rem;
+      color: var(--text2);
+      margin-top: 0.5rem;
+    }
+    
+    .meeting-slot .duration {
+      font-size: 0.75rem;
+      color: var(--text3);
+      margin-top: 0.25rem;
+    }
+    
+    .full-width {
+      grid-column: 1 / -1;
+    }
+    
+    .file-tree {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 2;
+    }
+    
+    .file-tree .dir {
+      color: var(--accent);
+    }
+    
+    .file-tree .file {
+      color: var(--text2);
+    }
+    
+    .file-tree .new {
+      color: var(--success);
+    }
+  </style>
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="rd-status-dashboard" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>R&D Daily Status Dashboard</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <div class="dashboard">
+    <header>
+      <h1>R&D Team — Daily Status</h1>
+      <div class="meta">
+        <span>📅 2026-05-04</span>
+        <span>⏰ 06:48 CST</span>
+        <span>👤 Morgan</span>
+        <span class="status-indicator">Team Online</span>
+      </div>
+    </header>
+    
+    <div class="grid">
+      <div class="card">
+        <h3>Research Complete</h3>
+        <div class="metric">4/4</div>
+        <div class="metric-label">Deep dive topics finished</div>
+      </div>
+      
+      <div class="card">
+        <h3>Components Built</h3>
+        <div class="metric">7</div>
+        <div class="metric-label">Production-ready files</div>
+      </div>
+      
+      <div class="card">
+        <h3>Effects Implemented</h3>
+        <div class="metric">20+</div>
+        <div class="metric-label">CSS + WebGL effects</div>
+      </div>
+      
+      <div class="card">
+        <h3>Award Sites Analyzed</h3>
+        <div class="metric">200</div>
+        <div class="metric-label">From Awwwards 2020-2025</div>
+      </div>
+    </div>
+    
+    <div class="grid">
+      <div class="card full-width">
+        <h3>Today's Tasks</h3>
+        <ul class="task-list">
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              Web Effects & Trends Research (2015-2025)
+              <small>Full decade analysis complete</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              Typography & Fonts Research
+              <small>Top fonts, pairings, variable fonts catalogued</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              Button Design Research
+              <small>20 button effects, best practices documented</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              Design System Created
+              <small>10 button styles, 6 effects, typography showcase</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              Enhanced Mission Control Design
+              <small>Glassmorphism, animations, cursor spotlight applied</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              WebGL Shader Library
+              <small>Film grain, liquid distortion, kinetic gradient, vignette</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              Scroll Animation Library
+              <small>10 scroll-triggered animations with Intersection Observer</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status active">●</span>
+            <span class="task-text">
+              Apply enhancements to remaining pages (setup, roles, action-center)
+              <small>In progress — targeting completion by next meeting</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status pending">○</span>
+            <span class="task-text">
+              Page Transition Effects
+              <small>Curtain reveals, shape wipes — planned for afternoon session</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status pending">○</span>
+            <span class="task-text">
+              Performance Optimization Guide
+              <small>Best practices for 60fps animations</small>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="grid">
+      <div class="card">
+        <h3>Meeting Schedule</h3>
+        <div class="meeting-schedule">
+          <div class="meeting-slot">
+            <div class="time">09:00</div>
+            <div class="name">Morning Sync</div>
+            <div class="duration">15 min</div>
+          </div>
+          <div class="meeting-slot">
+            <div class="time">13:00</div>
+            <div class="name">Midday Standup</div>
+            <div class="duration">10 min</div>
+          </div>
+          <div class="meeting-slot">
+            <div class="time">17:00</div>
+            <div class="name">Afternoon Review</div>
+            <div class="duration">20 min</div>
+          </div>
+          <div class="meeting-slot">
+            <div class="time">21:00</div>
+            <div class="name">Evening Wrap</div>
+            <div class="duration">15 min</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3>Files Delivered</h3>
+        <div class="file-tree">
+          <div class="dir">📁 signal-lost-tasks/</div>
+          <div class="file new">   📄 RD-DEEP-DIVE-REPORT.md</div>
+          <div class="file new">   📄 RD-EFFECTS-FONTS-BUTTONS-REPORT.md</div>
+          <div class="file new">   📄 R&D-MEETINGS.md</div>
+          <div class="file new">   📄 design-system.html</div>
+          <div class="file new">   📄 design-flow-enhanced.html</div>
+          <div class="file new">   📄 shader-library.html</div>
+          <div class="file new">   📄 scroll-animations.html</div>
+          <div class="file new">   📄 rd-status-dashboard.html</div>
+          <div class="file">   📄 meeting-scheduler.sh</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="grid">
+      <div class="card full-width">
+        <h3>Key Recommendations for Morgan's Design</h3>
+        <ul class="task-list">
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              <strong>Font Stack:</strong> Inter (body) + Space Grotesk (display) + JetBrains Mono (mono)
+              <small>Modern, performant, award-winning combination</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              <strong>Effects to Implement:</strong> Glassmorphism panels, cursor spotlight, magnetic buttons, radar scan, liquid fills
+              <small>Proven patterns from top 200 sites</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              <strong>Button Style:</strong> Floating glass with liquid fill hover + 3D depth press
+              <small>Best practices from 2025 research</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              <strong>Animation Strategy:</strong> Scroll-triggered fade-ins, staggered lists, parallax layers
+              <small>80%+ of Awwwards winners use scrollytelling</small>
+            </span>
+          </li>
+          <li>
+            <span class="task-status done">✓</span>
+            <span class="task-text">
+              <strong>WebGL Integration:</strong> Film grain overlay, fluid distortion on hero, vignette spotlight
+              <small>Cinematic depth without performance cost</small>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    
+    <div style="text-align: center; padding: 3rem 0; color: var(--text3); font-size: 0.85rem; border-top: 1px solid var(--border); margin-top: 2rem;">
+      <p>R&D Team Autonomous Work Log — Generated 2026-05-04 06:48 CST</p>
+      <p style="margin-top: 0.5rem;">Next update: 13:00 Midday Standup</p>
+    </div>
+  </div>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

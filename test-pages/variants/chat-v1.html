@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RADIO COMMS — CHAT V1</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0f0a;
+      color: #c8d4c8;
+      font-family: 'Courier New', Courier, monospace;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Frequency waveform background */
+    .waveform-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.08;
+      z-index: 0;
+    }
+
+    .waveform-bg svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .waveform-bg path {
+      fill: none;
+      stroke: #4a7c4a;
+      stroke-width: 1.5;
+      animation: waveShift 3s linear infinite;
+    }
+
+    @keyframes waveShift {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-100px); }
+    }
+
+    /* Scanlines overlay */
+    .scanlines {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 20, 0, 0.15) 2px,
+        rgba(0, 20, 0, 0.15) 4px
+      );
+    }
+
+    /* Vignette */
+    .vignette {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 11;
+      box-shadow: inset 0 0 150px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Main container */
+    .container {
+      position: relative;
+      z-index: 5;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 12px 16px;
+    }
+
+    /* HUD Header */
+    .hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid #2a4a2a;
+      background: rgba(10, 20, 10, 0.85);
+      margin-bottom: 8px;
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+
+    .hud-header .hud-label {
+      color: #5a8a5a;
+    }
+
+    .hud-header .hud-value {
+      color: #7ab87a;
+    }
+
+    .hud-header .hud-title {
+      color: #8ac88a;
+      font-weight: bold;
+      font-size: 13px;
+      letter-spacing: 3px;
+    }
+
+    /* Frequency display */
+    .freq-display {
+      text-align: center;
+      padding: 10px;
+      border: 2px solid #3a5a3a;
+      background: rgba(15, 25, 15, 0.9);
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .freq-display::before,
+    .freq-display::after {
+      content: '◆';
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #4a7c4a;
+      font-size: 10px;
+    }
+
+    .freq-display::before { left: 12px; }
+    .freq-display::after { right: 12px; }
+
+    .freq-display .freq-label {
+      font-size: 10px;
+      color: #5a8a5a;
+      letter-spacing: 4px;
+      margin-bottom: 4px;
+    }
+
+    .freq-display .freq-value {
+      font-size: 26px;
+      color: #8ac88a;
+      letter-spacing: 3px;
+      text-shadow: 0 0 10px rgba(138, 200, 138, 0.3);
+      font-weight: bold;
+    }
+
+    .freq-display .freq-bar {
+      display: flex;
+      justify-content: center;
+      gap: 3px;
+      margin-top: 6px;
+    }
+
+    .freq-bar .bar {
+      width: 3px;
+      height: 12px;
+      background: #3a6a3a;
+      animation: freqBar 0.5s ease-in-out infinite alternate;
+    }
+
+    .freq-bar .bar:nth-child(2) { animation-delay: 0.1s; height: 16px; }
+    .freq-bar .bar:nth-child(3) { animation-delay: 0.2s; }
+    .freq-bar .bar:nth-child(4) { animation-delay: 0.15s; height: 14px; }
+    .freq-bar .bar:nth-child(5) { animation-delay: 0.25s; }
+    .freq-bar .bar:nth-child(6) { animation-delay: 0.05s; height: 18px; }
+    .freq-bar .bar:nth-child(7) { animation-delay: 0.2s; }
+
+    @keyframes freqBar {
+      0% { opacity: 0.3; transform: scaleY(0.5); }
+      100% { opacity: 1; transform: scaleY(1); }
+    }
+
+    /* Chat area */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid #2a4a2a;
+      background: rgba(8, 14, 8, 0.9);
+      padding: 12px;
+      margin-bottom: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: #3a5a3a #0a0f0a;
+    }
+
+    .chat-area::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-area::-webkit-scrollbar-track {
+      background: #0a0f0a;
+    }
+
+    .chat-area::-webkit-scrollbar-thumb {
+      background: #3a5a3a;
+    }
+
+    /* Message */
+    .message {
+      margin-bottom: 10px;
+      padding: 8px 12px;
+      border-left: 3px solid;
+      background: rgba(15, 25, 15, 0.6);
+      animation: staticCrackle 0.4s ease-out;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Radio static crackle effect */
+    @keyframes staticCrackle {
+      0% {
+        opacity: 0;
+        transform: translateX(-8px) scaleX(0.98);
+        filter: brightness(2) contrast(1.5);
+      }
+      15% {
+        opacity: 0.6;
+        transform: translateX(3px) scaleX(1.01);
+        filter: brightness(3) contrast(2);
+      }
+      30% {
+        opacity: 0.3;
+        transform: translateX(-2px) scaleX(0.99);
+        filter: brightness(1.5) contrast(1.8);
+      }
+      50% {
+        opacity: 0.9;
+        transform: translateX(1px) scaleX(1);
+        filter: brightness(2.5) contrast(1.6);
+      }
+      70% {
+        opacity: 0.5;
+        transform: translateX(-1px);
+        filter: brightness(1.8) contrast(1.4);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0) scaleX(1);
+        filter: brightness(1) contrast(1);
+      }
+    }
+
+    /* Static noise overlay on message */
+    .message::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent 0px,
+        rgba(255, 255, 255, 0.03) 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      animation: staticNoise 0.15s steps(3) 3;
+      opacity: 0;
+    }
+
+    @keyframes staticNoise {
+      0%, 100% { opacity: 0; }
+      50% { opacity: 1; }
+    }
+
+    .message .msg-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+
+    .message .msg-callsign {
+      font-weight: bold;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .message .msg-time {
+      color: #5a7a5a;
+      font-size: 10px;
+    }
+
+    .message .msg-text {
+      font-size: 13px;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+
+    /* Player colors */
+    .msg-wolf    { border-left-color: #c85a5a; }
+    .msg-wolf .msg-callsign    { color: #d47272; }
+
+    .msg-raven   { border-left-color: #5a8ac8; }
+    .msg-raven .msg-callsign   { color: #72a0d4; }
+
+    .msg-viper   { border-left-color: #c8a85a; }
+    .msg-viper .msg-callsign   { color: #d4b872; }
+
+    .msg-ghost   { border-left-color: #8a5ac8; }
+    .msg-ghost .msg-callsign   { color: #a072d4; }
+
+    .msg-hawk    { border-left-color: #5ac8a8; }
+    .msg-hawk .msg-callsign    { color: #72d4b8; }
+
+    .msg-bear    { border-left-color: #c85a8a; }
+    .msg-bear .msg-callsign    { color: #d472a0; }
+
+    .msg-steel   { border-left-color: #8a8a8a; }
+    .msg-steel .msg-callsign   { color: #a0a0a0; }
+
+    .msg-fox     { border-left-color: #c87a3a; }
+    .msg-fox .msg-callsign     { color: #d48a50; }
+
+    .msg-echo    { border-left-color: #5ac85a; }
+    .msg-echo .msg-callsign    { color: #72d472; }
+
+    /* Command wheel */
+    .command-wheel {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .cmd-btn {
+      padding: 8px 6px;
+      border: 1px solid #3a5a3a;
+      background: rgba(15, 25, 15, 0.9);
+      color: #7ab87a;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .cmd-btn:hover {
+      background: rgba(58, 90, 58, 0.4);
+      border-color: #5a8a5a;
+      color: #9ad89a;
+    }
+
+    .cmd-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* Input area */
+    .input-area {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #3a5a3a;
+      background: rgba(10, 18, 10, 0.95);
+      color: #c8d4c8;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      outline: none;
+      letter-spacing: 0.5px;
+    }
+
+    .input-area input::placeholder {
+      color: #4a6a4a;
+    }
+
+    .input-area input:focus {
+      border-color: #5a8a5a;
+      box-shadow: 0 0 8px rgba(90, 138, 90, 0.2);
+    }
+
+    .send-btn {
+      padding: 10px 24px;
+      border: 2px solid #4a7c4a;
+      background: rgba(20, 40, 20, 0.9);
+      color: #8ac88a;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-transform: uppercase;
+    }
+
+    .send-btn:hover {
+      background: rgba(40, 70, 40, 0.9);
+      border-color: #6aaa6a;
+      color: #a8e8a8;
+    }
+
+    .send-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Status indicator */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+      margin-top: 8px;
+      border: 1px solid #2a4a2a;
+      background: rgba(10, 20, 10, 0.85);
+      font-size: 10px;
+      color: #5a7a5a;
+      letter-spacing: 1px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4a8a4a;
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Corner brackets decoration */
+    .corner-bracket {
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      border-color: #3a5a3a;
+      border-style: solid;
+      z-index: 12;
+      pointer-events: none;
+    }
+
+    .cb-tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+    .cb-tr { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
+    .cb-bl { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
+    .cb-br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+  </style>
+</head>
+<body>
+  <!-- Waveform background -->
+  <div class="waveform-bg">
+    <svg viewBox="0 0 1200 800" preserveAspectRatio="none">
+      <path d="M0,400 Q50,350 100,400 T200,400 T300,400 T400,400 T500,400 T600,400 T700,400 T800,400 T900,400 T1000,400 T1100,400 T1200,400" />
+      <path d="M0,400 Q50,450 100,400 T200,400 T300,400 T400,400 T500,400 T600,400 T700,400 T800,400 T900,400 T1000,400 T1100,400 T1200,400" />
+      <path d="M0,400 Q30,300 60,400 T120,400 T180,400 T240,400 T300,400 T360,400 T420,400 T480,400 T540,400 T600,400 T660,400 T720,400 T780,400 T840,400 T900,400 T960,400 T1020,400 T1080,400 T1140,400 T1200,400" />
+      <path d="M0,400 Q30,500 60,400 T120,400 T180,400 T240,400 T300,400 T360,400 T420,400 T480,400 T540,400 T600,400 T660,400 T720,400 T780,400 T840,400 T900,400 T960,400 T1020,400 T1080,400 T1140,400 T1200,400" />
+    </svg>
+  </div>
+
+  <!-- Scanlines and vignette -->
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <!-- Corner brackets -->
+  <div class="corner-bracket cb-tl"></div>
+  <div class="corner-bracket cb-tr"></div>
+  <div class="corner-bracket cb-bl"></div>
+  <div class="corner-bracket cb-br"></div>
+
+  <!-- Main container -->
+  <div class="container">
+    <!-- HUD Header -->
+    <div class="hud-header">
+      <span class="hud-label">SYS: <span class="hud-value">ONLINE</span></span>
+      <span class="hud-title">CHAT V1</span>
+      <span class="hud-label">ENC: <span class="hud-value">AES-256</span></span>
+    </div>
+
+    <!-- Frequency Display -->
+    <div class="freq-display">
+      <div class="freq-label">OPERATING FREQUENCY</div>
+      <div class="freq-value">FREQ 142.750 MHz</div>
+      <div class="freq-bar">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+      </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="chat-area" id="chatArea">
+      <!-- Messages will be populated by JS -->
+    </div>
+
+    <!-- Command Wheel -->
+    <div class="command-wheel">
+      <button class="cmd-btn" data-cmd="COPY, MOVING NOW">COPY</button>
+      <button class="cmd-btn" data-cmd="ROGER, WILCO">ROGER</button>
+      <button class="cmd-btn" data-cmd="SITREP REQUEST">SITREP</button>
+      <button class="cmd-btn" data-cmd="ENEMY SPOTTED">CONTACT</button>
+      <button class="cmd-btn" data-cmd="REQUESTING BACKUP">QRF</button>
+      <button class="cmd-btn" data-cmd="MOVING TO RALLY">RALLY</button>
+      <button class="cmd-btn" data-cmd="HOLD POSITION">HOLD</button>
+      <button class="cmd-btn" data-cmd="TARGET ACQUIRED">TANGO</button>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <input type="text" id="msgInput" placeholder="ENTER MESSAGE..." maxlength="200" autocomplete="off">
+      <button class="send-btn" id="sendBtn">SEND</button>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span><span class="status-dot"></span>NET OPEN</span>
+      <span>SIG: STRONG</span>
+      <span>SECURE CHANNEL</span>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const chatArea = document.getElementById('chatArea');
+      const msgInput = document.getElementById('msgInput');
+      const sendBtn = document.getElementById('sendBtn');
+
+      const callsigns = [
+        { name: 'WOLF-1',    cls: 'msg-wolf',  color: '#d47272' },
+        { name: 'RAVEN-2',   cls: 'msg-raven', color: '#72a0d4' },
+        { name: 'VIPER-3',   cls: 'msg-viper', color: '#d4b872' },
+        { name: 'GHOST-4',   cls: 'msg-ghost', color: '#a072d4' },
+        { name: 'HAWK-5',    cls: 'msg-hawk',  color: '#72d4b8' },
+        { name: 'BEAR-6',    cls: 'msg-bear',  color: '#d472a0' },
+        { name: 'STEEL-7',   cls: 'msg-steel', color: '#a0a0a0' },
+        { name: 'FOX-8',     cls: 'msg-fox',   color: '#d48a50' },
+        { name: 'ECHO-9',    cls: 'msg-echo',  color: '#72d472' },
+      ];
+
+      const initialMessages = [
+        { callsign: 'WOLF-1',  text: 'All stations, this is WOLF-1. Radio check, over.' },
+        { callsign: 'RAVEN-2', text: 'WOLF-1, RAVEN-2 reads you loud and clear. Signal five by five.' },
+        { callsign: 'VIPER-3', text: 'VIPER-3 checking in. Position grid Bravo-4, holding steady.' },
+        { callsign: 'GHOST-4', text: 'GHOST-4 here. Perimeter is secure. No movement detected.' },
+        { callsign: 'HAWK-5',  text: 'HAWK-5 overhead. Visual on grid Charlie-7, all clear from above.' },
+        { callsign: 'BEAR-6',  text: 'BEAR-6 copy. Heavy equipment staged at rally point Alpha.' },
+        { callsign: 'STEEL-7', text: 'STEEL-7 reporting. Supply line green, ammo and medkits en route.' },
+        { callsign: 'FOX-8',   text: 'FOX-8 in position. Eyes on northern approach, no contacts.' },
+        { callsign: 'ECHO-9',  text: 'ECHO-9 standing by. Comms relay operational, range extended.' },
+        { callsign: 'WOLF-1',  text: 'Solid copy all. Maintain positions and stand by for further orders. WOLF-1 out.' },
+      ];
+
+      function getTimeString() {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+      }
+
+      function createMessage(callsignName, text, isNew = false) {
+        const cs = callsigns.find(c => c.name === callsignName) || callsigns[0];
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${cs.cls}`;
+        msgDiv.innerHTML = `
+          <div class="msg-header">
+            <span class="msg-callsign">${cs.name}</span>
+            <span class="msg-time">${getTimeString()}</span>
+          </div>
+          <div class="msg-text">${escapeHtml(text)}</div>
+        `;
+        return msgDiv;
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      function addMessage(callsignName, text) {
+        const msg = createMessage(callsignName, text, true);
+        chatArea.appendChild(msg);
+        chatArea.scrollTop = chatArea.scrollHeight;
+      }
+
+      // Populate initial messages
+      initialMessages.forEach(m => {
+        chatArea.appendChild(createMessage(m.callsign, m.text));
+      });
+      chatArea.scrollTop = chatArea.scrollHeight;
+
+      // Send message
+      function sendMessage() {
+        const text = msgInput.value.trim();
+        if (!text) return;
+        addMessage('WOLF-1', text);
+        msgInput.value = '';
+        msgInput.focus();
+      }
+
+      sendBtn.addEventListener('click', sendMessage);
+      msgInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') sendMessage();
+      });
+
+      // Command wheel
+      document.querySelectorAll('.cmd-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cmd = btn.getAttribute('data-cmd');
+          addMessage('WOLF-1', cmd);
+          msgInput.focus();
+        });
+      });
+
+      // Auto-scroll on resize
+      window.addEventListener('resize', () => {
+        chatArea.scrollTop = chatArea.scrollHeight;
+      });
+    })();
+  </script>
+</body>
+</html>

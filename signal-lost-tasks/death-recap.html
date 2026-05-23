@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Signal Lost — Death Recap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+<style>
+:root{--ink:#201116;--cream:#fff0c7;--gold:#ffd965;--teal:#008c94;--orange:#ff8b1f;--pink:#e82663;--blue:#18364b;}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--ink);font-family:'Inter',system-ui,sans-serif;color:var(--cream);min-height:100vh}
+body{display:flex;justify-content:center;align-items:center;padding:2rem 1rem}
+
+.recap-card{width:100%;max-width:520px;background:linear-gradient(145deg,#1a0d12,#0a0508);border:2px solid rgba(255,139,31,0.25);border-radius:24px;padding:2rem;box-shadow:0 24px 64px rgba(0,0,0,0.5);text-align:center}
+
+.skull{font-size:3rem;margin-bottom:0.5rem;animation:shake .6s ease}
+@keyframes shake{0%,100%{transform:rotate(0)}20%{transform:rotate(-10deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(6deg)}}
+
+.recap-title{font-family:'Space Grotesk',sans-serif;font-size:1.3rem;margin-bottom:0.25rem;color:var(--orange)}
+.recap-sub{font-size:0.8rem;color:rgba(255,240,199,0.5);margin-bottom:1.5rem}
+
+.killer-card{display:flex;align-items:center;gap:1rem;padding:1rem;background:rgba(255,255,255,0.03);border-radius:16px;border:1px solid rgba(255,139,31,0.1);margin-bottom:1.5rem}
+.killer-avatar{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--pink),var(--orange));display:grid;place-items:center;font-size:1.5rem;flex-shrink:0}
+.killer-info{text-align:left;flex:1}
+.killer-info b{font-size:1rem;display:block}
+.killer-info span{font-size:0.75rem;color:rgba(255,240,199,0.5)}
+.killer-dist{font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--teal);text-align:right}
+
+.damage-timeline{position:relative;padding-left:1.5rem;margin-bottom:1.5rem;text-align:left}
+.damage-timeline::before{content:'';position:absolute;left:6px;top:0;bottom:0;width:2px;background:rgba(255,139,31,0.2);border-radius:999px}
+.hit-row{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;position:relative}
+.hit-row::before{content:'';position:absolute;left:-1.25rem;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--orange)}
+.hit-row.head::before{background:var(--gold);box-shadow:0 0 0 3px rgba(255,217,101,0.2)}
+.hit-weapon{font-size:0.75rem;color:rgba(255,240,199,0.6);width:80px}
+.hit-damage{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.9rem;color:var(--gold);width:40px;text-align:right}
+.hit-bar{flex:1;height:8px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden}
+.hit-bar .fill{height:100%;background:linear-gradient(90deg,var(--orange),var(--pink));border-radius:999px}
+.hit-location{font-size:0.65rem;color:var(--teal);text-transform:uppercase;letter-spacing:0.05em;width:50px;text-align:right}
+
+.summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
+.summary-cell{padding:0.75rem;background:rgba(255,255,255,0.03);border-radius:10px}
+.summary-cell .val{font-family:'Space Grotesk',sans-serif;font-size:1.2rem;font-weight:700;color:var(--gold)}
+.summary-cell .lbl{font-size:0.6rem;color:rgba(255,240,199,0.4);text-transform:uppercase;margin-top:0.25rem}
+
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+.actions button{padding:0.875rem;border-radius:12px;border:2px solid rgba(255,217,101,0.2);background:rgba(255,217,101,0.08);color:var(--cream);font-weight:700;font-size:0.85rem;cursor:pointer;transition:all .15s}
+.actions button:hover{background:rgba(255,217,101,0.18)}
+.actions button.spectate{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.actions button.spectate:hover{background:#ffe89a}
+
+@media(max-width:440px){
+.summary-row{grid-template-columns:1fr 1fr}
+.killer-card{flex-direction:column;text-align:center}
+.killer-info{text-align:center}
+}
+</style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="death-recap" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Death Recap</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<div class="recap-card">
+  <div class="skull">💀</div>
+  <div class="recap-title">Killed in Action</div>
+  <div class="recap-sub">Match #8A7F92 — Downtown — 04:05 elapsed</div>
+
+  <div class="killer-card">
+    <div class="killer-avatar">🎯</div>
+    <div class="killer-info">
+      <b>Bravo-3</b>
+      <span>Sniper — Level 23</span>
+    </div>
+    <div class="killer-dist">180m</div>
+  </div>
+
+  <div class="damage-timeline">
+    <div class="hit-row">
+      <div class="hit-weapon">Scout Rifle</div>
+      <div class="hit-damage">45</div>
+      <div class="hit-bar"><div class="fill" style="width:38%"></div></div>
+      <div class="hit-location">Body</div>
+    </div>
+    <div class="hit-row">
+      <div class="hit-weapon">Scout Rifle</div>
+      <div class="hit-damage">45</div>
+      <div class="hit-bar"><div class="fill" style="width:38%"></div></div>
+      <div class="hit-location">Body</div>
+    </div>
+    <div class="hit-row head">
+      <div class="hit-weapon">Scout Rifle</div>
+      <div class="hit-damage">90</div>
+      <div class="hit-bar"><div class="fill" style="width:75%"></div></div>
+      <div class="hit-location">Head</div>
+    </div>
+  </div>
+
+  <div class="summary-row">
+    <div class="summary-cell"><div class="val">3</div><div class="lbl">Hits taken</div></div>
+    <div class="summary-cell"><div class="val">1.2s</div><div class="lbl">Time to death</div></div>
+    <div class="summary-cell"><div class="val">100%</div><div class="lbl">Armor broken</div></div>
+  </div>
+
+  <div class="actions">
+    <button class="spectate" type="button">Spectate Squad</button>
+    <button type="button">Report Player</button>
+  </div>
+</div>
+
+<script src="design-system.js"></script>
+<script>new SignalLostDesign({ spotlight:true, magneticButtons:true, scrollReveal:true, reducedMotion:true });</script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAPLAYER V4 — THERMAL</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    width:100%; height:100%;
+    background:#000;
+    overflow:hidden;
+    font-family:'Courier New', Courier, monospace;
+  }
+  #thermalCanvas {
+    position:absolute; top:0; left:0;
+    width:100%; height:100%;
+    image-rendering: pixelated;
+  }
+  #hud {
+    position:absolute; top:12px; left:12px;
+    color:#0ff; font-size:14px; letter-spacing:2px;
+    text-shadow:0 0 6px #0ff;
+    pointer-events:none; z-index:10;
+  }
+  #legend {
+    position:absolute; bottom:20px; left:20px;
+    width:220px; background:rgba(0,0,0,0.7);
+    border:1px solid #333; border-radius:4px;
+    padding:10px; pointer-events:none; z-index:10;
+  }
+  #legendTitle {
+    color:#aaa; font-size:11px; letter-spacing:1px;
+    margin-bottom:6px; text-align:center;
+  }
+  #legendBar {
+    width:100%; height:16px;
+    border-radius:2px;
+    background: linear-gradient(to right,
+      #000000 0%,
+      #4b0082 20%,
+      #ff0000 40%,
+      #ff8800 60%,
+      #ffff00 80%,
+      #ffffff 100%
+    );
+    margin-bottom:4px;
+  }
+  #legendLabels {
+    display:flex; justify-content:space-between;
+    color:#888; font-size:9px;
+  }
+  #crosshair {
+    position:absolute; top:50%; left:50%;
+    width:20px; height:20px;
+    transform:translate(-50%,-50%);
+    pointer-events:none; z-index:10;
+  }
+  #crosshair::before, #crosshair::after {
+    content:''; position:absolute; background:rgba(0,255,255,0.5);
+  }
+  #crosshair::before { top:9px; left:0; width:20px; height:2px; }
+  #crosshair::after { top:0; left:9px; width:2px; height:20px; }
+</style>
+</head>
+<body>
+<canvas id="thermalCanvas"></canvas>
+<div id="hud">MAPLAYER V4 — THERMAL</div>
+<div id="crosshair"></div>
+<div id="legend">
+  <div id="legendTitle">THERMAL SCALE (°C)</div>
+  <div id="legendBar"></div>
+  <div id="legendLabels">
+    <span>-20</span><span>0</span><span>20</span><span>40</span><span>60</span><span>80+</span>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('thermalCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ========== THERMAL COLOR LUT ========== */
+// Build a 256-entry lookup table mapping temp 0..255 to rgba
+const thermalLUT = new Uint8ClampedArray(256 * 4);
+function tempToRGBA(t, out) {
+  // t in 0..255
+  const idx = Math.max(0, Math.min(255, Math.floor(t))) * 4;
+  out[0] = thermalLUT[idx];
+  out[1] = thermalLUT[idx+1];
+  out[2] = thermalLUT[idx+2];
+  out[3] = thermalLUT[idx+3];
+}
+
+function buildLUT() {
+  for (let i = 0; i < 256; i++) {
+    const f = i / 255;
+    let r, g, b;
+    if (f < 0.2) {
+      // black -> purple
+      const local = f / 0.2;
+      r = 0; g = 0; b = Math.floor(local * 128);
+    } else if (f < 0.4) {
+      // purple -> red
+      const local = (f - 0.2) / 0.2;
+      r = Math.floor(local * 255);
+      g = 0;
+      b = Math.floor((1 - local) * 128);
+    } else if (f < 0.6) {
+      // red -> orange
+      const local = (f - 0.4) / 0.2;
+      r = 255;
+      g = Math.floor(local * 136);
+      b = 0;
+    } else if (f < 0.8) {
+      // orange -> yellow
+      const local = (f - 0.6) / 0.2;
+      r = 255;
+      g = 136 + Math.floor(local * 119);
+      b = 0;
+    } else {
+      // yellow -> white
+      const local = (f - 0.8) / 0.2;
+      r = 255;
+      g = 255;
+      b = Math.floor(local * 255);
+    }
+    thermalLUT[i*4] = r;
+    thermalLUT[i*4+1] = g;
+    thermalLUT[i*4+2] = b;
+    thermalLUT[i*4+3] = 255;
+  }
+}
+buildLUT();
+
+/* ========== MAP DATA ========== */
+const mapW = 1200, mapH = 900;
+
+// Terrain temperature base (perlin-ish via stacked sines)
+function terrainTemp(x, y) {
+  const s1 = Math.sin(x * 0.01) * Math.cos(y * 0.01);
+  const s2 = Math.sin(x * 0.03 + 1.3) * Math.cos(y * 0.025 + 0.7);
+  const s3 = Math.sin(x * 0.07 + 2.1) * Math.cos(y * 0.06 + 3.4);
+  let v = 80 + s1 * 15 + s2 * 8 + s3 * 4;
+  // shadows / cooler valleys
+  v -= Math.max(0, Math.sin(x * 0.02) * 10);
+  return v;
+}
+
+// Buildings (cool rectangles)
+const buildings = [];
+for (let i = 0; i < 18; i++) {
+  buildings.push({
+    x: 80 + Math.random() * (mapW - 200),
+    y: 80 + Math.random() * (mapH - 200),
+    w: 40 + Math.random() * 80,
+    h: 30 + Math.random() * 60,
+    temp: 25 + Math.random() * 10 // cool
+  });
+}
+
+// Players (warm blobs)
+const players = [];
+for (let i = 0; i < 6; i++) {
+  players.push({
+    x: 100 + Math.random() * (mapW - 200),
+    y: 100 + Math.random() * (mapH - 200),
+    vx: (Math.random() - 0.5) * 1.2,
+    vy: (Math.random() - 0.5) * 1.2,
+    temp: 180 + Math.random() * 40,
+    radius: 14 + Math.random() * 8
+  });
+}
+
+// Enemies (pulsing heat)
+const enemies = [];
+for (let i = 0; i < 4; i++) {
+  enemies.push({
+    x: 150 + Math.random() * (mapW - 300),
+    y: 150 + Math.random() * (mapH - 300),
+    vx: (Math.random() - 0.5) * 0.9,
+    vy: (Math.random() - 0.5) * 0.9,
+    baseTemp: 200 + Math.random() * 30,
+    radius: 12 + Math.random() * 6,
+    pulsePhase: Math.random() * Math.PI * 2
+  });
+}
+
+// Hotspots from weapon fire
+let hotspots = [];
+
+function spawnHotspot(x, y) {
+  hotspots.push({ x, y, temp: 255, radius: 30 + Math.random() * 20, life: 1.0 });
+}
+
+/* ========== CAMERA ========== */
+let camX = mapW / 2 - W / 2;
+let camY = mapH / 2 - H / 2;
+
+/* ========== RENDER ========== */
+const offCanvas = document.createElement('canvas');
+offCanvas.width = W;
+offCanvas.height = H;
+const offCtx = offCanvas.getContext('2d');
+
+function drawThermal() {
+  // Update offscreen size if needed
+  if (offCanvas.width !== W || offCanvas.height !== H) {
+    offCanvas.width = W;
+    offCanvas.height = H;
+  }
+
+  const imgData = offCtx.createImageData(W, H);
+  const data = imgData.data;
+  const rgba = [0,0,0,255];
+
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const wx = camX + px;
+      const wy = camY + py;
+      let t = terrainTemp(wx, wy);
+
+      // Buildings
+      for (const b of buildings) {
+        if (wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h) {
+          // building edges slightly warmer
+          const edge = (wx < b.x + 2 || wx > b.x + b.w - 2 || wy < b.y + 2 || wy > b.y + b.h - 2) ? 8 : 0;
+          t = b.temp + edge;
+        }
+      }
+
+      // Players (warm blobs with soft falloff)
+      for (const p of players) {
+        const dx = wx - p.x;
+        const dy = wy - p.y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < p.radius * 2.5) {
+          const falloff = Math.max(0, 1 - d / (p.radius * 2.5));
+          t += p.temp * (falloff * falloff);
+        }
+      }
+
+      // Enemies (pulsing)
+      const now = performance.now() / 1000;
+      for (const e of enemies) {
+        const dx = wx - e.x;
+        const dy = wy - e.y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        const pulse = 1 + 0.25 * Math.sin(now * 3 + e.pulsePhase);
+        const effR = e.radius * 2.2 * pulse;
+        if (d < effR) {
+          const falloff = Math.max(0, 1 - d / effR);
+          t += e.baseTemp * (falloff * falloff) * pulse;
+        }
+      }
+
+      // Hotspots (weapon fire)
+      for (const h of hotspots) {
+        const dx = wx - h.x;
+        const dy = wy - h.y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < h.radius) {
+          const falloff = Math.max(0, 1 - d / h.radius);
+          t += h.temp * falloff * h.life;
+        }
+      }
+
+      // Clamp and write
+      t = Math.max(0, Math.min(255, t));
+      const idx = (py * W + px) * 4;
+      const li = Math.floor(t) * 4;
+      data[idx] = thermalLUT[li];
+      data[idx+1] = thermalLUT[li+1];
+      data[idx+2] = thermalLUT[li+2];
+      data[idx+3] = 255;
+    }
+  }
+
+  offCtx.putImageData(imgData, 0, 0);
+  ctx.clearRect(0,0,W,H);
+  ctx.drawImage(offCanvas, 0, 0);
+}
+
+/* ========== SIMULATION ========== */
+function update(dt) {
+  // Move players
+  for (const p of players) {
+    p.x += p.vx * dt * 60;
+    p.y += p.vy * dt * 60;
+    if (p.x < 20 || p.x > mapW - 20) p.vx *= -1;
+    if (p.y < 20 || p.y > mapH - 20) p.vy *= -1;
+  }
+
+  // Move enemies
+  for (const e of enemies) {
+    e.x += e.vx * dt * 60;
+    e.y += e.vy * dt * 60;
+    if (e.x < 20 || e.x > mapW - 20) e.vx *= -1;
+    if (e.y < 20 || e.y > mapH - 20) e.vy *= -1;
+  }
+
+  // Fade hotspots
+  for (let i = hotspots.length - 1; i >= 0; i--) {
+    hotspots[i].life -= dt * 0.35;
+    if (hotspots[i].life <= 0) hotspots.splice(i, 1);
+  }
+
+  // Random weapon fire from players
+  if (Math.random() < 0.015) {
+    const p = players[Math.floor(Math.random() * players.length)];
+    spawnHotspot(p.x + (Math.random()-0.5)*30, p.y + (Math.random()-0.5)*30);
+  }
+
+  // Camera drift
+  camX += Math.sin(performance.now() * 0.0002) * 0.3;
+  camY += Math.cos(performance.now() * 0.00015) * 0.2;
+  camX = Math.max(0, Math.min(mapW - W, camX));
+  camY = Math.max(0, Math.min(mapH - H, camY));
+}
+
+let lastT = performance.now();
+function loop() {
+  const now = performance.now();
+  const dt = Math.min((now - lastT) / 1000, 0.05);
+  lastT = now;
+  update(dt);
+  drawThermal();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Daily Challenges</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --body-font: 'Inter', system-ui, sans-serif;
+      --display-font: 'Space Grotesk', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--cream); font-family: var(--body-font); }
+    body { padding: 2rem; max-width: 800px; margin: 0 auto; }
+
+    h1 { font-family: var(--display-font); font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--ink); }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.9rem; }
+
+    .streak-banner {
+      background: rgba(255, 217, 101, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 217, 101, 0.3);
+      border-radius: 16px;
+      padding: 1.5rem;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .streak-number {
+      font-family: var(--mono-font);
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .streak-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 0.25rem;
+    }
+
+    .challenge-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .challenge-card {
+      background: rgba(255, 248, 220, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: all 0.3s;
+    }
+
+    .challenge-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--gold);
+    }
+
+    .challenge-card.completed {
+      opacity: 0.6;
+      border-color: var(--teal);
+    }
+
+    .challenge-icon {
+      font-size: 2rem;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 12px;
+      flex-shrink: 0;
+    }
+
+    .challenge-info {
+      flex: 1;
+    }
+
+    .challenge-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--ink);
+      margin-bottom: 0.25rem;
+    }
+
+    .challenge-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .challenge-progress {
+      height: 6px;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .challenge-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease-out;
+    }
+
+    .challenge-meta {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    .challenge-meta span {
+      font-family: var(--mono-font);
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .challenge-reward {
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .reward-value {
+      font-family: var(--mono-font);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .reward-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .claim-btn {
+      padding: 0.6rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--teal);
+      color: var(--cream);
+      font-family: var(--body-font);
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .claim-btn:hover { background: var(--blue); }
+    .claim-btn:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+    }
+
+    .claim-btn.claimed {
+      background: rgba(0, 140, 148, 0.2);
+      color: var(--teal);
+    }
+  </style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="daily-challenges" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Daily Challenges</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<h1>🎯 Daily Challenges</h1>
+  <p class="subtitle">Complete challenges to earn tokens and XP</p>
+
+  <div class="streak-banner">
+    <div class="streak-number">🔥 5</div>
+    <div class="streak-label">Day Streak — +25% bonus on all rewards</div>
+  </div>
+
+  <div class="challenge-list" id="challengeList">
+    <!-- Injected by JS -->
+  </div>
+
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ scrollReveal: true, reducedMotion: true });
+
+    const CHALLENGES = [
+      { id: 1, icon: '🎯', title: 'Sharpshooter', desc: 'Get 10 eliminations in a single match', current: 10, target: 10, reward: 200, color: '#e82663', claimed: true },
+      { id: 2, icon: '🏃', title: 'Survivor', desc: 'Survive for 15 minutes in any match', current: 12, target: 15, reward: 150, color: '#008c94', claimed: false },
+      { id: 3, icon: '🗺️', title: 'Explorer', desc: 'Visit 5 different locations on the map', current: 3, target: 5, reward: 100, color: '#ff8b1f', claimed: false },
+      { id: 4, icon: '🤝', title: 'Team Player', desc: 'Revive 3 teammates', current: 1, target: 3, reward: 120, color: '#18364b', claimed: false },
+      { id: 5, icon: '⚡', title: 'Speed Run', desc: 'Win a match in under 10 minutes', current: 0, target: 1, reward: 300, color: '#ffd965', claimed: false },
+    ];
+
+    function renderChallenges() {
+      const list = document.getElementById('challengeList');
+      list.innerHTML = '';
+
+      CHALLENGES.forEach(c => {
+        const pct = Math.min(100, (c.current / c.target) * 100);
+        const complete = c.current >= c.target;
+
+        const card = document.createElement('div');
+        card.className = 'challenge-card' + (complete ? ' completed' : '');
+        card.innerHTML = `
+          <div class="challenge-icon">${c.icon}</div>
+          <div class="challenge-info">
+            <div class="challenge-title">${c.title}</div>
+            <div class="challenge-desc">${c.desc}</div>
+            <div class="challenge-progress">
+              <div class="challenge-fill" style="width: ${pct}%; background: ${c.color};"></div>
+            </div>
+            <div class="challenge-meta">
+              <div>Progress: <span>${c.current} / ${c.target}</span></div>
+              <div>${pct.toFixed(0)}%</div>
+            </div>
+          </div>
+          <div class="challenge-reward">
+            <div class="reward-value">+${c.reward}</div>
+            <div class="reward-label">Tokens</div>
+          </div>
+          <button class="claim-btn ${c.claimed ? 'claimed' : ''}" ${!complete || c.claimed ? 'disabled' : ''}>
+            ${c.claimed ? '✓ Claimed' : complete ? 'Claim' : 'Locked'}
+          </button>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    renderChallenges();
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

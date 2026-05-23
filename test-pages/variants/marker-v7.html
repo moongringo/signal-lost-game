@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marker V7 — Compass / Direction Markers</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    color: #00ff88;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* HUD Header */
+  .hud-header {
+    width: 100%;
+    padding: 12px 24px;
+    background: rgba(0, 255, 136, 0.08);
+    border-bottom: 1px solid #00ff88;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    z-index: 10;
+  }
+  .hud-header .title {
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 0 0 10px #00ff88;
+  }
+  .hud-header .coords {
+    color: #00cc66;
+    font-size: 12px;
+  }
+
+  /* Main container */
+  .main-container {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+  }
+
+  /* Radar / Map Canvas */
+  #radarCanvas {
+    border: 2px solid #00ff88;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,255,136,0.05) 0%, rgba(0,0,0,0.9) 80%);
+    box-shadow: 0 0 40px rgba(0,255,136,0.15), inset 0 0 60px rgba(0,255,136,0.05);
+  }
+
+  /* Overlay info panel */
+  .info-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 220px;
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid #00ff88;
+    border-radius: 4px;
+    padding: 14px;
+    font-size: 11px;
+    line-height: 1.8;
+    z-index: 10;
+  }
+  .info-panel h3 {
+    font-size: 12px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #00ff88;
+    padding-bottom: 4px;
+    text-shadow: 0 0 5px #00ff88;
+  }
+  .info-panel .stat {
+    display: flex;
+    justify-content: space-between;
+  }
+  .info-panel .stat .label { color: #00cc66; }
+  .info-panel .stat .value { color: #00ff88; font-weight: bold; }
+
+  /* Legend */
+  .legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid #00ff88;
+    border-radius: 4px;
+    padding: 12px;
+    font-size: 10px;
+    line-height: 1.6;
+    z-index: 10;
+  }
+  .legend h4 {
+    font-size: 11px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid #00ff88;
+    padding-bottom: 3px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 3px 0;
+  }
+  .legend-color {
+    width: 12px;
+    height: 3px;
+    border-radius: 1px;
+  }
+
+  /* Scan line effect */
+  .scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(0, 255, 136, 0.3);
+    animation: scan 4s linear infinite;
+    pointer-events: none;
+    z-index: 5;
+  }
+  @keyframes scan {
+    0% { top: 0; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  /* HUD Footer */
+  .hud-footer {
+    width: 100%;
+    padding: 8px 24px;
+    background: rgba(0, 255, 136, 0.05);
+    border-top: 1px solid #00ff88;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #00cc66;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+  <div class="hud-header">
+    <div class="title">MARKER V7 — COMPASS</div>
+    <div class="coords">POS: 34.0522°N 118.2437°W | GRID: 7-Alpha</div>
+  </div>
+
+  <div class="main-container">
+    <canvas id="radarCanvas" width="600" height="600"></canvas>
+
+    <div class="scan-line"></div>
+
+    <div class="info-panel">
+      <h3>NAV DATA</h3>
+      <div class="stat"><span class="label">HEADING:</span><span class="value" id="headingVal">000°</span></div>
+      <div class="stat"><span class="label">BEARING:</span><span class="value" id="bearingVal">000°</span></div>
+      <div class="stat"><span class="label">WIND:</span><span class="value" id="windVal">000° @ 0kt</span></div>
+      <div class="stat"><span class="label">TARGET:</span><span class="value" id="targetVal">TGT-A1</span></div>
+      <div class="stat"><span class="label">AZIMUTH:</span><span class="value" id="azimuthVal">+000°</span></div>
+      <div class="stat"><span class="label">DISTANCE:</span><span class="value" id="distVal">0.0 NM</span></div>
+    </div>
+
+    <div class="legend">
+      <h4>ELEMENTS</h4>
+      <div class="legend-item"><div class="legend-color" style="background:#ff4444;"></div>North Indicator</div>
+      <div class="legend-item"><div class="legend-color" style="background:#00ff88;"></div>Compass Rose</div>
+      <div class="legend-item"><div class="legend-color" style="background:#ffaa00;"></div>Bearing Line</div>
+      <div class="legend-item"><div class="legend-color" style="background:#00ccff;"></div>Heading Indicator</div>
+      <div class="legend-item"><div class="legend-color" style="background:#aa66ff;"></div>Wind Direction</div>
+      <div class="legend-item"><div class="legend-color" style="background:#ff6600;"></div>Target Azimuth Arc</div>
+    </div>
+  </div>
+
+  <div class="hud-footer">
+    <span>SYSTEM: ONLINE</span>
+    <span>COMPASS MARKER MODULE v7.0.2</span>
+    <span>UPDATING...</span>
+  </div>
+
+<script>
+  const canvas = document.getElementById('radarCanvas');
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const radius = 260;
+
+  // Mock data
+  let heading = 0;        // Player facing direction (degrees)
+  let targetBearing = 45; // Bearing to target
+  let windDir = 120;      // Wind coming from
+  let windSpeed = 15;     // knots
+  let targetDist = 4.2;   // NM
+
+  // Animation state
+  let time = 0;
+
+  function toRad(deg) { return deg * Math.PI / 180; }
+
+  function drawGrid() {
+    ctx.strokeStyle = 'rgba(0, 255, 136, 0.15)';
+    ctx.lineWidth = 1;
+
+    // Concentric circles
+    for (let r = 60; r <= radius; r += 60) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Crosshairs
+    ctx.beginPath();
+    ctx.moveTo(cx - radius, cy);
+    ctx.lineTo(cx + radius, cy);
+    ctx.moveTo(cx, cy - radius);
+    ctx.lineTo(cx, cy + radius);
+    ctx.stroke();
+
+    // Diagonal lines
+    ctx.beginPath();
+    ctx.moveTo(cx - radius * 0.707, cy - radius * 0.707);
+    ctx.lineTo(cx + radius * 0.707, cy + radius * 0.707);
+    ctx.moveTo(cx + radius * 0.707, cy - radius * 0.707);
+    ctx.lineTo(cx - radius * 0.707, cy + radius * 0.707);
+    ctx.stroke();
+  }
+
+  // 1. NORTH INDICATOR — rotating N arrow
+  function drawNorthIndicator() {
+    const northAngle = -heading; // North stays fixed, world rotates
+    const r = radius - 20;
+    const x = cx + Math.cos(toRad(northAngle - 90)) * r;
+    const y = cy + Math.sin(toRad(northAngle - 90)) * r;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(toRad(northAngle));
+
+    // Glow
+    ctx.shadowColor = '#ff4444';
+    ctx.shadowBlur = 15;
+
+    // Arrow body
+    ctx.fillStyle = '#ff4444';
+    ctx.beginPath();
+    ctx.moveTo(0, -18);
+    ctx.lineTo(-10, 10);
+    ctx.lineTo(0, 5);
+    ctx.lineTo(10, 10);
+    ctx.closePath();
+    ctx.fill();
+
+    // N label
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 14px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('N', 0, -26);
+
+    ctx.restore();
+  }
+
+  // 2. COMPASS ROSE — full 360° with cardinal + intercardinal labels
+  function drawCompassRose() {
+    const rOuter = radius - 35;
+    const rInner = radius - 55;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(toRad(-heading));
+
+    ctx.strokeStyle = 'rgba(0, 255, 136, 0.6)';
+    ctx.lineWidth = 1.5;
+
+    // Tick marks and labels
+    for (let deg = 0; deg < 360; deg += 5) {
+      const isCardinal = deg % 90 === 0;
+      const isIntercard = deg % 45 === 0;
+      const isMajor = deg % 15 === 0;
+
+      const len = isCardinal ? 18 : isIntercard ? 12 : isMajor ? 8 : 4;
+      const r1 = rOuter;
+      const r2 = rOuter - len;
+      const angle = toRad(deg);
+
+      ctx.strokeStyle = isCardinal ? '#00ff88' : 'rgba(0, 255, 136, 0.4)';
+      ctx.lineWidth = isCardinal ? 2 : 1;
+
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * r1, Math.sin(angle) * r1);
+      ctx.lineTo(Math.cos(angle) * r2, Math.sin(angle) * r2);
+      ctx.stroke();
+
+      // Labels
+      if (isCardinal || isIntercard) {
+        const labels = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
+        const label = labels[deg];
+        if (label) {
+          ctx.fillStyle = isCardinal ? '#00ff88' : '#00cc66';
+          ctx.font = isCardinal ? 'bold 13px Courier New' : '11px Courier New';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const lr = rOuter - 28;
+          ctx.fillText(label, Math.cos(angle) * lr, Math.sin(angle) * lr);
+        }
+      }
+
+      // Degree numbers every 30°
+      if (deg % 30 === 0 && !isCardinal && !isIntercard) {
+        ctx.fillStyle = 'rgba(0, 255, 136, 0.5)';
+        ctx.font = '9px Courier New';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const lr = rOuter - 28;
+        ctx.fillText(String(deg), Math.cos(angle) * lr, Math.sin(angle) * lr);
+      }
+    }
+
+    // Outer ring
+    ctx.strokeStyle = 'rgba(0, 255, 136, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, rOuter, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // 3. BEARING LINE — line from player to target with degrees
+  function drawBearingLine() {
+    const relBearing = targetBearing - heading;
+    const angle = toRad(relBearing - 90);
+    const r = radius - 70;
+
+    const tx = cx + Math.cos(angle) * r;
+    const ty = cy + Math.sin(angle) * r;
+
+    // Dashed line
+    ctx.save();
+    ctx.setLineDash([8, 6]);
+    ctx.strokeStyle = '#ffaa00';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#ffaa00';
+    ctx.shadowBlur = 8;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Target dot
+    ctx.fillStyle = '#ffaa00';
+    ctx.shadowColor = '#ffaa00';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(tx, ty, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Bearing label
+    ctx.fillStyle = '#ffaa00';
+    ctx.font = 'bold 11px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const labelR = r + 22;
+    const lx = cx + Math.cos(angle) * labelR;
+    const ly = cy + Math.sin(angle) * labelR;
+    ctx.fillText(targetBearing.toFixed(0) + '°', lx, ly);
+
+    // Target ID
+    ctx.font = '10px Courier New';
+    ctx.fillText('TGT-A1', lx, ly + 14);
+  }
+
+  // 4. HEADING INDICATOR — triangle showing facing direction
+  function drawHeadingIndicator() {
+    const r = radius - 50;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // Glow
+    ctx.shadowColor = '#00ccff';
+    ctx.shadowBlur = 15;
+
+    // Triangle pointing up (0° relative = current heading)
+    ctx.fillStyle = '#00ccff';
+    ctx.beginPath();
+    ctx.moveTo(0, -r - 10);
+    ctx.lineTo(-10, -r + 8);
+    ctx.lineTo(10, -r + 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Heading text above triangle
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#00ccff';
+    ctx.font = 'bold 12px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(heading.toFixed(0) + '°', 0, -r - 26);
+
+    // Small center dot
+    ctx.fillStyle = '#00ccff';
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // 5. WIND DIRECTION — arrow with speed label
+  function drawWindDirection() {
+    const relWind = windDir - heading;
+    const angle = toRad(relWind - 90);
+    const r = radius - 90;
+
+    const wx = cx + Math.cos(angle) * r;
+    const wy = cy + Math.sin(angle) * r;
+
+    ctx.save();
+    ctx.translate(wx, wy);
+    ctx.rotate(angle + Math.PI); // Arrow points FROM wind direction
+
+    // Glow
+    ctx.shadowColor = '#aa66ff';
+    ctx.shadowBlur = 12;
+
+    // Wind arrow
+    ctx.strokeStyle = '#aa66ff';
+    ctx.fillStyle = '#aa66ff';
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(0, -14);
+    ctx.lineTo(-8, 6);
+    ctx.lineTo(0, 2);
+    ctx.lineTo(8, 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wind barbs (speed indicator)
+    const barbCount = Math.min(Math.floor(windSpeed / 5), 5);
+    for (let i = 0; i < barbCount; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, 10 + i * 6);
+      ctx.lineTo(6, 14 + i * 6);
+      ctx.stroke();
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // Label
+    ctx.fillStyle = '#aa66ff';
+    ctx.font = '10px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const labelR = r + 20;
+    const lx = cx + Math.cos(angle) * labelR;
+    const ly = cy + Math.sin(angle) * labelR;
+    ctx.fillText(windDir.toFixed(0) + '°', lx, ly - 6);
+    ctx.fillText(windSpeed + 'kt', lx, ly + 6);
+  }
+
+  // 6. TARGET AZIMUTH — arc from current heading to target
+  function drawTargetAzimuth() {
+    const relHeading = 0; // Heading indicator is at 0° relative
+    const relTarget = targetBearing - heading;
+
+    // Normalize
+    let diff = relTarget - relHeading;
+    while (diff > 180) diff -= 360;
+    while (diff < -180) diff += 360;
+
+    const arcR = radius - 115;
+    const startAngle = toRad(-90); // Up = heading
+    const endAngle = toRad(-90 + diff);
+
+    ctx.save();
+
+    // Arc
+    ctx.strokeStyle = '#ff6600';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#ff6600';
+    ctx.shadowBlur = 10;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, arcR, startAngle, endAngle, diff < 0);
+    ctx.stroke();
+
+    // Arc endpoints dots
+    ctx.fillStyle = '#ff6600';
+    ctx.shadowBlur = 8;
+
+    const sx = cx + Math.cos(startAngle) * arcR;
+    const sy = cy + Math.sin(startAngle) * arcR;
+    const ex = cx + Math.cos(endAngle) * arcR;
+    const ey = cy + Math.sin(endAngle) * arcR;
+
+    ctx.beginPath();
+    ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(ex, ey, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // Azimuth label at midpoint
+    const midAngle = toRad(-90 + diff / 2);
+    const labelR = arcR + 18;
+    const mx = cx + Math.cos(midAngle) * labelR;
+    const my = cy + Math.sin(midAngle) * labelR;
+
+    ctx.fillStyle = '#ff6600';
+    ctx.font = 'bold 11px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const sign = diff >= 0 ? '+' : '';
+    ctx.fillText(sign + diff.toFixed(0) + '°', mx, my);
+
+    ctx.restore();
+  }
+
+  // Update DOM stats
+  function updateStats() {
+    document.getElementById('headingVal').textContent = ((heading % 360 + 360) % 360).toFixed(0).padStart(3, '0') + '°';
+    document.getElementById('bearingVal').textContent = ((targetBearing % 360 + 360) % 360).toFixed(0).padStart(3, '0') + '°';
+    document.getElementById('windVal').textContent = ((windDir % 360 + 360) % 360).toFixed(0).padStart(3, '0') + '° @ ' + windSpeed.toFixed(0) + 'kt';
+    document.getElementById('targetVal').textContent = 'TGT-A1';
+
+    let az = targetBearing - heading;
+    while (az > 180) az -= 360;
+    while (az < -180) az += 360;
+    const sign = az >= 0 ? '+' : '';
+    document.getElementById('azimuthVal').textContent = sign + az.toFixed(0) + '°';
+    document.getElementById('distVal').textContent = targetDist.toFixed(1) + ' NM';
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Update mock data
+    time += 0.016;
+    heading = (heading + 0.3) % 360;
+    targetBearing = 45 + Math.sin(time * 0.3) * 20;
+    windDir = (120 + Math.sin(time * 0.15) * 30) % 360;
+    windSpeed = 15 + Math.sin(time * 0.5) * 8;
+    targetDist = 4.2 + Math.sin(time * 0.2) * 0.5;
+
+    drawGrid();
+    drawCompassRose();
+    drawTargetAzimuth();
+    drawBearingLine();
+    drawWindDirection();
+    drawNorthIndicator();
+    drawHeadingIndicator();
+
+    updateStats();
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
+</body>
+</html>

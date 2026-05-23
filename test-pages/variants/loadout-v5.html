@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LOADOUT V5</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* HUD Header */
+    .hud {
+      width: 100%;
+      padding: 12px 20px;
+      background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
+      border-bottom: 2px solid #4a7c59;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .hud-left { color: #4a7c59; }
+    .hud-center {
+      color: #e0e0e0;
+      font-size: 18px;
+      text-shadow: 0 0 10px rgba(74, 124, 89, 0.5);
+    }
+    .hud-right { color: #666; font-size: 12px; }
+
+    /* Main container */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 500px;
+      padding: 10px 15px;
+      gap: 10px;
+    }
+
+    /* Mannequin */
+    .mannequin-area {
+      position: relative;
+      width: 220px;
+      height: 320px;
+      background: radial-gradient(ellipse at center, #1a1a1a 0%, #0a0a0a 70%);
+      border-radius: 8px;
+      border: 1px solid #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .mannequin {
+      width: 140px;
+      height: 280px;
+      position: relative;
+    }
+
+    /* SVG Mannequin */
+    .mannequin svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Pattern definitions */
+    .pattern-solid { fill: var(--solid-color, #4a7c59); }
+    .pattern-woodland {
+      fill: url(#woodland);
+    }
+    .pattern-desert {
+      fill: url(#desert);
+    }
+    .pattern-urban {
+      fill: url(#urban);
+    }
+    .pattern-snow {
+      fill: url(#snow);
+    }
+
+    /* Category sections */
+    .categories {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      max-height: calc(100vh - 380px);
+    }
+    .category {
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .category-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #888;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .swatches {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .swatch {
+      width: 44px;
+      height: 44px;
+      border-radius: 4px;
+      border: 2px solid #333;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .swatch:hover { border-color: #4a7c59; transform: scale(1.08); }
+    .swatch.active { border-color: #4a7c59; box-shadow: 0 0 8px rgba(74, 124, 89, 0.4); }
+
+    /* Swatch pattern fills */
+    .swatch-solid { background: var(--swatch-color, #4a7c59); }
+    .swatch-woodland {
+      background:
+        repeating-linear-gradient(45deg, #2d4a1e 0px, #2d4a1e 6px, #4a7c2a 6px, #4a7c2a 12px, #1a2e12 12px, #1a2e12 18px),
+        repeating-linear-gradient(-45deg, transparent 0px, transparent 8px, #3d5c22 8px, #3d5c22 16px);
+    }
+    .swatch-desert {
+      background:
+        repeating-linear-gradient(0deg, #c4a35a 0px, #c4a35a 8px, #8b7355 8px, #8b7355 14px, #d4b896 14px, #d4b896 20px),
+        repeating-linear-gradient(90deg, transparent 0px, transparent 6px, #a68b5b 6px, #a68b5b 12px);
+    }
+    .swatch-urban {
+      background:
+        repeating-linear-gradient(45deg, #555 0px, #555 10px, #777 10px, #777 18px, #333 18px, #333 24px),
+        repeating-linear-gradient(-45deg, transparent 0px, transparent 6px, #444 6px, #444 14px);
+    }
+    .swatch-snow {
+      background:
+        repeating-linear-gradient(0deg, #e8e8e8 0px, #e8e8e8 6px, #c0c0c0 6px, #c0c0c0 10px, #f0f0f0 10px, #f0f0f0 16px),
+        repeating-linear-gradient(90deg, transparent 0px, transparent 4px, #d0d0d0 4px, #d0d0d0 8px);
+    }
+
+    /* Color palette for SOLID */
+    .color-palette {
+      display: none;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #2a2a2a;
+    }
+    .color-palette.show { display: flex; }
+    .color-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid #333;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .color-dot:hover { border-color: #fff; transform: scale(1.15); }
+    .color-dot.active { border-color: #4a7c59; box-shadow: 0 0 6px rgba(74, 124, 89, 0.5); }
+
+    /* Scrollbar */
+    .categories::-webkit-scrollbar { width: 4px; }
+    .categories::-webkit-scrollbar-track { background: #0a0a0a; }
+    .categories::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+    /* Mobile */
+    @media (max-height: 700px) {
+      .mannequin-area { width: 180px; height: 260px; }
+      .mannequin { width: 110px; height: 220px; }
+      .categories { max-height: calc(100vh - 300px); }
+    }
+  </style>
+</head>
+<body>
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-left">MENU</div>
+    <div class="hud-center">LOADOUT V5</div>
+    <div class="hud-right">CAMO / COSMETIC</div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Mannequin -->
+    <div class="mannequin-area">
+      <div class="mannequin">
+        <svg viewBox="0 0 140 280" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <!-- Woodland Pattern -->
+            <pattern id="woodland" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+              <rect width="30" height="30" fill="#2d4a1e"/>
+              <path d="M0,0 L15,15 L0,30 Z" fill="#4a7c2a"/>
+              <path d="M15,0 L30,15 L15,30 Z" fill="#1a2e12"/>
+              <path d="M0,15 L15,0 L30,15 L15,30 Z" fill="#3d5c22" opacity="0.6"/>
+              <circle cx="8" cy="8" r="3" fill="#2d4a1e"/>
+              <circle cx="22" cy="20" r="4" fill="#1a2e12"/>
+            </pattern>
+            <!-- Desert Pattern -->
+            <pattern id="desert" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
+              <rect width="28" height="28" fill="#c4a35a"/>
+              <path d="M0,8 Q7,4 14,8 T28,8 L28,14 Q21,18 14,14 T0,14 Z" fill="#8b7355"/>
+              <path d="M0,20 Q7,16 14,20 T28,20 L28,26 Q21,30 14,26 T0,26 Z" fill="#a68b5b"/>
+              <circle cx="7" cy="18" r="3" fill="#d4b896"/>
+              <circle cx="21" cy="6" r="2" fill="#b8a070"/>
+            </pattern>
+            <!-- Urban Pattern -->
+            <pattern id="urban" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+              <rect width="24" height="24" fill="#555"/>
+              <rect x="0" y="0" width="10" height="10" fill="#777"/>
+              <rect x="12" y="12" width="12" height="12" fill="#333"/>
+              <rect x="14" y="0" width="8" height="6" fill="#444"/>
+              <rect x="0" y="14" width="6" height="8" fill="#666"/>
+              <rect x="6" y="6" width="4" height="4" fill="#888"/>
+            </pattern>
+            <!-- Snow Pattern -->
+            <pattern id="snow" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+              <rect width="20" height="20" fill="#e8e8e8"/>
+              <path d="M0,5 L20,5" stroke="#c0c0c0" stroke-width="1.5"/>
+              <path d="M0,12 L20,12" stroke="#d0d0d0" stroke-width="1"/>
+              <path d="M5,0 L5,20" stroke="#d8d8d8" stroke-width="1"/>
+              <path d="M14,0 L14,20" stroke="#c8c8c8" stroke-width="1.5"/>
+              <circle cx="10" cy="10" r="2" fill="#f0f0f0"/>
+              <circle cx="3" cy="16" r="1.5" fill="#d5d5d5"/>
+            </pattern>
+          </defs>
+
+          <!-- HEAD / HELMET -->
+          <ellipse id="part-helmet" cx="70" cy="28" rx="26" ry="22"
+            class="pattern-solid" style="--solid-color: #4a7c59;"/>
+          <ellipse cx="70" cy="32" rx="22" ry="16" fill="#1a1a1a" opacity="0.3"/>
+
+          <!-- NECK -->
+          <rect x="60" y="46" width="20" height="14" rx="3" fill="#c49a6c"/>
+
+          <!-- VEST (outer layer) -->
+          <path id="part-vest" d="M38,62 L102,62 L108,110 L105,160 L90,170 L50,170 L35,160 L32,110 Z"
+            class="pattern-solid" style="--solid-color: #5a4a3a;"/>
+          <!-- Vest details -->
+          <rect x="45" y="75" width="18" height="22" rx="2" fill="#000" opacity="0.2"/>
+          <rect x="77" y="75" width="18" height="22" rx="2" fill="#000" opacity="0.2"/>
+          <rect x="48" y="110" width="44" height="30" rx="2" fill="#000" opacity="0.15"/>
+
+          <!-- ARMS (PRIMARY camo) -->
+          <path id="part-primary-left" d="M38,65 L18,95 L22,140 L32,138 L38,110 L42,75 Z"
+            class="pattern-solid" style="--solid-color: #4a7c59;"/>
+          <path id="part-primary-right" d="M102,65 L122,95 L118,140 L108,138 L102,110 L98,75 Z"
+            class="pattern-solid" style="--solid-color: #4a7c59;"/>
+
+          <!-- TORSO under vest (SECONDARY camo) -->
+          <path id="part-secondary" d="M48,62 L92,62 L95,100 L90,140 L50,140 L45,100 Z"
+            class="pattern-solid" style="--solid-color: #3a5a2a;"/>
+
+          <!-- LEGS (PRIMARY camo) -->
+          <path id="part-primary-left-leg" d="M48,168 L42,220 L45,270 L58,270 L62,220 L65,172 Z"
+            class="pattern-solid" style="--solid-color: #4a7c59;"/>
+          <path id="part-primary-right-leg" d="M92,168 L98,220 L95,270 L82,270 L78,220 L75,172 Z"
+            class="pattern-solid" style="--solid-color: #4a7c59;"/>
+
+          <!-- BOOTS -->
+          <path d="M42,268 L58,268 L58,276 L42,276 Z" fill="#2a2a2a"/>
+          <path d="M82,268 L98,268 L98,276 L82,276 Z" fill="#2a2a2a"/>
+
+          <!-- PATCH -->
+          <rect id="part-patch" x="80" y="78" width="14" height="14" rx="2"
+            class="pattern-solid" style="--solid-color: #8b0000;"/>
+          <text id="patch-text" x="87" y="88" font-size="7" fill="#fff" text-anchor="middle" font-weight="bold">★</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="categories">
+      <!-- PRIMARY CAMO -->
+      <div class="category" data-cat="primary">
+        <div class="category-title">Primary Camo</div>
+        <div class="swatches">
+          <div class="swatch swatch-solid active" data-pattern="solid" data-color="#4a7c59" title="Solid"></div>
+          <div class="swatch swatch-woodland" data-pattern="woodland" title="Woodland"></div>
+          <div class="swatch swatch-desert" data-pattern="desert" title="Desert"></div>
+          <div class="swatch swatch-urban" data-pattern="urban" title="Urban"></div>
+          <div class="swatch swatch-snow" data-pattern="snow" title="Snow"></div>
+        </div>
+        <div class="color-palette show" data-palette="primary">
+          <div class="color-dot active" style="background:#4a7c59" data-color="#4a7c59"></div>
+          <div class="color-dot" style="background:#8b4513" data-color="#8b4513"></div>
+          <div class="color-dot" style="background:#2f4f4f" data-color="#2f4f4f"></div>
+          <div class="color-dot" style="background:#556b2f" data-color="#556b2f"></div>
+          <div class="color-dot" style="background:#4682b4" data-color="#4682b4"></div>
+          <div class="color-dot" style="background:#696969" data-color="#696969"></div>
+          <div class="color-dot" style="background:#3d3d3d" data-color="#3d3d3d"></div>
+          <div class="color-dot" style="background:#5c4033" data-color="#5c4033"></div>
+        </div>
+      </div>
+
+      <!-- SECONDARY CAMO -->
+      <div class="category" data-cat="secondary">
+        <div class="category-title">Secondary Camo</div>
+        <div class="swatches">
+          <div class="swatch swatch-solid active" data-pattern="solid" data-color="#3a5a2a" title="Solid"></div>
+          <div class="swatch swatch-woodland" data-pattern="woodland" title="Woodland"></div>
+          <div class="swatch swatch-desert" data-pattern="desert" title="Desert"></div>
+          <div class="swatch swatch-urban" data-pattern="urban" title="Urban"></div>
+          <div class="swatch swatch-snow" data-pattern="snow" title="Snow"></div>
+        </div>
+        <div class="color-palette show" data-palette="secondary">
+          <div class="color-dot active" style="background:#3a5a2a" data-color="#3a5a2a"></div>
+          <div class="color-dot" style="background:#654321" data-color="#654321"></div>
+          <div class="color-dot" style="background:#36454f" data-color="#36454f"></div>
+          <div class="color-dot" style="background:#4a5d23" data-color="#4a5d23"></div>
+          <div class="color-dot" style="background:#3b6e8f" data-color="#3b6e8f"></div>
+          <div class="color-dot" style="background:#505050" data-color="#505050"></div>
+          <div class="color-dot" style="background:#2a2a2a" data-color="#2a2a2a"></div>
+          <div class="color-dot" style="background:#4a3728" data-color="#4a3728"></div>
+        </div>
+      </div>
+
+      <!-- HELMET -->
+      <div class="category" data-cat="helmet">
+        <div class="category-title">Helmet</div>
+        <div class="swatches">
+          <div class="swatch swatch-solid active" data-pattern="solid" data-color="#4a7c59" title="Solid"></div>
+          <div class="swatch swatch-woodland" data-pattern="woodland" title="Woodland"></div>
+          <div class="swatch swatch-desert" data-pattern="desert" title="Desert"></div>
+          <div class="swatch swatch-urban" data-pattern="urban" title="Urban"></div>
+          <div class="swatch swatch-snow" data-pattern="snow" title="Snow"></div>
+        </div>
+        <div class="color-palette show" data-palette="helmet">
+          <div class="color-dot active" style="background:#4a7c59" data-color="#4a7c59"></div>
+          <div class="color-dot" style="background:#8b4513" data-color="#8b4513"></div>
+          <div class="color-dot" style="background:#2f4f4f" data-color="#2f4f4f"></div>
+          <div class="color-dot" style="background:#556b2f" data-color="#556b2f"></div>
+          <div class="color-dot" style="background:#4682b4" data-color="#4682b4"></div>
+          <div class="color-dot" style="background:#696969" data-color="#696969"></div>
+          <div class="color-dot" style="background:#3d3d3d" data-color="#3d3d3d"></div>
+          <div class="color-dot" style="background:#5c4033" data-color="#5c4033"></div>
+        </div>
+      </div>
+
+      <!-- VEST -->
+      <div class="category" data-cat="vest">
+        <div class="category-title">Vest</div>
+        <div class="swatches">
+          <div class="swatch swatch-solid active" data-pattern="solid" data-color="#5a4a3a" title="Solid"></div>
+          <div class="swatch swatch-woodland" data-pattern="woodland" title="Woodland"></div>
+          <div class="swatch swatch-desert" data-pattern="desert" title="Desert"></div>
+          <div class="swatch swatch-urban" data-pattern="urban" title="Urban"></div>
+          <div class="swatch swatch-snow" data-pattern="snow" title="Snow"></div>
+        </div>
+        <div class="color-palette show" data-palette="vest">
+          <div class="color-dot active" style="background:#5a4a3a" data-color="#5a4a3a"></div>
+          <div class="color-dot" style="background:#4a3a2a" data-color="#4a3a2a"></div>
+          <div class="color-dot" style="background:#3a3a3a" data-color="#3a3a3a"></div>
+          <div class="color-dot" style="background:#2c2c2c" data-color="#2c2c2c"></div>
+          <div class="color-dot" style="background:#5c4033" data-color="#5c4033"></div>
+          <div class="color-dot" style="background:#4a4a4a" data-color="#4a4a4a"></div>
+          <div class="color-dot" style="background:#1a1a1a" data-color="#1a1a1a"></div>
+          <div class="color-dot" style="background:#6b5344" data-color="#6b5344"></div>
+        </div>
+      </div>
+
+      <!-- PATCH -->
+      <div class="category" data-cat="patch">
+        <div class="category-title">Patch</div>
+        <div class="swatches">
+          <div class="swatch swatch-solid active" data-pattern="solid" data-color="#8b0000" title="Solid"></div>
+          <div class="swatch swatch-woodland" data-pattern="woodland" title="Woodland"></div>
+          <div class="swatch swatch-desert" data-pattern="desert" title="Desert"></div>
+          <div class="swatch swatch-urban" data-pattern="urban" title="Urban"></div>
+          <div class="swatch swatch-snow" data-pattern="snow" title="Snow"></div>
+        </div>
+        <div class="color-palette show" data-palette="patch">
+          <div class="color-dot active" style="background:#8b0000" data-color="#8b0000"></div>
+          <div class="color-dot" style="background:#b8860b" data-color="#b8860b"></div>
+          <div class="color-dot" style="background:#191970" data-color="#191970"></div>
+          <div class="color-dot" style="background:#006400" data-color="#006400"></div>
+          <div class="color-dot" style="background:#4b0082" data-color="#4b0082"></div>
+          <div class="color-dot" style="background:#8b4513" data-color="#8b4513"></div>
+          <div class="color-dot" style="background:#2f4f4f" data-color="#2f4f4f"></div>
+          <div class="color-dot" style="background:#000000" data-color="#000000"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    const state = {
+      primary: { pattern: 'solid', color: '#4a7c59' },
+      secondary: { pattern: 'solid', color: '#3a5a2a' },
+      helmet: { pattern: 'solid', color: '#4a7c59' },
+      vest: { pattern: 'solid', color: '#5a4a3a' },
+      patch: { pattern: 'solid', color: '#8b0000' }
+    };
+
+    // Map category to SVG element IDs
+    const partMap = {
+      primary: ['part-primary-left', 'part-primary-right', 'part-primary-left-leg', 'part-primary-right-leg'],
+      secondary: ['part-secondary'],
+      helmet: ['part-helmet'],
+      vest: ['part-vest'],
+      patch: ['part-patch']
+    };
+
+    // Apply pattern to SVG parts
+    function applyPattern(cat, pattern, color) {
+      const ids = partMap[cat];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        // Remove old pattern classes
+        el.classList.remove('pattern-solid', 'pattern-woodland', 'pattern-desert', 'pattern-urban', 'pattern-snow');
+        // Add new
+        el.classList.add('pattern-' + pattern);
+        if (pattern === 'solid') {
+          el.style.setProperty('--solid-color', color);
+        }
+      });
+      // Update patch text color for contrast
+      if (cat === 'patch') {
+        const txt = document.getElementById('patch-text');
+        if (txt) {
+          // Light or dark text based on background brightness
+          const r = parseInt(color.slice(1,3), 16);
+          const g = parseInt(color.slice(3,5), 16);
+          const b = parseInt(color.slice(5,7), 16);
+          const brightness = (r*299 + g*587 + b*114) / 1000;
+          txt.setAttribute('fill', brightness > 128 ? '#1a1a1a' : '#ffffff');
+        }
+      }
+    }
+
+    // Swatch click
+    document.querySelectorAll('.swatch').forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        const cat = swatch.closest('.category').dataset.cat;
+        const pattern = swatch.dataset.pattern;
+        const color = swatch.dataset.color || state[cat].color;
+
+        // Update active swatch
+        swatch.closest('.swatches').querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+        swatch.classList.add('active');
+
+        // Show/hide color palette
+        const palette = swatch.closest('.category').querySelector('.color-palette');
+        if (pattern === 'solid') {
+          palette.classList.add('show');
+        } else {
+          palette.classList.remove('show');
+        }
+
+        // Update state and apply
+        state[cat] = { pattern, color };
+        applyPattern(cat, pattern, color);
+      });
+    });
+
+    // Color dot click
+    document.querySelectorAll('.color-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        const cat = dot.closest('.category').dataset.cat;
+        const color = dot.dataset.color;
+
+        // Update active dot
+        dot.closest('.color-palette').querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+        dot.classList.add('active');
+
+        // Update state and apply
+        state[cat].color = color;
+        if (state[cat].pattern === 'solid') {
+          applyPattern(cat, 'solid', color);
+        }
+
+        // Update swatch preview color
+        const solidSwatch = dot.closest('.category').querySelector('.swatch-solid');
+        if (solidSwatch) {
+          solidSwatch.style.setProperty('--swatch-color', color);
+          solidSwatch.dataset.color = color;
+        }
+      });
+    });
+
+    // Initialize swatch colors from data attributes
+    document.querySelectorAll('.swatch-solid').forEach(s => {
+      const c = s.dataset.color;
+      if (c) s.style.setProperty('--swatch-color', c);
+    });
+  </script>
+</body>
+</html>

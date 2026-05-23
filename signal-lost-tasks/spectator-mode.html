@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Spectator Mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --body-font: 'Inter', system-ui, sans-serif;
+      --display-font: 'Space Grotesk', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--ink); color: var(--cream); font-family: var(--body-font); min-height: 100vh; }
+    body { padding: 1rem; max-width: 1200px; margin: 0 auto; }
+
+    .spectator-banner {
+      background: rgba(255, 139, 31, 0.15);
+      border: 1px solid rgba(255, 139, 31, 0.3);
+      border-radius: 10px;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .spectator-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--orange);
+    }
+
+    .target-name {
+      font-family: var(--display-font);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--cream);
+    }
+
+    .spectator-grid {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 1rem;
+    }
+
+    .main-view {
+      background: rgba(255, 248, 220, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      min-height: 500px;
+    }
+
+    .main-view::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(0, 140, 148, 0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .map-area {
+      width: 100%;
+      height: 350px;
+      background: rgba(255, 248, 220, 0.03);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .spectator-unit {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--cream);
+      transition: all 0.3s linear;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .spectator-unit.target {
+      border-color: var(--gold);
+      box-shadow: 0 0 16px var(--gold);
+      z-index: 10;
+      animation: targetPulse 1.5s infinite;
+    }
+
+    @keyframes targetPulse {
+      0%, 100% { box-shadow: 0 0 16px var(--gold); }
+      50% { box-shadow: 0 0 24px var(--gold), 0 0 32px var(--gold); }
+    }
+
+    .crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      pointer-events: none;
+    }
+
+    .crosshair::before, .crosshair::after {
+      content: '';
+      position: absolute;
+      background: var(--gold);
+    }
+    .crosshair::before { width: 1px; height: 100%; left: 50%; top: 0; }
+    .crosshair::after { width: 100%; height: 1px; top: 50%; left: 0; }
+
+    .info-bar {
+      display: flex;
+      gap: 2rem;
+      padding: 1rem 1.5rem;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .info-item {
+      text-align: center;
+    }
+
+    .info-value {
+      font-family: var(--mono-font);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--cream);
+    }
+
+    .info-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 0.15rem;
+    }
+
+    .spectator-controls {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .spec-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--cream);
+      font-family: var(--body-font);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .spec-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--gold);
+    }
+
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .panel-card {
+      background: rgba(255, 248, 220, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+
+    .panel-card h3 {
+      font-family: var(--display-font);
+      font-size: 0.85rem;
+      color: var(--cream);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .alive-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .alive-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .alive-item:hover, .alive-item.active {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .alive-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .alive-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--cream);
+      flex: 1;
+    }
+
+    .alive-hp {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .alive-bar {
+      width: 40px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .alive-fill {
+      height: 100%;
+      border-radius: 2px;
+    }
+
+    .kill-feed-compact {
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      line-height: 1.8;
+      color: var(--muted);
+    }
+
+    .kill-feed-compact .entry { padding: 0.1rem 0; }
+    .kill-feed-compact .killer { color: var(--teal); }
+    .kill-feed-compact .victim { color: var(--pink); }
+  </style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="spectator-mode" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Spectator Mode</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<div class="spectator-banner">
+    <div>
+      <div class="spectator-label">👁 Spectator Mode</div>
+      <div class="target-name" id="targetName">Alpha Squad</div>
+    </div>
+    <div style="text-align: right;">
+      <div class="spectator-label">Alive</div>
+      <div class="target-name" id="aliveCount">4 / 8</div>
+    </div>
+  </div>
+
+  <div class="spectator-grid">
+    <div class="main-view">
+      <div class="map-area" id="specMap">
+        <div class="crosshair"></div>
+      </div>
+
+      <div class="info-bar">
+        <div class="info-item">
+          <div class="info-value" id="specHP">78</div>
+          <div class="info-label">HP</div>
+        </div>
+        <div class="info-item">
+          <div class="info-value" id="specKills">5</div>
+          <div class="info-label">Kills</div>
+        </div>
+        <div class="info-item">
+          <div class="info-value" id="specDistance">142m</div>
+          <div class="info-label">To Zone</div>
+        </div>
+        <div class="info-item">
+          <div class="info-value" id="specTime">08:33</div>
+          <div class="info-label">Survived</div>
+        </div>
+      </div>
+
+      <div class="spectator-controls">
+        <button class="spec-btn" id="btnPrev">⏮ Prev</button>
+        <button class="spec-btn" id="btnNext">Next ⏭</button>
+        <button class="spec-btn" id="btnFree">🎥 Free Cam</button>
+        <button class="spec-btn" id="btnAuto">🔁 Auto</button>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <div class="panel-card">
+        <h3>Alive Teams</h3>
+        <div class="alive-list" id="aliveList">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <h3>Kill Feed</h3>
+        <div class="kill-feed-compact" id="specFeed">
+          <div class="entry"><span class="killer">Alpha</span> → <span class="victim">Bravo</span></div>
+          <div class="entry"><span class="killer">Charlie</span> → <span class="victim">Delta</span></div>
+          <div class="entry"><span class="killer">Alpha</span> → <span class="victim">Echo</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ reducedMotion: true });
+
+    const TEAMS = [
+      { id: 'A', name: 'Alpha Squad', color: '#008c94', hp: 78, maxHp: 100, kills: 5, x: 45, y: 45 },
+      { id: 'C', name: 'Charlie Squad', color: '#e82663', hp: 92, maxHp: 100, kills: 3, x: 65, y: 30 },
+      { id: 'G', name: 'Golf Squad', color: '#18364b', hp: 45, maxHp: 100, kills: 2, x: 25, y: 70 },
+      { id: 'H', name: 'Hotel Squad', color: '#704a41', hp: 63, maxHp: 100, kills: 1, x: 80, y: 60 },
+    ];
+
+    let currentTarget = 0;
+    const specMap = document.getElementById('specMap');
+    const aliveList = document.getElementById('aliveList');
+    const targetName = document.getElementById('targetName');
+
+    function initSpecMap() {
+      TEAMS.forEach((team, i) => {
+        const unit = document.createElement('div');
+        unit.className = 'spectator-unit' + (i === currentTarget ? ' target' : '');
+        unit.id = `spec-unit-${i}`;
+        unit.style.background = team.color;
+        unit.style.left = `${team.x}%`;
+        unit.style.top = `${team.y}%`;
+        unit.textContent = team.id;
+        specMap.appendChild(unit);
+      });
+      renderAliveList();
+      updateTarget();
+    }
+
+    function renderAliveList() {
+      aliveList.innerHTML = '';
+      TEAMS.forEach((team, i) => {
+        const item = document.createElement('div');
+        item.className = 'alive-item' + (i === currentTarget ? ' active' : '');
+        item.innerHTML = `
+          <div class="alive-dot" style="background: ${team.color};"></div>
+          <span class="alive-name">${team.name}</span>
+          <div class="alive-bar"><div class="alive-fill" style="width: ${team.hp}%; background: ${team.color};"></div></div>
+          <span class="alive-hp">${team.hp}%</span>
+        `;
+        item.addEventListener('click', () => {
+          currentTarget = i;
+          updateTarget();
+          renderAliveList();
+        });
+        aliveList.appendChild(item);
+      });
+    }
+
+    function updateTarget() {
+      const team = TEAMS[currentTarget];
+      targetName.textContent = team.name;
+      document.getElementById('specHP').textContent = team.hp;
+      document.getElementById('specKills').textContent = team.kills;
+
+      document.querySelectorAll('.spectator-unit').forEach((u, i) => {
+        u.classList.toggle('target', i === currentTarget);
+      });
+    }
+
+    document.getElementById('btnNext').addEventListener('click', () => {
+      currentTarget = (currentTarget + 1) % TEAMS.length;
+      updateTarget();
+      renderAliveList();
+    });
+
+    document.getElementById('btnPrev').addEventListener('click', () => {
+      currentTarget = (currentTarget - 1 + TEAMS.length) % TEAMS.length;
+      updateTarget();
+      renderAliveList();
+    });
+
+    // Simulate movement
+    setInterval(() => {
+      TEAMS.forEach((team, i) => {
+        team.x += (Math.random() - 0.5) * 3;
+        team.y += (Math.random() - 0.5) * 3;
+        team.x = Math.max(5, Math.min(95, team.x));
+        team.y = Math.max(5, Math.min(95, team.y));
+        const unit = document.getElementById(`spec-unit-${i}`);
+        if (unit) {
+          unit.style.left = `${team.x}%`;
+          unit.style.top = `${team.y}%`;
+        }
+      });
+    }, 1000);
+
+    initSpecMap();
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

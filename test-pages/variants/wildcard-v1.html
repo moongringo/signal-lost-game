@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WILDCARD V1 — SYNTHWAVE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=VT323&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #050011;
+    color: #fff;
+    font-family: 'Orbitron', monospace;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ========================
+     CHROMATIC ABERRATION
+     ======================== */
+  .chromatic {
+    position: relative;
+    display: inline-block;
+  }
+  .chromatic::before,
+  .chromatic::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .chromatic::before {
+    color: #ff00cc;
+    clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+    transform: translate(-2px, -1px);
+    opacity: 0.7;
+  }
+  .chromatic::after {
+    color: #00ffff;
+    clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+    transform: translate(2px, 1px);
+    opacity: 0.7;
+  }
+
+  /* ========================
+     HUD HEADER
+     ======================== */
+  .hud-header {
+    text-align: center;
+    padding: 24px 0 10px;
+    position: relative;
+    z-index: 10;
+  }
+  .hud-title {
+    font-size: 2.6rem;
+    font-weight: 900;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #e0e0e0;
+    text-shadow:
+      0 0 10px #ff00cc,
+      0 0 30px #ff00cc,
+      0 0 60px #ff00cc,
+      0 0 100px #ff00aa;
+  }
+  .hud-sub {
+    font-size: 0.85rem;
+    letter-spacing: 8px;
+    color: #00ffff;
+    margin-top: 6px;
+    text-shadow: 0 0 8px #00ffff, 0 0 20px #00ffff;
+  }
+
+  /* ========================
+     SYNTHWAVE SCENE (BACKGROUND)
+     ======================== */
+  .scene-wrap {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+  #sceneCanvas {
+    width: 100%; height: 100%;
+    display: block;
+  }
+
+  /* ========================
+     MAIN CONTENT GRID
+     ======================== */
+  .content {
+    position: relative;
+    z-index: 5;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 28px;
+  }
+
+  /* ========================
+     PANELS (neon borders)
+     ======================== */
+  .panel {
+    background: rgba(10, 0, 30, 0.72);
+    border: 2px solid #ff00cc;
+    border-radius: 4px;
+    box-shadow:
+      0 0 12px #ff00cc88,
+      inset 0 0 20px rgba(255,0,204,0.06);
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px; right: -2px; bottom: -2px;
+    border-radius: 4px;
+    background: linear-gradient(45deg, #ff00cc, #00ffff, #ff00cc, #00ffff);
+    background-size: 400% 400%;
+    z-index: -1;
+    opacity: 0.35;
+    animation: neonShift 4s ease infinite;
+  }
+  @keyframes neonShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .panel-title {
+    font-size: 0.95rem;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    color: #00ffff;
+    text-shadow: 0 0 10px #00ffff;
+  }
+
+  /* ========================
+     RADAR PANEL
+     ======================== */
+  .radar-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  #radarCanvas {
+    width: 280px; height: 280px;
+  }
+
+  /* ========================
+     LOADING PANEL
+     ======================== */
+  .loading-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  #loadingCanvas {
+    width: 320px; height: 180px;
+  }
+  .loading-label {
+    font-size: 0.75rem;
+    letter-spacing: 3px;
+    color: #ff00cc;
+    text-shadow: 0 0 8px #ff00cc;
+  }
+
+  /* ========================
+     CHAT PANEL (spans full width)
+     ======================== */
+  .chat-panel {
+    grid-column: 1 / -1;
+  }
+  .chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .chat-status {
+    font-size: 0.7rem;
+    color: #00ff88;
+    text-shadow: 0 0 6px #00ff88;
+    animation: blink 1.2s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.3; } }
+
+  .chat-box {
+    background: #0a0a12;
+    border: 1px solid #00ffff44;
+    border-radius: 2px;
+    height: 220px;
+    overflow-y: auto;
+    padding: 12px;
+    font-family: 'VT323', monospace;
+    font-size: 1.15rem;
+    line-height: 1.4;
+    color: #00ff88;
+    text-shadow: 0 0 4px #00ff88;
+  }
+  .chat-msg {
+    margin-bottom: 6px;
+  }
+  .chat-msg .ts {
+    color: #ff00cc;
+    text-shadow: 0 0 4px #ff00cc;
+    margin-right: 6px;
+  }
+  .chat-msg .user {
+    color: #00ffff;
+    text-shadow: 0 0 4px #00ffff;
+    margin-right: 4px;
+  }
+
+  .chat-input-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .chat-input {
+    flex: 1;
+    background: #0a0a12;
+    border: 1px solid #00ffff66;
+    border-radius: 2px;
+    padding: 8px 12px;
+    font-family: 'VT323', monospace;
+    font-size: 1.1rem;
+    color: #00ff88;
+    text-shadow: 0 0 4px #00ff88;
+    outline: none;
+  }
+  .chat-input::placeholder { color: #00ff8844; }
+  .chat-btn {
+    background: transparent;
+    border: 1px solid #ff00cc;
+    border-radius: 2px;
+    color: #ff00cc;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    padding: 8px 18px;
+    cursor: pointer;
+    text-shadow: 0 0 8px #ff00cc;
+    box-shadow: 0 0 10px #ff00cc44;
+    transition: 0.2s;
+  }
+  .chat-btn:hover {
+    background: #ff00cc22;
+    box-shadow: 0 0 20px #ff00cc88;
+  }
+
+  /* ========================
+     SCANLINE OVERLAY
+     ======================== */
+  .scanlines {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 100;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.08) 0px,
+      rgba(0,0,0,0.08) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+
+  /* ========================
+     VIGNETTE
+     ======================== */
+  .vignette {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 99;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+  }
+
+  /* ========================
+     RESPONSIVE
+     ======================== */
+  @media (max-width: 800px) {
+    .content { grid-template-columns: 1fr; }
+    .hud-title { font-size: 1.6rem; }
+    #radarCanvas { width: 240px; height: 240px; }
+    #loadingCanvas { width: 280px; height: 160px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Scanlines & vignette -->
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<!-- Synthwave background scene -->
+<div class="scene-wrap">
+  <canvas id="sceneCanvas"></canvas>
+</div>
+
+<!-- HUD Header -->
+<div class="hud-header">
+  <div class="hud-title chromatic" data-text="WILDCARD V1">WILDCARD V1</div>
+  <div class="hud-sub">— SYNTHWAVE —</div>
+</div>
+
+<!-- Main content -->
+<div class="content">
+
+  <!-- RADAR -->
+  <div class="panel">
+    <div class="panel-title">SIGNAL RADAR</div>
+    <div class="radar-wrap">
+      <canvas id="radarCanvas" width="560" height="560"></canvas>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="panel">
+    <div class="panel-title">DATA TRANSFER</div>
+    <div class="loading-wrap">
+      <canvas id="loadingCanvas" width="640" height="360"></canvas>
+      <div class="loading-label" id="loadingLabel">INSERT CASSETTE...</div>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="panel chat-panel">
+    <div class="chat-header">
+      <div class="panel-title">TERMINAL CHAT</div>
+      <div class="chat-status">● ONLINE</div>
+    </div>
+    <div class="chat-box" id="chatBox">
+      <div class="chat-msg"><span class="ts">[00:00]</span><span class="user">SYS:</span>Connection established. Welcome to the grid.</div>
+      <div class="chat-msg"><span class="ts">[00:01]</span><span class="user">OUTRUN:</span>Signal lost in sector 7. Anyone copy?</div>
+      <div class="chat-msg"><span class="ts">[00:02]</span><span class="user">NEON:</span>Copy that. Retrowave interference detected.</div>
+      <div class="chat-msg"><span class="ts">[00:03]</span><span class="user">SYS:</span>All channels monitored. Stay chrome.</div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" class="chat-input" id="chatInput" placeholder="Type message..." maxlength="120">
+      <button class="chat-btn" id="chatBtn">SEND</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+const $ = id => document.getElementById(id);
+
+/* ============================================================
+   SCENE CANVAS — Synthwave background
+   Stars, sun, mountains, grid ground
+   ============================================================ */
+const sceneC = $('sceneCanvas');
+const sceneCtx = sceneC.getContext('2d');
+let sceneW, sceneH;
+
+function resizeScene() {
+  sceneW = sceneC.width = window.innerWidth;
+  sceneH = sceneC.height = window.innerHeight;
+}
+resizeScene();
+window.addEventListener('resize', resizeScene);
+
+// Stars
+const stars = [];
+for (let i = 0; i < 220; i++) {
+  stars.push({
+    x: Math.random(),
+    y: Math.random() * 0.55,
+    size: Math.random() * 1.8 + 0.3,
+    phase: Math.random() * Math.PI * 2,
+    speed: Math.random() * 0.02 + 0.005
+  });
+}
+
+// Grid parameters
+const horizonYRatio = 0.42;
+let gridOffset = 0;
+
+function drawScene(time) {
+  sceneCtx.fillStyle = '#050011';
+  sceneCtx.fillRect(0, 0, sceneW, sceneH);
+
+  const horizonY = sceneH * horizonYRatio;
+
+  // ---- Sky gradient ----
+  const skyGrad = sceneCtx.createLinearGradient(0, 0, 0, horizonY);
+  skyGrad.addColorStop(0, '#02000a');
+  skyGrad.addColorStop(0.5, '#1a0033');
+  skyGrad.addColorStop(1, '#4a0080');
+  sceneCtx.fillStyle = skyGrad;
+  sceneCtx.fillRect(0, 0, sceneW, horizonY);
+
+  // ---- Stars ----
+  stars.forEach(s => {
+    const alpha = 0.4 + 0.6 * Math.sin(time * s.speed + s.phase);
+    sceneCtx.fillStyle = `rgba(200,220,255,${alpha})`;
+    sceneCtx.beginPath();
+    sceneCtx.arc(s.x * sceneW, s.y * sceneH, s.size, 0, Math.PI * 2);
+    sceneCtx.fill();
+  });
+
+  // ---- Sun (hot pink) ----
+  const sunX = sceneW * 0.5;
+  const sunY = horizonY;
+  const sunR = Math.min(sceneW, sceneH) * 0.14;
+
+  // Sun glow
+  const glow = sceneCtx.createRadialGradient(sunX, sunY, sunR * 0.2, sunX, sunY, sunR * 2.5);
+  glow.addColorStop(0, 'rgba(255,0,170,0.9)');
+  glow.addColorStop(0.3, 'rgba(255,0,136,0.5)');
+  glow.addColorStop(0.6, 'rgba(180,0,120,0.2)');
+  glow.addColorStop(1, 'rgba(255,0,100,0)');
+  sceneCtx.fillStyle = glow;
+  sceneCtx.fillRect(sunX - sunR * 2.5, sunY - sunR * 2.5, sunR * 5, sunR * 5);
+
+  // Sun body
+  const sunGrad = sceneCtx.createLinearGradient(sunX, sunY - sunR, sunX, sunY + sunR);
+  sunGrad.addColorStop(0, '#ff66cc');
+  sunGrad.addColorStop(0.5, '#ff0088');
+  sunGrad.addColorStop(1, '#cc0066');
+  sceneCtx.fillStyle = sunGrad;
+  sceneCtx.beginPath();
+  sceneCtx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+  sceneCtx.fill();
+
+  // Sun stripes (retro cut)
+  sceneCtx.save();
+  sceneCtx.beginPath();
+  sceneCtx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+  sceneCtx.clip();
+  for (let i = 0; i < 6; i++) {
+    const y = sunY - sunR * 0.3 + i * (sunR * 0.9 / 6);
+    sceneCtx.fillStyle = 'rgba(5,0,17,0.35)';
+    sceneCtx.fillRect(sunX - sunR, y, sunR * 2, sunR * 0.08);
+  }
+  sceneCtx.restore();
+
+  // ---- Distant mountains ----
+  sceneCtx.fillStyle = '#0d0022';
+  sceneCtx.beginPath();
+  sceneCtx.moveTo(0, horizonY);
+  for (let x = 0; x <= sceneW; x += 4) {
+    const h = 30 * Math.sin(x * 0.008) + 18 * Math.sin(x * 0.021 + 1) + 12 * Math.sin(x * 0.045);
+    sceneCtx.lineTo(x, horizonY - Math.abs(h) - 8);
+  }
+  sceneCtx.lineTo(sceneW, horizonY);
+  sceneCtx.closePath();
+  sceneCtx.fill();
+
+  // Mountain neon edge
+  sceneCtx.strokeStyle = '#ff00cc';
+  sceneCtx.lineWidth = 1.5;
+  sceneCtx.shadowColor = '#ff00cc';
+  sceneCtx.shadowBlur = 8;
+  sceneCtx.beginPath();
+  for (let x = 0; x <= sceneW; x += 4) {
+    const h = 30 * Math.sin(x * 0.008) + 18 * Math.sin(x * 0.021 + 1) + 12 * Math.sin(x * 0.045);
+    const y = horizonY - Math.abs(h) - 8;
+    if (x === 0) sceneCtx.moveTo(x, y);
+    else sceneCtx.lineTo(x, y);
+  }
+  sceneCtx.stroke();
+  sceneCtx.shadowBlur = 0;
+
+  // ---- Ground grid ----
+  const groundGrad = sceneCtx.createLinearGradient(0, horizonY, 0, sceneH);
+  groundGrad.addColorStop(0, '#1a0033');
+  groundGrad.addColorStop(0.4, '#0d0044');
+  groundGrad.addColorStop(1, '#050022');
+  sceneCtx.fillStyle = groundGrad;
+  sceneCtx.fillRect(0, horizonY, sceneW, sceneH - horizonY);
+
+  // Perspective grid
+  sceneCtx.strokeStyle = '#00ffff';
+  sceneCtx.lineWidth = 1;
+  sceneCtx.shadowColor = '#00ffff';
+  sceneCtx.shadowBlur = 6;
+
+  // Vertical lines (fan out)
+  const centerX = sceneW / 2;
+  for (let i = -30; i <= 30; i++) {
+    const xTop = centerX + i * 12;
+    sceneCtx.beginPath();
+    sceneCtx.moveTo(xTop, horizonY);
+    sceneCtx.lineTo(centerX + i * (sceneW * 0.55), sceneH);
+    sceneCtx.stroke();
+  }
+
+  // Horizontal lines (move toward camera)
+  gridOffset = (gridOffset + 0.6) % 40;
+  for (let i = 0; i < 20; i++) {
+    const t = (i * 40 + gridOffset) / (sceneH - horizonY);
+    const y = horizonY + (i * 40 + gridOffset) * (1 + t * t * 0.5);
+    if (y > sceneH) continue;
+    const alpha = Math.max(0.1, 1 - (y - horizonY) / (sceneH - horizonY));
+    sceneCtx.globalAlpha = alpha;
+    sceneCtx.beginPath();
+    sceneCtx.moveTo(0, y);
+    sceneCtx.lineTo(sceneW, y);
+    sceneCtx.stroke();
+  }
+  sceneCtx.globalAlpha = 1;
+  sceneCtx.shadowBlur = 0;
+}
+
+/* ============================================================
+   RADAR CANVAS — Neon circle with retrowave grid
+   ============================================================ */
+const radarC = $('radarCanvas');
+const radarCtx = radarC.getContext('2d');
+const radarW = radarC.width, radarH = radarC.height;
+const radarCX = radarW / 2, radarCY = radarH / 2;
+const radarR = 240;
+
+const blips = [];
+for (let i = 0; i < 6; i++) {
+  blips.push({
+    angle: Math.random() * Math.PI * 2,
+    dist: 0.3 + Math.random() * 0.6,
+    size: 3 + Math.random() * 4,
+    color: Math.random() > 0.5 ? '#ff00cc' : '#00ffff'
+  });
+}
+
+function drawRadar(time) {
+  radarCtx.clearRect(0, 0, radarW, radarH);
+
+  // Outer glow
+  const outerGlow = radarCtx.createRadialGradient(radarCX, radarCY, radarR * 0.8, radarCX, radarCY, radarR * 1.15);
+  outerGlow.addColorStop(0, 'rgba(255,0,204,0)');
+  outerGlow.addColorStop(1, 'rgba(255,0,204,0.25)');
+  radarCtx.fillStyle = outerGlow;
+  radarCtx.beginPath();
+  radarCtx.arc(radarCX, radarCY, radarR * 1.15, 0, Math.PI * 2);
+  radarCtx.fill();
+
+  // Neon ring
+  radarCtx.strokeStyle = '#ff00cc';
+  radarCtx.lineWidth = 3;
+  radarCtx.shadowColor = '#ff00cc';
+  radarCtx.shadowBlur = 20;
+  radarCtx.beginPath();
+  radarCtx.arc(radarCX, radarCY, radarR, 0, Math.PI * 2);
+  radarCtx.stroke();
+  radarCtx.shadowBlur = 0;
+
+  // Inner rings
+  radarCtx.strokeStyle = '#00ffff';
+  radarCtx.lineWidth = 1.5;
+  radarCtx.shadowColor = '#00ffff';
+  radarCtx.shadowBlur = 10;
+  [0.33, 0.66].forEach(f => {
+    radarCtx.beginPath();
+    radarCtx.arc(radarCX, radarCY, radarR * f, 0, Math.PI * 2);
+    radarCtx.stroke();
+  });
+
+  // Crosshairs
+  radarCtx.beginPath();
+  radarCtx.moveTo(radarCX - radarR, radarCY);
+  radarCtx.lineTo(radarCX + radarR, radarCY);
+  radarCtx.moveTo(radarCX, radarCY - radarR);
+  radarCtx.lineTo(radarCX, radarCY + radarR);
+  radarCtx.stroke();
+  radarCtx.shadowBlur = 0;
+
+  // Retrowave grid inside radar
+  radarCtx.strokeStyle = 'rgba(0,255,255,0.15)';
+  radarCtx.lineWidth = 1;
+  const gridCount = 8;
+  for (let i = -gridCount; i <= gridCount; i++) {
+    radarCtx.beginPath();
+    radarCtx.moveTo(radarCX + i * 30, radarCY - radarR);
+    radarCtx.lineTo(radarCX + i * 30, radarCY + radarR);
+    radarCtx.stroke();
+    radarCtx.beginPath();
+    radarCtx.moveTo(radarCX - radarR, radarCY + i * 30);
+    radarCtx.lineTo(radarCX + radarR, radarCY + i * 30);
+    radarCtx.stroke();
+  }
+
+  // Blips
+  blips.forEach(b => {
+    const bx = radarCX + Math.cos(b.angle) * radarR * b.dist;
+    const by = radarCY + Math.sin(b.angle) * radarR * b.dist;
+    const pulse = 0.6 + 0.4 * Math.sin(time * 0.005 + b.angle * 3);
+
+    radarCtx.fillStyle = b.color;
+    radarCtx.shadowColor = b.color;
+    radarCtx.shadowBlur = 15;
+    radarCtx.globalAlpha = pulse;
+    radarCtx.beginPath();
+    radarCtx.arc(bx, by, b.size, 0, Math.PI * 2);
+    radarCtx.fill();
+
+    // Blip ring
+    radarCtx.strokeStyle = b.color;
+    radarCtx.lineWidth = 1;
+    radarCtx.beginPath();
+    radarCtx.arc(bx, by, b.size + 4 + 3 * Math.sin(time * 0.008), 0, Math.PI * 2);
+    radarCtx.stroke();
+    radarCtx.globalAlpha = 1;
+    radarCtx.shadowBlur = 0;
+  });
+
+  // Sweep line
+  const sweepAngle = (time * 0.0015) % (Math.PI * 2);
+  radarCtx.save();
+  radarCtx.translate(radarCX, radarCY);
+  radarCtx.rotate(sweepAngle);
+
+  // Sweep blade
+  const sweepGrad = radarCtx.createLinearGradient(0, 0, radarR, 0);
+  sweepGrad.addColorStop(0, 'rgba(0,255,255,0)');
+  sweepGrad.addColorStop(1, 'rgba(0,255,255,0.35)');
+  radarCtx.fillStyle = sweepGrad;
+  radarCtx.beginPath();
+  radarCtx.moveTo(0, 0);
+  radarCtx.arc(0, 0, radarR, -0.15, 0.15);
+  radarCtx.closePath();
+  radarCtx.fill();
+
+  // Sweep line neon
+  radarCtx.strokeStyle = '#00ffff';
+  radarCtx.lineWidth = 2;
+  radarCtx.shadowColor = '#00ffff';
+  radarCtx.shadowBlur = 12;
+  radarCtx.beginPath();
+  radarCtx.moveTo(0, 0);
+  radarCtx.lineTo(radarR, 0);
+  radarCtx.stroke();
+  radarCtx.shadowBlur = 0;
+
+  radarCtx.restore();
+
+  // Center dot
+  radarCtx.fillStyle = '#ff00cc';
+  radarCtx.shadowColor = '#ff00cc';
+  radarCtx.shadowBlur = 15;
+  radarCtx.beginPath();
+  radarCtx.arc(radarCX, radarCY, 5, 0, Math.PI * 2);
+  radarCtx.fill();
+  radarCtx.shadowBlur = 0;
+}
+
+/* ============================================================
+   LOADING CANVAS — Cassette tape filling up
+   ============================================================ */
+const loadC = $('loadingCanvas');
+const loadCtx = loadC.getContext('2d');
+const loadW = loadC.width, loadH = loadC.height;
+
+let loadProgress = 0;
+let loadDir = 1;
+
+function drawCassette(time) {
+  loadCtx.clearRect(0, 0, loadW, loadH);
+
+  const cx = loadW / 2, cy = loadH / 2;
+  const cw = 260, ch = 160;
+  const x = cx - cw / 2, y = cy - ch / 2;
+
+  // Cassette body
+  loadCtx.fillStyle = '#1a0a2e';
+  loadCtx.strokeStyle = '#ff00cc';
+  loadCtx.lineWidth = 3;
+  loadCtx.shadowColor = '#ff00cc';
+  loadCtx.shadowBlur = 18;
+  loadCtx.beginPath();
+  loadCtx.moveTo(x + 20, y);
+  loadCtx.lineTo(x + cw - 20, y);
+  loadCtx.quadraticCurveTo(x + cw, y, x + cw, y + 20);
+  loadCtx.lineTo(x + cw, y + ch - 20);
+  loadCtx.quadraticCurveTo(x + cw, y + ch, x + cw - 20, y + ch);
+  loadCtx.lineTo(x + 20, y + ch);
+  loadCtx.quadraticCurveTo(x, y + ch, x, y + ch - 20);
+  loadCtx.lineTo(x, y + 20);
+  loadCtx.quadraticCurveTo(x, y, x + 20, y);
+  loadCtx.closePath();
+  loadCtx.fill();
+  loadCtx.stroke();
+  loadCtx.shadowBlur = 0;
+
+  // Label area
+  const labelY = y + 25;
+  const labelH = 55;
+  loadCtx.fillStyle = '#ff00cc22';
+  loadCtx.fillRect(x + 15, labelY, cw - 30, labelH);
+  loadCtx.strokeStyle = '#ff00cc88';
+  loadCtx.lineWidth = 1;
+  loadCtx.strokeRect(x + 15, labelY, cw - 30, labelH);
+
+  // Chrome text on label
+  loadCtx.font = 'bold 18px Orbitron';
+  loadCtx.textAlign = 'center';
+  loadCtx.fillStyle = '#e0e0e0';
+  loadCtx.shadowColor = '#ff00cc';
+  loadCtx.shadowBlur = 8;
+  loadCtx.fillText('SYNTHWAVE MIX', cx, labelY + 34);
+  loadCtx.shadowBlur = 0;
+
+  // Tape window (the reels area)
+  const winY = y + 90;
+  const winH = 50;
+  const winPad = 40;
+  loadCtx.fillStyle = '#0a0014';
+  loadCtx.fillRect(x + winPad, winY, cw - winPad * 2, winH);
+  loadCtx.strokeStyle = '#00ffff';
+  loadCtx.lineWidth = 2;
+  loadCtx.shadowColor = '#00ffff';
+  loadCtx.shadowBlur = 10;
+  loadCtx.strokeRect(x + winPad, winY, cw - winPad * 2, winH);
+  loadCtx.shadowBlur = 0;
+
+  // Reels
+  const reelR = 16;
+  const leftReelX = x + winPad + 35;
+  const rightReelX = x + cw - winPad - 35;
+  const reelY = winY + winH / 2;
+  const reelRot = time * 0.003;
+
+  // Reel spokes
+  [leftReelX, rightReelX].forEach((rx, idx) => {
+    loadCtx.save();
+    loadCtx.translate(rx, reelY);
+    loadCtx.rotate(reelRot * (idx === 0 ? 1 : -1));
+    loadCtx.strokeStyle = '#00ffff';
+    loadCtx.lineWidth = 3;
+    loadCtx.shadowColor = '#00ffff';
+    loadCtx.shadowBlur = 8;
+    for (let s = 0; s < 6; s++) {
+      const a = (s / 6) * Math.PI * 2;
+      loadCtx.beginPath();
+      loadCtx.moveTo(0, 0);
+      loadCtx.lineTo(Math.cos(a) * reelR, Math.sin(a) * reelR);
+      loadCtx.stroke();
+    }
+    loadCtx.shadowBlur = 0;
+    loadCtx.restore();
+
+    // Reel rim
+    loadCtx.strokeStyle = '#ff00cc';
+    loadCtx.lineWidth = 2;
+    loadCtx.shadowColor = '#ff00cc';
+    loadCtx.shadowBlur = 8;
+    loadCtx.beginPath();
+    loadCtx.arc(rx, reelY, reelR, 0, Math.PI * 2);
+    loadCtx.stroke();
+    loadCtx.shadowBlur = 0;
+  });
+
+  // Tape fill (the brown magnetic tape)
+  loadProgress += 0.003 * loadDir;
+  if (loadProgress > 1) { loadProgress = 1; loadDir = -1; }
+  if (loadProgress < 0) { loadProgress = 0; loadDir = 1; }
+
+  const tapeW = (cw - winPad * 2) - 70;
+  const tapeX = x + winPad + 35;
+  const tapeY = winY + 5;
+  const tapeH = winH - 10;
+
+  // Tape background
+  loadCtx.fillStyle = '#2a1a1a';
+  loadCtx.fillRect(tapeX, tapeY, tapeW, tapeH);
+
+  // Filling tape
+  const fillW = tapeW * loadProgress;
+  const fillGrad = loadCtx.createLinearGradient(tapeX, tapeY, tapeX + fillW, tapeY);
+  fillGrad.addColorStop(0, '#8b4513');
+  fillGrad.addColorStop(1, '#cd853f');
+  loadCtx.fillStyle = fillGrad;
+  loadCtx.fillRect(tapeX, tapeY, fillW, tapeH);
+
+  // Tape shine
+  loadCtx.fillStyle = 'rgba(255,200,150,0.15)';
+  loadCtx.fillRect(tapeX, tapeY, fillW, tapeH * 0.35);
+
+  // Progress bar below cassette
+  const barY = y + ch + 18;
+  const barW = cw;
+  const barH = 10;
+  loadCtx.fillStyle = '#1a0a2e';
+  loadCtx.strokeStyle = '#00ffff';
+  loadCtx.lineWidth = 2;
+  loadCtx.shadowColor = '#00ffff';
+  loadCtx.shadowBlur = 8;
+  loadCtx.fillRect(x, barY, barW, barH);
+  loadCtx.strokeRect(x, barY, barW, barH);
+  loadCtx.shadowBlur = 0;
+
+  const progGrad = loadCtx.createLinearGradient(x, 0, x + barW * loadProgress, 0);
+  progGrad.addColorStop(0, '#ff00cc');
+  progGrad.addColorStop(1, '#00ffff');
+  loadCtx.fillStyle = progGrad;
+  loadCtx.shadowColor = '#ff00cc';
+  loadCtx.shadowBlur = 12;
+  loadCtx.fillRect(x + 2, barY + 2, (barW - 4) * loadProgress, barH - 4);
+  loadCtx.shadowBlur = 0;
+
+  // Percentage
+  loadCtx.font = '14px Orbitron';
+  loadCtx.textAlign = 'center';
+  loadCtx.fillStyle = '#00ffff';
+  loadCtx.shadowColor = '#00ffff';
+  loadCtx.shadowBlur = 6;
+  loadCtx.fillText(Math.round(loadProgress * 100) + '%', cx, barY + barH + 18);
+  loadCtx.shadowBlur = 0;
+
+  // Update label
+  const label = $('loadingLabel');
+  if (loadProgress < 0.2) label.textContent = 'INSERT CASSETTE...';
+  else if (loadProgress < 0.5) label.textContent = 'REWINDING...';
+  else if (loadProgress < 0.8) label.textContent = 'LOADING DATA...';
+  else if (loadProgress < 1) label.textContent = 'FINALIZING...';
+  else label.textContent = 'READY — PRESS PLAY';
+}
+
+/* ============================================================
+   CHAT INTERACTIVITY
+   ============================================================ */
+const chatBox = $('chatBox');
+const chatInput = $('chatInput');
+const chatBtn = $('chatBtn');
+
+function pad2(n) { return n < 10 ? '0' + n : n; }
+function nowTS() {
+  const d = new Date();
+  return `[${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}]`;
+}
+
+function addChat(user, text) {
+  const div = document.createElement('div');
+  div.className = 'chat-msg';
+  div.innerHTML = `<span class="ts">${nowTS()}</span><span class="user">${user}:</span>${text}`;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function sendChat() {
+  const val = chatInput.value.trim();
+  if (!val) return;
+  addChat('YOU', val);
+  chatInput.value = '';
+  // Auto reply
+  setTimeout(() => {
+    const replies = [
+      'Signal acknowledged.',
+      'Outrun protocol engaged.',
+      'Neon levels nominal.',
+      'Grid coordinates updated.',
+      'Stay chrome, runner.',
+      'Retrowave sync complete.'
+    ];
+    addChat('SYS', replies[Math.floor(Math.random() * replies.length)]);
+  }, 800 + Math.random() * 1200);
+}
+
+chatBtn.addEventListener('click', sendChat);
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+
+/* ============================================================
+   MAIN LOOP
+   ============================================================ */
+function loop(time) {
+  drawScene(time);
+  drawRadar(time);
+  drawCassette(time);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

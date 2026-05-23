@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DATA V5 — AAR</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0b0f14;
+    --panel: #111820;
+    --panel-border: #1c2633;
+    --accent: #3ba3d0;
+    --accent-dim: #2a7a9e;
+    --accent-glow: rgba(59,163,208,0.15);
+    --text: #c8d4e0;
+    --text-dim: #6b7d8f;
+    --text-bright: #e6edf5;
+    --kill: #d94f4f;
+    --death: #d9a04f;
+    --success: #4fd98a;
+    --grid: rgba(59,163,208,0.06);
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* HUD Header */
+  .hud-header {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 28px;
+    background: linear-gradient(180deg, rgba(17,24,32,0.95) 0%, rgba(17,24,32,0.7) 100%);
+    border-bottom: 1px solid var(--panel-border);
+    backdrop-filter: blur(8px);
+  }
+  .hud-header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+  }
+  .hud-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .hud-title .badge {
+    background: var(--accent);
+    color: #0b0f14;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    padding: 4px 10px;
+    border-radius: 3px;
+  }
+  .hud-title h1 {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    color: var(--text-bright);
+    text-transform: uppercase;
+  }
+  .hud-title .sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-left: 6px;
+  }
+  .hud-meta {
+    display: flex;
+    gap: 24px;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+  .hud-meta span { color: var(--accent); font-weight: 500; }
+
+  /* Main Layout */
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 28px 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 20px;
+  }
+
+  /* Panel styling */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-dim), var(--accent), var(--accent-dim));
+    opacity: 0.6;
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .panel-header .icon {
+    width: 22px;
+    height: 22px;
+    border: 1.5px solid var(--accent);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .panel-header h2 {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: var(--text-bright);
+    text-transform: uppercase;
+  }
+  .panel-header .line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--panel-border), transparent);
+    margin-left: 4px;
+  }
+
+  /* Full width panels */
+  .panel-wide { grid-column: 1 / -1; }
+
+  /* Mission Overview */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .overview-card {
+    background: rgba(17,24,32,0.6);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    padding: 18px 16px;
+    text-align: center;
+    position: relative;
+  }
+  .overview-card .label {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .overview-card .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: 1px;
+  }
+  .overview-card .value.success { color: var(--success); }
+  .overview-card .value.danger { color: var(--kill); }
+  .overview-card .sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+  .overview-card .bar-track {
+    height: 4px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .overview-card .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+    transition: width 1.2s ease;
+  }
+
+  /* Combat Log */
+  .log-container {
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 6px;
+  }
+  .log-container::-webkit-scrollbar { width: 5px; }
+  .log-container::-webkit-scrollbar-track { background: transparent; }
+  .log-container::-webkit-scrollbar-thumb { background: var(--accent-dim); border-radius: 3px; }
+  .log-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 12.5px;
+    transition: background 0.2s;
+  }
+  .log-entry:hover { background: rgba(59,163,208,0.04); }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time {
+    color: var(--text-dim);
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    min-width: 52px;
+    padding-top: 1px;
+  }
+  .log-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 2px 7px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    min-width: 38px;
+    text-align: center;
+  }
+  .log-badge.kill { background: rgba(217,79,79,0.12); color: var(--kill); border: 1px solid rgba(217,79,79,0.25); }
+  .log-badge.death { background: rgba(217,160,79,0.12); color: var(--death); border: 1px solid rgba(217,160,79,0.25); }
+  .log-badge.assist { background: rgba(59,163,208,0.12); color: var(--accent); border: 1px solid rgba(59,163,208,0.25); }
+  .log-text { color: var(--text); line-height: 1.5; }
+  .log-text .actor { color: var(--text-bright); font-weight: 500; }
+  .log-text .weapon { color: var(--text-dim); font-style: italic; }
+
+  /* Supply Usage */
+  .supply-chart {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 40px;
+    height: 200px;
+    padding: 10px 0;
+  }
+  .supply-bar-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .supply-bar-wrap {
+    width: 56px;
+    height: 160px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 3px 3px 0 0;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--panel-border);
+    border-bottom: none;
+  }
+  .supply-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 3px 3px 0 0;
+    transition: height 1s ease;
+  }
+  .supply-bar.ammo { background: linear-gradient(180deg, var(--accent), var(--accent-dim)); }
+  .supply-bar.health { background: linear-gradient(180deg, var(--success), #3a9e6e); }
+  .supply-bar.grenade { background: linear-gradient(180deg, var(--death), #b87a2e); }
+  .supply-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-bright);
+  }
+  .supply-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  /* Map Traversed */
+  .map-wrap {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  .map-canvas-wrap {
+    flex: 1;
+    position: relative;
+  }
+  #minimapCanvas {
+    width: 100%;
+    height: 280px;
+    border-radius: 4px;
+    background: #0d1218;
+    border: 1px solid var(--panel-border);
+  }
+  .map-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 140px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .map-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .map-stat {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--panel-border);
+    border-radius: 3px;
+    padding: 10px 12px;
+  }
+  .map-stat .label { font-size: 9px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; }
+  .map-stat .value { font-size: 16px; font-weight: 600; color: var(--text-bright); margin-top: 4px; }
+
+  /* Recommendations */
+  .rec-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .rec-item {
+    display: flex;
+    gap: 14px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    border-left: 3px solid var(--accent);
+  }
+  .rec-item.caution { border-left-color: var(--death); }
+  .rec-item.positive { border-left-color: var(--success); }
+  .rec-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(59,163,208,0.1);
+    border: 1px solid rgba(59,163,208,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .rec-item.caution .rec-icon { background: rgba(217,160,79,0.1); border-color: rgba(217,160,79,0.2); }
+  .rec-item.positive .rec-icon { background: rgba(79,217,138,0.1); border-color: rgba(79,217,138,0.2); }
+  .rec-content h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+    letter-spacing: 0.3px;
+  }
+  .rec-content p {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .rec-meta {
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+
+  /* Scanline overlay */
+  .scanline {
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.12) 2px,
+      rgba(0,0,0,0.12) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.25;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .container { grid-template-columns: 1fr; }
+    .overview-grid { grid-template-columns: 1fr; }
+    .map-wrap { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="scanline"></div>
+
+<!-- HUD Header -->
+<div class="hud-header">
+  <div class="hud-title">
+    <div class="badge">DATA V5</div>
+    <h1>After-Action Report</h1>
+    <span class="sub">// CLASSIFIED — EYES ONLY</span>
+  </div>
+  <div class="hud-meta">
+    <div>OP: <span>PHANTOM STRIKE</span></div>
+    <div>UNIT: <span>ALPHA-7</span></div>
+    <div>DATE: <span>2026-05-18</span></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- MISSION OVERVIEW -->
+  <div class="panel panel-wide">
+    <div class="panel-header">
+      <div class="icon">01</div>
+      <h2>Mission Overview</h2>
+      <div class="line"></div>
+    </div>
+    <div class="overview-grid">
+      <div class="overview-card">
+        <div class="label">Mission Result</div>
+        <div class="value success">SUCCESS</div>
+        <div class="sub">Primary &amp; secondary objectives complete</div>
+        <div class="bar-track"><div class="bar-fill" style="width: 92%"></div></div>
+      </div>
+      <div class="overview-card">
+        <div class="label">Duration</div>
+        <div class="value">14:32</div>
+        <div class="sub">Engaged 8m 14s / Transit 6m 18s</div>
+        <div class="bar-track"><div class="bar-fill" style="width: 78%"></div></div>
+      </div>
+      <div class="overview-card">
+        <div class="label">Combat Score</div>
+        <div class="value">8,740</div>
+        <div class="sub">K/D: 14 / 3 — Accuracy: 68%</div>
+        <div class="bar-track"><div class="bar-fill" style="width: 85%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMBAT LOG -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="icon">02</div>
+      <h2>Combat Log</h2>
+      <div class="line"></div>
+    </div>
+    <div class="log-container" id="combatLog">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+
+  <!-- SUPPLY USAGE -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="icon">03</div>
+      <h2>Supply Usage</h2>
+      <div class="line"></div>
+    </div>
+    <div class="supply-chart">
+      <div class="supply-bar-group">
+        <div class="supply-bar-wrap">
+          <div class="supply-bar ammo" style="height: 0%" data-height="78"></div>
+        </div>
+        <div class="supply-value">312</div>
+        <div class="supply-label">Rounds Fired</div>
+      </div>
+      <div class="supply-bar-group">
+        <div class="supply-bar-wrap">
+          <div class="supply-bar health" style="height: 0%" data-height="45"></div>
+        </div>
+        <div class="supply-value">4</div>
+        <div class="supply-label">Medkits Used</div>
+      </div>
+      <div class="supply-bar-group">
+        <div class="supply-bar-wrap">
+          <div class="supply-bar grenade" style="height: 0%" data-height="62"></div>
+        </div>
+        <div class="supply-value">7</div>
+        <div class="supply-label">Grenades Thrown</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP TRAVERSED -->
+  <div class="panel panel-wide">
+    <div class="panel-header">
+      <div class="icon">04</div>
+      <h2>Map Traversed</h2>
+      <div class="line"></div>
+    </div>
+    <div class="map-wrap">
+      <div class="map-canvas-wrap">
+        <canvas id="minimapCanvas" width="900" height="280"></canvas>
+      </div>
+      <div class="map-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#d94f4f"></div> High time spent</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d9a04f"></div> Medium time spent</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3ba3d0"></div> Low time spent</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4fd98a"></div> Player path</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6b7d8f"></div> Structures</div>
+        <div class="map-stats">
+          <div class="map-stat">
+            <div class="label">Distance</div>
+            <div class="value">1,247 m</div>
+          </div>
+          <div class="map-stat">
+            <div class="label">Max Speed</div>
+            <div class="value">6.2 m/s</div>
+          </div>
+          <div class="map-stat">
+            <div class="label">Avg Speed</div>
+            <div class="value">3.8 m/s</div>
+          </div>
+          <div class="map-stat">
+            <div class="label">Zones</div>
+            <div class="value">6</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECOMMENDATIONS -->
+  <div class="panel panel-wide">
+    <div class="panel-header">
+      <div class="icon">05</div>
+      <h2>AI Recommendations</h2>
+      <div class="line"></div>
+    </div>
+    <div class="rec-list">
+      <div class="rec-item caution">
+        <div class="rec-icon">!</div>
+        <div class="rec-content">
+          <h4>Reduce Exposure in Open Zones</h4>
+          <p>42% of deaths occurred in Sector B4 — an open courtyard with limited cover. Consider flanking via the eastern corridor or using smoke grenades before crossing.</p>
+          <div class="rec-meta">Confidence: 94% | Based on 3 death events</div>
+        </div>
+      </div>
+      <div class="rec-item positive">
+        <div class="rec-icon">+</div>
+        <div class="rec-content">
+          <h4>Maintain CQC Aggression</h4>
+          <p>Your close-quarters engagement success rate is 87% — well above squad average. Continue prioritizing SMG/shotgun loadouts for indoor sectors.</p>
+          <div class="rec-meta">Confidence: 91% | Performance metric: +2.3σ</div>
+        </div>
+      </div>
+      <div class="rec-item">
+        <div class="rec-icon">~</div>
+        <div class="rec-content">
+          <h4>Optimize Grenade Timing</h4>
+          <p>4 of 7 grenades detonated after hostiles had relocated. Pre-throw delay averaged 2.1s. Reducing to 1.2s would increase effective damage by estimated 35%.</p>
+          <div class="rec-meta">Confidence: 78% | Simulation run: 10,000 iterations</div>
+        </div>
+      </div>
+      <div class="rec-item positive">
+        <div class="rec-icon">+</div>
+        <div class="rec-content">
+          <h4>Efficient Pathing Detected</h4>
+          <p>Route optimization score: 91%. You covered all 6 objective zones with only 124m of backtracking — top 8% among all operatives this cycle.</p>
+          <div class="rec-meta">Confidence: 96% | Peer comparison: 8th percentile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  // ===== COMBAT LOG DATA =====
+  const logData = [
+    { t: '00:14', type: 'kill', text: 'Eliminated <span class="actor">Hostile Rifleman</span> with <span class="weapon">M4A1</span> — headshot' },
+    { t: '00:27', type: 'kill', text: 'Eliminated <span class="actor">Hostile Scout</span> with <span class="weapon">M4A1</span> — 3 hits' },
+    { t: '01:05', type: 'death', text: 'KIA — <span class="actor">Hostile Sniper</span> / <span class="weapon">Dragunov</span> — Sector B4' },
+    { t: '01:42', type: 'kill', text: 'Eliminated <span class="actor">Hostile Sniper</span> with <span class="weapon">Glock-19</span> — flank attack' },
+    { t: '02:18', type: 'assist', text: 'Assisted <span class="actor">Sgt. Vance</span> — suppressed <span class="weapon">Hostile Gunner</span>' },
+    { t: '02:55', type: 'kill', text: 'Eliminated <span class="actor">Hostile Gunner</span> with <span class="weapon">M4A1</span> — through smoke' },
+    { t: '03:40', type: 'kill', text: 'Eliminated <span class="actor">Hostile Medic</span> with <span class="weapon">M4A1</span> — burst fire' },
+    { t: '04:12', type: 'kill', text: 'Eliminated <span class="actor">Hostile Rifleman</span> with <span class="weapon">M4A1</span> — point blank' },
+    { t: '05:01', type: 'death', text: 'KIA — <span class="actor">Hostile Grenadier</span> / <span class="weapon">RPG-7</span> — friendly fire zone' },
+    { t: '06:33', type: 'kill', text: 'Eliminated <span class="actor">Hostile Grenadier</span> with <span class="weapon">M4A1</span> — 8 hits' },
+    { t: '07:14', type: 'kill', text: 'Eliminated <span class="actor">Hostile Scout</span> with <span class="weapon">Glock-19</span> — melee finisher' },
+    { t: '08:50', type: 'kill', text: 'Eliminated <span class="actor">Hostile Commander</span> with <span class="weapon">M4A1</span> — objective secured' },
+    { t: '09:22', type: 'assist', text: 'Assisted <span class="actor">Cpl. Reyes</span> — spotter call on <span class="weapon">Hostile Sniper</span>' },
+    { t: '10:05', type: 'kill', text: 'Eliminated <span class="actor">Hostile Rifleman</span> with <span class="weapon">M4A1</span> — moving target' },
+    { t: '11:18', type: 'kill', text: 'Eliminated <span class="actor">Hostile Scout</span> with <span class="weapon">M4A1</span> — suppressed' },
+    { t: '12:40', type: 'death', text: 'KIA — <span class="actor">Hostile Commander</span> / <span class="weapon">AK-12</span> — extraction point' },
+    { t: '13:02', type: 'kill', text: 'Eliminated <span class="actor">Hostile Commander</span> with <span class="weapon">M4A1</span> — revenge kill' },
+    { t: '13:45', type: 'kill', text: 'Eliminated <span class="actor">Hostile Rifleman</span> with <span class="weapon">Glock-19</span> — last stand' },
+    { t: '14:12', type: 'assist', text: 'Assisted <span class="actor">Sgt. Vance</span> — covering fire during extraction' },
+  ];
+
+  const logContainer = document.getElementById('combatLog');
+  logData.forEach((entry, i) => {
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.style.opacity = '0';
+    div.style.transform = 'translateX(-10px)';
+    div.innerHTML = `
+      <div class="log-time">${entry.t}</div>
+      <div class="log-badge ${entry.type}">${entry.type}</div>
+      <div class="log-text">${entry.text}</div>
+    `;
+    logContainer.appendChild(div);
+    setTimeout(() => {
+      div.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      div.style.opacity = '1';
+      div.style.transform = 'translateX(0)';
+    }, 80 * i);
+  });
+
+  // ===== SUPPLY BAR ANIMATION =====
+  setTimeout(() => {
+    document.querySelectorAll('.supply-bar').forEach(bar => {
+      bar.style.height = bar.dataset.height + '%';
+    });
+  }, 400);
+
+  // ===== MINIMAP CANVAS =====
+  const canvas = document.getElementById('minimapCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Generate map structures (buildings / obstacles)
+  const structures = [
+    { x: 80, y: 60, w: 70, h: 50 },
+    { x: 200, y: 40, w: 50, h: 80 },
+    { x: 320, y: 90, w: 90, h: 40 },
+    { x: 480, y: 50, w: 60, h: 70 },
+    { x: 620, y: 80, w: 80, h: 60 },
+    { x: 760, y: 40, w: 50, h: 90 },
+    { x: 120, y: 180, w: 60, h: 60 },
+    { x: 280, y: 200, w: 80, h: 40 },
+    { x: 450, y: 170, w: 50, h: 70 },
+    { x: 600, y: 190, w: 70, h: 50 },
+    { x: 720, y: 160, w: 60, h: 80 },
+    { x: 40, y: 120, w: 40, h: 40 },
+    { x: 540, y: 120, w: 45, h: 35 },
+  ];
+
+  // Generate player path
+  const pathPoints = [];
+  let px = 50, py = 240;
+  for (let i = 0; i < 180; i++) {
+    pathPoints.push({ x: px, y: py, t: i });
+    // Random walk biased toward right
+    px += 2 + Math.random() * 3;
+    py += (Math.random() - 0.5) * 6;
+    // Stay in bounds
+    px = Math.max(20, Math.min(W - 20, px));
+    py = Math.max(20, Math.min(H - 20, py));
+    // Avoid structures roughly
+    structures.forEach(s => {
+      if (px > s.x - 10 && px < s.x + s.w + 10 && py > s.y - 10 && py < s.y + s.h + 10) {
+        if (py < s.y + s.h / 2) py -= 8; else py += 8;
+      }
+    });
+  }
+
+  // Heat zones (time spent clusters)
+  const heatZones = [
+    { x: 160, y: 140, r: 35, intensity: 0.9 },
+    { x: 380, y: 100, r: 28, intensity: 0.7 },
+    { x: 520, y: 200, r: 32, intensity: 0.8 },
+    { x: 680, y: 120, r: 25, intensity: 0.6 },
+    { x: 820, y: 180, r: 30, intensity: 0.75 },
+  ];
+
+  function drawMap() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Background grid
+    ctx.strokeStyle = 'rgba(59,163,208,0.06)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 30) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += 30) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Heat zones
+    heatZones.forEach(z => {
+      const grad = ctx.createRadialGradient(z.x, z.y, 0, z.x, z.y, z.r);
+      const r = Math.floor(217 * z.intensity + 59 * (1 - z.intensity));
+      const g = Math.floor(79 * z.intensity + 163 * (1 - z.intensity));
+      const b = Math.floor(79 * z.intensity + 208 * (1 - z.intensity));
+      grad.addColorStop(0, `rgba(${r},${g},${b},${0.35 * z.intensity})`);
+      grad.addColorStop(0.6, `rgba(${r},${g},${b},${0.12 * z.intensity})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Structures
+    structures.forEach(s => {
+      ctx.fillStyle = 'rgba(107,125,143,0.15)';
+      ctx.strokeStyle = 'rgba(107,125,143,0.35)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      ctx.strokeRect(s.x, s.y, s.w, s.h);
+      // Crosshatch
+      ctx.strokeStyle = 'rgba(107,125,143,0.1)';
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y); ctx.lineTo(s.x + s.w, s.y + s.h);
+      ctx.moveTo(s.x + s.w, s.y); ctx.lineTo(s.x, s.y + s.h);
+      ctx.stroke();
+    });
+
+    // Path line
+    ctx.strokeStyle = 'rgba(79,217,138,0.45)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    pathPoints.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // Path glow
+    ctx.strokeStyle = 'rgba(79,217,138,0.12)';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    pathPoints.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // Start / End markers
+    ctx.fillStyle = '#4fd98a';
+    ctx.beginPath();
+    ctx.arc(pathPoints[0].x, pathPoints[0].y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#d94f4f';
+    ctx.beginPath();
+    ctx.arc(pathPoints[pathPoints.length - 1].x, pathPoints[pathPoints.length - 1].y, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Labels
+    ctx.fillStyle = 'rgba(79,217,138,0.7)';
+    ctx.font = '10px sans-serif';
+    ctx.fillText('START', pathPoints[0].x - 14, pathPoints[0].y - 10);
+    ctx.fillStyle = 'rgba(217,79,79,0.7)';
+    ctx.fillText('EXIT', pathPoints[pathPoints.length - 1].x - 10, pathPoints[pathPoints.length - 1].y - 10);
+
+    // Sector labels
+    ctx.fillStyle = 'rgba(107,125,143,0.5)';
+    ctx.font = 'bold 11px sans-serif';
+    ['A1','A2','A3','A4','A5','A6'].forEach((label, i) => {
+      ctx.fillText(label, 35 + i * 145, 22);
+    });
+  }
+
+  drawMap();
+
+  // Subtle pulse on heat zones
+  let pulse = 0;
+  function animateMap() {
+    pulse += 0.02;
+    heatZones.forEach((z, i) => {
+      z.intensity = 0.5 + 0.3 * Math.sin(pulse + i * 1.3) + 0.2;
+    });
+    drawMap();
+    requestAnimationFrame(animateMap);
+  }
+  animateMap();
+})();
+</script>
+</body>
+</html>

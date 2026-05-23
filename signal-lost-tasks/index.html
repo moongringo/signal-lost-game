@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost Flow Design - Setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="./design-flow.css?v=3" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>
+    .leaflet-container { background: #0e1925; }
+    #setupMap, #controlMap, #leaderboardMap { width: 100%; border-radius: var(--radius); min-height: 320px; }
+    .map-stage { padding: 0; }
+    .leaflet-popup-content-wrapper { background: rgba(14,25,37,0.95); color: var(--text); border: 1px solid var(--line); }
+    .leaflet-popup-tip { background: rgba(14,25,37,0.95); }
+  </style>
+  <script src="./game-engine.js?v=6"></script>
+  <script src="./ai-threats.js?v=13"></script>
+  <script src="./threat-sync.js?v=1"></script>
+</head>
+<body data-flow-page="setup" data-background="psychedelic-waves" class="grid-bg">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Mission Setup</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./index.html" aria-current="page">Setup</a>
+        <a href="./roles.html">Roles</a>
+        <a href="./control.html">Control</a>
+        <a href="./leaderboard.html">Status</a>
+        <a href="./dashboard.html">Dashboard</a>
+        <a href="./mobile.html">Mobile</a>
+      </nav>
+    </header>
+
+    <section class="flow-layout" aria-label="Mission setup layout option">
+      <div class="flow-main">
+        <section class="flow-panel">
+          <p class="kicker">Game Runner</p>
+          <h2>Create The Operation</h2>
+          <div class="setup-grid">
+            <label class="field"><span>Organizer Identity</span><input value="Morgen / Host Signal" /></label>
+            <label class="field"><span>Country</span><select><option>Norway</option><option>United Kingdom</option><option>United States</option><option>Sweden</option></select></label>
+            <label class="field"><span>Mission City</span><select><option>Oslo</option><option>Bergen</option><option>London</option><option>New York</option></select></label>
+            <label class="field"><span>Players</span><select><option>2 players</option><option>4 players</option><option>6 players</option><option>8 players</option></select></label>
+            <label class="field"><span>Duration</span><select><option>45 minutes</option><option>60 minutes</option><option>90 minutes</option></select></label>
+            <label class="field"><span>Game Access</span><select><option>Private code required</option><option>Public joinable</option><option>Locked preview</option></select></label>
+          </div>
+          <div class="join-code">
+            <span class="kicker">Unique join code</span>
+            <strong>AQUA-RADAR-42</strong>
+            <p>Creator gets this code after setup. Other players enter it on their phones or tablets to join the same mission.</p>
+          </div>
+        </section>
+
+        <section class="map-stage">
+          <p class="kicker">Setup Map — OpenStreetMap</p>
+          <h2>Stage The Playfield</h2>
+          <div id="setupMap" style="height: 380px; margin-top: 0.5rem;"></div>
+          <div class="marker-list">
+            <div class="marker-row"><div><b>Safehouse Clue</b><br />Armed clue / 70m radius</div><span class="role-token is-active">Edit</span></div>
+            <div class="marker-row"><div><b>Emergency Cache</b><br />Cache reward / restore signal</div><span class="role-token">Arm</span></div>
+            <div class="marker-row"><div><b>Danger Zone</b><br />Hazard / jamming pulse</div><span class="role-token">Plan</span></div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="flow-side">
+        <section class="theme-console">
+          <p class="kicker">Background Theme</p>
+          <h3>Game Look</h3>
+          <label>
+            Moving background
+            <select id="backgroundSelect">
+              <option value="sunset-grid">Sunset Grid</option>
+              <option value="signal-candy">Signal Candy</option>
+              <option value="night-static">Night Static</option>
+              <option value="psychedelic-waves">Psychedelic Waves</option>
+              <option value="blue-blocks">Blue Console Blocks</option>
+              <option value="hourglass">Hourglass Repeat</option>
+              <option value="teal-sonar">Teal Sonar</option>
+              <option value="paisley">Black Paisley</option>
+            </select>
+          </label>
+        </section>
+        <section class="song-console">
+          <p class="kicker">Theme Song</p>
+          <h3>Signal Soundtrack</h3>
+          <div class="vu-strip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <button class="mod-button is-active" id="audioToggle" type="button">Play Theme</button>
+          <label class="volume-field"><span>Volume</span><input id="volumeSlider" type="range" min="0" max="100" value="70" /></label>
+          <p id="audioTime">00:00</p>
+          <p id="audioStatus">Theme idle</p>
+          <audio id="themeAudio" src="./assets/retro-heist-run.mp3" preload="metadata" loop></audio>
+        </section>
+        <section class="flow-card">
+          <p class="kicker">Mission Modules</p>
+          <h3>Clean Selection</h3>
+          <div class="module-grid">
+            <article class="module-card is-on"><b>Ciphers</b><p>Decoder tasks</p></article>
+            <article class="module-card is-on"><b>Treasure</b><p>Cache hunt</p></article>
+            <article class="module-card"><b>Voice</b><p>Relay mode</p></article>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+  <script src="./design-flow.js?v=3"></script>
+    
+    <!-- Hidden elements for JS compatibility -->
+    <div style="display:none;" aria-hidden="true">
+      <div id="roleTitle"></div>
+      <div id="roleState"></div>
+      <div id="roleTools"></div>
+      <div id="roleCardList"></div>
+      <div id="roleReadinessList"></div>
+      <div id="roleReadinessPill"></div>
+      <select id="roleSelect"><option value="Drone">Drone</option></select>
+      <input id="roleAgentName" type="text" />
+      <input id="roleAccessCodeInput" type="text" />
+      <select id="roleTeamSelect"><option value="Alpha">Alpha</option></select>
+      <input id="agentName" type="text" />
+      <select id="teamSelect"><option value="Alpha">Alpha</option></select>
+      <input id="agentAccessCodeInput" type="text" />
+      <button id="joinGame" type="button"></button>
+      <div id="fieldAgentTitle"></div>
+      <div id="fieldAgentRole"></div>
+      <div id="fieldSignal"></div>
+      <div id="fieldStamina"></div>
+      <div id="fieldSquadList"></div>
+      <div id="fieldObjectiveTitle"></div>
+      <div id="fieldObjectiveDistance"></div>
+      <div id="fieldThreatDistance"></div>
+      <div id="fieldObjectiveVital"></div>
+      <div id="fieldThreatVital"></div>
+      <div id="fieldCueStatus"></div>
+      <div id="fieldRoleCue"></div>
+      <div id="mapLayerControl"></div>
+      <div id="mapTitle"></div>
+      <div id="mapSourceLabel"></div>
+      <div id="mapZoomValue"></div>
+      <div id="mapLayerBadge"></div>
+      <div id="mapNotice"></div>
+      <div id="gpsStatus"></div>
+      <div id="gpsPermissionPill"></div>
+      <div id="gpsHelpText"></div>
+      <div id="gpsAccuracyReadout"></div>
+      <input id="manualLat" type="text" />
+      <input id="manualLng" type="text" />
+      <div id="syncStatus"></div>
+      <div id="coordinateSyncStatus"></div>
+      <div id="coordinateSyncDetail"></div>
+      <div id="sessionToolStatus"></div>
+      <div id="gmStatusPill"></div>
+      <div id="gmStatusText"></div>
+      <input id="gmBroadcastInput" type="text" />
+      <form id="gmBroadcastForm"></form>
+      <div id="moderationCount"></div>
+      <div id="moderationStatus"></div>
+      <div id="moderationRoster"></div>
+      <div id="auditFilterBar"></div>
+      <div id="auditCountPill"></div>
+      <div id="auditLog"></div>
+      <div id="chatFilterBar"></div>
+      <div id="chatFilterPill"></div>
+      <div id="threatList"></div>
+      <div id="sessionPayload"></div>
+      <div id="recapSummary"></div>
+      <div id="recapTitle"></div>
+      <div id="scoreGrade"></div>
+      <div id="scoreValue"></div>
+      <div id="teamScoreList"></div>
+      <div id="nearestDistance"></div>
+      <div id="teamLeadValue"></div>
+      <div id="foundCount"></div>
+      <div id="markerTaskState"></div>
+      <div id="markerTitle"></div>
+      <div id="markerType"></div>
+      <div id="activeGames"></div>
+      <div id="missionReviewTitle"></div>
+      <div id="missionReviewPill"></div>
+      <div id="missionReviewList"></div>
+      <div id="missionTimer"></div>
+      <div id="gameStatus"></div>
+      <div id="identitySummary"></div>
+      <div id="privacyPill"></div>
+      <div id="signalValue"></div>
+      <div id="mapZoomIn"></div>
+      <div id="mapZoomOut"></div>
+      <div id="useDeviceGps"></div>
+      <div id="applyManualGps"></div>
+      <div id="hostView"></div>
+      <div id="fieldView"></div>
+      <div id="radarView"></div>
+      <div id="exportSession"></div>
+      <div id="importSession"></div>
+      <div id="refreshSessions"></div>
+      <div id="removeSession"></div>
+      <div id="syncNow"></div>
+      <div id="toggleLobbyLock"></div>
+      <div id="clearInactiveAgents"></div>
+      <div id="gmRevealClue"></div>
+      <div id="gmJamZone"></div>
+      <div id="gmDropCache"></div>
+      <div id="gmRerouteExtraction"></div>
+      <div id="organizerAccessCodeInput"></div>
+      <div id="organizerClientPill"></div>
+      <div id="organizerNameInput"></div>
+      <div id="organizerCallsignInput"></div>
+      <div id="setupSessionCode"></div>
+      <div id="setupSessionMode"></div>
+      <div id="setupPublicToggle"></div>
+      <div id="setupAudioToggle"></div>
+      <div id="setupAudioStatus"></div>
+      <div id="setupAudioTime"></div>
+      <div id="setupVolumeSlider"></div>
+      <div id="setupMapPreview"></div>
+      <div id="setupLeafletMap"></div>
+      <div id="setupMapCaption"></div>
+      <div id="themePaletteSelect"></div>
+      <div id="setupModuleList"></div>
+      <div id="moduleList"></div>
+      <div id="templateNameInput"></div>
+      <div id="saveTemplate"></div>
+      <div id="loadTemplate"></div>
+      <div id="removeTemplate"></div>
+      <div id="templateList"></div>
+      <div id="templateStatus"></div>
+      <div id="templateCountPill"></div>
+      <div id="copyJoinLink"></div>
+      <div id="continueToRoles"></div>
+      <div id="openControlFromSetup"></div>
+      <div id="backToSetup"></div>
+      <div id="enterMissionControl"></div>
+      <div id="returnToSetup"></div>
+      <div id="returnToRoles"></div>
+      <div id="setupStep"></div>
+      <div id="rolesStep"></div>
+      <div id="controlStep"></div>
+      <div id="onboardingTitle"></div>
+      <div id="roleStackToggle"></div>
+      <div id="roleStackHint"></div>
+      <div id="roleDetail"></div>
+      <div id="setupCitySelect"></div>
+      <div id="setupCountrySelect"></div>
+      <div id="setupDurationInput"></div>
+      <div id="setupPlayerSlider"></div>
+      <div id="setupSummary"></div>
+      <div id="requireAccessCodeToggle"></div>
+      <div id="useCityCenterMarker"></div>
+      <div id="addCustomMarker"></div>
+      <div id="cancelMarkerEdit"></div>
+      <div id="markerLat"></div>
+      <div id="markerLng"></div>
+      <div id="markerRadius"></div>
+      <div id="markerArtifact"></div>
+      <div id="markerDraftStatus"></div>
+      <div id="customMarkerList"></div>
+      <div id="themePatternCanvas"></div>
+      <div id="setupDurationValue"></div>
+      <div id="setupPlayerValue"></div>
+      <div id="decodeObjective"></div>
+      <div id="citySearch"></div>
+      <div id="shuffleRoles"></div>
+      <div id="createObjective"></div>
+      <div id="sessionCode"></div>
+      <div id="audioToggle"></div>
+      <div id="audioStatus"></div>
+      <div id="audioTime"></div>
+      <div id="volumeSlider"></div>
+      <div id="themeAudio"></div>
+      <div id="systemStatus"></div>
+      <div id="satLink"></div>
+      <div id="playerCount"></div>
+      <div id="missionClock"></div>
+      <div id="signalStrength"></div>
+      <div id="threatLevel"></div>
+      <div id="objectiveCount"></div>
+      <div id="gpsSpark"></div>
+      <div id="satSpark"></div>
+      <div id="crewSpark"></div>
+      <div id="timeSpark"></div>
+      <div id="signalSpark"></div>
+      <div id="threatSpark"></div>
+      <div id="agentList"></div>
+      <div id="map"></div>
+      <div id="mapFallback"></div>
+      <div id="warningGraph"></div>
+      <div id="signalWarningTitle"></div>
+      <div id="threatBadge"></div>
+      <div id="chatLog"></div>
+      <div id="chatForm"></div>
+      <div id="chatInput"></div>
+      <div id="objectiveList"></div>
+      <div id="decodeNext"></div>
+      <div id="roleTabs"></div>
+      <div id="themeOptions"></div>
+      <div id="collapseButton"></div>
+      <div id="startGame"></div>
+      <div id="resetGame"></div>
+      <div id="citySelect"></div>
+      <div id="durationInput"></div>
+      <div id="playerSlider"></div>
+      <div id="publicToggle"></div>
+      <div id="sessionModeSelect"></div>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script>
+      // Initialize Setup Map — deferred to ensure container is rendered
+      let setupMap;
+      function initSetupMap() {
+        const container = document.getElementById('setupMap');
+        if (!container || container.clientWidth === 0) {
+          setTimeout(initSetupMap, 100);
+          return;
+        }
+        setupMap = L.map('setupMap').setView([59.9139, 10.7522], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; CartoDB | &copy; OpenStreetMap',
+          maxZoom: 19,
+          crossOrigin: true
+        }).addTo(setupMap);
+        L.marker([59.9139, 10.7522]).addTo(setupMap).bindPopup('HQ — Oslo');
+        L.circle([59.9139, 10.7522], {radius: 70, color: '#00a9c7', fillOpacity: 0.2}).addTo(setupMap);
+        // Fix grey tiles by forcing a resize after container is stable
+        setTimeout(() => setupMap.invalidateSize(), 250);
+        setTimeout(() => setupMap.invalidateSize(), 1000);
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSetupMap);
+      } else {
+        initSetupMap();
+      }
+    </script>
+    <script src="./app.js"></script>
+    <!-- Fix unclickable buttons -->
+    <script>
+      // joinGame button
+      document.getElementById('joinGame')?.addEventListener('click', () => {
+        const code = document.getElementById('joinCode')?.value?.trim();
+        if (code) {
+          alert('Joining game: ' + code);
+        } else {
+          alert('Please enter a join code');
+        }
+      });
+    </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+</body>
+</html>

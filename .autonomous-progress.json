@@ -1,11 +1,26 @@
 {
   "completed": [
+    "**1.1 Squad Location History Trail** \u2014 Draw a fading trail line behind each squad member on the map. Add this as a new module or extend the render loop. Each team member's last 20 positions form a polyline that fades from opaque (latest) to transparent (oldest).",
     "**1.2 Proximity Warning Refinement** \u2014 The threat vignette exists but needs refinement: add directional indicator (red glow from threat direction), audio pulse that speeds up as threat gets closer.",
-    "**1.3 Join Code UX** \u2014 Better error messages when entering invalid join codes. Show typing validation (auto-uppercase, only allow valid characters), show connecting/joined/failed states.",
-    "**2.1 Splash Screen Polish** \u2014 The splash/loading animation exists. Make it smoother \u2014 add version number, loading progress bar, keyboard/mouse hint to continue."
+    "**2.1 Splash Screen Polish** \u2014 The splash/loading animation exists. Make it smoother \u2014 add version number, loading progress bar, keyboard/mouse hint to continue.",
+    "**2.2 HUD Refinement** \u2014 Add role ability hotbar with cooldown visuals (circular progress on each ability icon). Show active effects/buffs next to HUD.",
+    "**2.4 Animated Extraction Countdown** \u2014 The extraction sequence works. Add dramatic clock animation, countdown numbers that pulse faster below 30s.",
+    "**2.3 Map Legend** \u2014 Add a small overlay legend showing what markers mean (squad members, threats, objectives, extraction point)."
   ],
   "in_progress": null,
+  "last_run": "2026-05-16T20:03:39.329202",
+  "skipped": [
+    "**1.3 Join Code UX** \u2014 Better error messages when entering invalid join codes. Show typing validation (auto-uppercase, only allow valid characters), show connecting/joined/failed states.",
+    "**2.3 Map Legend** \u2014 Add a small overlay legend showing what markers mean (squad members, threats, objectives, extraction point).",
+    "**3.1 Game Server Script** \u2014 Create `server.js` with proper Socket.IO multiplayer. Handle player join/leave, position sync, objective state sync, extraction sync. Use port 4434 for HTTPS, 8081 for HTTP fallback.",
+    "**3.1 Game Server Script** \u2014 Create `server.js` with proper Socket.IO multiplayer. Handle player join/leave, position sync, objective state sync, extraction sync. Use port 4434 for HTTPS, 8081 for HTTP fallback."
+  ],
   "logs": [
+    {
+      "feature": "**1.1 Squad Location History Trail** \u2014 Draw a fading trail line behind each squad member on the map. Add this as a new module or extend the render loop. Each team member's last 20 positions form a polyline that fades from opaque (latest) to transparent (oldest).",
+      "timestamp": "2026-05-16T13:36:52.055651",
+      "status": "completed"
+    },
     {
       "feature": "**1.2 Proximity Warning Refinement** \u2014 The threat vignette exists but needs refinement: add directional indicator (red glow from threat direction), audio pulse that speeds up as threat gets closer.",
       "timestamp": "2026-05-16T14:04:38.814216",
@@ -14,13 +29,37 @@
     {
       "feature": "**1.3 Join Code UX** \u2014 Better error messages when entering invalid join codes. Show typing validation (auto-uppercase, only allow valid characters), show connecting/joined/failed states.",
       "timestamp": "2026-05-16T14:05:04.927541",
-      "status": "completed"
+      "status": "skipped_no_changes"
     },
     {
       "feature": "**2.1 Splash Screen Polish** \u2014 The splash/loading animation exists. Make it smoother \u2014 add version number, loading progress bar, keyboard/mouse hint to continue.",
       "timestamp": "2026-05-16T14:07:30.124696",
       "status": "completed"
+    },
+    {
+      "feature": "**2.2 HUD Refinement** \u2014 Add role ability hotbar with cooldown visuals (circular progress on each ability icon). Show active effects/buffs next to HUD.",
+      "timestamp": "2026-05-16T16:05:22.510358",
+      "status": "completed"
+    },
+    {
+      "feature": "**2.3 Map Legend** \u2014 Add a small overlay legend showing what markers mean (squad members, threats, objectives, extraction point).",
+      "timestamp": "2026-05-16T16:06:05.852099",
+      "status": "skipped_no_changes"
+    },
+    {
+      "feature": "**2.4 Animated Extraction Countdown** \u2014 The extraction sequence works. Add dramatic clock animation, countdown numbers that pulse faster below 30s.",
+      "timestamp": "2026-05-16T18:03:32.847157",
+      "status": "completed"
+    },
+    {
+      "feature": "**3.1 Game Server Script** \u2014 Create `server.js` with proper Socket.IO multiplayer. Handle player join/leave, position sync, objective state sync, extraction sync. Use port 4434 for HTTPS, 8081 for HTTP fallback.",
+      "timestamp": "2026-05-16T18:04:08.359141",
+      "status": "skipped_no_changes"
+    },
+    {
+      "feature": "**2.3 Map Legend** \u2014 Add a small overlay legend showing what markers mean (squad members, threats, objectives, extraction point).",
+      "timestamp": "2026-05-16T20:03:13.977899",
+      "status": "completed"
     }
-  ],
-  "last_run": "2026-05-16T14:07:30.124692"
+  ]
 }

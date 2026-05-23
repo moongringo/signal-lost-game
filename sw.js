@@ -5,7 +5,7 @@
 
 'use strict';
 
-const CACHE_NAME = 'signal-lost-v2-cache-v3'; // bumped for failsafe
+const CACHE_NAME = 'signal-lost-v2-cache-v4'; // bumped for failsafe
 const STATIC_ASSETS = [
   '/',
   '/index.html',

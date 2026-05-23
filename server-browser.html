@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Signal Lost — Server Browser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="design-system.css" />
+<style>
+:root{--ink:#201116;--cream:#fff0c7;--gold:#ffd965;--teal:#008c94;--orange:#ff8b1f;--pink:#e82663;--blue:#18364b;}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--ink);font-family:'Inter',system-ui,sans-serif;color:var(--cream);min-height:100vh}
+body{padding:2rem 1rem;display:flex;justify-content:center}
+
+.browser-card{width:100%;max-width:800px;background:linear-gradient(145deg,#1a0d12,#0a0508);border:2px solid rgba(255,217,101,0.15);border-radius:24px;padding:2rem;box-shadow:0 24px 64px rgba(0,0,0,0.5)}
+
+.browser-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
+.browser-header h1{font-family:'Space Grotesk',sans-serif;font-size:1.5rem}
+.refresh-btn{padding:0.5rem 1rem;border-radius:10px;border:2px solid rgba(0,140,148,0.3);background:rgba(0,140,148,0.08);color:var(--teal);font-weight:700;font-size:0.8rem;cursor:pointer;transition:all .15s}
+.refresh-btn:hover{background:rgba(0,140,148,0.15)}
+
+.filters{display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap}
+.filter-btn{padding:0.4rem 0.8rem;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:rgba(255,240,199,0.5);font-size:0.75rem;cursor:pointer;transition:all .1s}
+.filter-btn:hover{background:rgba(255,255,255,0.06);color:var(--cream)}
+.filter-btn.active{background:var(--teal);color:var(--cream);border-color:var(--teal)}
+
+.server-table{width:100%}
+.server-header{display:grid;grid-template-columns:1fr 100px 80px 100px 120px;gap:0.75rem;padding:0.5rem 0.75rem;font-size:0.65rem;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;color:rgba(255,240,199,0.3);border-bottom:1px solid rgba(255,255,255,0.06)}
+.server-row{display:grid;grid-template-columns:1fr 100px 80px 100px 120px;gap:0.75rem;align-items:center;padding:0.75rem;border-radius:10px;transition:all .1s;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.03)}
+.server-row:hover{background:rgba(255,255,255,0.03)}
+.server-row.selected{background:rgba(0,140,148,0.08);border:1px solid rgba(0,140,148,0.2)}
+.server-name b{font-size:0.85rem;display:block}
+.server-name span{font-size:0.65rem;color:rgba(255,240,199,0.4)}
+.server-name .tag{font-size:0.6rem;padding:1px 6px;border-radius:4px;margin-left:0.25rem;font-weight:700}
+.server-name .tag.vip{background:rgba(255,217,101,0.15);color:var(--gold)}
+.server-name .tag.new{background:rgba(55,240,111,0.15);color:#37f06f}
+.ping{font-family:'JetBrains Mono',monospace;font-size:0.8rem}
+.ping.good{color:#37f06f}
+.ping.ok{color:var(--orange)}
+.ping.bad{color:var(--pink)}
+.pop-bar{height:6px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden;width:80px}
+.pop-bar .fill{height:100%;border-radius:999px}
+.pop-bar .fill.low{background:var(--teal)}
+.pop-bar .fill.mid{background:var(--gold)}
+.pop-bar .fill.high{background:var(--pink)}
+.pop-text{font-size:0.7rem;color:rgba(255,240,199,0.4);margin-top:0.15rem}
+.mode{font-size:0.75rem;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.04);text-align:center}
+.join-btn{padding:0.5rem 1rem;border-radius:8px;border:none;background:var(--gold);color:var(--ink);font-weight:900;font-size:0.75rem;cursor:pointer;transition:all .1s;opacity:0}
+.server-row:hover .join-btn,.server-row.selected .join-btn{opacity:1}
+.join-btn:hover{background:#ffe89a}
+
+@media(max-width:640px){
+.server-header,.server-row{grid-template-columns:1fr 60px 60px}
+.server-header span:nth-child(4),.server-header span:nth-child(5),.server-row .mode,.server-row .join-btn{display:none}
+}
+</style>
+  <link rel="stylesheet" href="./design-flow.css" />
+</head><body data-flow-page="server-browser" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Server Browser</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./design-flow-setup.html">Setup</a>
+        <a href="./design-flow-roles.html">Roles</a>
+        <a href="./design-flow-control.html">Control</a>
+
+        <a href="./design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="./login.html">Login</a>
+              <a href="./server-browser.html" aria-current="page">Server Browser</a>
+              <a href="./map-selection.html">Map Selection</a>
+              <a href="./role-selection.html">Role Selection</a>
+              <a href="./matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="./player-profile.html">Player Profile</a>
+              <a href="./career-stats.html">Career Stats</a>
+              <a href="./match-result.html">Match Result</a>
+              <a href="./post-match-report.html">Post-Match Report</a>
+              <a href="./kill-cam.html">Kill Cam</a>
+              <a href="./death-recap.html">Death Recap</a>
+              <a href="./spectator-mode.html">Spectator Mode</a>
+              <a href="./replay-viewer.html">Replay Viewer</a>
+              <a href="./tournament-bracket.html">Tournament</a>
+              <a href="./emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="./store.html">Store</a>
+              <a href="./friends.html">Friends</a>
+              <a href="./squad.html">Squad</a>
+              <a href="./clan-wars.html">Clan Wars</a>
+              <a href="./patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="./token-dashboard.html">Token Dashboard</a>
+              <a href="./daily-challenges.html">Daily Challenges</a>
+              <a href="./inventory.html">Inventory</a>
+              <a href="./loadout-builder.html">Loadout Builder</a>
+              <a href="./battle-pass.html">Battle Pass</a>
+              <a href="./loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="./R&D-INDEX.html">R&D Index</a>
+              <a href="./ai-battle-arena.html">AI Battle Arena</a>
+              <a href="./admin-dashboard.html">Admin Dashboard</a>
+              <a href="./leaderboard.html">Leaderboard</a>
+              <a href="./settings.html">Settings</a>
+              <a href="./design-system.html">Design System</a>
+              <a href="./design-flow-setup.html">Setup Page</a>
+              <a href="./design-flow-roles.html">Roles Page</a>
+              <a href="./design-flow-control.html">Control Page</a>
+              <a href="./action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="./mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="./mobile-radar.html">Mobile Radar</a>
+              <a href="./gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="numberedPagesBtn">🔢 All Pages (1-50+) ▾</button>
+          <div class="page-menu" id="numberedPagesMenu">
+            <div class="page-menu-group"><div class="page-menu-title">Auth & Flow (1-5)</div><a href="./login.html">1 — Login</a><a href="./server-browser.html" aria-current="page">2 — Server Browser</a><a href="./map-selection.html">3 — Map Selection</a><a href="./role-selection.html">4 — Role Selection</a><a href="./matchmaking.html">5 — Matchmaking</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Game Screens (6-15)</div><a href="./player-profile.html">6 — Player Profile</a><a href="./career-stats.html">7 — Career Stats</a><a href="./match-result.html">8 — Match Result</a><a href="./post-match-report.html">9 — Post-Match Report</a><a href="./kill-cam.html">10 — Kill Cam</a><a href="./death-recap.html">11 — Death Recap</a><a href="./spectator-mode.html">12 — Spectator Mode</a><a href="./replay-viewer.html">13 — Replay Viewer</a><a href="./tournament-bracket.html">14 — Tournament</a><a href="./emote-wheel.html">15 — Emote Wheel</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Live & Social (16-20)</div><a href="./store.html">16 — Store</a><a href="./friends.html">17 — Friends</a><a href="./squad.html">18 — Squad</a><a href="./clan-wars.html">19 — Clan Wars</a><a href="./patch-notes.html">20 — Patch Notes</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Management (21-26)</div><a href="./token-dashboard.html">21 — Token Dashboard</a><a href="./daily-challenges.html">22 — Daily Challenges</a><a href="./inventory.html">23 — Inventory</a><a href="./loadout-builder.html">24 — Loadout Builder</a><a href="./battle-pass.html">25 — Battle Pass</a><a href="./loot-crate.html">26 — Loot Crate</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Tools & Systems (27-36)</div><a href="./R&D-INDEX.html">27 — R&D Index</a><a href="./ai-battle-arena.html">28 — AI Battle Arena</a><a href="./admin-dashboard.html">29 — Admin Dashboard</a><a href="./leaderboard.html">30 — Leaderboard</a><a href="./settings.html">31 — Settings</a><a href="./design-system.html">32 — Design System</a><a href="./design-flow-setup.html">33 — Setup Page</a><a href="./design-flow-roles.html">34 — Roles Page</a><a href="./design-flow-control.html">35 — Control Page</a><a href="./action-center.html">36 — Action Center</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Mobile (37-39)</div><a href="./mobile-ui-kit.html">37 — Mobile UI Kit</a><a href="./mobile-radar.html">38 — Mobile Radar</a><a href="./gps-tracker.html">39 — GPS Tracker</a></div>
+          </div>
+        </div>
+
+        <a href="./design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<div class="browser-card">
+  <div class="browser-header">
+    <h1>Server Browser</h1>
+    <button class="refresh-btn" type="button">🔄 Refresh</button>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active">All</button>
+    <button class="filter-btn">Ranked</button>
+    <button class="filter-btn">Casual</button>
+    <button class="filter-btn">Custom</button>
+    <button class="filter-btn">< 50ms</button>
+  </div>
+
+  <div class="server-table">
+    <div class="server-header">
+      <span>Server</span>
+      <span>Ping</span>
+      <span>Players</span>
+      <span>Mode</span>
+      <span></span>
+    </div>
+    <div class="server-row selected">
+      <div class="server-name">
+        <b>EU-West-1 <span class="tag vip">VIP</span></b>
+        <span>Downtown • Ranked Season 4</span>
+      </div>
+      <div class="ping good">24ms</div>
+      <div>
+        <div class="pop-bar"><div class="fill high" style="width:92%"></div></div>
+        <div class="pop-text">92/100</div>
+      </div>
+      <div class="mode">Squad</div>
+      <button class="join-btn">Join</button>
+    </div>
+    <div class="server-row">
+      <div class="server-name">
+        <b>NA-East-3</b>
+        <span>Port • Casual</span>
+      </div>
+      <div class="ping ok">68ms</div>
+      <div>
+        <div class="pop-bar"><div class="fill mid" style="width:64%"></div></div>
+        <div class="pop-text">32/50</div>
+      </div>
+      <div class="mode">Duo</div>
+      <button class="join-btn">Join</button>
+    </div>
+    <div class="server-row">
+      <div class="server-name">
+        <b>Asia-2 <span class="tag new">NEW</span></b>
+        <span>Mountain • Ranked</span>
+      </div>
+      <div class="ping good">12ms</div>
+      <div>
+        <div class="pop-bar"><div class="fill low" style="width:34%"></div></div>
+        <div class="pop-text">17/50</div>
+      </div>
+      <div class="mode">Solo</div>
+      <button class="join-btn">Join</button>
+    </div>
+    <div class="server-row">
+      <div class="server-name">
+        <b>EU-Central-2</b>
+        <span>Downtown • Custom</span>
+      </div>
+      <div class="ping good">31ms</div>
+      <div>
+        <div class="pop-bar"><div class="fill mid" style="width:58%"></div></div>
+        <div class="pop-text">29/50</div>
+      </div>
+      <div class="mode">Squad</div>
+      <button class="join-btn">Join</button>
+    </div>
+    <div class="server-row">
+      <div class="server-name">
+        <b>SA-1</b>
+        <span>Desert • Casual</span>
+      </div>
+      <div class="ping bad">142ms</div>
+      <div>
+        <div class="pop-bar"><div class="fill low" style="width:18%"></div></div>
+        <div class="pop-text">9/50</div>
+      </div>
+      <div class="mode">Duo</div>
+      <button class="join-btn">Join</button>
+    </div>
+  </div>
+</div>
+
+<script src="design-system.js"></script>
+<script>
+new SignalLostDesign({ spotlight:true, magneticButtons:true, scrollReveal:true, reducedMotion:true });
+
+document.querySelectorAll('.server-row').forEach(row=>{
+  row.addEventListener('click',()=>{
+    document.querySelectorAll('.server-row').forEach(r=>r.classList.remove('selected'));
+    row.classList.add('selected');
+  });
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+</script>
+
+    </div>
+  </main>
+  <script src="design-system.js"></script>
+  <script src="./design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+    // Numbered pages menu toggle
+    const numberedPagesBtn = document.getElementById('numberedPagesBtn');
+    const numberedPagesMenu = document.getElementById('numberedPagesMenu');
+    if (numberedPagesBtn && numberedPagesMenu) {
+      numberedPagesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        numberedPagesMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!numberedPagesMenu.contains(e.target) && !numberedPagesBtn.contains(e.target)) {
+          numberedPagesMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DATA V4 — TIMELINE</title>
+<style>
+  :root {
+    --bg: #0b0c10;
+    --panel: #1f2833;
+    --accent: #66fcf1;
+    --text: #c5c6c7;
+    --dim: #45a29e;
+    --kill: #ff4d4d;
+    --death: #b8b8b8;
+    --objective: #4da6ff;
+    --ammo: #4dff88;
+    --extract: #ffdd44;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HUD Header */
+  .hud-header {
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .hud-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+  .hud-time {
+    font-family: monospace;
+    font-size: 1.2rem;
+    color: var(--text);
+  }
+
+  /* Timeline Scrubber */
+  .timeline-container {
+    padding: 20px;
+    background: var(--panel);
+    border-bottom: 1px solid #333;
+  }
+  .scrubber-wrapper {
+    position: relative;
+    height: 60px;
+    background: #0b0c10;
+    border: 1px solid #333;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .scrubber-track {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #333;
+    transform: translateY(-50%);
+  }
+  .scrubber-progress {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    height: 2px;
+    background: var(--accent);
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  .playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent);
+    cursor: ew-resize;
+    z-index: 10;
+    box-shadow: 0 0 6px var(--accent);
+  }
+  .playhead::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 10px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* Event Markers */
+  .event-marker {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .event-marker:hover { transform: translate(-50%, -50%) scale(1.3); }
+
+  .marker-kill {
+    width: 10px;
+    height: 10px;
+    background: var(--kill);
+    border-radius: 50%;
+    box-shadow: 0 0 4px var(--kill);
+  }
+  .marker-death {
+    width: 12px;
+    height: 12px;
+    background: var(--death);
+    clip-path: polygon(20% 0%, 0% 20%, 30% 50%, 0% 80%, 20% 100%, 50% 70%, 80% 100%, 100% 80%, 70% 50%, 100% 20%, 80% 0%, 50% 30%);
+    box-shadow: 0 0 4px var(--death);
+  }
+  .marker-objective {
+    width: 12px;
+    height: 12px;
+    background: var(--objective);
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    box-shadow: 0 0 4px var(--objective);
+  }
+  .marker-ammo {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 10px solid var(--ammo);
+    filter: drop-shadow(0 0 2px var(--ammo));
+  }
+  .marker-extract {
+    width: 10px;
+    height: 10px;
+    background: var(--extract);
+    transform: translate(-50%, -50%) rotate(45deg);
+    box-shadow: 0 0 4px var(--extract);
+  }
+  .marker-extract:hover {
+    transform: translate(-50%, -50%) rotate(45deg) scale(1.3);
+  }
+
+  /* Tooltip */
+  .marker-tooltip {
+    position: absolute;
+    bottom: 140%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    border: 1px solid #444;
+  }
+  .event-marker:hover .marker-tooltip { opacity: 1; }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid #333;
+  }
+  .btn {
+    background: #0b0c10;
+    border: 1px solid var(--dim);
+    color: var(--accent);
+    padding: 8px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 0.9rem;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .btn:hover {
+    background: var(--dim);
+    border-color: var(--accent);
+  }
+  .btn.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .speed-controls {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  /* Minimap */
+  .minimap-container {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .minimap-label {
+    font-size: 0.85rem;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .minimap {
+    flex: 1;
+    background: #0f1115;
+    border: 1px solid #333;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  .map-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(102,252,241,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(102,252,241,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .map-objective {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: var(--objective);
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    transform: translate(-50%, -50%);
+    opacity: 0.6;
+  }
+  .map-extract {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: var(--extract);
+    transform: translate(-50%, -50%) rotate(45deg);
+    opacity: 0.6;
+  }
+  .player-dot {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: left 0.1s linear, top 0.1s linear;
+    z-index: 5;
+    box-shadow: 0 0 6px currentColor;
+  }
+  .player-trail {
+    position: absolute;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.2;
+    transform-origin: left center;
+    pointer-events: none;
+  }
+  .player-label {
+    position: absolute;
+    font-size: 0.65rem;
+    color: currentColor;
+    transform: translate(-50%, -140%);
+    white-space: nowrap;
+    text-shadow: 0 0 4px #000;
+    pointer-events: none;
+  }
+
+  /* Event Log */
+  .event-log {
+    height: 140px;
+    background: var(--panel);
+    border-top: 1px solid #333;
+    padding: 10px 20px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.8rem;
+  }
+  .log-entry {
+    padding: 3px 0;
+    border-bottom: 1px solid #222;
+    display: flex;
+    gap: 12px;
+  }
+  .log-time { color: var(--dim); min-width: 50px; }
+  .log-kill { color: var(--kill); }
+  .log-death { color: var(--death); }
+  .log-objective { color: var(--objective); }
+  .log-ammo { color: var(--ammo); }
+  .log-extract { color: var(--extract); }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 16px;
+    padding: 8px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid #333;
+    font-size: 0.75rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text);
+  }
+  .legend-icon {
+    width: 10px;
+    height: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="hud-header">
+  <div class="hud-title">DATA V4 — TIMELINE</div>
+  <div class="hud-time" id="timeDisplay">00:00.0</div>
+</div>
+
+<div class="timeline-container">
+  <div class="scrubber-wrapper" id="scrubber">
+    <div class="scrubber-track"></div>
+    <div class="scrubber-progress" id="progress"></div>
+    <div class="playhead" id="playhead"></div>
+    <div id="markers"></div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-icon" style="background:var(--kill);border-radius:50%;"></div> KILL</div>
+  <div class="legend-item"><div class="legend-icon" style="background:var(--death);clip-path:polygon(20% 0%,0% 20%,30% 50%,0% 80%,20% 100%,50% 70%,80% 100%,100% 80%,70% 50%,100% 20%,80% 0%,50% 30%);"></div> DEATH</div>
+  <div class="legend-item"><div class="legend-icon" style="background:var(--objective);clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);"></div> OBJECTIVE</div>
+  <div class="legend-item"><div class="legend-icon" style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:8px solid var(--ammo);"></div> AMMO</div>
+  <div class="legend-item"><div class="legend-icon" style="background:var(--extract);transform:rotate(45deg);"></div> EXTRACTION</div>
+</div>
+
+<div class="controls">
+  <button class="btn" id="playBtn">▶ PLAY</button>
+  <div class="speed-controls">
+    <button class="btn speed-btn active" data-speed="1">1x</button>
+    <button class="btn speed-btn" data-speed="2">2x</button>
+    <button class="btn speed-btn" data-speed="4">4x</button>
+  </div>
+</div>
+
+<div class="minimap-container">
+  <div class="minimap-label">Live Positions</div>
+  <div class="minimap" id="minimap">
+    <div class="map-grid"></div>
+    <div id="mapObjects"></div>
+    <div id="mapPlayers"></div>
+  </div>
+</div>
+
+<div class="event-log" id="eventLog"></div>
+
+<script>
+  const TOTAL_TIME = 120; // seconds
+  const EVENT_TYPES = ['kill','death','objective','ammo','extract'];
+  const TYPE_CLASS = {
+    kill: 'marker-kill',
+    death: 'marker-death',
+    objective: 'marker-objective',
+    ammo: 'marker-ammo',
+    extract: 'marker-extract'
+  };
+  const TYPE_LABEL = {
+    kill: 'KILL',
+    death: 'DEATH',
+    objective: 'OBJ CAPTURE',
+    ammo: 'AMMO DROP',
+    extract: 'EXTRACTION'
+  };
+  const LOG_CLASS = {
+    kill: 'log-kill',
+    death: 'log-death',
+    objective: 'log-objective',
+    ammo: 'log-ammo',
+    extract: 'log-extract'
+  };
+
+  // Generate demo data
+  const events = [];
+  for (let i = 0; i < 35; i++) {
+    const t = Math.random() * TOTAL_TIME;
+    const type = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
+    events.push({ time: t, type, label: `${TYPE_LABEL[type]} #${i+1}` });
+  }
+  events.sort((a, b) => a.time - b.time);
+
+  const players = [
+    { id: 'P1', name: 'Alpha', color: '#66fcf1', path: generatePath() },
+    { id: 'P2', name: 'Bravo', color: '#ff6b6b', path: generatePath() },
+    { id: 'P3', name: 'Charlie', color: '#4ecdc4', path: generatePath() },
+    { id: 'P4', name: 'Delta', color: '#ffe66d', path: generatePath() },
+  ];
+
+  const objectives = [
+    { x: 30, y: 25 }, { x: 70, y: 40 }, { x: 50, y: 70 }
+  ];
+  const extracts = [
+    { x: 10, y: 10 }, { x: 90, y: 90 }
+  ];
+
+  function generatePath() {
+    const pts = [];
+    let x = 20 + Math.random() * 60;
+    let y = 20 + Math.random() * 60;
+    for (let t = 0; t <= TOTAL_TIME; t += 2) {
+      x += (Math.random() - 0.5) * 8;
+      y += (Math.random() - 0.5) * 8;
+      x = Math.max(5, Math.min(95, x));
+      y = Math.max(5, Math.min(95, y));
+      pts.push({ t, x, y });
+    }
+    return pts;
+  }
+
+  function interpPos(path, t) {
+    let i = 0;
+    while (i < path.length - 1 && path[i+1].t < t) i++;
+    if (i >= path.length - 1) return path[path.length - 1];
+    const a = path[i], b = path[i+1];
+    const f = (t - a.t) / (b.t - a.t);
+    return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f };
+  }
+
+  // DOM refs
+  const scrubber = document.getElementById('scrubber');
+  const playhead = document.getElementById('playhead');
+  const progress = document.getElementById('progress');
+  const markersContainer = document.getElementById('markers');
+  const timeDisplay = document.getElementById('timeDisplay');
+  const playBtn = document.getElementById('playBtn');
+  const speedBtns = document.querySelectorAll('.speed-btn');
+  const minimap = document.getElementById('minimap');
+  const mapObjects = document.getElementById('mapObjects');
+  const mapPlayers = document.getElementById('mapPlayers');
+  const eventLog = document.getElementById('eventLog');
+
+  // State
+  let currentTime = 0;
+  let isPlaying = false;
+  let speed = 1;
+  let lastFrame = 0;
+  let dragStartX = 0;
+  let dragStartTime = 0;
+  let isDragging = false;
+
+  // Render markers
+  function renderMarkers() {
+    markersContainer.innerHTML = '';
+    events.forEach(ev => {
+      const el = document.createElement('div');
+      el.className = `event-marker ${TYPE_CLASS[ev.type]}`;
+      el.style.left = (ev.time / TOTAL_TIME * 100) + '%';
+      const tip = document.createElement('div');
+      tip.className = 'marker-tooltip';
+      tip.textContent = `${formatTime(ev.time)} — ${ev.label}`;
+      el.appendChild(tip);
+      markersContainer.appendChild(el);
+    });
+  }
+
+  // Render map objects
+  function renderMapObjects() {
+    mapObjects.innerHTML = '';
+    objectives.forEach(o => {
+      const el = document.createElement('div');
+      el.className = 'map-objective';
+      el.style.left = o.x + '%';
+      el.style.top = o.y + '%';
+      mapObjects.appendChild(el);
+    });
+    extracts.forEach(e => {
+      const el = document.createElement('div');
+      el.className = 'map-extract';
+      el.style.left = e.x + '%';
+      el.style.top = e.y + '%';
+      mapObjects.appendChild(el);
+    });
+  }
+
+  // Render players
+  function renderPlayers() {
+    mapPlayers.innerHTML = '';
+    players.forEach(p => {
+      const dot = document.createElement('div');
+      dot.className = 'player-dot';
+      dot.style.color = p.color;
+      dot.style.background = p.color;
+      dot.dataset.id = p.id;
+
+      const label = document.createElement('div');
+      label.className = 'player-label';
+      label.textContent = p.name;
+      label.style.color = p.color;
+      label.dataset.id = p.id;
+
+      mapPlayers.appendChild(dot);
+      mapPlayers.appendChild(label);
+    });
+  }
+
+  function updatePlayers() {
+    players.forEach(p => {
+      const pos = interpPos(p.path, currentTime);
+      const dot = mapPlayers.querySelector(`.player-dot[data-id="${p.id}"]`);
+      const label = mapPlayers.querySelector(`.player-label[data-id="${p.id}"]`);
+      if (dot) { dot.style.left = pos.x + '%'; dot.style.top = pos.y + '%'; }
+      if (label) { label.style.left = pos.x + '%'; label.style.top = pos.y + '%'; }
+    });
+  }
+
+  // Event log
+  function renderLog() {
+    eventLog.innerHTML = '';
+    events.forEach(ev => {
+      const row = document.createElement('div');
+      row.className = 'log-entry';
+      row.innerHTML = `<span class="log-time">${formatTime(ev.time)}</span><span class="${LOG_CLASS[ev.type]}">${ev.label}</span>`;
+      eventLog.appendChild(row);
+    });
+  }
+
+  function formatTime(t) {
+    const m = Math.floor(t / 60);
+    const s = Math.floor(t % 60);
+    const d = Math.floor((t % 1) * 10);
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${d}`;
+  }
+
+  function updateUI() {
+    const pct = (currentTime / TOTAL_TIME) * 100;
+    playhead.style.left = pct + '%';
+    progress.style.width = pct + '%';
+    timeDisplay.textContent = formatTime(currentTime);
+    updatePlayers();
+
+    // Highlight log near current time
+    const entries = eventLog.querySelectorAll('.log-entry');
+    entries.forEach((entry, i) => {
+      const ev = events[i];
+      const diff = Math.abs(ev.time - currentTime);
+      entry.style.opacity = diff < 3 ? '1' : '0.4';
+      if (diff < 0.5) {
+        entry.style.background = 'rgba(102,252,241,0.08)';
+        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        entry.style.background = 'transparent';
+      }
+    });
+  }
+
+  // Animation
+  function animate(ts) {
+    if (!lastFrame) lastFrame = ts;
+    const dt = (ts - lastFrame) / 1000;
+    lastFrame = ts;
+
+    if (isPlaying && !isDragging) {
+      currentTime += dt * speed;
+      if (currentTime >= TOTAL_TIME) {
+        currentTime = TOTAL_TIME;
+        isPlaying = false;
+        playBtn.textContent = '▶ PLAY';
+      }
+      updateUI();
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  // Controls
+  playBtn.addEventListener('click', () => {
+    isPlaying = !isPlaying;
+    playBtn.textContent = isPlaying ? '⏸ PAUSE' : '▶ PLAY';
+    if (isPlaying && currentTime >= TOTAL_TIME) currentTime = 0;
+    lastFrame = 0;
+  });
+
+  speedBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      speedBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      speed = parseInt(btn.dataset.speed);
+    });
+  });
+
+  // Scrubber interaction
+  function setTimeFromX(clientX) {
+    const rect = scrubber.getBoundingClientRect();
+    let x = clientX - rect.left;
+    x = Math.max(0, Math.min(rect.width, x));
+    currentTime = (x / rect.width) * TOTAL_TIME;
+    updateUI();
+  }
+
+  scrubber.addEventListener('mousedown', e => {
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartTime = currentTime;
+    setTimeFromX(e.clientX);
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (isDragging) {
+      setTimeFromX(e.clientX);
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  // Touch support
+  scrubber.addEventListener('touchstart', e => {
+    isDragging = true;
+    setTimeFromX(e.touches[0].clientX);
+  }, { passive: false });
+
+  document.addEventListener('touchmove', e => {
+    if (isDragging) {
+      e.preventDefault();
+      setTimeFromX(e.touches[0].clientX);
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchend', () => {
+    isDragging = false;
+  });
+
+  // Init
+  renderMarkers();
+  renderMapObjects();
+  renderPlayers();
+  renderLog();
+  updateUI();
+  requestAnimationFrame(animate);
+</script>
+
+</body>
+</html>

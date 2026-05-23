@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Signal Lost — Clan Wars</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="design-system.css" />
+<style>
+:root{--ink:#201116;--cream:#fff0c7;--gold:#ffd965;--teal:#008c94;--orange:#ff8b1f;--pink:#e82663;--blue:#18364b;}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--ink);font-family:'Inter',system-ui,sans-serif;color:var(--cream);min-height:100vh}
+body{padding:2rem 1rem;display:flex;justify-content:center}
+
+.wars-card{width:100%;max-width:800px;background:linear-gradient(145deg,#1a0d12,#0a0508);border:2px solid rgba(255,217,101,0.15);border-radius:24px;padding:2rem;box-shadow:0 24px 64px rgba(0,0,0,0.5)}
+
+.wars-header{text-align:center;margin-bottom:1.5rem}
+.wars-header h1{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;margin-bottom:0.25rem}
+.wars-header p{font-size:0.8rem;color:rgba(255,240,199,0.5)}
+
+.season-banner{display:flex;align-items:center;justify-content:center;gap:1rem;padding:1rem;border-radius:16px;background:rgba(0,140,148,0.08);border:1px solid rgba(0,140,148,0.2);margin-bottom:1.5rem;font-size:0.85rem}
+.season-banner .season{font-weight:900;color:var(--gold);font-family:'Space Grotesk',sans-serif}
+.season-banner .timer{font-family:'JetBrains Mono',monospace;color:var(--teal)}
+
+.standings{margin-bottom:1.5rem}
+.standings-title{font-size:0.7rem;font-weight:900;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold);margin-bottom:0.75rem}
+
+.clan-row{display:grid;grid-template-columns:48px 1fr auto auto auto auto;gap:0.75rem;align-items:center;padding:0.75rem 0;border-bottom:1px solid rgba(255,255,255,0.04);transition:background .1s}
+.clan-row:hover{background:rgba(255,255,255,0.02)}
+.clan-row:first-of-type .rank{color:var(--gold);font-weight:900;font-size:1.2rem}
+.clan-row:nth-of-type(2) .rank{color:#c0c0c0;font-weight:900;font-size:1.1rem}
+.clan-row:nth-of-type(3) .rank{color:#cd7f32;font-weight:900;font-size:1.1rem}
+.rank{font-family:'Space Grotesk',sans-serif;font-weight:700;color:rgba(255,240,199,0.4);font-size:1rem;width:28px;text-align:center}
+.clan-info{display:flex;align-items:center;gap:0.75rem}
+.clan-badge{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:1.2rem;background:linear-gradient(135deg,var(--teal),var(--blue))}
+.clan-info b{font-size:0.9rem;display:block}
+.clan-info span{font-size:0.7rem;color:rgba(255,240,199,0.4)}
+.stat{font-family:'JetBrains Mono',monospace;font-size:0.8rem;text-align:center}
+.stat b{display:block;font-size:0.9rem;color:var(--gold)}
+.stat-label{font-size:0.6rem;color:rgba(255,240,199,0.4);text-transform:uppercase}
+
+.matchups{margin-bottom:1.5rem}
+.matchup-row{display:flex;align-items:center;gap:0.75rem;padding:0.75rem;background:rgba(255,255,255,0.02);border-radius:12px;margin-bottom:0.5rem;border:1px solid rgba(255,255,255,0.04)}
+.matchup-team{flex:1;text-align:center}
+.matchup-team b{font-size:0.9rem;display:block;margin-bottom:0.15rem}
+.matchup-team span{font-size:0.7rem;color:rgba(255,240,199,0.4)}
+.vs{font-family:'Space Grotesk',sans-serif;font-weight:900;font-size:0.9rem;color:var(--gold);padding:0 0.5rem}
+.match-status{padding:4px 10px;border-radius:6px;font-size:0.65rem;font-weight:700;text-transform:uppercase}
+.match-status.live{background:var(--pink);color:var(--cream);animation:pulse 1.5s infinite}
+.match-status.upcoming{background:rgba(255,217,101,0.1);color:var(--gold)}
+.match-status.done{background:rgba(55,240,111,0.1);color:#37f06f}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+.actions button{padding:0.875rem;border-radius:12px;border:2px solid var(--teal);background:rgba(0,140,148,0.1);color:var(--cream);font-weight:700;font-size:0.9rem;cursor:pointer;transition:all .15s}
+.actions button:hover{background:rgba(0,140,148,0.2)}
+.actions button.primary{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.actions button.primary:hover{background:#ffe89a}
+
+@media(max-width:600px){
+.clan-row{grid-template-columns:32px 1fr auto;gap:0.5rem}
+.clan-row .stat:nth-child(4),.clan-row .stat:nth-child(5){display:none}
+}
+</style>
+  <link rel="stylesheet" href="./design-flow.css" />
+</head><body data-flow-page="clan-wars" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Clan Wars</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./design-flow-setup.html">Setup</a>
+        <a href="./design-flow-roles.html">Roles</a>
+        <a href="./design-flow-control.html">Control</a>
+
+        <a href="./design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="./login.html">Login</a>
+              <a href="./server-browser.html">Server Browser</a>
+              <a href="./map-selection.html">Map Selection</a>
+              <a href="./role-selection.html">Role Selection</a>
+              <a href="./matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="./player-profile.html">Player Profile</a>
+              <a href="./career-stats.html">Career Stats</a>
+              <a href="./match-result.html">Match Result</a>
+              <a href="./post-match-report.html">Post-Match Report</a>
+              <a href="./kill-cam.html">Kill Cam</a>
+              <a href="./death-recap.html">Death Recap</a>
+              <a href="./spectator-mode.html">Spectator Mode</a>
+              <a href="./replay-viewer.html">Replay Viewer</a>
+              <a href="./tournament-bracket.html">Tournament</a>
+              <a href="./emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="./store.html">Store</a>
+              <a href="./friends.html">Friends</a>
+              <a href="./squad.html">Squad</a>
+              <a href="./clan-wars.html" aria-current="page">Clan Wars</a>
+              <a href="./patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="./token-dashboard.html">Token Dashboard</a>
+              <a href="./daily-challenges.html">Daily Challenges</a>
+              <a href="./inventory.html">Inventory</a>
+              <a href="./loadout-builder.html">Loadout Builder</a>
+              <a href="./battle-pass.html">Battle Pass</a>
+              <a href="./loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="./R&D-INDEX.html">R&D Index</a>
+              <a href="./ai-battle-arena.html">AI Battle Arena</a>
+              <a href="./admin-dashboard.html">Admin Dashboard</a>
+              <a href="./leaderboard.html">Leaderboard</a>
+              <a href="./settings.html">Settings</a>
+              <a href="./design-system.html">Design System</a>
+              <a href="./design-flow-setup.html">Setup Page</a>
+              <a href="./design-flow-roles.html">Roles Page</a>
+              <a href="./design-flow-control.html">Control Page</a>
+              <a href="./action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="./mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="./mobile-radar.html">Mobile Radar</a>
+              <a href="./gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="numberedPagesBtn">🔢 All Pages (1-50+) ▾</button>
+          <div class="page-menu" id="numberedPagesMenu">
+            <div class="page-menu-group"><div class="page-menu-title">Auth & Flow (1-5)</div><a href="./login.html">1 — Login</a><a href="./server-browser.html">2 — Server Browser</a><a href="./map-selection.html">3 — Map Selection</a><a href="./role-selection.html">4 — Role Selection</a><a href="./matchmaking.html">5 — Matchmaking</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Game Screens (6-15)</div><a href="./player-profile.html">6 — Player Profile</a><a href="./career-stats.html">7 — Career Stats</a><a href="./match-result.html">8 — Match Result</a><a href="./post-match-report.html">9 — Post-Match Report</a><a href="./kill-cam.html">10 — Kill Cam</a><a href="./death-recap.html">11 — Death Recap</a><a href="./spectator-mode.html">12 — Spectator Mode</a><a href="./replay-viewer.html">13 — Replay Viewer</a><a href="./tournament-bracket.html">14 — Tournament</a><a href="./emote-wheel.html">15 — Emote Wheel</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Live & Social (16-20)</div><a href="./store.html">16 — Store</a><a href="./friends.html">17 — Friends</a><a href="./squad.html">18 — Squad</a><a href="./clan-wars.html" aria-current="page">19 — Clan Wars</a><a href="./patch-notes.html">20 — Patch Notes</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Management (21-26)</div><a href="./token-dashboard.html">21 — Token Dashboard</a><a href="./daily-challenges.html">22 — Daily Challenges</a><a href="./inventory.html">23 — Inventory</a><a href="./loadout-builder.html">24 — Loadout Builder</a><a href="./battle-pass.html">25 — Battle Pass</a><a href="./loot-crate.html">26 — Loot Crate</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Tools & Systems (27-36)</div><a href="./R&D-INDEX.html">27 — R&D Index</a><a href="./ai-battle-arena.html">28 — AI Battle Arena</a><a href="./admin-dashboard.html">29 — Admin Dashboard</a><a href="./leaderboard.html">30 — Leaderboard</a><a href="./settings.html">31 — Settings</a><a href="./design-system.html">32 — Design System</a><a href="./design-flow-setup.html">33 — Setup Page</a><a href="./design-flow-roles.html">34 — Roles Page</a><a href="./design-flow-control.html">35 — Control Page</a><a href="./action-center.html">36 — Action Center</a></div>
+            <div class="page-menu-group"><div class="page-menu-title">Mobile (37-39)</div><a href="./mobile-ui-kit.html">37 — Mobile UI Kit</a><a href="./mobile-radar.html">38 — Mobile Radar</a><a href="./gps-tracker.html">39 — GPS Tracker</a></div>
+          </div>
+        </div>
+
+        <a href="./design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<div class="wars-card">
+  <div class="wars-header">
+    <h1>Clan Wars</h1>
+    <p>Season 4 — Squad vs Squad tournament ladder</p>
+  </div>
+
+  <div class="season-banner">
+    <span class="season">🏆 Season 4</span>
+    <span>Ends in</span>
+    <span class="timer" id="seasonTimer">5d 12h 34m</span>
+  </div>
+
+  <div class="standings">
+    <div class="standings-title">Standings</div>
+    <div class="clan-row">
+      <div class="rank">1</div>
+      <div class="clan-info">
+        <div class="clan-badge">🔥</div>
+        <div><b>Phoenix Rising</b><span>32 members</span></div>
+      </div>
+      <div class="stat"><b>42</b><div class="stat-label">Wins</div></div>
+      <div class="stat"><b>3</b><div class="stat-label">Losses</div></div>
+      <div class="stat"><b>2.8K</b><div class="stat-label">Kills</div></div>
+      <div class="stat"><b>4,200</b><div class="stat-label">Points</div></div>
+    </div>
+    <div class="clan-row">
+      <div class="rank">2</div>
+      <div class="clan-info">
+        <div class="clan-badge">⚡</div>
+        <div><b>Voltage</b><span>28 members</span></div>
+      </div>
+      <div class="stat"><b>38</b><div class="stat-label">Wins</div></div>
+      <div class="stat"><b>7</b><div class="stat-label">Losses</div></div>
+      <div class="stat"><b>2.4K</b><div class="stat-label">Kills</div></div>
+      <div class="stat"><b>3,850</b><div class="stat-label">Points</div></div>
+    </div>
+    <div class="clan-row">
+      <div class="rank">3</div>
+      <div class="clan-info">
+        <div class="clan-badge">🌑</div>
+        <div><b>Nightfall</b><span>24 members</span></div>
+      </div>
+      <div class="stat"><b>35</b><div class="stat-label">Wins</div></div>
+      <div class="stat"><b>9</b><div class="stat-label">Losses</div></div>
+      <div class="stat"><b>2.1K</b><div class="stat-label">Kills</div></div>
+      <div class="stat"><b>3,400</b><div class="stat-label">Points</div></div>
+    </div>
+    <div class="clan-row">
+      <div class="rank">4</div>
+      <div class="clan-info">
+        <div class="clan-badge">🐺</div>
+        <div><b>Iron Wolves</b><span>30 members</span></div>
+      </div>
+      <div class="stat"><b>31</b><div class="stat-label">Wins</div></div>
+      <div class="stat"><b>12</b><div class="stat-label">Losses</div></div>
+      <div class="stat"><b>1.9K</b><div class="stat-label">Kills</div></div>
+      <div class="stat"><b>3,100</b><div class="stat-label">Points</div></div>
+    </div>
+    <div class="clan-row">
+      <div class="rank">5</div>
+      <div class="clan-info">
+        <div class="clan-badge">🦅</div>
+        <div><b>Skybreakers</b><span>26 members</span></div>
+      </div>
+      <div class="stat"><b>28</b><div class="stat-label">Wins</div></div>
+      <div class="stat"><b>15</b><div class="stat-label">Losses</div></div>
+      <div class="stat"><b>1.7K</b><div class="stat-label">Kills</div></div>
+      <div class="stat"><b>2,750</b><div class="stat-label">Points</div></div>
+    </div>
+  </div>
+
+  <div class="matchups">
+    <div class="standings-title">Upcoming Matches</div>
+    <div class="matchup-row">
+      <div class="matchup-team"><b>Phoenix Rising</b><span>Rank #1</span></div>
+      <div class="vs">VS</div>
+      <div class="matchup-team"><b>Voltage</b><span>Rank #2</span></div>
+      <div class="match-status live">● Live</div>
+    </div>
+    <div class="matchup-row">
+      <div class="matchup-team"><b>Nightfall</b><span>Rank #3</span></div>
+      <div class="vs">VS</div>
+      <div class="matchup-team"><b>Iron Wolves</b><span>Rank #4</span></div>
+      <div class="match-status upcoming">In 2h</div>
+    </div>
+    <div class="matchup-row">
+      <div class="matchup-team"><b>Skybreakers</b><span>Rank #5</span></div>
+      <div class="vs">VS</div>
+      <div class="matchup-team"><b>Shadow Ops</b><span>Rank #6</span></div>
+      <div class="match-status done">Won</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="primary" type="button">Register Squad</button>
+    <button type="button">View Rules</button>
+  </div>
+</div>
+
+<script src="design-system.js"></script>
+<script>
+new SignalLostDesign({ spotlight:true, magneticButtons:true, scrollReveal:true, reducedMotion:true });
+
+// Season countdown
+const timer = document.getElementById('seasonTimer');
+let h = 5, m = 12, s = 34;
+setInterval(() => {
+  s--; if(s<0){s=59;m--} if(m<0){m=59;h--}
+  timer.textContent = `${h}d ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+}, 1000);
+</script>
+
+    </div>
+  </main>
+  <script src="design-system.js"></script>
+  <script src="./design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+    // Numbered pages menu toggle
+    const numberedPagesBtn = document.getElementById('numberedPagesBtn');
+    const numberedPagesMenu = document.getElementById('numberedPagesMenu');
+    if (numberedPagesBtn && numberedPagesMenu) {
+      numberedPagesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        numberedPagesMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!numberedPagesMenu.contains(e.target) && !numberedPagesBtn.contains(e.target)) {
+          numberedPagesMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

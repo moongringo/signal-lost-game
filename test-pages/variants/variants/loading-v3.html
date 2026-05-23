@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loading V3 — Drone Descent</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      overflow: hidden;
+      background: #000;
+      font-family: 'Courier New', monospace;
+    }
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+    canvas {
+      display: block;
+    }
+
+    /* HUD Overlay */
+    .hud {
+      position: fixed;
+      z-index: 10;
+      pointer-events: none;
+      color: #00ffcc;
+      text-shadow: 0 0 10px rgba(0, 255, 204, 0.5), 0 0 20px rgba(0, 255, 204, 0.2);
+    }
+
+    /* Top-left title */
+    .hud-title {
+      top: 24px;
+      left: 28px;
+      font-size: 14px;
+      letter-spacing: 4px;
+      opacity: 0.85;
+    }
+    .hud-title::before {
+      content: '◆ ';
+      color: #00ffcc;
+    }
+
+    /* Top-right status */
+    .hud-status {
+      top: 24px;
+      right: 28px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      opacity: 0.6;
+      text-align: right;
+    }
+
+    /* Bottom-center progress */
+    .hud-progress {
+      bottom: 48px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 320px;
+      text-align: center;
+    }
+    .progress-label {
+      font-size: 10px;
+      letter-spacing: 3px;
+      opacity: 0.7;
+      margin-bottom: 8px;
+    }
+    .progress-track {
+      width: 100%;
+      height: 2px;
+      background: rgba(0, 255, 204, 0.15);
+      position: relative;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #00ffcc;
+      box-shadow: 0 0 8px rgba(0, 255, 204, 0.6);
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+    .progress-pct {
+      font-size: 11px;
+      letter-spacing: 2px;
+      margin-top: 10px;
+      opacity: 0.8;
+    }
+
+    /* Corner brackets */
+    .bracket {
+      position: fixed;
+      z-index: 10;
+      pointer-events: none;
+      width: 24px;
+      height: 24px;
+      border-color: rgba(0, 255, 204, 0.35);
+      border-style: solid;
+    }
+    .bracket-tl { top: 16px; left: 16px; border-width: 1px 0 0 1px; }
+    .bracket-tr { top: 16px; right: 16px; border-width: 1px 1px 0 0; }
+    .bracket-bl { bottom: 16px; left: 16px; border-width: 0 0 1px 1px; }
+    .bracket-br { bottom: 16px; right: 16px; border-width: 0 1px 1px 0; }
+
+    /* Scanline effect */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+      );
+    }
+
+    /* Vignette */
+    .vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- HUD -->
+  <div class="hud hud-title">LOADING V3</div>
+  <div class="hud hud-status">
+    <div>ALT: <span id="alt">5000</span>m</div>
+    <div>SPD: <span id="spd">120</span>km/h</div>
+    <div>FOG: <span id="fog">100</span>%</div>
+  </div>
+  <div class="hud hud-progress">
+    <div class="progress-label">SYSTEM INITIALIZATION</div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div class="progress-pct" id="progress-pct">0%</div>
+  </div>
+
+  <!-- Decorative brackets -->
+  <div class="bracket bracket-tl"></div>
+  <div class="bracket bracket-tr"></div>
+  <div class="bracket bracket-bl"></div>
+  <div class="bracket bracket-br"></div>
+
+  <!-- Post-processing overlays -->
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    // ── Scene Setup ──
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05070a);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera.position.set(0, 120, 80);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // ── Fog (clears as we descend) ──
+    const fogColor = new THREE.Color(0x0a0e14);
+    const fogNearStart = 20;
+    const fogFarStart = 180;
+    scene.fog = new THREE.Fog(fogColor, fogNearStart, fogFarStart);
+
+    // ── Lighting ──
+    const ambientLight = new THREE.AmbientLight(0x1a2030, 0.6);
+    scene.add(ambientLight);
+
+    const moonLight = new THREE.DirectionalLight(0x4466aa, 1.2);
+    moonLight.position.set(50, 100, 30);
+    moonLight.castShadow = true;
+    moonLight.shadow.mapSize.width = 2048;
+    moonLight.shadow.mapSize.height = 2048;
+    moonLight.shadow.camera.near = 0.5;
+    moonLight.shadow.camera.far = 300;
+    moonLight.shadow.camera.left = -100;
+    moonLight.shadow.camera.right = 100;
+    moonLight.shadow.camera.top = 100;
+    moonLight.shadow.camera.bottom = -100;
+    scene.add(moonLight);
+
+    const cityGlow = new THREE.PointLight(0x00ffcc, 0.3, 150);
+    cityGlow.position.set(0, 10, 0);
+    scene.add(cityGlow);
+
+    // ── Procedural City Terrain ──
+    const gridSize = 40;
+    const cellSize = 4;
+    const cityGroup = new THREE.Group();
+    scene.add(cityGroup);
+
+    // Ground plane (dark grid)
+    const groundGeo = new THREE.PlaneGeometry(gridSize * cellSize * 2, gridSize * cellSize * 2, gridSize * 2, gridSize * 2);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: 0x0a0f18,
+      roughness: 0.9,
+      metalness: 0.1,
+      wireframe: false
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    cityGroup.add(ground);
+
+    // Grid lines overlay
+    const gridHelper = new THREE.GridHelper(gridSize * cellSize * 2, gridSize * 2, 0x1a2a3a, 0x0f1a25);
+    gridHelper.position.y = 0.05;
+    cityGroup.add(gridHelper);
+
+    // Building blocks
+    const buildingGeo = new THREE.BoxGeometry(1, 1, 1);
+    const buildingMat = new THREE.MeshStandardMaterial({
+      color: 0x141e2e,
+      roughness: 0.7,
+      metalness: 0.3
+    });
+    const windowMat = new THREE.MeshStandardMaterial({
+      color: 0x00ffcc,
+      emissive: 0x00ffcc,
+      emissiveIntensity: 0.5,
+      roughness: 0.2,
+      metalness: 0.8
+    });
+
+    const buildings = [];
+    const rng = (seed) => {
+      const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    };
+
+    for (let x = -gridSize / 2; x < gridSize / 2; x++) {
+      for (let z = -gridSize / 2; z < gridSize / 2; z++) {
+        const seed = (x + gridSize) * 1000 + (z + gridSize);
+        const density = rng(seed);
+
+        // Skip some cells for roads / open space
+        if (density < 0.25) continue;
+        if (Math.abs(x) < 2 && Math.abs(z) < 2) continue; // central plaza
+
+        const height = 2 + rng(seed + 1) * 18 * density;
+        const width = cellSize * (0.5 + rng(seed + 2) * 0.4);
+        const depth = cellSize * (0.5 + rng(seed + 3) * 0.4);
+
+        const building = new THREE.Mesh(buildingGeo, buildingMat);
+        building.position.set(
+          x * cellSize + (rng(seed + 4) - 0.5) * cellSize * 0.3,
+          height / 2,
+          z * cellSize + (rng(seed + 5) - 0.5) * cellSize * 0.3
+        );
+        building.scale.set(width, height, depth);
+        building.castShadow = true;
+        building.receiveShadow = true;
+        cityGroup.add(building);
+        buildings.push(building);
+
+        // Window lights (random)
+        if (rng(seed + 6) > 0.4) {
+          const winCount = Math.floor(rng(seed + 7) * 4) + 1;
+          for (let w = 0; w < winCount; w++) {
+            const winSize = 0.15 + rng(seed + 8 + w) * 0.25;
+            const win = new THREE.Mesh(
+              new THREE.PlaneGeometry(winSize, winSize),
+              windowMat
+            );
+            const side = Math.floor(rng(seed + 20 + w) * 4);
+            const wy = 1 + rng(seed + 30 + w) * (height - 2);
+            const wx = (rng(seed + 40 + w) - 0.5) * width * 0.7;
+            const wz = (rng(seed + 50 + w) - 0.5) * depth * 0.7;
+
+            if (side === 0) {
+              win.position.set(wx, wy, depth / 2 + 0.02);
+            } else if (side === 1) {
+              win.position.set(wx, wy, -depth / 2 - 0.02);
+              win.rotation.y = Math.PI;
+            } else if (side === 2) {
+              win.position.set(width / 2 + 0.02, wy, wz);
+              win.rotation.y = Math.PI / 2;
+            } else {
+              win.position.set(-width / 2 - 0.02, wy, wz);
+              win.rotation.y = -Math.PI / 2;
+            }
+            building.add(win);
+          }
+        }
+      }
+    }
+
+    // ── Floating particles / dust ──
+    const particleCount = 800;
+    const particleGeo = new THREE.BufferGeometry();
+    const particlePositions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      particlePositions[i * 3] = (Math.random() - 0.5) * 200;
+      particlePositions[i * 3 + 1] = Math.random() * 80;
+      particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 200;
+    }
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x00ffcc,
+      size: 0.15,
+      transparent: true,
+      opacity: 0.4
+    });
+    const particles = new THREE.Points(particleGeo, particleMat);
+    scene.add(particles);
+
+    // ── Loading Simulation ──
+    let progress = 0;
+    let loaded = false;
+    const loadDuration = 8000; // ms
+    const startTime = performance.now();
+
+    const progressFill = document.getElementById('progress-fill');
+    const progressPct = document.getElementById('progress-pct');
+    const altDisplay = document.getElementById('alt');
+    const spdDisplay = document.getElementById('spd');
+    const fogDisplay = document.getElementById('fog');
+
+    // ── Animation Loop ──
+    const startY = 140;
+    const endY = 18;
+    const startZ = 90;
+    const endZ = 35;
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const now = performance.now();
+      const elapsed = now - startTime;
+      const t = Math.min(elapsed / loadDuration, 1);
+
+      // Smooth ease-out for descent
+      const ease = 1 - Math.pow(1 - t, 3);
+
+      // Update progress
+      progress = Math.floor(ease * 100);
+      progressFill.style.width = progress + '%';
+      progressPct.textContent = progress + '%';
+
+      // Camera descent
+      camera.position.y = startY - (startY - endY) * ease;
+      camera.position.z = startZ - (startZ - endZ) * ease;
+      camera.position.x = Math.sin(elapsed * 0.0003) * 8 * (1 - ease * 0.5);
+      camera.lookAt(0, 5, 0);
+
+      // Fog clears as we descend
+      const fogNear = fogNearStart + ease * 60;
+      const fogFar = fogFarStart + ease * 200;
+      scene.fog.near = fogNear;
+      scene.fog.far = fogFar;
+
+      // HUD updates
+      altDisplay.textContent = Math.floor(5000 - ease * 4800);
+      spdDisplay.textContent = Math.floor(120 + ease * 40);
+      fogDisplay.textContent = Math.floor((1 - ease) * 100);
+
+      // Particle drift
+      const positions = particles.geometry.attributes.position.array;
+      for (let i = 0; i < particleCount; i++) {
+        positions[i * 3 + 1] -= 0.02;
+        positions[i * 3] += Math.sin(elapsed * 0.001 + i) * 0.01;
+        if (positions[i * 3 + 1] < 0) {
+          positions[i * 3 + 1] = 80;
+        }
+      }
+      particles.geometry.attributes.position.needsUpdate = true;
+
+      // City glow pulse
+      cityGlow.intensity = 0.2 + Math.sin(elapsed * 0.002) * 0.1;
+
+      // Subtle building light flicker
+      if (elapsed % 200 < 16) {
+        windowMat.emissiveIntensity = 0.4 + Math.random() * 0.3;
+      }
+
+      renderer.render(scene, camera);
+
+      if (t >= 1 && !loaded) {
+        loaded = true;
+        progressPct.textContent = 'COMPLETE';
+        progressPct.style.color = '#00ffcc';
+      }
+    }
+
+    animate();
+
+    // ── Resize ──
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

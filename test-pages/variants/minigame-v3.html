@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SIGNAL TRIANGULATION</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a0a;
+    color: #e0e0e0;
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  #uiLayer {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .hud-top {
+    padding: 12px 16px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+  }
+  .hud-title {
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: #00ff88;
+    text-shadow: 0 0 8px rgba(0,255,136,0.4);
+  }
+  .hud-round {
+    font-size: 12px;
+    color: #888;
+    margin-top: 4px;
+  }
+  .hud-score {
+    font-size: 12px;
+    color: #ffaa00;
+    text-align: right;
+  }
+  .hud-score span {
+    font-size: 18px;
+    font-weight: bold;
+  }
+  .signal-panel {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.85);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    gap: 20px;
+    pointer-events: none;
+  }
+  .signal-item {
+    text-align: center;
+  }
+  .signal-label {
+    font-size: 10px;
+    color: #666;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .signal-bar-bg {
+    width: 60px;
+    height: 6px;
+    background: #222;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .signal-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  .signal-value {
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .tower-a { color: #ff4444; }
+  .tower-b { color: #44ff44; }
+  .tower-c { color: #4444ff; }
+  .bar-a { background: #ff4444; }
+  .bar-b { background: #44ff44; }
+  .bar-c { background: #4444ff; }
+
+  #overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+    z-index: 10;
+  }
+  #overlay.hidden { display: none; }
+  .overlay-title {
+    font-size: 24px;
+    color: #00ff88;
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+    text-shadow: 0 0 12px rgba(0,255,136,0.5);
+  }
+  .overlay-sub {
+    font-size: 13px;
+    color: #888;
+    max-width: 320px;
+    text-align: center;
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+  .overlay-btn {
+    padding: 12px 32px;
+    background: transparent;
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    font-family: inherit;
+    font-size: 14px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .overlay-btn:hover {
+    background: rgba(0,255,136,0.1);
+    box-shadow: 0 0 16px rgba(0,255,136,0.3);
+  }
+  .result-text {
+    font-size: 16px;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .result-dist {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ffaa00;
+    margin-bottom: 4px;
+  }
+  .result-points {
+    font-size: 14px;
+    color: #00ff88;
+    margin-bottom: 20px;
+  }
+  .final-score {
+    font-size: 48px;
+    color: #00ff88;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-shadow: 0 0 20px rgba(0,255,136,0.5);
+  }
+  .final-rank {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 20px;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<div id="uiLayer">
+  <div class="hud-top">
+    <div>
+      <div class="hud-title">MINIGAME V3 — TRIANGULATE</div>
+      <div class="hud-round">ROUND <span id="roundNum">1</span> / 5</div>
+    </div>
+    <div class="hud-score">SCORE<br><span id="scoreVal">0</span></div>
+  </div>
+  <div class="signal-panel" id="signalPanel">
+    <div class="signal-item">
+      <div class="signal-label">TOWER A</div>
+      <div class="signal-bar-bg"><div class="signal-bar-fill bar-a" id="barA"></div></div>
+      <div class="signal-value tower-a" id="valA">0%</div>
+    </div>
+    <div class="signal-item">
+      <div class="signal-label">TOWER B</div>
+      <div class="signal-bar-bg"><div class="signal-bar-fill bar-b" id="barB"></div></div>
+      <div class="signal-value tower-b" id="valB">0%</div>
+    </div>
+    <div class="signal-item">
+      <div class="signal-label">TOWER C</div>
+      <div class="signal-bar-bg"><div class="signal-bar-fill bar-c" id="barC"></div></div>
+      <div class="signal-value tower-c" id="valC">0%</div>
+    </div>
+  </div>
+</div>
+<div id="overlay">
+  <div class="overlay-title" id="ovTitle">SIGNAL TRIANGULATION</div>
+  <div class="overlay-sub" id="ovSub">
+    Three radio towers emit signals. The closer you are to the target, the stronger the signal.<br><br>
+    Tap on the map to place your marker where you think the target is hidden.
+  </div>
+  <div class="result-dist" id="ovDist"></div>
+  <div class="result-text" id="ovText"></div>
+  <div class="result-points" id="ovPoints"></div>
+  <div class="final-score" id="ovFinal"></div>
+  <div class="final-rank" id="ovRank"></div>
+  <button class="overlay-btn" id="ovBtn">START</button>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const ovTitle = document.getElementById('ovTitle');
+  const ovSub = document.getElementById('ovSub');
+  const ovDist = document.getElementById('ovDist');
+  const ovText = document.getElementById('ovText');
+  const ovPoints = document.getElementById('ovPoints');
+  const ovFinal = document.getElementById('ovFinal');
+  const ovRank = document.getElementById('ovRank');
+  const ovBtn = document.getElementById('ovBtn');
+  const roundNum = document.getElementById('roundNum');
+  const scoreVal = document.getElementById('scoreVal');
+  const barA = document.getElementById('barA');
+  const barB = document.getElementById('barB');
+  const barC = document.getElementById('barC');
+  const valA = document.getElementById('valA');
+  const valB = document.getElementById('valB');
+  const valC = document.getElementById('valC');
+
+  let W, H;
+  let mapW, mapH, mapX, mapY;
+  const MAP_PAD = 40;
+
+  const TOTAL_ROUNDS = 5;
+  let round = 0;
+  let score = 0;
+  let state = 'intro'; // intro, playing, result, end
+
+  let towers = [];
+  let target = null;
+  let guess = null;
+  let animTime = 0;
+  let resultAnim = 0;
+
+  const COLORS = {
+    bg: '#0d1a0d',
+    grid: '#1a331a',
+    gridMajor: '#264026',
+    towerA: '#ff4444',
+    towerB: '#44ff44',
+    towerC: '#4444ff',
+    target: '#ffaa00',
+    guess: '#ffffff',
+    text: '#e0e0e0'
+  };
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    mapW = W - MAP_PAD * 2;
+    mapH = H - MAP_PAD * 2 - 80; // leave room for HUD + signal panel
+    mapX = MAP_PAD;
+    mapY = MAP_PAD + 40;
+    if (mapH < 200) mapH = H - MAP_PAD * 2 - 60;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function randRange(min, max) {
+    return Math.random() * (max - min) + min;
+  }
+
+  function dist(a, b) {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.sqrt(dx*dx + dy*dy);
+  }
+
+  function toMap(x, y) {
+    return {
+      x: mapX + x * mapW,
+      y: mapY + y * mapH
+    };
+  }
+
+  function fromScreen(sx, sy) {
+    return {
+      x: (sx - mapX) / mapW,
+      y: (sy - mapY) / mapH
+    };
+  }
+
+  function signalStrength(tower, point) {
+    const d = dist(tower, point);
+    const maxD = Math.sqrt(2);
+    const strength = Math.max(0, 1 - d / maxD);
+    return Math.round(strength * 100);
+  }
+
+  function generateRound() {
+    towers = [
+      { x: 0.15, y: 0.2, label: 'A', color: COLORS.towerA },
+      { x: 0.85, y: 0.25, label: 'B', color: COLORS.towerB },
+      { x: 0.5, y: 0.8, label: 'C', color: COLORS.towerC }
+    ];
+    target = {
+      x: randRange(0.2, 0.8),
+      y: randRange(0.2, 0.75)
+    };
+    guess = null;
+    updateSignalPanel();
+  }
+
+  function updateSignalPanel() {
+    const sA = signalStrength(towers[0], target);
+    const sB = signalStrength(towers[1], target);
+    const sC = signalStrength(towers[2], target);
+    barA.style.width = sA + '%';
+    barB.style.width = sB + '%';
+    barC.style.width = sC + '%';
+    valA.textContent = sA + '%';
+    valB.textContent = sB + '%';
+    valC.textContent = sC + '%';
+  }
+
+  function drawGrid() {
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth = 1;
+    const cols = 12;
+    const rows = 10;
+    for (let i = 0; i <= cols; i++) {
+      const x = mapX + (i / cols) * mapW;
+      ctx.beginPath();
+      ctx.moveTo(x, mapY);
+      ctx.lineTo(x, mapY + mapH);
+      ctx.stroke();
+    }
+    for (let i = 0; i <= rows; i++) {
+      const y = mapY + (i / rows) * mapH;
+      ctx.beginPath();
+      ctx.moveTo(mapX, y);
+      ctx.lineTo(mapX + mapW, y);
+      ctx.stroke();
+    }
+    // Major grid
+    ctx.strokeStyle = COLORS.gridMajor;
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i <= 3; i++) {
+      const x = mapX + (i / 3) * mapW;
+      ctx.beginPath();
+      ctx.moveTo(x, mapY);
+      ctx.lineTo(x, mapY + mapH);
+      ctx.stroke();
+    }
+    for (let i = 0; i <= 2; i++) {
+      const y = mapY + (i / 2) * mapH;
+      ctx.beginPath();
+      ctx.moveTo(mapX, y);
+      ctx.lineTo(mapX + mapW, y);
+      ctx.stroke();
+    }
+    // GPS coordinates
+    ctx.fillStyle = '#335533';
+    ctx.font = '10px Courier New';
+    ctx.textAlign = 'center';
+    for (let i = 0; i <= 3; i++) {
+      const x = mapX + (i / 3) * mapW;
+      const lat = (34 + i * 0.5).toFixed(1) + '°N';
+      ctx.fillText(lat, x, mapY - 6);
+      ctx.fillText(lat, x, mapY + mapH + 12);
+    }
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 2; i++) {
+      const y = mapY + (i / 2) * mapH;
+      const lon = (118 + i * 0.8).toFixed(1) + '°W';
+      ctx.fillText(lon, mapX - 4, y + 3);
+      ctx.fillText(lon, mapX + mapW + 34, y + 3);
+    }
+  }
+
+  function drawMapBg() {
+    ctx.fillStyle = COLORS.bg;
+    ctx.fillRect(mapX, mapY, mapW, mapH);
+    ctx.strokeStyle = '#2a4a2a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(mapX, mapY, mapW, mapH);
+  }
+
+  function drawTerrain() {
+    // Simple terrain patches
+    ctx.save();
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = '#1a3a1a';
+    for (let i = 0; i < 5; i++) {
+      const cx = mapX + ((i * 0.17 + 0.1) % 0.9) * mapW;
+      const cy = mapY + ((i * 0.23 + 0.15) % 0.8) * mapH;
+      const r = 30 + i * 8;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = '#2a5a2a';
+    for (let i = 0; i < 4; i++) {
+      const cx = mapX + ((i * 0.31 + 0.2) % 0.8) * mapW;
+      const cy = mapY + ((i * 0.19 + 0.3) % 0.7) * mapH;
+      const r = 20 + i * 6;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawTowers() {
+    towers.forEach((t, idx) => {
+      const pos = toMap(t.x, t.y);
+      const pulse = Math.sin(animTime * 3 + idx * 2) * 0.5 + 0.5;
+
+      // Pulse ring
+      ctx.save();
+      ctx.globalAlpha = 0.15 + pulse * 0.1;
+      ctx.strokeStyle = t.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 18 + pulse * 8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Tower dot
+      ctx.fillStyle = t.color;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Inner dot
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Label
+      ctx.fillStyle = t.color;
+      ctx.font = 'bold 12px Courier New';
+      ctx.textAlign = 'center';
+      ctx.fillText(t.label, pos.x, pos.y - 14);
+    });
+  }
+
+  function drawTarget(hidden) {
+    if (!target) return;
+    const pos = toMap(target.x, target.y);
+    if (hidden) {
+      // Faint indicator only if guess placed
+      if (guess) {
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = COLORS.target;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      return;
+    }
+    // Reveal
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, resultAnim);
+    ctx.fillStyle = COLORS.target;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2);
+    ctx.stroke();
+    // Crosshair
+    ctx.strokeStyle = COLORS.target;
+    ctx.lineWidth = 1;
+    const s = 18;
+    ctx.beginPath();
+    ctx.moveTo(pos.x - s, pos.y);
+    ctx.lineTo(pos.x + s, pos.y);
+    ctx.moveTo(pos.x, pos.y - s);
+    ctx.lineTo(pos.x, pos.y + s);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawGuess() {
+    if (!guess) return;
+    const pos = toMap(guess.x, guess.y);
+    ctx.save();
+    ctx.fillStyle = COLORS.guess;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 10, 0, Math.PI * 2);
+    ctx.stroke();
+    // X mark
+    ctx.strokeStyle = COLORS.guess;
+    ctx.lineWidth = 2;
+    const s = 8;
+    ctx.beginPath();
+    ctx.moveTo(pos.x - s, pos.y - s);
+    ctx.lineTo(pos.x + s, pos.y + s);
+    ctx.moveTo(pos.x + s, pos.y - s);
+    ctx.lineTo(pos.x - s, pos.y + s);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawConnectionLines() {
+    if (!guess || !target || state !== 'result') return;
+    const gPos = toMap(guess.x, guess.y);
+    const tPos = toMap(target.x, target.y);
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, resultAnim) * 0.4;
+    ctx.strokeStyle = '#ffaa00';
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(gPos.x, gPos.y);
+    ctx.lineTo(tPos.x, tPos.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Distance label midpoint
+    const mx = (gPos.x + tPos.x) / 2;
+    const my = (gPos.y + tPos.y) / 2;
+    const d = dist(guess, target);
+    const meters = Math.round(d * 1000);
+    ctx.globalAlpha = Math.min(1, resultAnim);
+    ctx.fillStyle = '#ffaa00';
+    ctx.font = 'bold 12px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(meters + 'm', mx, my - 6);
+    ctx.restore();
+  }
+
+  function drawSignalRings() {
+    if (state !== 'playing' && state !== 'result') return;
+    towers.forEach((t, idx) => {
+      const pos = toMap(t.x, t.y);
+      const s = signalStrength(t, target);
+      const radius = (s / 100) * Math.min(mapW, mapH) * 0.45;
+      ctx.save();
+      ctx.globalAlpha = 0.08;
+      ctx.strokeStyle = t.color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawMapBg();
+    drawTerrain();
+    drawGrid();
+    drawSignalRings();
+    drawTowers();
+    drawTarget(state !== 'playing');
+    drawGuess();
+    drawConnectionLines();
+  }
+
+  function loop(timestamp) {
+    animTime = timestamp / 1000;
+    if (state === 'result') {
+      resultAnim += 0.02;
+      if (resultAnim > 1) resultAnim = 1;
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  function startGame() {
+    round = 1;
+    score = 0;
+    scoreVal.textContent = '0';
+    roundNum.textContent = '1';
+    generateRound();
+    state = 'playing';
+    overlay.classList.add('hidden');
+  }
+
+  function nextRound() {
+    round++;
+    if (round > TOTAL_ROUNDS) {
+      showEnd();
+      return;
+    }
+    roundNum.textContent = round;
+    generateRound();
+    state = 'playing';
+    resultAnim = 0;
+    overlay.classList.add('hidden');
+  }
+
+  function showResult() {
+    state = 'result';
+    resultAnim = 0;
+    const d = dist(guess, target);
+    const meters = Math.round(d * 1000);
+    let points = 0;
+    if (meters < 50) points = 100;
+    else if (meters < 100) points = 80;
+    else if (meters < 200) points = 60;
+    else if (meters < 350) points = 40;
+    else if (meters < 500) points = 20;
+    else points = 10;
+    score += points;
+    scoreVal.textContent = score;
+
+    overlay.classList.remove('hidden');
+    ovTitle.textContent = 'ROUND ' + round + ' RESULT';
+    ovSub.style.display = 'none';
+    ovDist.style.display = 'block';
+    ovDist.textContent = meters + 'm OFF';
+    ovText.style.display = 'block';
+    ovText.textContent = meters < 50 ? 'PERFECT TRIANGULATION!' :
+                         meters < 150 ? 'EXCELLENT WORK.' :
+                         meters < 300 ? 'GOOD GUESS.' :
+                         meters < 500 ? 'NOT BAD.' : 'SIGNAL FADED...';
+    ovPoints.style.display = 'block';
+    ovPoints.textContent = '+' + points + ' POINTS';
+    ovFinal.style.display = 'none';
+    ovRank.style.display = 'none';
+    ovBtn.textContent = round < TOTAL_ROUNDS ? 'NEXT ROUND' : 'FINAL SCORE';
+  }
+
+  function showEnd() {
+    state = 'end';
+    overlay.classList.remove('hidden');
+    ovTitle.textContent = 'MISSION COMPLETE';
+    ovSub.style.display = 'none';
+    ovDist.style.display = 'none';
+    ovText.style.display = 'none';
+    ovPoints.style.display = 'none';
+    ovFinal.style.display = 'block';
+    ovFinal.textContent = score;
+    ovRank.style.display = 'block';
+    let rank = '';
+    if (score >= 450) rank = 'S-RANK: MASTER TRIANGULATOR';
+    else if (score >= 350) rank = 'A-RANK: EXPERT OPERATOR';
+    else if (score >= 250) rank = 'B-RANK: SKILLED';
+    else if (score >= 150) rank = 'C-RANK: TRAINEE';
+    else rank = 'D-RANK: NEEDS PRACTICE';
+    ovRank.textContent = rank;
+    ovBtn.textContent = 'PLAY AGAIN';
+  }
+
+  function handleInput(sx, sy) {
+    if (state !== 'playing') return;
+    const pt = fromScreen(sx, sy);
+    if (pt.x < 0 || pt.x > 1 || pt.y < 0 || pt.y > 1) return;
+    guess = pt;
+    showResult();
+  }
+
+  canvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    handleInput(e.clientX, e.clientY);
+  });
+
+  ovBtn.addEventListener('click', () => {
+    if (state === 'intro' || state === 'end') {
+      startGame();
+    } else if (state === 'result') {
+      nextRound();
+    }
+  });
+
+  // Initialize overlay
+  ovDist.style.display = 'none';
+  ovText.style.display = 'none';
+  ovPoints.style.display = 'none';
+  ovFinal.style.display = 'none';
+  ovRank.style.display = 'none';
+})();
+</script>
+</body>
+</html>

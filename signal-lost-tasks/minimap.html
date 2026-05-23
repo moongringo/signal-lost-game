@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signal Lost — Minimap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --mono-font: 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--cream); font-family: var(--mono-font); }
+    body { padding: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+
+    h1 { font-size: 1.5rem; color: var(--ink); margin-bottom: 1rem; }
+
+    /* Minimap Container */
+    .minimap {
+      width: 200px;
+      height: 200px;
+      background: var(--blue);
+      border: 2px solid var(--teal);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Grid overlay */
+    .minimap::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 140, 148, 0.2) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 140, 148, 0.2) 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+    }
+
+    /* Range ring */
+    .minimap-ring {
+      position: absolute;
+      border: 1px solid rgba(0, 140, 148, 0.4);
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .minimap-ring.r1 { width: 60px; height: 60px; }
+    .minimap-ring.r2 { width: 120px; height: 120px; }
+    .minimap-ring.r3 { width: 180px; height: 180px; }
+
+    /* Player dot */
+    .minimap-player {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: var(--gold);
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 8px var(--gold);
+      z-index: 10;
+    }
+
+    .minimap-player::after {
+      content: '';
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-bottom: 8px solid var(--gold);
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* Enemy dots */
+    .minimap-enemy {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: var(--pink);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--pink);
+      animation: enemyPulse 2s infinite;
+    }
+
+    @keyframes enemyPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.2); }
+    }
+
+    /* Loot markers */
+    .minimap-loot {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      background: var(--gold);
+      transform: rotate(45deg);
+      box-shadow: 0 0 6px var(--gold);
+    }
+
+    /* Compass direction */
+    .minimap-compass {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 0.6rem;
+      color: var(--teal);
+      font-weight: 700;
+    }
+
+    .minimap-compass span { display: block; text-align: center; }
+
+    /* Zoom variant */
+    .minimap.zoomed {
+      width: 300px;
+      height: 300px;
+    }
+
+    /* Small variant (HUD) */
+    .minimap.hud {
+      width: 120px;
+      height: 120px;
+      border-radius: 8px;
+    }
+
+    .minimap.hud .minimap-ring.r1 { width: 30px; height: 30px; }
+    .minimap.hud .minimap-ring.r2 { width: 60px; height: 60px; }
+    .minimap.hud .minimap-ring.r3 { width: 100px; height: 100px; }
+  </style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="minimap" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Minimap</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <h1>🗺️ Minimap</h1>
+
+  <div class="minimap hud">
+    <div class="minimap-ring r1"></div>
+    <div class="minimap-ring r2"></div>
+    <div class="minimap-ring r3"></div>
+    <div class="minimap-player"></div>
+    <div class="minimap-enemy" style="top: 30%; left: 60%;"></div>
+    <div class="minimap-enemy" style="top: 70%; left: 40%;"></div>
+    <div class="minimap-loot" style="top: 25%; left: 25%;"></div>
+    <div class="minimap-loot" style="top: 65%; left: 70%;"></div>
+    <div class="minimap-compass">
+      <span>N</span>
+    </div>
+  </div>
+
+  <div class="minimap">
+    <div class="minimap-ring r1"></div>
+    <div class="minimap-ring r2"></div>
+    <div class="minimap-ring r3"></div>
+    <div class="minimap-player"></div>
+    <div class="minimap-enemy" style="top: 25%; left: 70%;"></div>
+    <div class="minimap-enemy" style="top: 60%; left: 30%;"></div>
+    <div class="minimap-enemy" style="top: 40%; left: 55%;"></div>
+    <div class="minimap-loot" style="top: 20%; left: 20%;"></div>
+    <div class="minimap-loot" style="top: 75%; left: 65%;"></div>
+    <div class="minimap-loot" style="top: 50%; left: 80%;"></div>
+    <div class="minimap-compass">
+      <span>N</span>
+    </div>
+  </div>
+
+  <p style="color: var(--muted); font-size: 0.8rem; max-width: 400px; text-align: center;">
+    Player (gold dot) with directional arrow. Enemies (pink) pulse. Loot (gold diamonds).
+    Range rings at 60/120/180 units. Grid overlay for positioning.
+  </p>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost Flow Design - Roles</title>
+  <link rel="stylesheet" href="./design-flow.css?v=3" />
+  <script src="./game-engine.js?v=6"></script>
+  <script src="./ai-threats.js?v=13"></script>
+  <script src="./threat-sync.js?v=1"></script>
+</head>
+<body data-flow-page="roles" data-background="psychedelic-waves">
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Choose Roles</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="./index.html">Setup</a>
+        <a href="./roles.html" aria-current="page">Roles</a>
+        <a href="./control.html">Control</a>
+        <a href="./leaderboard.html">Status</a>
+        <a href="./dashboard.html">Dashboard</a>
+        <a href="./mobile.html">Mobile</a>
+      </nav>
+      <div class="compact-audio" aria-label="Theme song controls">
+        <button id="audioToggle" type="button">Play</button>
+        <label><span>Vol</span><input id="volumeSlider" type="range" min="0" max="100" value="70" /></label>
+        <span id="audioTime">00:00</span>
+        <span id="audioStatus">Idle</span>
+        <audio id="themeAudio" src="./assets/retro-heist-run.mp3" preload="metadata" loop></audio>
+      </div>
+    </header>
+
+    <section class="flow-layout" aria-label="Role selection layout option">
+      <div class="flow-main">
+        <section class="flow-panel">
+          <p class="kicker">Team Step Two</p>
+          <h2>Assign The Crew</h2>
+          <p>Mission Control becomes a real role here, not just a screen. For two-player games, the organizer can allow role stacking so one player can carry Mission Control plus Decoder, Navigator, or Medic.</p>
+          <div class="action-row">
+            <span class="role-token is-active">Multi-role stacking on</span>
+            <span class="role-token">Phone ready</span>
+            <span class="role-token">Tablet console</span>
+          </div>
+        </section>
+
+        <section class="role-grid wide" aria-label="Role cards">
+          <article class="role-card mission-control selected">
+            <p class="kicker">New Role</p>
+            <h3>Mission Control</h3>
+            <p>Runs radar, live comms, GM actions, route decisions, and organizer fairness tools.</p>
+            <div class="role-tools"><span class="role-token is-active">Radar</span><span class="role-token">Comms</span></div>
+          </article>
+          <article class="role-card">
+            <p class="kicker">Field</p>
+            <h3>Navigator</h3>
+            <p>Guides movement and route changes from the phone map and proximity cues.</p>
+            <div class="role-tools"><span class="role-token">Route</span><span class="role-token">Map</span></div>
+          </article>
+          <article class="role-card">
+            <p class="kicker">Puzzle</p>
+            <h3>Decoder</h3>
+            <p>Solves ciphers, opens clue packets, and confirms code words with Mission Control.</p>
+            <div class="role-tools"><span class="role-token">Cipher</span><span class="role-token">Clues</span></div>
+          </article>
+          <article class="role-card">
+            <p class="kicker">Support</p>
+            <h3>Medic</h3>
+            <p>Manages signal/stamina saves and keeps the team moving when hazards hit.</p>
+            <div class="role-tools"><span class="role-token">Vitals</span><span class="role-token">Cache</span></div>
+          </article>
+        </section>
+
+        <section class="phone-row" aria-label="Device layout previews">
+          <article class="phone-preview"><div class="phone-screen"><p class="kicker">Phone</p><h3>Field Kit</h3><p>Large objective distance, threat pulse, quick role actions.</p></div></article>
+          <article class="phone-preview"><div class="phone-screen"><p class="kicker">Tablet</p><h3>Mini Control</h3><p>Radar, team feed, and broadcast controls for couch operators.</p></div></article>
+          <article class="phone-preview"><div class="phone-screen"><p class="kicker">Shared</p><h3>Stacked Roles</h3><p>Two players can split six responsibilities without losing the fantasy.</p></div></article>
+        </section>
+      </div>
+
+      <aside class="flow-side">
+        <section class="theme-console">
+          <p class="kicker">Background Theme</p>
+          <h3>Game Look</h3>
+          <label>
+            Moving background
+            <select id="backgroundSelect">
+              <option value="sunset-grid">Sunset Grid</option>
+              <option value="signal-candy">Signal Candy</option>
+              <option value="night-static">Night Static</option>
+              <option value="psychedelic-waves">Psychedelic Waves</option>
+              <option value="blue-blocks">Blue Console Blocks</option>
+              <option value="hourglass">Hourglass Repeat</option>
+              <option value="teal-sonar">Teal Sonar</option>
+              <option value="paisley">Black Paisley</option>
+            </select>
+          </label>
+        </section>
+        <section class="flow-card">
+          <p class="kicker">Brainstorm Note</p>
+          <h3>Do Not Overload</h3>
+          <p>Keep role choice playful, but gate advanced tools behind the selected role. That protects first-time players from a cockpit full of controls.</p>
+        </section>
+      </aside>
+    </section>
+  </main>
+  <script src="./design-flow.js?v=3"></script>
+    
+    <!-- Hidden elements for JS compatibility -->
+    <div style="display:none;" aria-hidden="true">
+      <div id="roleTitle"></div>
+      <div id="roleState"></div>
+      <div id="roleTools"></div>
+      <div id="roleCardList"></div>
+      <div id="roleReadinessList"></div>
+      <div id="roleReadinessPill"></div>
+      <select id="roleSelect"><option value="Drone">Drone</option></select>
+      <input id="roleAgentName" type="text" />
+      <input id="roleAccessCodeInput" type="text" />
+      <select id="roleTeamSelect"><option value="Alpha">Alpha</option></select>
+      <input id="agentName" type="text" />
+      <select id="teamSelect"><option value="Alpha">Alpha</option></select>
+      <input id="agentAccessCodeInput" type="text" />
+      <button id="joinGame" type="button"></button>
+      <div id="fieldAgentTitle"></div>
+      <div id="fieldAgentRole"></div>
+      <div id="fieldSignal"></div>
+      <div id="fieldStamina"></div>
+      <div id="fieldSquadList"></div>
+      <div id="fieldObjectiveTitle"></div>
+      <div id="fieldObjectiveDistance"></div>
+      <div id="fieldThreatDistance"></div>
+      <div id="fieldObjectiveVital"></div>
+      <div id="fieldThreatVital"></div>
+      <div id="fieldCueStatus"></div>
+      <div id="fieldRoleCue"></div>
+      <div id="mapLayerControl"></div>
+      <div id="mapTitle"></div>
+      <div id="mapSourceLabel"></div>
+      <div id="mapZoomValue"></div>
+      <div id="mapLayerBadge"></div>
+      <div id="mapNotice"></div>
+      <div id="gpsStatus"></div>
+      <div id="gpsPermissionPill"></div>
+      <div id="gpsHelpText"></div>
+      <div id="gpsAccuracyReadout"></div>
+      <input id="manualLat" type="text" />
+      <input id="manualLng" type="text" />
+      <div id="syncStatus"></div>
+      <div id="coordinateSyncStatus"></div>
+      <div id="coordinateSyncDetail"></div>
+      <div id="sessionToolStatus"></div>
+      <div id="gmStatusPill"></div>
+      <div id="gmStatusText"></div>
+      <input id="gmBroadcastInput" type="text" />
+      <form id="gmBroadcastForm"></form>
+      <div id="moderationCount"></div>
+      <div id="moderationStatus"></div>
+      <div id="moderationRoster"></div>
+      <div id="auditFilterBar"></div>
+      <div id="auditCountPill"></div>
+      <div id="auditLog"></div>
+      <div id="chatFilterBar"></div>
+      <div id="chatFilterPill"></div>
+      <div id="threatList"></div>
+      <div id="sessionPayload"></div>
+      <div id="recapSummary"></div>
+      <div id="recapTitle"></div>
+      <div id="scoreGrade"></div>
+      <div id="scoreValue"></div>
+      <div id="teamScoreList"></div>
+      <div id="nearestDistance"></div>
+      <div id="teamLeadValue"></div>
+      <div id="foundCount"></div>
+      <div id="markerTaskState"></div>
+      <div id="markerTitle"></div>
+      <div id="markerType"></div>
+      <div id="activeGames"></div>
+      <div id="missionReviewTitle"></div>
+      <div id="missionReviewPill"></div>
+      <div id="missionReviewList"></div>
+      <div id="missionTimer"></div>
+      <div id="gameStatus"></div>
+      <div id="identitySummary"></div>
+      <div id="privacyPill"></div>
+      <div id="signalValue"></div>
+      <div id="mapZoomIn"></div>
+      <div id="mapZoomOut"></div>
+      <div id="useDeviceGps"></div>
+      <div id="applyManualGps"></div>
+      <div id="hostView"></div>
+      <div id="fieldView"></div>
+      <div id="radarView"></div>
+      <div id="exportSession"></div>
+      <div id="importSession"></div>
+      <div id="refreshSessions"></div>
+      <div id="removeSession"></div>
+      <div id="syncNow"></div>
+      <div id="toggleLobbyLock"></div>
+      <div id="clearInactiveAgents"></div>
+      <div id="gmRevealClue"></div>
+      <div id="gmJamZone"></div>
+      <div id="gmDropCache"></div>
+      <div id="gmRerouteExtraction"></div>
+      <div id="organizerAccessCodeInput"></div>
+      <div id="organizerClientPill"></div>
+      <div id="organizerNameInput"></div>
+      <div id="organizerCallsignInput"></div>
+      <div id="setupSessionCode"></div>
+      <div id="setupSessionMode"></div>
+      <div id="setupPublicToggle"></div>
+      <div id="setupAudioToggle"></div>
+      <div id="setupAudioStatus"></div>
+      <div id="setupAudioTime"></div>
+      <div id="setupVolumeSlider"></div>
+      <div id="setupMapPreview"></div>
+      <div id="setupLeafletMap"></div>
+      <div id="setupMapCaption"></div>
+      <div id="themePaletteSelect"></div>
+      <div id="setupModuleList"></div>
+      <div id="moduleList"></div>
+      <div id="templateNameInput"></div>
+      <div id="saveTemplate"></div>
+      <div id="loadTemplate"></div>
+      <div id="removeTemplate"></div>
+      <div id="templateList"></div>
+      <div id="templateStatus"></div>
+      <div id="templateCountPill"></div>
+      <div id="copyJoinLink"></div>
+      <div id="continueToRoles"></div>
+      <div id="openControlFromSetup"></div>
+      <div id="backToSetup"></div>
+      <div id="enterMissionControl"></div>
+      <div id="returnToSetup"></div>
+      <div id="returnToRoles"></div>
+      <div id="setupStep"></div>
+      <div id="rolesStep"></div>
+      <div id="controlStep"></div>
+      <div id="onboardingTitle"></div>
+      <div id="roleStackToggle"></div>
+      <div id="roleStackHint"></div>
+      <div id="roleDetail"></div>
+      <div id="setupCitySelect"></div>
+      <div id="setupCountrySelect"></div>
+      <div id="setupDurationInput"></div>
+      <div id="setupPlayerSlider"></div>
+      <div id="setupSummary"></div>
+      <div id="requireAccessCodeToggle"></div>
+      <div id="useCityCenterMarker"></div>
+      <div id="addCustomMarker"></div>
+      <div id="cancelMarkerEdit"></div>
+      <div id="markerLat"></div>
+      <div id="markerLng"></div>
+      <div id="markerRadius"></div>
+      <div id="markerArtifact"></div>
+      <div id="markerDraftStatus"></div>
+      <div id="customMarkerList"></div>
+      <div id="themePatternCanvas"></div>
+      <div id="setupDurationValue"></div>
+      <div id="setupPlayerValue"></div>
+      <div id="decodeObjective"></div>
+      <div id="citySearch"></div>
+      <div id="shuffleRoles"></div>
+      <div id="createObjective"></div>
+      <div id="sessionCode"></div>
+      <div id="audioToggle"></div>
+      <div id="audioStatus"></div>
+      <div id="audioTime"></div>
+      <div id="volumeSlider"></div>
+      <div id="themeAudio"></div>
+      <div id="systemStatus"></div>
+      <div id="satLink"></div>
+      <div id="playerCount"></div>
+      <div id="missionClock"></div>
+      <div id="signalStrength"></div>
+      <div id="threatLevel"></div>
+      <div id="objectiveCount"></div>
+      <div id="gpsSpark"></div>
+      <div id="satSpark"></div>
+      <div id="crewSpark"></div>
+      <div id="timeSpark"></div>
+      <div id="signalSpark"></div>
+      <div id="threatSpark"></div>
+      <div id="agentList"></div>
+      <div id="map"></div>
+      <div id="mapFallback"></div>
+      <div id="warningGraph"></div>
+      <div id="signalWarningTitle"></div>
+      <div id="threatBadge"></div>
+      <div id="chatLog"></div>
+      <div id="chatForm"></div>
+      <div id="chatInput"></div>
+      <div id="objectiveList"></div>
+      <div id="decodeNext"></div>
+      <div id="roleTabs"></div>
+      <div id="themeOptions"></div>
+      <div id="collapseButton"></div>
+      <div id="startGame"></div>
+      <div id="resetGame"></div>
+      <div id="citySelect"></div>
+      <div id="durationInput"></div>
+      <div id="playerSlider"></div>
+      <div id="publicToggle"></div>
+      <div id="sessionModeSelect"></div>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>

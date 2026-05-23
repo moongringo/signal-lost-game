@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TACTICAL WATCH — CHAT V11</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+  }
+
+  /* Watch face container */
+  .watch {
+    width: 360px;
+    height: 420px;
+    border-radius: 50%;
+    background: #0a0a0a;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 0 30px rgba(0, 255, 200, 0.08),
+      inset 0 0 40px rgba(0, 255, 200, 0.03);
+    border: 2px solid #1a1a1a;
+  }
+  .watch::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: inset 0 0 60px rgba(0, 255, 200, 0.04);
+    pointer-events: none;
+  }
+
+  /* OLED glow edge */
+  .glow-edge {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    border: 1px solid rgba(0, 255, 200, 0.15);
+  }
+
+  /* Top bezel notch area */
+  .notch {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 4px;
+    background: #222;
+    border-radius: 2px;
+  }
+
+  /* HUD */
+  .hud {
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: rgba(0, 255, 200, 0.5);
+    font-weight: 600;
+  }
+
+  /* Circular mini map in corner */
+  .mini-map {
+    position: absolute;
+    top: 42px;
+    right: 28px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #0d0d0d;
+    border: 1.5px solid rgba(0, 255, 200, 0.2);
+    overflow: hidden;
+  }
+  .mini-map::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: inset 0 0 10px rgba(0, 255, 200, 0.1);
+  }
+  .map-dot {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #00ffc8;
+    box-shadow: 0 0 4px #00ffc8;
+    animation: mapPulse 2s infinite;
+  }
+  .map-dot.ally { background: #00ffc8; box-shadow: 0 0 4px #00ffc8; }
+  .map-dot.enemy { background: #ff4444; box-shadow: 0 0 4px #ff4444; animation-delay: 0.5s; }
+  .map-dot.self {
+    width: 5px; height: 5px;
+    background: #fff;
+    box-shadow: 0 0 6px #fff;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    animation: none;
+  }
+  @keyframes mapPulse {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.3); }
+  }
+
+  /* Time display */
+  .time {
+    position: absolute;
+    top: 46px;
+    left: 36px;
+    font-size: 22px;
+    font-weight: 300;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+  .time-sec {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    margin-left: 2px;
+  }
+  .date {
+    position: absolute;
+    top: 72px;
+    left: 36px;
+    font-size: 9px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 1px;
+  }
+
+  /* Notification area — messages slide from top */
+  .notif-area {
+    position: absolute;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    height: 90px;
+    overflow: hidden;
+  }
+  .notif {
+    background: rgba(0, 255, 200, 0.08);
+    border: 1px solid rgba(0, 255, 200, 0.15);
+    border-radius: 14px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: #e0e0e0;
+    line-height: 1.4;
+    animation: slideDown 0.35s ease-out;
+    backdrop-filter: blur(4px);
+  }
+  .notif-sender {
+    font-size: 9px;
+    color: #00ffc8;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+  }
+  .notif-time {
+    font-size: 8px;
+    color: rgba(255,255,255,0.25);
+    float: right;
+  }
+  @keyframes slideDown {
+    from { transform: translateY(-30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  /* Quick reply buttons */
+  .quick-replies {
+    position: absolute;
+    bottom: 68px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 300px;
+  }
+  .qr-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(0, 255, 200, 0.2);
+    background: rgba(0, 255, 200, 0.05);
+    color: #00ffc8;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+  }
+  .qr-btn:hover {
+    background: rgba(0, 255, 200, 0.12);
+    border-color: rgba(0, 255, 200, 0.4);
+    box-shadow: 0 0 12px rgba(0, 255, 200, 0.15);
+  }
+  .qr-btn:active {
+    transform: scale(0.92);
+  }
+
+  /* Swipe gesture buttons */
+  .swipe-bar {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 40px;
+    align-items: center;
+  }
+  .swipe-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.03);
+    color: rgba(255,255,255,0.4);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+  }
+  .swipe-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.7);
+  }
+  .swipe-label {
+    font-size: 8px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Timeline overlay */
+  .timeline-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 5, 5, 0.97);
+    border-radius: 50%;
+    display: none;
+    flex-direction: column;
+    padding: 50px 36px 40px;
+    z-index: 10;
+  }
+  .timeline-overlay.active { display: flex; }
+  .timeline-header {
+    font-size: 10px;
+    color: #00ffc8;
+    letter-spacing: 2px;
+    text-align: center;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .timeline-scroll {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .timeline-scroll::-webkit-scrollbar { display: none; }
+  .timeline-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+  }
+  .timeline-ts {
+    font-size: 8px;
+    color: rgba(255,255,255,0.25);
+    min-width: 36px;
+    padding-top: 2px;
+  }
+  .timeline-msg {
+    flex: 1;
+    font-size: 10px;
+    color: #ccc;
+    line-height: 1.4;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    border-left: 2px solid rgba(0, 255, 200, 0.3);
+  }
+  .timeline-sender {
+    font-size: 8px;
+    color: #00ffc8;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .timeline-close {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.5);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Scroll indicator dots on watch edge */
+  .edge-dots {
+    position: absolute;
+    bottom: 55px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+  }
+  .edge-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(0, 255, 200, 0.2);
+  }
+  .edge-dot.active { background: rgba(0, 255, 200, 0.6); }
+</style>
+</head>
+<body>
+
+<div class="watch">
+  <div class="glow-edge"></div>
+  <div class="notch"></div>
+  <div class="hud">CHAT V11</div>
+
+  <!-- Time -->
+  <div class="time" id="clock">14:32<span class="time-sec">:07</span></div>
+  <div class="date" id="date">MAY 18</div>
+
+  <!-- Mini circular map -->
+  <div class="mini-map" id="miniMap">
+    <div class="map-dot self"></div>
+  </div>
+
+  <!-- Notification area -->
+  <div class="notif-area" id="notifArea"></div>
+
+  <!-- Quick replies -->
+  <div class="quick-replies">
+    <button class="qr-btn" onclick="sendQuick('COPY')">COPY</button>
+    <button class="qr-btn" onclick="sendQuick('ROGER')">ROGER</button>
+    <button class="qr-btn" onclick="sendQuick('MOVING')">MOVING</button>
+    <button class="qr-btn" onclick="sendQuick('HOLD')">HOLD</button>
+    <button class="qr-btn" onclick="sendQuick('ENEMY')">ENEMY</button>
+    <button class="qr-btn" onclick="sendQuick('CLEAR')">CLEAR</button>
+  </div>
+
+  <!-- Swipe buttons -->
+  <div class="swipe-bar">
+    <button class="swipe-btn" onclick="openTimeline()">&#8592;</button>
+    <span class="swipe-label">Swipe</span>
+    <button class="swipe-btn" onclick="clearNotifs()">&#8594;</button>
+  </div>
+
+  <!-- Edge dots -->
+  <div class="edge-dots">
+    <div class="edge-dot active"></div>
+    <div class="edge-dot"></div>
+    <div class="edge-dot"></div>
+  </div>
+
+  <!-- Timeline overlay -->
+  <div class="timeline-overlay" id="timeline">
+    <div class="timeline-header">MESSAGE LOG</div>
+    <div class="timeline-scroll" id="timelineScroll"></div>
+    <button class="timeline-close" onclick="closeTimeline()">&times;</button>
+  </div>
+</div>
+
+<script>
+  const notifArea = document.getElementById('notifArea');
+  const timelineScroll = document.getElementById('timelineScroll');
+  const miniMap = document.getElementById('miniMap');
+  const clock = document.getElementById('clock');
+  const dateEl = document.getElementById('date');
+
+  let messageHistory = [];
+
+  // Generate random map dots
+  function initMap() {
+    const positions = [
+      {t:20,l:30,t:'ally'},{t:35,l:65,t:'ally'},{t:55,l:25,t:'enemy'},
+      {t:70,l:55,t:'ally'},{t:45,l:75,t:'enemy'},{t:15,l:50,t:'ally'}
+    ];
+    positions.forEach(p => {
+      const d = document.createElement('div');
+      d.className = 'map-dot ' + p.t;
+      d.style.top = p.t + '%';
+      d.style.left = p.l + '%';
+      miniMap.appendChild(d);
+    });
+  }
+  initMap();
+
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const s = String(now.getSeconds()).padStart(2,'0');
+    clock.innerHTML = h + ':' + m + '<span class="time-sec">:' + s + '</span>';
+    const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    dateEl.textContent = months[now.getMonth()] + ' ' + now.getDate();
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  function nowStr() {
+    const n = new Date();
+    return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+  }
+
+  function addNotification(sender, text) {
+    const ts = nowStr();
+    const div = document.createElement('div');
+    div.className = 'notif';
+    div.innerHTML = '<div class="notif-sender">' + sender + '<span class="notif-time">' + ts + '</span></div>' + text;
+    notifArea.prepend(div);
+    if (notifArea.children.length > 2) notifArea.lastElementChild.remove();
+
+    messageHistory.push({sender, text, ts});
+    updateTimeline();
+  }
+
+  function sendQuick(text) {
+    addNotification('YOU', text);
+  }
+
+  function updateTimeline() {
+    timelineScroll.innerHTML = '';
+    [...messageHistory].reverse().forEach(m => {
+      const item = document.createElement('div');
+      item.className = 'timeline-item';
+      item.innerHTML = '<div class="timeline-ts">' + m.ts + '</div>' +
+        '<div class="timeline-msg"><div class="timeline-sender">' + m.sender + '</div>' + m.text + '</div>';
+      timelineScroll.appendChild(item);
+    });
+  }
+
+  function openTimeline() {
+    document.getElementById('timeline').classList.add('active');
+  }
+  function closeTimeline() {
+    document.getElementById('timeline').classList.remove('active');
+  }
+  function clearNotifs() {
+    notifArea.innerHTML = '';
+  }
+
+  // Incoming demo messages
+  const demoMsgs = [
+    {s:'CMD', t:'Contact north, 200m'},
+    {s:'WOLF-2', t:'Copy, eyes on'},
+    {s:'HQ', t:'Air support inbound'},
+    {s:'WOLF-3', t:'Taking fire, need cover'},
+    {s:'CMD', t:'Hold position'},
+    {s:'WOLF-1', t:'Enemy spotted east'},
+    {s:'HQ', t:'Exfil in 10 mikes'},
+    {s:'WOLF-2', t:'Roger, moving now'},
+  ];
+  let demoIdx = 0;
+  function demoLoop() {
+    const m = demoMsgs[demoIdx % demoMsgs.length];
+    addNotification(m.s, m.t);
+    demoIdx++;
+    setTimeout(demoLoop, 4000 + Math.random() * 3000);
+  }
+  setTimeout(demoLoop, 2000);
+</script>
+
+</body>
+</html>

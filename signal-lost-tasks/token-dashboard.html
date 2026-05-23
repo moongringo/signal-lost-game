@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Lost — Token & Limits</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <style>
+    :root {
+      --ink: #201116;
+      --muted: #704a41;
+      --cream: #fff0c7;
+      --gold: #ffd965;
+      --orange: #ff8b1f;
+      --pink: #e82663;
+      --teal: #008c94;
+      --blue: #18364b;
+      --body-font: 'Inter', system-ui, sans-serif;
+      --display-font: 'Space Grotesk', system-ui, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
+      --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--cream); font-family: var(--body-font); }
+    body { padding: 2rem; max-width: 800px; margin: 0 auto; }
+
+    h1 { font-family: var(--display-font); font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--ink); }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.9rem; }
+
+    .token-card {
+      background: rgba(255, 248, 220, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 16px;
+      padding: 2rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .token-balance {
+      font-family: var(--mono-font);
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 0.25rem;
+    }
+
+    .token-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .reset-countdown {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 1.5rem;
+    }
+
+    .countdown-unit {
+      text-align: center;
+    }
+
+    .countdown-value {
+      font-family: var(--mono-font);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--teal);
+      background: rgba(0, 140, 148, 0.1);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      min-width: 50px;
+    }
+
+    .countdown-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.25rem;
+    }
+
+    .usage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .usage-card {
+      background: rgba(255, 248, 220, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+
+    .usage-card h3 {
+      font-family: var(--display-font);
+      font-size: 0.9rem;
+      color: var(--ink);
+      margin-bottom: 1rem;
+    }
+
+    .usage-bar {
+      height: 8px;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .usage-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease-out;
+    }
+
+    .usage-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .usage-info .value {
+      font-family: var(--mono-font);
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .limit-warning {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .limit-ok { background: rgba(0, 140, 148, 0.1); color: var(--teal); }
+    .limit-warn { background: rgba(255, 139, 31, 0.1); color: var(--orange); }
+    .limit-danger { background: rgba(232, 38, 99, 0.1); color: var(--pink); }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .history-table th {
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .history-table td {
+      padding: 0.75rem;
+      font-size: 0.85rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .history-table tr:last-child td { border-bottom: none; }
+
+    .tx-type {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .tx-spend { background: rgba(232, 38, 99, 0.1); color: var(--pink); }
+    .tx-earn { background: rgba(0, 140, 148, 0.1); color: var(--teal); }
+    .tx-bonus { background: rgba(255, 217, 101, 0.2); color: var(--gold); }
+
+    .tx-amount {
+      font-family: var(--mono-font);
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .tx-amount.negative { color: var(--pink); }
+    .tx-amount.positive { color: var(--teal); }
+  </style>
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="token-dashboard" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>Token & Limits</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+<h1>🪙 Token & Limits</h1>
+  <p class="subtitle">Track your API usage, token balance, and rate limits</p>
+
+  <div class="token-card">
+    <div class="token-balance" id="tokenBalance">12,847</div>
+    <div class="token-label">Tokens Remaining</div>
+
+    <div class="reset-countdown">
+      <div class="countdown-unit">
+        <div class="countdown-value" id="cdHours">07</div>
+        <div class="countdown-label">Hours</div>
+      </div>
+      <div class="countdown-unit">
+        <div class="countdown-value" id="cdMinutes">23</div>
+        <div class="countdown-label">Minutes</div>
+      </div>
+      <div class="countdown-unit">
+        <div class="countdown-value" id="cdSeconds">45</div>
+        <div class="countdown-label">Seconds</div>
+      </div>
+    </div>
+    <p style="color: var(--muted); font-size: 0.85rem; margin-top: 1rem;">⏰ Next reset at 00:00 UTC</p>
+  </div>
+
+  <div class="limit-warning limit-ok" id="limitStatus">
+    <span>✅</span>
+    <span>All systems within normal limits. You are using 64% of your daily token allocation.</span>
+  </div>
+
+  <div class="usage-grid">
+    <div class="usage-card">
+      <h3>🤖 AI Model Calls</h3>
+      <div class="usage-bar"><div class="usage-fill" style="width: 72%; background: var(--teal);"></div></div>
+      <div class="usage-info">
+        <span>720 / 1,000</span>
+        <span class="value">72%</span>
+      </div>
+    </div>
+
+    <div class="usage-card">
+      <h3>🗺️ Map Tiles</h3>
+      <div class="usage-bar"><div class="usage-fill" style="width: 34%; background: var(--gold);"></div></div>
+      <div class="usage-info">
+        <span>340 / 1,000</span>
+        <span class="value">34%</span>
+      </div>
+    </div>
+
+    <div class="usage-card">
+      <h3>📡 WebSocket Events</h3>
+      <div class="usage-bar"><div class="usage-fill" style="width: 89%; background: var(--orange);"></div></div>
+      <div class="usage-info">
+        <span>8,900 / 10,000</span>
+        <span class="value">89%</span>
+      </div>
+    </div>
+
+    <div class="usage-card">
+      <h3>💾 Storage</h3>
+      <div class="usage-bar"><div class="usage-fill" style="width: 12%; background: var(--pink);"></div></div>
+      <div class="usage-info">
+        <span>120 / 1,000 MB</span>
+        <span class="value">12%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="background: rgba(255, 248, 220, 0.15); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 16px; padding: 1.5rem;">
+    <h2 style="font-family: var(--display-font); font-size: 1rem; color: var(--ink); margin-bottom: 1rem;">📋 Recent Transactions</h2>
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th style="text-align: right;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>14:32</td>
+          <td><span class="tx-type tx-spend">Spend</span></td>
+          <td>AI match simulation (8 teams)</td>
+          <td style="text-align: right;"><span class="tx-amount negative">-450</span></td>
+        </tr>
+        <tr>
+          <td>13:15</td>
+          <td><span class="tx-type tx-earn">Earn</span></td>
+          <td>Match victory bonus</td>
+          <td style="text-align: right;"><span class="tx-amount positive">+200</span></td>
+        </tr>
+        <tr>
+          <td>12:48</td>
+          <td><span class="tx-type tx-spend">Spend</span></td>
+          <td>Radar scan processing</td>
+          <td style="text-align: right;"><span class="tx-amount negative">-85</span></td>
+        </tr>
+        <tr>
+          <td>11:22</td>
+          <td><span class="tx-type tx-bonus">Bonus</span></td>
+          <td>Daily login reward</td>
+          <td style="text-align: right;"><span class="tx-amount positive">+500</span></td>
+        </tr>
+        <tr>
+          <td>10:05</td>
+          <td><span class="tx-type tx-spend">Spend</span></td>
+          <td>Map tile requests (120 tiles)</td>
+          <td style="text-align: right;"><span class="tx-amount negative">-120</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ scrollReveal: true, reducedMotion: true });
+
+    // Live countdown
+    function updateCountdown() {
+      const now = new Date();
+      const reset = new Date();
+      reset.setUTCHours(24, 0, 0, 0);
+      const diff = reset - now;
+
+      const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+      const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+      const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+
+      document.getElementById('cdHours').textContent = h;
+      document.getElementById('cdMinutes').textContent = m;
+      document.getElementById('cdSeconds').textContent = s;
+    }
+
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    // Animate usage bars on load
+    document.querySelectorAll('.usage-fill').forEach(bar => {
+      const target = bar.style.width;
+      bar.style.width = '0';
+      setTimeout(() => { bar.style.width = target; }, 300);
+    });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

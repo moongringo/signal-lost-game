@@ -1,0 +1,306 @@
+@import url("./design-lab.css?v=2");
+
+:root {
+  --ink: #1d1110;
+  --paper: #fff2c4;
+  --glass: #ffe2b4;
+  --line: rgba(82, 33, 21, 0.2);
+  --shadow: 0 26px 0 rgba(232, 38, 99, 0.12), 0 34px 74px rgba(74, 28, 12, 0.28);
+  --display-font: "Cooper Black", "Cooper Std Black", "Bookman Old Style", Georgia, serif;
+  --body-font: "Bookman Old Style", "Trebuchet MS", Georgia, serif;
+  --display-shadow:
+    0 3px 0 #ff8b1f,
+    0 7px 0 rgba(232, 38, 99, 0.28),
+    0 13px 0 rgba(0, 108, 113, 0.18),
+    0 20px 36px rgba(36, 20, 20, 0.24);
+}
+
+body {
+  font-family: var(--body-font);
+}
+
+.ambient-noise {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.38), transparent 18%),
+    radial-gradient(circle at 78% 12%, rgba(255, 209, 77, 0.3), transparent 20%),
+    radial-gradient(circle at 54% 72%, rgba(232, 38, 99, 0.14), transparent 22%);
+  mix-blend-mode: soft-light;
+}
+
+.lab-shell {
+  width: min(1220px, calc(100vw - 36px));
+}
+
+.lab-header {
+  min-height: 132px;
+  align-items: center;
+}
+
+h1 {
+  max-width: 850px;
+  font-family: var(--display-font);
+  font-size: 5.9rem;
+  line-height: 0.82;
+  text-transform: capitalize;
+  text-shadow: var(--display-shadow);
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.5);
+}
+
+.lab-nav a,
+.operator-panel button,
+.control-tabs button,
+.control-actions button {
+  border: 1px solid rgba(82, 33, 21, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 242, 196, 0.8) 46%, rgba(255, 209, 77, 0.28)),
+    var(--cream);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.72), 0 8px 0 rgba(82, 33, 21, 0.08), 0 14px 28px rgba(113, 48, 17, 0.16);
+}
+
+.lab-stage {
+  grid-template-columns: minmax(0, 1fr) 330px;
+}
+
+.mission-gloss,
+.operator-panel,
+.control-lab,
+.preview-grid article {
+  border: 2px solid rgba(255, 246, 216, 0.78);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.6), transparent 26%),
+    radial-gradient(circle at 72% 22%, rgba(255, 209, 77, 0.4), transparent 22%),
+    linear-gradient(145deg, #ffe9bd 0%, #ffc3a8 48%, #ffe083 100%);
+  box-shadow: var(--shadow), inset 0 3px 0 rgba(255, 255, 255, 0.58), inset 0 -18px 34px rgba(255, 139, 31, 0.12);
+  backdrop-filter: none;
+}
+
+.mission-gloss {
+  position: relative;
+  display: grid;
+  align-content: end;
+  min-height: 560px;
+  padding: 54px;
+  overflow: hidden;
+}
+
+.mission-gloss::before {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  pointer-events: none;
+  border: 2px solid rgba(255, 255, 255, 0.62);
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 2px rgba(255, 139, 31, 0.1);
+}
+
+.mission-gloss::after {
+  content: "";
+  position: absolute;
+  left: 32px;
+  right: 32px;
+  bottom: 34px;
+  height: 38%;
+  border: 2px solid rgba(0, 108, 113, 0.24);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 242, 196, 0.12)),
+    repeating-linear-gradient(90deg, rgba(0, 108, 113, 0.16) 0 2px, transparent 2px 28px),
+    repeating-linear-gradient(0deg, rgba(0, 108, 113, 0.12) 0 2px, transparent 2px 28px);
+  opacity: 0.9;
+  animation: scanGrid 3.8s linear infinite;
+}
+
+.mission-gloss h2,
+.control-heading h2,
+.control-side strong,
+.radar-caption b,
+.preview-grid strong {
+  font-family: var(--display-font);
+  text-shadow: var(--display-shadow);
+}
+
+.mission-gloss h2 {
+  position: relative;
+  z-index: 1;
+  max-width: 770px;
+  margin-bottom: 16px;
+  font-size: 4.7rem;
+  line-height: 0.86;
+  text-transform: capitalize;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.32);
+}
+
+.mission-gloss p {
+  position: relative;
+  z-index: 1;
+  max-width: 610px;
+  margin-bottom: 0;
+  color: #4e3025;
+  font-family: "Bookman Old Style", Georgia, serif;
+  font-size: 1.06rem;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.mission-topline,
+.signal-readout,
+.route-strip {
+  position: relative;
+  z-index: 1;
+}
+
+.mission-topline span,
+.mission-topline b,
+.operator-panel #motionState {
+  border-radius: 999px;
+  background: #fff9d6;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.76), 0 8px 16px rgba(113, 48, 17, 0.12);
+}
+
+.signal-readout article,
+.control-side,
+.control-feed,
+.control-feed article {
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 246, 216, 0.72)),
+    #ffe8bd;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.62), 0 8px 0 rgba(113, 48, 17, 0.07);
+}
+
+.operator-panel {
+  background:
+    radial-gradient(circle at 30% 12%, rgba(255, 255, 255, 0.6), transparent 22%),
+    linear-gradient(160deg, #ffeeba, #ffc1aa 55%, #ffdf89);
+}
+
+select {
+  border-radius: 20px;
+  background: linear-gradient(180deg, #fffdf2, #fff1cf);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.72), 0 6px 0 rgba(82, 33, 21, 0.05);
+}
+
+input[type="range"] {
+  accent-color: var(--rose);
+}
+
+.control-lab {
+  border-radius: 26px;
+}
+
+.control-heading h2 {
+  font-size: 3.35rem;
+  text-transform: capitalize;
+}
+
+.control-preview {
+  grid-template-columns: 250px minmax(0, 1fr) 250px;
+}
+
+.candy-tabs button,
+.control-actions button {
+  position: relative;
+  overflow: hidden;
+  min-width: 86px;
+  border-radius: 28px;
+  color: #241414;
+}
+
+.candy-tabs button::before,
+.control-actions button::before {
+  content: "";
+  position: absolute;
+  inset: 4px 8px auto;
+  height: 34%;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.candy-tabs button span {
+  position: relative;
+  z-index: 1;
+}
+
+.candy-tabs .selected {
+  background:
+    radial-gradient(circle at 34% 20%, rgba(255, 255, 255, 0.2), transparent 22%),
+    linear-gradient(180deg, #3c1b20, #140909);
+  color: var(--gold);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.2), 0 10px 0 rgba(232, 38, 99, 0.12), 0 16px 30px rgba(36, 20, 20, 0.22);
+}
+
+.radar-lab {
+  border-radius: 24px;
+  border: 2px solid rgba(255, 246, 216, 0.38);
+  background:
+    radial-gradient(circle at center, rgba(255, 209, 77, 0.28), transparent 26%),
+    linear-gradient(135deg, #008987, #1f4b4d 50%, #30242b);
+  box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.16), 0 10px 0 rgba(82, 33, 21, 0.08);
+}
+
+.radar-rings i {
+  border-color: rgba(255, 209, 77, 0.42);
+}
+
+.radar-blip {
+  box-shadow: 0 0 0 10px rgba(232, 38, 99, 0.18), 0 0 34px rgba(255, 209, 77, 0.34);
+}
+
+.radar-caption {
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(36, 20, 20, 0.66), rgba(36, 20, 20, 0.46));
+}
+
+body[data-font="bubble"] {
+  --display-font: "Cooper Black", "Arial Rounded MT Bold", "Bookman Old Style", Georgia, serif;
+}
+
+body[data-font="operator"] {
+  --display-font: "Courier New", Consolas, monospace;
+  --body-font: "Courier New", Consolas, monospace;
+}
+
+body[data-font="clean"] {
+  --display-font: "Trebuchet MS", Inter, ui-sans-serif, system-ui, sans-serif;
+  --body-font: "Trebuchet MS", Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+@media (max-width: 900px) {
+  .lab-stage,
+  .control-preview,
+  .control-heading {
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    font-size: 3.4rem;
+  }
+
+  .mission-gloss {
+    min-height: 620px;
+    padding: 36px;
+  }
+
+  .mission-gloss h2,
+  .control-heading h2 {
+    font-size: 2.75rem;
+  }
+}
+
+@media (max-width: 560px) {
+  h1 {
+    font-size: 2.55rem;
+  }
+
+  .mission-gloss {
+    min-height: 640px;
+    padding: 24px;
+  }
+
+  .mission-gloss h2,
+  .control-heading h2 {
+    font-size: 2.15rem;
+  }
+}

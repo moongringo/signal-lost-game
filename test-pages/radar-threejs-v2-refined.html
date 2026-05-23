@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Signal Lost v2 — 3D Radar Refined</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh;
+    touch-action: none;
+  }
+  #radar-container {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+  }
+  /* Top-left HUD */
+  #hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid #00ff88;
+    padding: 10px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #00ff88;
+    min-width: 180px;
+    line-height: 1.6;
+  }
+  #hud .label { color: #888; }
+  #hud .value { color: #fff; font-weight: bold; }
+  #hud .timer { color: #ffaa00; }
+  /* Zoom indicator */
+  #zoom-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid #4488ff;
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #4488ff;
+  }
+  /* Bottom tab bar */
+  #tab-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    background: rgba(0,0,0,0.85);
+    border-top: 1px solid #00ff88;
+    padding: 6px 0;
+  }
+  #tab-bar button {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #888;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 8px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  #tab-bar button:hover { color: #ccc; }
+  #tab-bar button.active {
+    color: #00ff88;
+    border-bottom-color: #00ff88;
+  }
+  /* Legend */
+  #legend {
+    position: absolute;
+    bottom: 60px;
+    right: 10px;
+    z-index: 10;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid #333;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #aaa;
+    line-height: 1.8;
+  }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .dot.green { background: #00ff88; }
+  .dot.red { background: #ff3344; }
+  .dot.blue { background: #4488ff; }
+  .dot.yellow { background: #ffaa00; }
+  /* Minimap overlay */
+  #minimap-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    width: 160px;
+    height: 160px;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid #00ff88;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  #minimap-container canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div><span class="label">3D RADAR</span> — <span class="value">Signal Lost v2</span></div>
+  <div>Players: <span class="value" id="player-count">0</span></div>
+  <div>Mission Timer: <span class="timer" id="mission-timer">00:00</span></div>
+</div>
+<div id="zoom-indicator">ZOOM: <span id="zoom-value">1.0x</span></div>
+<div id="minimap-container"><canvas id="minimap"></canvas></div>
+<div id="tab-bar">
+  <button id="btn-iso" class="active">Isometric</button>
+  <button id="btn-top">Top Down</button>
+  <button id="btn-free">Free Cam</button>
+</div>
+<div id="legend">
+  <div><span class="dot green"></span> Players (Allies)</div>
+  <div><span class="dot red"></span> Enemies</div>
+  <div><span class="dot blue"></span> Objectives</div>
+  <div><span class="dot yellow"></span> Extraction</div>
+</div>
+<div id="radar-container"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// --- Setup ---
+const container = document.getElementById('radar-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a0f);
+scene.fog = new THREE.FogExp2(0x0a0a0f, 0.008);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.maxPolarAngle = Math.PI / 2.05;
+controls.minDistance = 15;
+controls.maxDistance = 200;
+
+// --- Lighting (Hemisphere + Directional + Point) ---
+const hemiLight = new THREE.HemisphereLight(0x88ffcc, 0x001100, 0.5);
+scene.add(hemiLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+dirLight.position.set(30, 50, 20);
+dirLight.castShadow = false;
+scene.add(dirLight);
+
+const pointLight = new THREE.PointLight(0x00ff88, 0.6, 80);
+pointLight.position.set(0, 15, 0);
+scene.add(pointLight);
+
+const ambLight = new THREE.AmbientLight(0x112211, 0.3);
+scene.add(ambLight);
+
+// --- Scene Setup ---
+const gridHelper = new THREE.GridHelper(100, 20, 0x00ff88, 0x224433);
+gridHelper.position.y = -0.5;
+scene.add(gridHelper);
+
+const groundGeo = new THREE.PlaneGeometry(100, 100);
+const groundMat = new THREE.MeshBasicMaterial({ color: 0x0d1a10, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.5;
+scene.add(ground);
+
+// --- Map Boundaries ---
+const mapSize = 50;
+const borderMat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.3 });
+const borderPoints = [
+  [-mapSize, 0, -mapSize], [mapSize, 0, -mapSize],
+  [mapSize, 0, mapSize], [-mapSize, 0, mapSize], [-mapSize, 0, -mapSize]
+];
+const borderGeo = new THREE.BufferGeometry().setFromPoints(borderPoints.map(p => new THREE.Vector3(p[0], p[1], p[2])));
+const borderLine = new THREE.Line(borderGeo, borderMat);
+scene.add(borderLine);
+
+// --- Buildings (with emissive glow) ---
+const buildings = [];
+const buildingColors = [0x334455, 0x445566, 0x3a4a5a, 0x2c3e50, 0x4a5568];
+const buildingPositions = [
+  { x: -15, z: -12 }, { x: -8, z: -20 }, { x: 5, z: -15 }, { x: 18, z: -8 },
+  { x: -20, z: 5 }, { x: -5, z: 10 }, { x: 10, z: 15 }, { x: 20, z: 20 },
+  { x: -12, z: 22 }, { x: 0, z: -5 }, { x: -25, z: -15 }, { x: 25, z: -10 },
+  { x: 15, z: -25 }, { x: -18, z: 18 }, { x: 8, z: -28 }
+];
+
+const buildingGroup = new THREE.Group();
+
+buildingPositions.forEach((pos, i) => {
+  const w = 2 + Math.random() * 3;
+  const d = 2 + Math.random() * 3;
+  const h = 1 + Math.random() * 3;
+  const color = buildingColors[i % buildingColors.length];
+
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mat = new THREE.MeshStandardMaterial({
+    color: color,
+    roughness: 0.6,
+    metalness: 0.4,
+    emissive: color,
+    emissiveIntensity: 0.12
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(pos.x, h/2, pos.z);
+  buildingGroup.add(mesh);
+
+  // Edge glow
+  const edges = new THREE.EdgesGeometry(geo);
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.2 });
+  const edgeLine = new THREE.LineSegments(edges, edgeMat);
+  edgeLine.position.copy(mesh.position);
+  buildingGroup.add(edgeLine);
+
+  buildings.push(mesh);
+});
+
+scene.add(buildingGroup);
+
+// --- Dust Particles ---
+const dustCount = 300;
+const dustGeo = new THREE.BufferGeometry();
+const dustPositions = new Float32Array(dustCount * 3);
+for (let i = 0; i < dustCount; i++) {
+  dustPositions[i*3] = (Math.random() - 0.5) * 100;
+  dustPositions[i*3+1] = Math.random() * 20;
+  dustPositions[i*3+2] = (Math.random() - 0.5) * 100;
+}
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+const dustMat = new THREE.PointsMaterial({
+  color: 0x88ffaa,
+  size: 0.08,
+  transparent: true,
+  opacity: 0.4
+});
+const dustParticles = new THREE.Points(dustGeo, dustMat);
+scene.add(dustParticles);
+
+// --- Player Colors ---
+const playerColors = { ally: 0x00ff88, enemy: 0xff3344, objective: 0x4488ff, extraction: 0xffaa00 };
+
+// --- Health ring helper (green -> yellow -> red) ---
+function getHealthColor(health) {
+  if (health > 0.6) return 0x00ff88;
+  if (health > 0.3) return 0xffaa00;
+  return 0xff3344;
+}
+
+function createHealthRing(color, radius = 1.5) {
+  const ringGeo = new THREE.RingGeometry(radius, radius + 0.25, 32);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: 0.6,
+    side: THREE.DoubleSide
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.05;
+  return ring;
+}
+
+function createPlayerMarker(type, pos, label, health = 1.0) {
+  const color = playerColors[type];
+  const group = new THREE.Group();
+
+  // Body
+  const bodyGeo = new THREE.SphereGeometry(type === 'objective' ? 1.2 : 0.8, 16, 16);
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: color,
+    emissive: color,
+    emissiveIntensity: type === 'extraction' ? 0.6 : 0.4,
+    roughness: 0.3,
+    metalness: 0.6
+  });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  group.add(body);
+
+  // Glow ring
+  const ringGeo = new THREE.RingGeometry(1.2, 1.8, 24);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: 0.3,
+    side: THREE.DoubleSide
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.1;
+  group.add(ring);
+
+  // Health ring for allies
+  let healthRing = null;
+  if (type === 'ally') {
+    healthRing = createHealthRing(getHealthColor(health), 1.5);
+    group.add(healthRing);
+  }
+
+  // Grid pulse ring (animated later)
+  const pulseGeo = new THREE.RingGeometry(0.1, 0.3, 24);
+  const pulseMat = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: 0.0,
+    side: THREE.DoubleSide
+  });
+  const pulseRing = new THREE.Mesh(pulseGeo, pulseMat);
+  pulseRing.rotation.x = -Math.PI / 2;
+  pulseRing.position.y = -0.4;
+  group.add(pulseRing);
+
+  // Label
+  if (label) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.roundRect(0, 0, 128, 32, 4);
+    ctx.fill();
+    ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, 64, 22);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.position.y = 2.5;
+    sprite.scale.set(4, 1, 1);
+    group.add(sprite);
+  }
+
+  group.position.set(pos.x, 0.5, pos.z);
+  return { group, healthRing, pulseRing, health, type };
+}
+
+// --- Create Entities ---
+const allies = [];
+const allyPositions = [
+  { x: -5, z: -3 }, { x: 2, z: -8 }, { x: -10, z: 5 }, { x: 8, z: 2 },
+  { x: -3, z: 12 }, { x: 15, z: -5 }
+];
+allyPositions.forEach((p, i) => {
+  const health = 0.4 + Math.random() * 0.6;
+  const m = createPlayerMarker('ally', p, `P${i+1}`, health);
+  scene.add(m.group);
+  allies.push({
+    mesh: m.group,
+    healthRing: m.healthRing,
+    pulseRing: m.pulseRing,
+    pos: { ...p },
+    vel: { x: (Math.random()-0.5)*0.05, z: (Math.random()-0.5)*0.05 },
+    health: m.health,
+    pulsePhase: Math.random() * Math.PI * 2
+  });
+});
+
+const enemies = [];
+const enemyPositions = [
+  { x: 20, z: 15 }, { x: -18, z: -22 }, { x: 25, z: -18 }, { x: -22, z: 20 }
+];
+enemyPositions.forEach((p, i) => {
+  const m = createPlayerMarker('enemy', p, `E${i+1}`);
+  scene.add(m.group);
+  enemies.push({
+    mesh: m.group,
+    pulseRing: m.pulseRing,
+    pos: { ...p },
+    vel: { x: (Math.random()-0.5)*0.04, z: (Math.random()-0.5)*0.04 },
+    pulsePhase: Math.random() * Math.PI * 2
+  });
+});
+
+const objectives = [];
+const objectivePositions = [{ x: -15, z: 8 }, { x: 12, z: -12 }];
+objectivePositions.forEach((p, i) => {
+  const m = createPlayerMarker('objective', p, `Obj ${String.fromCharCode(65+i)}`);
+  scene.add(m.group);
+  objectives.push({ mesh: m.group, pulseRing: m.pulseRing, pulsePhase: i * Math.PI });
+});
+
+const extractionPos = { x: 0, z: -30 };
+const extractionMarker = createPlayerMarker('extraction', extractionPos, 'EXTRACTION');
+scene.add(extractionMarker.group);
+
+// --- Connection lines ---
+const lineMat = new THREE.LineBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.1 });
+allies.forEach(ally => {
+  const nearObj = objectives.reduce((best, obj) => {
+    const dx = ally.mesh.position.x - obj.mesh.position.x;
+    const dz = ally.mesh.position.z - obj.mesh.position.z;
+    const dist = Math.sqrt(dx*dx + dz*dz);
+    return dist < best.dist ? { obj, dist } : best;
+  }, { obj: null, dist: Infinity });
+  if (nearObj.obj) {
+    const pts = [ally.mesh.position.clone(), nearObj.obj.mesh.position.clone()];
+    pts[0].y = 0.2;
+    pts[1].y = 0.2;
+    const g = new THREE.BufferGeometry().setFromPoints(pts);
+    const line = new THREE.Line(g, lineMat);
+    scene.add(line);
+  }
+});
+
+// --- Camera presets ---
+let currentMode = 'iso';
+function setCamera(mode) {
+  currentMode = mode;
+  document.querySelectorAll('#tab-bar button').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + mode).classList.add('active');
+  switch(mode) {
+    case 'iso':
+      camera.position.set(50, 50, 50);
+      controls.target.set(0, 0, 0);
+      controls.enableRotate = true;
+      break;
+    case 'top':
+      camera.position.set(0, 80, 0.1);
+      controls.target.set(0, 0, 0);
+      controls.enableRotate = false;
+      break;
+    case 'free':
+      camera.position.set(40, 30, 40);
+      controls.target.set(0, 0, 0);
+      controls.enableRotate = true;
+      break;
+  }
+  controls.update();
+}
+
+// --- Tab bar controls ---
+document.getElementById('btn-iso').addEventListener('click', () => setCamera('iso'));
+document.getElementById('btn-top').addEventListener('click', () => setCamera('top'));
+document.getElementById('btn-free').addEventListener('click', () => setCamera('free'));
+
+// --- Minimap Setup ---
+const minimapCanvas = document.getElementById('minimap');
+const minimapCtx = minimapCanvas.getContext('2d');
+function resizeMinimap() {
+  const rect = minimapCanvas.parentElement.getBoundingClientRect();
+  minimapCanvas.width = rect.width;
+  minimapCanvas.height = rect.height;
+}
+resizeMinimap();
+
+function drawMinimap() {
+  const w = minimapCanvas.width;
+  const h = minimapCanvas.height;
+  const ctx = minimapCtx;
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = '#224433';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 10; i++) {
+    const x = (i / 10) * w;
+    const y = (i / 10) * h;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+
+  // Border
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(1, 1, w-2, h-2);
+
+  const scaleX = w / (mapSize * 2);
+  const scaleY = h / (mapSize * 2);
+
+  // Buildings
+  ctx.fillStyle = '#334455';
+  buildingPositions.forEach((pos, i) => {
+    const bw = 2 + Math.random() * 3; // approximate
+    const bd = 2 + Math.random() * 3;
+    const bx = (pos.x + mapSize) * scaleX;
+    const by = (pos.z + mapSize) * scaleY;
+    ctx.fillRect(bx - 2, by - 2, 4, 4);
+  });
+
+  // Allies
+  allies.forEach(a => {
+    const ax = (a.mesh.position.x + mapSize) * scaleX;
+    const ay = (a.mesh.position.z + mapSize) * scaleY;
+    ctx.fillStyle = '#00ff88';
+    ctx.beginPath();
+    ctx.arc(ax, ay, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Enemies
+  enemies.forEach(e => {
+    const ex = (e.mesh.position.x + mapSize) * scaleX;
+    const ey = (e.mesh.position.z + mapSize) * scaleY;
+    ctx.fillStyle = '#ff3344';
+    ctx.beginPath();
+    ctx.arc(ex, ey, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Objectives
+  objectives.forEach(o => {
+    const ox = (o.mesh.position.x + mapSize) * scaleX;
+    const oy = (o.mesh.position.z + mapSize) * scaleY;
+    ctx.fillStyle = '#4488ff';
+    ctx.beginPath();
+    ctx.arc(ox, oy, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Extraction
+  const exx = (extractionPos.x + mapSize) * scaleX;
+  const exy = (extractionPos.z + mapSize) * scaleY;
+  ctx.fillStyle = '#ffaa00';
+  ctx.beginPath();
+  ctx.arc(exx, exy, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Camera view frustum indicator
+  const camX = (camera.position.x + mapSize) * scaleX;
+  const camY = (camera.position.z + mapSize) * scaleY;
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(camX, camY, 5, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+// --- HUD Updates ---
+const playerCountEl = document.getElementById('player-count');
+const timerEl = document.getElementById('mission-timer');
+const zoomValueEl = document.getElementById('zoom-value');
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+// --- Animation Loop ---
+let lastTime = performance.now();
+let missionTime = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const now = performance.now();
+  const delta = (now - lastTime) / 1000;
+  lastTime = now;
+  missionTime += delta;
+
+  // Update HUD
+  playerCountEl.textContent = allies.length + enemies.length;
+  timerEl.textContent = formatTime(missionTime);
+
+  // Zoom indicator
+  const dist = camera.position.distanceTo(controls.target);
+  const zoom = Math.max(0.5, Math.min(3.0, 100 / dist)).toFixed(1);
+  zoomValueEl.textContent = zoom + 'x';
+
+  // Move allies
+  allies.forEach(ally => {
+    ally.pos.x += ally.vel.x;
+    ally.pos.z += ally.vel.z;
+    if (Math.abs(ally.pos.x) > 35 || Math.random() < 0.01) ally.vel.x = (Math.random() - 0.5) * 0.05;
+    if (Math.abs(ally.pos.z) > 35 || Math.random() < 0.01) ally.vel.z = (Math.random() - 0.5) * 0.05;
+    ally.mesh.position.x = ally.pos.x;
+    ally.mesh.position.z = ally.pos.z;
+    ally.mesh.rotation.y += 2.0 * delta;
+
+    // Update health ring color
+    if (ally.healthRing) {
+      ally.healthRing.material.color.setHex(getHealthColor(ally.health));
+    }
+
+    // Grid pulse
+    const pulse = (Math.sin(now * 0.003 + ally.pulsePhase) + 1) * 0.5;
+    ally.pulseRing.scale.setScalar(1 + pulse * 8);
+    ally.pulseRing.material.opacity = (1 - pulse) * 0.3;
+  });
+
+  // Move enemies
+  enemies.forEach(enemy => {
+    const nearest = allies.reduce((best, a) => {
+      const dx = a.mesh.position.x - enemy.mesh.position.x;
+      const dz = a.mesh.position.z - enemy.mesh.position.z;
+      const d = Math.sqrt(dx*dx + dz*dz);
+      return d < best.d ? { a, d } : best;
+    }, { a: null, d: Infinity });
+
+    if (nearest.a && nearest.d > 5) {
+      const dx = nearest.a.mesh.position.x - enemy.mesh.position.x;
+      const dz = nearest.a.mesh.position.z - enemy.mesh.position.z;
+      const dist = Math.sqrt(dx*dx + dz*dz);
+      if (dist > 0) {
+        enemy.mesh.position.x += (dx/dist) * 0.03;
+        enemy.mesh.position.z += (dz/dist) * 0.03;
+      }
+    }
+    enemy.mesh.rotation.y += 3.0 * delta;
+
+    // Grid pulse
+    const pulse = (Math.sin(now * 0.004 + enemy.pulsePhase) + 1) * 0.5;
+    enemy.pulseRing.scale.setScalar(1 + pulse * 8);
+    enemy.pulseRing.material.opacity = (1 - pulse) * 0.25;
+  });
+
+  // Pulse objectives
+  objectives.forEach((obj, i) => {
+    const pulse = 0.6 + Math.sin(now * 0.002 + i) * 0.4;
+    obj.mesh.scale.setScalar(0.8 + pulse * 0.2);
+
+    const gp = (Math.sin(now * 0.003 + obj.pulsePhase) + 1) * 0.5;
+    obj.pulseRing.scale.setScalar(1 + gp * 10);
+    obj.pulseRing.material.opacity = (1 - gp) * 0.3;
+  });
+
+  // Pulse extraction
+  extractionMarker.group.rotation.y += 1.0 * delta;
+  const exPulse = (Math.sin(now * 0.002) + 1) * 0.5;
+  extractionMarker.pulseRing.scale.setScalar(1 + exPulse * 12);
+  extractionMarker.pulseRing.material.opacity = (1 - exPulse) * 0.35;
+
+  // Animate dust
+  const dustPos = dustParticles.geometry.attributes.position.array;
+  for (let i = 0; i < dustCount; i++) {
+    dustPos[i*3+1] += Math.sin(now * 0.001 + i) * 0.01;
+    if (dustPos[i*3+1] > 20) dustPos[i*3+1] = 0;
+    if (dustPos[i*3+1] < 0) dustPos[i*3+1] = 20;
+  }
+  dustParticles.geometry.attributes.position.needsUpdate = true;
+
+  controls.update();
+  renderer.render(scene, camera);
+
+  // Draw minimap
+  drawMinimap();
+}
+
+// --- Start ---
+setCamera('iso');
+animate();
+
+// --- Resize ---
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  resizeMinimap();
+});
+</script>
+</body>
+</html>

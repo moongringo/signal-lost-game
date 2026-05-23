@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>R&D Design System — High-Fidelity Effects Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================
+       R&D DESIGN SYSTEM — CORE TOKENS
+       ============================================ */
+    :root {
+      /* Colors */
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-elevated: #1a1a28;
+      --bg-glass: rgba(255, 255, 255, 0.05);
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0b0;
+      --text-muted: #606070;
+      --accent: #00f0ff;
+      --accent-glow: rgba(0, 240, 255, 0.3);
+      --accent-secondary: #ff0055;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(0, 240, 255, 0.2);
+
+      /* Typography */
+      --font-body: 'Inter', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-display: 'Inter', system-ui, sans-serif;
+
+      /* Spacing */
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2rem;
+      --space-2xl: 3rem;
+      --space-3xl: 4rem;
+
+      /* Effects */
+      --blur-glass: blur(20px) saturate(180%);
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+      --shadow-glow: 0 0 40px var(--accent-glow);
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --radius-xl: 999px;
+
+      /* Transitions */
+      --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ============================================
+       SCROLLBAR — Custom
+       ============================================ */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 3px;
+    }
+
+    /* ============================================
+       SECTIONS & LAYOUT
+       ============================================ */
+    .ds-section {
+      padding: var(--space-3xl) var(--space-xl);
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .ds-section-header {
+      margin-bottom: var(--space-2xl);
+    }
+
+    .ds-section-header h2 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-sm);
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .ds-section-header p {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      max-width: 600px;
+    }
+
+    .ds-grid {
+      display: grid;
+      gap: var(--space-lg);
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+
+    .ds-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+      transition: all var(--transition-base);
+    }
+
+    .ds-card:hover {
+      border-color: var(--border-glow);
+      box-shadow: var(--shadow-glow);
+      transform: translateY(-4px);
+    }
+
+    .ds-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: var(--space-md);
+    }
+
+    /* ============================================
+       TYPOGRAPHY SHOWCASE
+       ============================================ */
+    .typo-showcase {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xl);
+    }
+
+    .typo-item {
+      padding: var(--space-lg);
+      border-left: 3px solid var(--accent);
+      background: var(--bg-elevated);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    }
+
+    .typo-item h3 {
+      font-size: 2.5rem;
+      font-weight: 900;
+      margin-bottom: var(--space-sm);
+      letter-spacing: -0.03em;
+    }
+
+    .typo-item.massive h3 {
+      font-size: clamp(3rem, 8vw, 6rem);
+      line-height: 1.1;
+    }
+
+    .typo-item p {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-family: var(--font-mono);
+    }
+
+    /* ============================================
+       KINETIC TYPOGRAPHY
+       ============================================ */
+    .kinetic-text {
+      font-size: clamp(2rem, 5vw, 4rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      overflow: hidden;
+    }
+
+    .kinetic-text .char {
+      display: inline-block;
+      animation: kineticWave 2s ease-in-out infinite;
+      animation-delay: calc(var(--char-index) * 0.05s);
+    }
+
+    @keyframes kineticWave {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    /* ============================================
+       BUTTONS — THE FULL ARSENAL
+       ============================================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      padding: 14px 32px;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all var(--transition-base);
+      text-decoration: none;
+      color: var(--text-primary);
+      user-select: none;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    /* 1. Primary Gradient Button */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #0088ff);
+      box-shadow: 0 4px 20px rgba(0, 240, 255, 0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0, 240, 255, 0.4);
+    }
+
+    /* 2. Glass Button */
+    .btn-glass {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .btn-glass:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    /* 3. Outline Button */
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--accent);
+      color: var(--accent);
+    }
+    .btn-outline:hover {
+      background: var(--accent);
+      color: var(--bg-primary);
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+
+    /* 4. Liquid Fill Button */
+    .btn-liquid {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      z-index: 1;
+    }
+    .btn-liquid::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 0;
+      background: linear-gradient(to top, var(--accent), transparent);
+      transition: height 0.4s ease;
+      z-index: -1;
+    }
+    .btn-liquid:hover::before {
+      height: 100%;
+    }
+    .btn-liquid:hover {
+      border-color: var(--accent);
+    }
+
+    /* 5. Magnetic Button */
+    .btn-magnetic {
+      background: var(--accent-secondary);
+      transition: transform 0.3s ease;
+    }
+
+    /* 6. 3D Depth Button */
+    .btn-3d {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      box-shadow: 0 6px 0 var(--bg-primary), 0 6px 20px rgba(0, 0, 0, 0.4);
+      transform: translateY(0);
+    }
+    .btn-3d:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 0 var(--bg-primary), 0 8px 30px rgba(0, 0, 0, 0.5);
+    }
+    .btn-3d:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 var(--bg-primary), 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    /* 7. Gradient Motion Button */
+    .btn-gradient-motion {
+      background: linear-gradient(90deg, #00f0ff, #ff0055, #00f0ff);
+      background-size: 200% 100%;
+      animation: gradientShift 3s ease infinite;
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* 8. Neumorphic Button */
+    .btn-neumorphic {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.3), -8px -8px 16px rgba(255, 255, 255, 0.02);
+    }
+    .btn-neumorphic:hover {
+      box-shadow: 12px 12px 24px rgba(0, 0, 0, 0.4), -12px -12px 24px rgba(255, 255, 255, 0.03);
+      transform: translateY(-2px);
+    }
+    .btn-neumorphic:active {
+      box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.3), inset -4px -4px 8px rgba(255, 255, 255, 0.02);
+      transform: translateY(0);
+    }
+
+    /* 9. Text Flip Button */
+    .btn-flip {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      height: 50px;
+      padding: 0 32px;
+      perspective: 500px;
+    }
+    .btn-flip .front,
+    .btn-flip .back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.4s ease;
+      backface-visibility: hidden;
+    }
+    .btn-flip .back {
+      transform: rotateX(180deg);
+      background: var(--accent);
+      border-radius: var(--radius-md);
+      color: var(--bg-primary);
+    }
+    .btn-flip:hover .front {
+      transform: rotateX(180deg);
+    }
+    .btn-flip:hover .back {
+      transform: rotateX(0deg);
+    }
+
+    /* 10. Blob Morph Button */
+    .btn-blob {
+      background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+      border-radius: 40% 60% 60% 40% / 60% 40% 60% 40%;
+      animation: blobMorph 4s ease-in-out infinite;
+    }
+    @keyframes blobMorph {
+      0%, 100% { border-radius: 40% 60% 60% 40% / 60% 40% 60% 40%; }
+      25% { border-radius: 60% 40% 40% 60% / 40% 60% 40% 60%; }
+      50% { border-radius: 50% 50% 60% 40% / 50% 50% 40% 60%; }
+      75% { border-radius: 40% 60% 50% 50% / 60% 40% 50% 50%; }
+    }
+
+    /* ============================================
+       EFFECTS SHOWCASE
+       ============================================ */
+    .effect-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: all var(--transition-base);
+    }
+
+    .effect-card:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .effect-preview {
+      height: 200px;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg-primary);
+    }
+
+    .effect-info {
+      padding: var(--space-lg);
+    }
+
+    .effect-info h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: var(--space-xs);
+    }
+
+    .effect-info p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    /* Cursor Spotlight Effect */
+    .cursor-spotlight {
+      position: relative;
+      overflow: hidden;
+    }
+    .cursor-spotlight::before {
+      content: '';
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(0, 240, 255, 0.15) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.3s;
+      opacity: 0;
+    }
+    .cursor-spotlight:hover::before {
+      opacity: 1;
+    }
+
+    /* Scan Line Effect */
+    .scan-line {
+      position: relative;
+      overflow: hidden;
+    }
+    .scan-line::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: var(--accent);
+      box-shadow: 0 0 20px var(--accent);
+      animation: scanMove 2s linear infinite;
+    }
+    @keyframes scanMove {
+      0% { top: -4px; }
+      100% { top: 100%; }
+    }
+
+    /* Glitch Effect */
+    .glitch {
+      position: relative;
+    }
+    .glitch::before,
+    .glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-primary);
+    }
+    .glitch::before {
+      animation: glitch1 2s infinite linear alternate-reverse;
+      color: var(--accent);
+      clip-path: inset(0 0 50% 0);
+    }
+    .glitch::after {
+      animation: glitch2 2s infinite linear alternate-reverse;
+      color: var(--accent-secondary);
+      clip-path: inset(50% 0 0 0);
+    }
+    @keyframes glitch1 {
+      0%, 100% { transform: translate(0); }
+      20% { transform: translate(-3px, 3px); }
+      40% { transform: translate(3px, -3px); }
+      60% { transform: translate(-3px, -3px); }
+      80% { transform: translate(3px, 3px); }
+    }
+    @keyframes glitch2 {
+      0%, 100% { transform: translate(0); }
+      20% { transform: translate(3px, -3px); }
+      40% { transform: translate(-3px, 3px); }
+      60% { transform: translate(3px, 3px); }
+      80% { transform: translate(-3px, -3px); }
+    }
+
+    /* Floating Animation */
+    .float {
+      animation: float 6s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+
+    /* Pulse Glow */
+    .pulse-glow {
+      animation: pulseGlow 2s ease-in-out infinite;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
+      50% { box-shadow: 0 0 40px var(--accent-glow), 0 0 80px var(--accent-glow); }
+    }
+
+    /* Grid Background */
+    .grid-bg {
+      background-image: 
+        linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* Noise Overlay */
+    .noise-overlay {
+      position: relative;
+    }
+    .noise-overlay::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.03;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    /* ============================================
+       HERO SECTION
+       ============================================ */
+    .ds-hero {
+      min-height: 60vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: var(--space-3xl) var(--space-xl);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ds-hero-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(ellipse at 20% 50%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 50%, rgba(255, 0, 85, 0.05) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .ds-hero h1 {
+      font-size: clamp(3rem, 8vw, 7rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin-bottom: var(--space-lg);
+      position: relative;
+      z-index: 1;
+    }
+
+    .ds-hero p {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin-bottom: var(--space-xl);
+      position: relative;
+      z-index: 1;
+    }
+
+    .ds-hero .btn-group {
+      display: flex;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ============================================
+       NAVIGATION
+       ============================================ */
+    .ds-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10, 10, 15, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: var(--space-md) var(--space-xl);
+    }
+
+    .ds-nav-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .ds-nav-logo {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .ds-nav-links {
+      display: flex;
+      gap: var(--space-xl);
+      list-style: none;
+    }
+
+    .ds-nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color var(--transition-fast);
+      position: relative;
+    }
+
+    .ds-nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--accent);
+      transition: width var(--transition-base);
+    }
+
+    .ds-nav-links a:hover {
+      color: var(--text-primary);
+    }
+
+    .ds-nav-links a:hover::after {
+      width: 100%;
+    }
+
+    /* ============================================
+       FOOTER
+       ============================================ */
+    .ds-footer {
+      border-top: 1px solid var(--border);
+      padding: var(--space-2xl) var(--space-xl);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .ds-footer a {
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+      .ds-grid {
+        grid-template-columns: 1fr;
+      }
+      .ds-nav-links {
+        display: none;
+      }
+      .btn {
+        padding: 12px 24px;
+        font-size: 0.85rem;
+      }
+    }
+  </style>
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="../design-flow.css" />
+  <link rel="stylesheet" href="design-system-subdir.css" />
+</head><body data-flow-page="design-system" data-background="psychedelic-waves">
+  <div class="cursor-spotlight"></div>
+  <canvas id="patternCanvas" aria-hidden="true"></canvas>
+  <div class="flow-noise" aria-hidden="true"></div>
+  <main class="flow-shell">
+    <header class="flow-header">
+      <div>
+        <p class="eyebrow">Signal Lost / Flow Prototype</p>
+        <h1>R&D Design System — High-Fidelity Effects Library</h1>
+      </div>
+      <nav class="flow-nav" aria-label="Flow design pages">
+        <a href="../design-flow-setup.html">Setup</a>
+        <a href="../design-flow-roles.html">Roles</a>
+        <a href="../design-flow-control.html">Control</a>
+
+        <a href="../design-lab.html">Option 3</a>
+        <div class="page-menu-wrap">
+          <button class="btn btn-glass page-menu-btn" type="button" id="pageMenuBtn">📑 All Pages ▾</button>
+          <div class="page-menu" id="pageMenu">
+            <div class="page-menu-group">
+              <div class="page-menu-title">Auth & Flow</div>
+              <a href="../login.html">Login</a>
+              <a href="../server-browser.html">Server Browser</a>
+              <a href="../map-selection.html">Map Selection</a>
+              <a href="../role-selection.html">Role Selection</a>
+              <a href="../matchmaking.html">Matchmaking</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Game Screens</div>
+              <a href="../player-profile.html">Player Profile</a>
+              <a href="../career-stats.html">Career Stats</a>
+              <a href="../match-result.html">Match Result</a>
+              <a href="../post-match-report.html">Post-Match Report</a>
+              <a href="../kill-cam.html">Kill Cam</a>
+              <a href="../death-recap.html">Death Recap</a>
+              <a href="../spectator-mode.html">Spectator Mode</a>
+              <a href="../replay-viewer.html">Replay Viewer</a>
+              <a href="../tournament-bracket.html">Tournament</a>
+              <a href="../emote-wheel.html">Emote Wheel</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Live & Social</div>
+              <a href="../store.html">Store</a>
+              <a href="../friends.html">Friends</a>
+              <a href="../squad.html">Squad</a>
+              <a href="../clan-wars.html">Clan Wars</a>
+              <a href="../patch-notes.html">Patch Notes</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Management</div>
+              <a href="../token-dashboard.html">Token Dashboard</a>
+              <a href="../daily-challenges.html">Daily Challenges</a>
+              <a href="../inventory.html">Inventory</a>
+              <a href="../loadout-builder.html">Loadout Builder</a>
+              <a href="../battle-pass.html">Battle Pass</a>
+              <a href="../loot-crate.html">Loot Crate</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Tools & Systems</div>
+              <a href="../R&D-INDEX.html">R&D Index</a>
+              <a href="../ai-battle-arena.html">AI Battle Arena</a>
+              <a href="../admin-dashboard.html">Admin Dashboard</a>
+              <a href="../leaderboard.html">Leaderboard</a>
+              <a href="../settings.html">Settings</a>
+              <a href="../design-system.html">Design System</a>
+              <a href="../design-flow-setup.html">Setup Page</a>
+              <a href="../design-flow-roles.html">Roles Page</a>
+              <a href="../design-flow-control.html">Control Page</a>
+              <a href="../action-center.html">Action Center</a>
+            </div>
+            <div class="page-menu-group">
+              <div class="page-menu-title">Mobile</div>
+              <a href="../mobile-ui-kit.html">Mobile UI Kit</a>
+              <a href="../mobile-radar.html">Mobile Radar</a>
+              <a href="../gps-tracker.html">GPS Tracker</a>
+            </div>
+          </div>
+        </div>
+
+        <a href="../design-test.html" class="btn btn-gold">🎨 Test Design</a>
+      </nav>
+    </header>
+
+    <!-- Original page content -->
+    <div class="flow-content" style="padding-top: 20px;">
+
+  <!-- Navigation -->
+  <nav class="ds-nav">
+    <div class="ds-nav-inner">
+      <a href="#" class="ds-nav-logo">R&D::DS</a>
+      <ul class="ds-nav-links">
+        <li><a href="#typography">Typography</a></li>
+        <li><a href="#buttons">Buttons</a></li>
+        <li><a href="#effects">Effects</a></li>
+        <li><a href="#components">Components</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="ds-hero">
+    <div class="ds-hero-bg"></div>
+    <h1 class="glitch" data-text="Design System">Design System</h1>
+    <p>High-fidelity effects library built by the R&D Team. Production-ready components for award-level websites.</p>
+    <div class="btn-group">
+      <a href="#buttons" class="btn btn-primary">Explore Buttons</a>
+      <a href="#effects" class="btn btn-outline">View Effects</a>
+    </div>
+  </header>
+
+  <!-- Typography Section -->
+  <section id="typography" class="ds-section">
+    <div class="ds-section-header">
+      <h2>Typography</h2>
+      <p>Curated font stack optimized for high-fidelity interfaces. Inter for body, JetBrains Mono for accents.</p>
+    </div>
+    <div class="typo-showcase">
+      <div class="typo-item massive">
+        <h3>Signal Lost</h3>
+        <p>Display / Inter Black / 6rem</p>
+      </div>
+      <div class="typo-item">
+        <h3>Build the future</h3>
+        <p>Heading / Inter Bold / 2.5rem</p>
+      </div>
+      <div class="typo-item">
+        <h3 style="font-size:1.5rem; font-weight:600;">High-fidelity components for production</h3>
+        <p>Body / Inter SemiBold / 1.5rem</p>
+      </div>
+      <div class="typo-item">
+        <p style="font-family: var(--font-mono); font-size:1rem; color: var(--accent);">npm install @signal-lost/design-system</p>
+        <p>Mono / JetBrains Mono / 1rem</p>
+      </div>
+      <div class="typo-item">
+        <div class="kinetic-text" id="kineticText">AWARD WINNING</div>
+        <p>Kinetic Typography — Wave Animation</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Buttons Section -->
+  <section id="buttons" class="ds-section">
+    <div class="ds-section-header">
+      <h2>Buttons</h2>
+      <p>10 distinct button styles with micro-interactions. Hover, active, and focus states included.</p>
+    </div>
+    <div class="ds-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+      <div class="ds-card" style="display:flex; flex-direction:column; align-items:center; gap:var(--space-md);">
+        <span class="ds-label">Primary</span>
+        <button class="btn btn-primary">Get Started</button>
+      </div>
+      <div class="ds-card" style="display:flex; flex-direction:column; align-items:center; gap:var(--space-md);">
+        <span class="ds-label">Glass</span>
+        <button class="btn btn-glass">View Details</button>
+      </div>
+      <div class="ds-card" style="display:flex; flex-direction:column; align-items:center; gap:var(--space-md);">
+        <span class="ds-label">Outline</span>
+        <button class="btn btn-outline">Learn More</button>
+      </div>
+      <div class="ds-card" style="display:flex; flex-direction:column; align-items:center; gap:var(--space-md);">
+        <span class="ds-label">Liquid Fill</span>
+        <button class="btn btn-liquid">Download</button>
+      </div>
+      <div class="ds-card" style="display:flex; flex-direction:column; align-items:center; gap:var(--space-md);">
+        <span class="ds-label">Magnetic</span>
+        <button class="btn btn-magnetic" id="magneticBtn">Hover Me</button>
+      </div>
+      <div class="ds-card" style="display:flex; flex-direction:column; align-items:center; gap:var(--space-md);">
+        <span class="ds-label">3D Depth</span>
+        <button class="btn btn-3d">Press Me</button>
+      </div>
+      <div class="ds-card" style="display:flex; flex-direction:column; align-items:center; gap:var(--space-md);">
+        <span class="ds-label">Gradient Motion</span>
+        <button class="btn btn-gradient-motion">Animated</button>
+      </div>
+      <div class="ds-card" style="display:flex; flex-direction:column; align-items:center; gap:var(--space-md);">
+        <span class="ds-label">Neumorphic</span>
+        <button class="btn btn-neumorphic">Soft UI</button>
+      </div>
+      <div class="ds-card" style="display:flex; flex-direction:column; align-items:center; gap:var(--space-md);">
+        <span class="ds-label">Text Flip</span>
+        <button class="btn btn-flip">
+          <span class="front">Hover Me</span>
+          <span class="back">Clicked!</span>
+        </button>
+      </div>
+      <div class="ds-card" style="display:flex; flex-direction:column; align-items:center; gap:var(--space-md);">
+        <span class="ds-label">Blob Morph</span>
+        <button class="btn btn-blob">Organic</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Effects Section -->
+  <section id="effects" class="ds-section">
+    <div class="ds-section-header">
+      <h2>Effects</h2>
+      <p>Production-ready visual effects from the top 200 award-winning sites.</p>
+    </div>
+    <div class="ds-grid">
+      <div class="effect-card cursor-spotlight" id="spotlightCard">
+        <div class="effect-preview" style="display:flex; align-items:center; justify-content:center;">
+          <span style="font-family:var(--font-mono); color:var(--text-muted);">Move Cursor</span>
+        </div>
+        <div class="effect-info">
+          <h4>Cursor Spotlight</h4>
+          <p>Radial gradient follows mouse movement. Used by 40%+ of award sites.</p>
+        </div>
+      </div>
+      <div class="effect-card">
+        <div class="effect-preview scan-line" style="display:flex; align-items:center; justify-content:center;">
+          <span style="font-family:var(--font-mono); color:var(--accent); font-size:1.5rem; font-weight:700;">SCAN</span>
+        </div>
+        <div class="effect-info">
+          <h4>Scan Line</h4>
+          <p>Cyberpunk-style vertical scan animation. Perfect for tech interfaces.</p>
+        </div>
+      </div>
+      <div class="effect-card">
+        <div class="effect-preview" style="display:flex; align-items:center; justify-content:center;">
+          <span class="glitch" data-text="GLITCH" style="font-size:2rem; font-weight:900;">GLITCH</span>
+        </div>
+        <div class="effect-info">
+          <h4>Glitch Effect</h4>
+          <p>RGB split with clip-path distortion. Edgy, high-impact moments.</p>
+        </div>
+      </div>
+      <div class="effect-card">
+        <div class="effect-preview" style="display:flex; align-items:center; justify-content:center;">
+          <div class="pulse-glow" style="width:80px; height:80px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center;">
+            <span style="font-size:1.5rem;">⚡</span>
+          </div>
+        </div>
+        <div class="effect-info">
+          <h4>Pulse Glow</h4>
+          <p>Rhythmic box-shadow animation for status indicators and CTAs.</p>
+        </div>
+      </div>
+      <div class="effect-card">
+        <div class="effect-preview" style="display:flex; align-items:center; justify-content:center;">
+          <div class="float" style="width:60px; height:60px; border-radius:var(--radius-md); background:linear-gradient(135deg, var(--accent), var(--accent-secondary));"></div>
+        </div>
+        <div class="effect-info">
+          <h4>Floating Animation</h4>
+          <p>Smooth sine-wave hover motion. Adds life to static elements.</p>
+        </div>
+      </div>
+      <div class="effect-card">
+        <div class="effect-preview" style="background:var(--bg-elevated); display:flex; align-items:center; justify-content:center;">
+          <div style="padding:var(--space-md); background:var(--bg-glass); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.1); border-radius:var(--radius-md);">
+            <span style="color:var(--text-primary);">Glass Panel</span>
+          </div>
+        </div>
+        <div class="effect-info">
+          <h4>Glassmorphism</h4>
+          <p>Frosted glass with backdrop-filter. Premium UI standard.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Components Section -->
+  <section id="components" class="ds-section">
+    <div class="ds-section-header">
+      <h2>Components</h2>
+      <p>Composite UI elements combining effects, typography, and interactions.</p>
+    </div>
+    <div class="ds-grid">
+      <div class="ds-card" style="padding:0; overflow:hidden;">
+        <div style="padding:var(--space-xl); background:linear-gradient(135deg, rgba(0,240,255,0.1), rgba(255,0,85,0.05));">
+          <span class="ds-label">Card Component</span>
+          <h3 style="font-size:1.5rem; font-weight:700; margin-bottom:var(--space-sm);">Mission Status</h3>
+          <p style="color:var(--text-secondary); font-size:0.9rem;">All systems operational. Satellite link established.</p>
+        </div>
+        <div style="padding:var(--space-lg); display:flex; gap:var(--space-sm);">
+          <button class="btn btn-primary" style="flex:1;">Confirm</button>
+          <button class="btn btn-outline" style="flex:1;">Details</button>
+        </div>
+      </div>
+      <div class="ds-card" style="padding:0; overflow:hidden;">
+        <div style="padding:var(--space-xl);">
+          <span class="ds-label">Form Component</span>
+          <label style="display:block; margin-bottom:var(--space-md);">
+            <span style="display:block; font-size:0.85rem; color:var(--text-secondary); margin-bottom:var(--space-xs);">Operator ID</span>
+            <input type="text" value="MAVERICK-01" style="width:100%; padding:var(--space-sm) var(--space-md); background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono);">
+          </label>
+          <label style="display:block;">
+            <span style="display:block; font-size:0.85rem; color:var(--text-secondary); margin-bottom:var(--space-xs);">Frequency</span>
+            <input type="text" value="7A3F-9C2B" style="width:100%; padding:var(--space-sm) var(--space-md); background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--accent); font-family:var(--font-mono);">
+          </label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="ds-footer">
+    <p>R&D Design System — Built for Signal Lost. High-fidelity components for award-level websites.</p>
+    <p style="margin-top:var(--space-sm);">Fonts: Inter + JetBrains Mono | Effects: CSS + WebGL Ready</p>
+  </footer>
+
+  <script>
+    // ============================================
+    // KINETIC TYPOGRAPHY — Split into chars
+    // ============================================
+    const kineticText = document.getElementById('kineticText');
+    if (kineticText) {
+      const text = kineticText.textContent;
+      kineticText.innerHTML = '';
+      text.split('').forEach((char, i) => {
+        const span = document.createElement('span');
+        span.className = 'char';
+        span.textContent = char === ' ' ? '\u00A0' : char;
+        span.style.setProperty('--char-index', i);
+        kineticText.appendChild(span);
+      });
+    }
+
+    // ============================================
+    // CURSOR SPOTLIGHT EFFECT
+    // ============================================
+    const spotlightCard = document.getElementById('spotlightCard');
+    if (spotlightCard) {
+      spotlightCard.addEventListener('mousemove', (e) => {
+        const rect = spotlightCard.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        spotlightCard.style.setProperty('--spotlight-x', x + 'px');
+        spotlightCard.style.setProperty('--spotlight-y', y + 'px');
+        spotlightCard.querySelector('::before')?.style?.setProperty('left', x + 'px');
+        spotlightCard.querySelector('::before')?.style?.setProperty('top', y + 'px');
+      });
+    }
+
+    // ============================================
+    // MAGNETIC BUTTON
+    // ============================================
+    const magneticBtn = document.getElementById('magneticBtn');
+    if (magneticBtn) {
+      magneticBtn.addEventListener('mousemove', (e) => {
+        const rect = magneticBtn.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        magneticBtn.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+      });
+      magneticBtn.addEventListener('mouseleave', () => {
+        magneticBtn.style.transform = 'translate(0, 0)';
+      });
+    }
+
+    // ============================================
+    // SMOOTH SCROLL FOR NAV LINKS
+    // ============================================
+    document.querySelectorAll('.ds-nav-links a').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.querySelector(link.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+
+    // ============================================
+    // CURSOR SPOTLIGHT FIX (using JS for dynamic positioning)
+    // ============================================
+    document.querySelectorAll('.cursor-spotlight').forEach(card => {
+      const preview = card.querySelector('.effect-preview');
+      if (!preview) return;
+      
+      const spotlight = document.createElement('div');
+      spotlight.style.cssText = `
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(0, 240, 255, 0.15) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+        transition: opacity 0.3s;
+        opacity: 0;
+        top: 0;
+        left: 0;
+      `;
+      preview.style.position = 'relative';
+      preview.appendChild(spotlight);
+      
+      preview.addEventListener('mousemove', (e) => {
+        const rect = preview.getBoundingClientRect();
+        spotlight.style.left = (e.clientX - rect.left) + 'px';
+        spotlight.style.top = (e.clientY - rect.top) + 'px';
+        spotlight.style.opacity = '1';
+      });
+      
+      preview.addEventListener('mouseleave', () => {
+        spotlight.style.opacity = '0';
+      });
+    });
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+
+    </div>
+  </main>
+  <script src="../design-system.js"></script>
+  <script src="../design-flow.js?v=3"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+  <script>
+    // Page menu toggle
+    const pageMenuBtn = document.getElementById('pageMenuBtn');
+    const pageMenu = document.getElementById('pageMenu');
+    if (pageMenuBtn && pageMenu) {
+      pageMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pageMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pageMenu.contains(e.target) && !pageMenuBtn.contains(e.target)) {
+          pageMenu.classList.remove('open');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

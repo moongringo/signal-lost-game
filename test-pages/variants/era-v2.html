@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERA V2 — COLD WAR 80s</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+        :root {
+            --crt-green: #33ff33;
+            --crt-green-dim: #1a801a;
+            --crt-green-dark: #0d400d;
+            --army-green: #4b5320;
+            --army-green-dark: #2a2f12;
+            --beige: #c4b896;
+            --beige-dark: #8a7d5a;
+            --beige-light: #e0d4b0;
+            --console-dark: #1a1a10;
+            --console-metal: #3a3a2a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a05;
+            color: var(--crt-green);
+            font-family: 'VT323', monospace;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* CRT Scanline Overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15) 0px,
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* CRT Flicker */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(51, 255, 51, 0.02);
+            opacity: 0;
+            animation: flicker 0.15s infinite;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* Top HUD Bar */
+        .hud-bar {
+            background: var(--army-green-dark);
+            border-bottom: 3px solid var(--beige-dark);
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 18px;
+            letter-spacing: 2px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+
+        .hud-title {
+            color: var(--beige-light);
+            text-shadow: 0 0 4px var(--crt-green-dim);
+        }
+
+        .hud-status {
+            display: flex;
+            gap: 20px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-light {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--crt-green-dim);
+            border: 1px solid var(--crt-green);
+            animation: pulse 2s infinite;
+        }
+
+        .status-light.active {
+            background: var(--crt-green);
+            box-shadow: 0 0 8px var(--crt-green);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Main Console Layout */
+        .console {
+            flex: 1;
+            display: flex;
+            background: var(--console-dark);
+            padding: 10px;
+            gap: 10px;
+        }
+
+        /* Radar Display (CRT Screen) */
+        .radar-panel {
+            flex: 2;
+            background: var(--console-metal);
+            border: 4px solid var(--army-green);
+            border-radius: 4px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .radar-bezel {
+            background: var(--army-green-dark);
+            border: 2px solid var(--beige-dark);
+            border-radius: 8px;
+            padding: 10px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 15px rgba(51, 255, 51, 0.1);
+        }
+
+        .radar-label {
+            text-align: center;
+            color: var(--beige);
+            font-size: 14px;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .radar-screen {
+            flex: 1;
+            background: #051005;
+            border: 2px solid var(--crt-green-dim);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 30px rgba(51, 255, 51, 0.1), 0 0 20px rgba(51, 255, 51, 0.05);
+        }
+
+        .radar-grid {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 90%;
+            height: 90%;
+            transform: translate(-50%, -50%);
+            border: 1px solid var(--crt-green-dark);
+            border-radius: 50%;
+        }
+
+        .radar-grid::before,
+        .radar-grid::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 1px solid var(--crt-green-dark);
+            border-radius: 50%;
+        }
+
+        .radar-grid::before {
+            width: 66%;
+            height: 66%;
+        }
+
+        .radar-grid::after {
+            width: 33%;
+            height: 33%;
+        }
+
+        .radar-crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+        }
+
+        .radar-crosshair::before,
+        .radar-crosshair::after {
+            content: '';
+            position: absolute;
+            background: var(--crt-green-dark);
+        }
+
+        .radar-crosshair::before {
+            top: 0;
+            left: 50%;
+            width: 1px;
+            height: 100%;
+            transform: translateX(-50%);
+        }
+
+        .radar-crosshair::after {
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            transform: translateY(-50%);
+        }
+
+        .radar-sweep {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--crt-green), transparent);
+            transform-origin: left center;
+            animation: radarSweep 4s linear infinite;
+            box-shadow: 0 0 10px var(--crt-green);
+        }
+
+        @keyframes radarSweep {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .radar-blip {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: var(--crt-green);
+            border-radius: 0;
+            animation: blip 2s infinite;
+            box-shadow: 0 0 6px var(--crt-green);
+        }
+
+        @keyframes blip {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(1.5); }
+        }
+
+        .radar-data {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+            font-size: 14px;
+            color: var(--crt-green-dim);
+        }
+
+        .radar-data span {
+            color: var(--crt-green);
+        }
+
+        /* Side Panels */
+        .side-panels {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Loading / Floppy Panel */
+        .loading-panel {
+            background: var(--console-metal);
+            border: 3px solid var(--army-green);
+            border-radius: 4px;
+            padding: 15px;
+        }
+
+        .panel-title {
+            color: var(--beige);
+            font-size: 14px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--beige-dark);
+            padding-bottom: 6px;
+        }
+
+        .floppy-drive {
+            background: var(--beige-dark);
+            border: 2px solid var(--beige);
+            border-radius: 4px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .floppy-slot {
+            width: 120px;
+            height: 8px;
+            background: #1a1a10;
+            border: 1px solid var(--army-green);
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .floppy-disk {
+            width: 100px;
+            height: 100px;
+            background: var(--beige);
+            border: 2px solid var(--beige-dark);
+            border-radius: 4px;
+            position: relative;
+            animation: floppyInsert 3s ease-in-out infinite;
+        }
+
+        .floppy-disk::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 60px;
+            background: #3a3a2a;
+            border-radius: 2px;
+        }
+
+        .floppy-disk::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 4px;
+            background: var(--beige-dark);
+        }
+
+        .floppy-shutter {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 20px;
+            background: var(--army-green);
+            border: 1px solid var(--army-green-dark);
+        }
+
+        @keyframes floppyInsert {
+            0%, 100% {
+                transform: translateY(-20px);
+                opacity: 0.7;
+            }
+            30% {
+                transform: translateY(10px);
+                opacity: 1;
+            }
+            60% {
+                transform: translateY(10px);
+                opacity: 1;
+            }
+            80% {
+                transform: translateY(-20px);
+                opacity: 0.7;
+            }
+        }
+
+        .floppy-led {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--crt-green-dim);
+            border: 1px solid var(--crt-green);
+            margin-top: 5px;
+            animation: ledBlink 0.5s infinite;
+        }
+
+        @keyframes ledBlink {
+            0%, 100% { background: var(--crt-green-dim); box-shadow: none; }
+            50% { background: var(--crt-green); box-shadow: 0 0 8px var(--crt-green); }
+        }
+
+        .floppy-status {
+            font-size: 12px;
+            color: var(--crt-green);
+            margin-top: 5px;
+            letter-spacing: 1px;
+        }
+
+        /* Chat / Handset Panel */
+        .chat-panel {
+            flex: 1;
+            background: var(--console-metal);
+            border: 3px solid var(--army-green);
+            border-radius: 4px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .handset-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .handset {
+            width: 50px;
+            height: 90px;
+            background: var(--army-green);
+            border: 2px solid var(--army-green-dark);
+            border-radius: 8px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .handset::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 15px;
+            background: var(--beige-dark);
+            border: 1px solid var(--beige);
+            border-radius: 4px 4px 0 0;
+        }
+
+        .handset::after {
+            content: '';
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 20px;
+            background: var(--beige-dark);
+            border-radius: 2px;
+        }
+
+        .coiled-cord {
+            width: 40px;
+            height: 60px;
+            position: relative;
+        }
+
+        .coiled-cord::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 20px;
+            height: 100%;
+            transform: translateX(-50%);
+            background: repeating-linear-gradient(
+                0deg,
+                var(--beige-dark) 0px,
+                var(--beige-dark) 4px,
+                transparent 4px,
+                transparent 8px
+            );
+            border-left: 2px solid var(--beige-dark);
+            border-right: 2px solid var(--beige-dark);
+            border-radius: 10px;
+        }
+
+        .chat-display {
+            flex: 1;
+            background: #051005;
+            border: 2px solid var(--crt-green-dim);
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.4;
+            min-height: 100px;
+        }
+
+        .chat-message {
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: rgba(51, 255, 51, 0.05);
+            border-left: 2px solid var(--crt-green-dim);
+        }
+
+        .chat-message .msg-time {
+            color: var(--crt-green-dim);
+            font-size: 12px;
+        }
+
+        .chat-message .msg-text {
+            color: var(--crt-green);
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: #0a150a;
+            border: 2px solid var(--army-green);
+            color: var(--crt-green);
+            padding: 8px 12px;
+            font-family: 'VT323', monospace;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .chat-input::placeholder {
+            color: var(--crt-green-dark);
+        }
+
+        .chat-send {
+            background: var(--army-green);
+            border: 2px solid var(--beige-dark);
+            color: var(--beige-light);
+            padding: 8px 16px;
+            font-family: 'VT323', monospace;
+            font-size: 14px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .chat-send:hover {
+            background: var(--army-green-dark);
+        }
+
+        .chat-send:active {
+            background: var(--crt-green-dark);
+            color: var(--crt-green);
+        }
+
+        /* Bottom Console Panel */
+        .bottom-panel {
+            background: var(--army-green-dark);
+            border-top: 3px solid var(--beige-dark);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--beige-dark);
+        }
+
+        .console-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .console-btn {
+            width: 30px;
+            height: 30px;
+            background: var(--console-metal);
+            border: 2px solid var(--beige-dark);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--beige);
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .console-btn:hover {
+            background: var(--army-green);
+        }
+
+        .console-btn.active {
+            background: var(--crt-green-dark);
+            color: var(--crt-green);
+            border-color: var(--crt-green);
+            box-shadow: 0 0 8px var(--crt-green-dim);
+        }
+
+        /* Pixelated rendering for retro feel */
+        .pixelated {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--console-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--army-green);
+            border: 1px solid var(--beige-dark);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--crt-green-dim);
+        }
+    </style>
+</head>
+<body>
+    <!-- HUD Bar -->
+    <div class="hud-bar">
+        <div class="hud-title">ERA V2 — COLD WAR 80s</div>
+        <div class="hud-status">
+            <div class="status-indicator">
+                <div class="status-light active"></div>
+                <span>RADAR</span>
+            </div>
+            <div class="status-indicator">
+                <div class="status-light active"></div>
+                <span>COMMS</span>
+            </div>
+            <div class="status-indicator">
+                <div class="status-light"></div>
+                <span>ALERT</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Console -->
+    <div class="console">
+        <!-- Radar Panel -->
+        <div class="radar-panel">
+            <div class="radar-bezel">
+                <div class="radar-label">AN/FPS-117 SURVEILLANCE</div>
+                <div class="radar-screen">
+                    <div class="radar-grid"></div>
+                    <div class="radar-crosshair"></div>
+                    <div class="radar-sweep"></div>
+                    <!-- Radar blips -->
+                    <div class="radar-blip" style="top: 30%; left: 60%;"></div>
+                    <div class="radar-blip" style="top: 55%; left: 35%; animation-delay: 0.5s;"></div>
+                    <div class="radar-blip" style="top: 70%; left: 70%; animation-delay: 1s;"></div>
+                    <div class="radar-blip" style="top: 25%; left: 25%; animation-delay: 1.5s;"></div>
+                </div>
+                <div class="radar-data">
+                    <div>RNG: <span>142.3 NM</span></div>
+                    <div>AZ: <span>047°</span></div>
+                    <div>EL: <span>12°</span></div>
+                    <div>TGT: <span>4</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side Panels -->
+        <div class="side-panels">
+            <!-- Floppy Loading Panel -->
+            <div class="loading-panel">
+                <div class="panel-title">DATA I/O — 5.25" FDD</div>
+                <div class="floppy-drive">
+                    <div class="floppy-disk">
+                        <div class="floppy-shutter"></div>
+                    </div>
+                    <div class="floppy-slot"></div>
+                    <div class="floppy-led"></div>
+                    <div class="floppy-status">READING SECTOR 0047...</div>
+                </div>
+            </div>
+
+            <!-- Chat / Handset Panel -->
+            <div class="chat-panel">
+                <div class="panel-title">FIELD COMMS — PRC-77</div>
+                <div class="handset-container">
+                    <div class="handset"></div>
+                    <div class="coiled-cord"></div>
+                </div>
+                <div class="chat-display" id="chatDisplay">
+                    <div class="chat-message">
+                        <div class="msg-time">[08:42:17]</div>
+                        <div class="msg-text">OUTPOST 7 — SIGNAL CHECK</div>
+                    </div>
+                    <div class="chat-message">
+                        <div class="msg-time">[08:42:31]</div>
+                        <div class="msg-text">HQ — READ YOU 5 BY 5</div>
+                    </div>
+                    <div class="chat-message">
+                        <div class="msg-time">[08:43:05]</div>
+                        <div class="msg-text">OUTPOST 7 — CONTACT BEARING 047</div>
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="ENTER MESSAGE..." maxlength="60">
+                    <button class="chat-send" id="chatSend">SEND</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Panel -->
+    <div class="bottom-panel">
+        <div class="console-buttons">
+            <div class="console-btn active" title="Power">PWR</div>
+            <div class="console-btn" title="Mode">MOD</div>
+            <div class="console-btn" title="Filter">FIL</div>
+            <div class="console-btn" title="Gain">GAIN</div>
+        </div>
+        <div>SYSTEM VERSION 2.4.1 — NATO STANDARD — CLASSIFIED</div>
+        <div id="clock">00:00:00</div>
+    </div>
+
+    <script>
+        // Clock
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+            document.getElementById('clock').textContent = timeStr;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Chat functionality
+        const chatInput = document.getElementById('chatInput');
+        const chatSend = document.getElementById('chatSend');
+        const chatDisplay = document.getElementById('chatDisplay');
+
+        function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'chat-message';
+            msgDiv.innerHTML = `
+                <div class="msg-time">[${timeStr}]</div>
+                <div class="msg-text">OPERATOR — ${text.toUpperCase()}</div>
+            `;
+            chatDisplay.appendChild(msgDiv);
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
+            chatInput.value = '';
+        }
+
+        chatSend.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Console button toggle
+        document.querySelectorAll('.console-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('active');
+            });
+        });
+
+        // Random radar data updates
+        function updateRadarData() {
+            const rng = (Math.random() * 200 + 50).toFixed(1);
+            const az = Math.floor(Math.random() * 360).toString().padStart(3, '0');
+            const el = Math.floor(Math.random() * 45).toString().padStart(2, '0');
+            const tgt = Math.floor(Math.random() * 8 + 1);
+
+            const dataDiv = document.querySelector('.radar-data');
+            dataDiv.innerHTML = `
+                <div>RNG: <span>${rng} NM</span></div>
+                <div>AZ: <span>${az}°</span></div>
+                <div>EL: <span>${el}°</span></div>
+                <div>TGT: <span>${tgt}</span></div>
+            `;
+        }
+        setInterval(updateRadarData, 3000);
+
+        // Random floppy status messages
+        const floppyMessages = [
+            'READING SECTOR 0047...',
+            'VERIFYING CHECKSUM...',
+            'TRACK 12 SEEK...',
+            'BUFFERING DATA...',
+            'WRITE PROTECTED',
+            'SECTOR NOT FOUND',
+            'DATA TRANSFER OK'
+        ];
+
+        function updateFloppyStatus() {
+            const status = floppyMessages[Math.floor(Math.random() * floppyMessages.length)];
+            document.querySelector('.floppy-status').textContent = status;
+        }
+        setInterval(updateFloppyStatus, 2500);
+    </script>
+</body>
+</html>

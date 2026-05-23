@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOADOUT V3 — EQUIPMENT WHEEL</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #050508;
+    color: #a0f0ff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Background grid */
+  .bg-grid {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* HUD Header */
+  .hud-header {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    text-align: center;
+  }
+  .hud-header h1 {
+    font-size: 1.2rem;
+    letter-spacing: 6px;
+    color: #00eaff;
+    text-shadow: 0 0 12px rgba(0,234,255,0.6), 0 0 30px rgba(0,234,255,0.2);
+    font-weight: 400;
+  }
+  .hud-header .line {
+    width: 120px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #00eaff, transparent);
+    margin: 8px auto 0;
+    opacity: 0.5;
+  }
+
+  /* Canvas container */
+  .wheel-container {
+    position: relative;
+    z-index: 5;
+    width: 520px;
+    height: 520px;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Center info panel (HTML overlay for crisp text) */
+  .center-info {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 6;
+    width: 180px;
+  }
+  .center-info .item-name {
+    font-size: 0.85rem;
+    letter-spacing: 3px;
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(0,234,255,0.8);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .center-info .item-type {
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    color: #00eaff;
+    opacity: 0.7;
+    margin-bottom: 10px;
+  }
+  .center-info .stat {
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    color: #a0f0ff;
+    opacity: 0.8;
+    line-height: 1.6;
+  }
+  .center-info .stat-bar {
+    width: 80px;
+    height: 3px;
+    background: rgba(0,234,255,0.15);
+    margin: 3px auto 0;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .center-info .stat-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00eaff, #00ffaa);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* Corner decorations */
+  .corner {
+    position: fixed;
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(0,234,255,0.25);
+    z-index: 10;
+    pointer-events: none;
+  }
+  .corner.tl { top: 16px; left: 16px; border-right: none; border-bottom: none; }
+  .corner.tr { top: 16px; right: 16px; border-left: none; border-bottom: none; }
+  .corner.bl { bottom: 16px; left: 16px; border-right: none; border-top: none; }
+  .corner.br { bottom: 16px; right: 16px; border-left: none; border-top: none; }
+
+  /* Bottom hint */
+  .hint {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    color: rgba(0,234,255,0.4);
+    z-index: 10;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+
+<div class="hud-header">
+  <h1>LOADOUT V3</h1>
+  <div class="line"></div>
+</div>
+
+<div class="corner tl"></div>
+<div class="corner tr"></div>
+<div class="corner bl"></div>
+<div class="corner br"></div>
+
+<div class="wheel-container">
+  <canvas id="wheelCanvas" width="1040" height="1040"></canvas>
+  <div class="center-info" id="centerInfo">
+    <div class="item-name" id="itemName">PRIMARY WEAPON</div>
+    <div class="item-type" id="itemType">Assault Rifle</div>
+    <div class="stat" id="itemStats">
+      DMG: 85<br>ROF: 720 RPM
+    </div>
+    <div class="stat-bar"><div class="stat-bar-fill" id="statBar" style="width: 85%"></div></div>
+  </div>
+</div>
+
+<div class="hint">Tap segment to select</div>
+
+<script>
+  const canvas = document.getElementById('wheelCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 2;
+  canvas.width = 520 * dpr;
+  canvas.height = 520 * dpr;
+  ctx.scale(dpr, dpr);
+
+  const centerX = 260;
+  const centerY = 260;
+  const outerRadius = 220;
+  const innerRadius = 70;
+  const segmentCount = 8;
+  const angleStep = (Math.PI * 2) / segmentCount;
+
+  const items = [
+    { name: 'PRIMARY WEAPON', type: 'Assault Rifle', stats: 'DMG: 85<br>ROF: 720 RPM', statVal: 85, color: '#00eaff' },
+    { name: 'SECONDARY', type: 'Pistol', stats: 'DMG: 32<br>ROF: 450 RPM', statVal: 32, color: '#00ffaa' },
+    { name: 'THROWABLE', type: 'Frag Grenade', stats: 'DMG: 120<br>BLAST: 5m', statVal: 60, color: '#ff5555' },
+    { name: 'MEDICAL', type: 'Medkit', stats: 'HEAL: 100<br>USE: 4s', statVal: 75, color: '#ffaa00' },
+    { name: 'TOOL', type: 'Plasma Cutter', stats: 'DMG: 45<br>RANGE: 2m', statVal: 45, color: '#aa66ff' },
+    { name: 'SPECIAL', type: 'Shield Drone', stats: 'SHIELD: 150<br>DUR: 30s', statVal: 70, color: '#ff66cc' },
+    { name: 'ARMOR', type: 'Tactical Vest', stats: 'ARMOR: 80<br>WT: 12kg', statVal: 80, color: '#66ccff' },
+    { name: 'UTILITY', type: 'Grapple Hook', stats: 'RANGE: 25m<br>CD: 8s', statVal: 55, color: '#ccff66' }
+  ];
+
+  // Icon draw functions — geometric shapes
+  const icons = {
+    0: (ctx, x, y, s) => { // rifle
+      ctx.beginPath();
+      ctx.moveTo(x - s, y + s/3);
+      ctx.lineTo(x + s, y + s/3);
+      ctx.lineTo(x + s, y - s/3);
+      ctx.lineTo(x - s/2, y - s/3);
+      ctx.lineTo(x - s, y - s/2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillRect(x + s/2, y - s/2, s/4, s/3);
+    },
+    1: (ctx, x, y, s) => { // pistol
+      ctx.beginPath();
+      ctx.moveTo(x - s/2, y + s/3);
+      ctx.lineTo(x + s*0.8, y + s/3);
+      ctx.lineTo(x + s*0.8, y - s/4);
+      ctx.lineTo(x, y - s/4);
+      ctx.lineTo(x - s/2, y - s/6);
+      ctx.closePath();
+      ctx.fill();
+    },
+    2: (ctx, x, y, s) => { // grenade
+      ctx.beginPath();
+      ctx.arc(x, y, s*0.6, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillRect(x + s*0.3, y - s*0.6, s*0.25, s*0.4);
+    },
+    3: (ctx, x, y, s) => { // medical cross
+      const w = s * 0.3;
+      const h = s * 0.8;
+      ctx.fillRect(x - w/2, y - h/2, w, h);
+      ctx.fillRect(x - h/2, y - w/2, h, w);
+    },
+    4: (ctx, x, y, s) => { // tool / cutter
+      ctx.beginPath();
+      ctx.moveTo(x - s, y + s/2);
+      ctx.lineTo(x + s*0.3, y - s);
+      ctx.lineTo(x + s*0.5, y - s*0.7);
+      ctx.lineTo(x - s*0.2, y + s/2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x + s*0.5, y - s*0.7, s*0.3, 0, Math.PI*2);
+      ctx.fill();
+    },
+    5: (ctx, x, y, s) => { // special / drone
+      ctx.beginPath();
+      ctx.arc(x, y, s*0.5, 0, Math.PI*2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x - s*0.6, y, s*0.2, 0, Math.PI*2);
+      ctx.arc(x + s*0.6, y, s*0.2, 0, Math.PI*2);
+      ctx.fill();
+    },
+    6: (ctx, x, y, s) => { // armor / vest
+      ctx.beginPath();
+      ctx.moveTo(x - s*0.7, y - s*0.6);
+      ctx.lineTo(x + s*0.7, y - s*0.6);
+      ctx.lineTo(x + s*0.5, y + s*0.7);
+      ctx.lineTo(x - s*0.5, y + s*0.7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillRect(x - s*0.15, y - s*0.6, s*0.3, s*1.3);
+    },
+    7: (ctx, x, y, s) => { // utility / hook
+      ctx.beginPath();
+      ctx.arc(x, y, s*0.5, Math.PI, 0);
+      ctx.lineTo(x + s*0.5, y + s*0.8);
+      ctx.lineTo(x + s*0.2, y + s*0.8);
+      ctx.lineTo(x + s*0.2, y);
+      ctx.arc(x, y, s*0.2, 0, Math.PI, true);
+      ctx.closePath();
+      ctx.fill();
+    }
+  };
+
+  let selectedIndex = 0;
+  let targetRotation = 0;
+  let currentRotation = 0;
+  let animating = false;
+  let hoverIndex = -1;
+
+  function updateCenterInfo(idx) {
+    const item = items[idx];
+    document.getElementById('itemName').textContent = item.name;
+    document.getElementById('itemType').textContent = item.type;
+    document.getElementById('itemStats').innerHTML = item.stats;
+    document.getElementById('statBar').style.width = item.statVal + '%';
+    document.getElementById('itemName').style.textShadow = `0 0 10px ${item.color}cc, 0 0 30px ${item.color}44`;
+    document.getElementById('statBar').style.background = `linear-gradient(90deg, ${item.color}, #ffffff)`;
+  }
+
+  function drawSegment(i, isSelected, isHovered) {
+    const startAngle = i * angleStep - Math.PI / 2 - Math.PI / segmentCount;
+    const endAngle = startAngle + angleStep;
+    const midAngle = startAngle + angleStep / 2;
+
+    const rOuter = isSelected ? outerRadius + 12 : (isHovered ? outerRadius + 6 : outerRadius);
+    const rInner = innerRadius;
+
+    // Segment path
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, rOuter, startAngle, endAngle);
+    ctx.arc(centerX, centerY, rInner, endAngle, startAngle, true);
+    ctx.closePath();
+
+    // Fill
+    const baseColor = items[i].color;
+    if (isSelected) {
+      ctx.fillStyle = baseColor + '22';
+      ctx.shadowColor = baseColor;
+      ctx.shadowBlur = 25;
+    } else if (isHovered) {
+      ctx.fillStyle = baseColor + '11';
+      ctx.shadowColor = baseColor;
+      ctx.shadowBlur = 12;
+    } else {
+      ctx.fillStyle = 'rgba(10,15,25,0.85)';
+      ctx.shadowBlur = 0;
+    }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Stroke
+    ctx.lineWidth = isSelected ? 2.5 : (isHovered ? 1.8 : 1);
+    ctx.strokeStyle = isSelected ? baseColor : 'rgba(0,234,255,0.25)';
+    if (isSelected) {
+      ctx.shadowColor = baseColor;
+      ctx.shadowBlur = 15;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Divider lines
+    ctx.beginPath();
+    ctx.moveTo(centerX + Math.cos(startAngle) * rInner, centerY + Math.sin(startAngle) * rInner);
+    ctx.lineTo(centerX + Math.cos(startAngle) * rOuter, centerY + Math.sin(startAngle) * rOuter);
+    ctx.strokeStyle = 'rgba(0,234,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Icon position
+    const iconDist = (rOuter + rInner) / 2;
+    const iconX = centerX + Math.cos(midAngle) * iconDist;
+    const iconY = centerY + Math.sin(midAngle) * iconDist;
+    const iconSize = isSelected ? 18 : 13;
+
+    // Glow behind icon
+    if (isSelected || isHovered) {
+      ctx.beginPath();
+      ctx.arc(iconX, iconY, iconSize * 1.6, 0, Math.PI * 2);
+      ctx.fillStyle = baseColor + '18';
+      ctx.fill();
+    }
+
+    // Icon
+    ctx.fillStyle = isSelected ? '#ffffff' : baseColor + 'cc';
+    if (icons[i]) icons[i](ctx, iconX, iconY, iconSize);
+
+    // Label near outer edge
+    const labelDist = rOuter - 22;
+    const labelX = centerX + Math.cos(midAngle) * labelDist;
+    const labelY = centerY + Math.sin(midAngle) * labelDist;
+
+    ctx.save();
+    ctx.translate(labelX, labelY);
+    // Rotate text to be readable
+    let textAngle = midAngle;
+    if (textAngle > Math.PI / 2 && textAngle < Math.PI * 1.5) {
+      textAngle += Math.PI;
+    }
+    ctx.rotate(textAngle);
+    ctx.font = `${isSelected ? 'bold 9px' : '8px'} 'Segoe UI', sans-serif`;
+    ctx.fillStyle = isSelected ? '#ffffff' : baseColor + 'aa';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(items[i].name, 0, 0);
+    ctx.restore();
+  }
+
+  function drawWheel() {
+    ctx.clearRect(0, 0, 520, 520);
+
+    // Outer ring glow
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, outerRadius + 18, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,234,255,0.06)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Inner ring
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, innerRadius - 8, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,234,255,0.12)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Center glow
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, innerRadius - 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,234,255,0.03)';
+    ctx.fill();
+
+    // Draw segments in order: unselected first, selected last (on top)
+    const order = [];
+    for (let i = 0; i < segmentCount; i++) {
+      if (i !== selectedIndex) order.push(i);
+    }
+    order.push(selectedIndex);
+
+    for (const i of order) {
+      drawSegment(i, i === selectedIndex, i === hoverIndex && i !== selectedIndex);
+    }
+
+    // Selection indicator arc
+    const selStart = selectedIndex * angleStep - Math.PI / 2 - Math.PI / segmentCount;
+    const selEnd = selStart + angleStep;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, outerRadius + 20, selStart + 0.05, selEnd - 0.05);
+    ctx.strokeStyle = items[selectedIndex].color;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = items[selectedIndex].color;
+    ctx.shadowBlur = 20;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Center hexagon decoration
+    ctx.beginPath();
+    for (let h = 0; h < 6; h++) {
+      const ha = (h / 6) * Math.PI * 2 - Math.PI / 6;
+      const hx = centerX + Math.cos(ha) * (innerRadius - 18);
+      const hy = centerY + Math.sin(ha) * (innerRadius - 18);
+      if (h === 0) ctx.moveTo(hx, hy);
+      else ctx.lineTo(hx, hy);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = items[selectedIndex].color + '55';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  function animate() {
+    if (Math.abs(targetRotation - currentRotation) > 0.001) {
+      currentRotation += (targetRotation - currentRotation) * 0.12;
+      animating = true;
+    } else {
+      currentRotation = targetRotation;
+      animating = false;
+    }
+    drawWheel();
+    if (animating) requestAnimationFrame(animate);
+  }
+
+  function selectIndex(idx) {
+    if (idx === selectedIndex) return;
+    selectedIndex = idx;
+    targetRotation = selectedIndex * angleStep;
+    updateCenterInfo(idx);
+    if (!animating) animate();
+  }
+
+  function getSegmentAt(x, y) {
+    const dx = x - centerX;
+    const dy = y - centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < innerRadius || dist > outerRadius + 20) return -1;
+    let angle = Math.atan2(dy, dx);
+    angle = angle + Math.PI / 2 + Math.PI / segmentCount;
+    if (angle < 0) angle += Math.PI * 2;
+    const idx = Math.floor(angle / angleStep) % segmentCount;
+    return idx;
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (520 / rect.width);
+    const y = (e.clientY - rect.top) * (520 / rect.height);
+    const idx = getSegmentAt(x, y);
+    if (idx !== hoverIndex) {
+      hoverIndex = idx;
+      drawWheel();
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    hoverIndex = -1;
+    drawWheel();
+  });
+
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (520 / rect.width);
+    const y = (e.clientY - rect.top) * (520 / rect.height);
+    const idx = getSegmentAt(x, y);
+    if (idx >= 0) selectIndex(idx);
+  });
+
+  // Touch support
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = (touch.clientX - rect.left) * (520 / rect.width);
+    const y = (touch.clientY - rect.top) * (520 / rect.height);
+    const idx = getSegmentAt(x, y);
+    if (idx >= 0) selectIndex(idx);
+  }, { passive: false });
+
+  // Initial draw
+  updateCenterInfo(0);
+  drawWheel();
+
+  // Idle pulse animation
+  let pulse = 0;
+  function idlePulse() {
+    if (!animating) {
+      pulse += 0.03;
+      drawWheel();
+    }
+    requestAnimationFrame(idlePulse);
+  }
+  idlePulse();
+</script>
+</body>
+</html>

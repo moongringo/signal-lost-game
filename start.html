@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signal Lost — Enter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="1960s-theme.css">
+  <link rel="stylesheet" href="design-system.css" />
+  <link rel="stylesheet" href="space-age-buttons.css">
+  <style>
+    :root {
+      --cream: #FAF8F5;
+      --gold: #C9A96E;
+      --gold-light: #E8D5A3;
+      --coral: #E85D4E;
+      --coral-light: #F4A89E;
+      --teal: #4A9B9B;
+      --teal-light: #8EC9C9;
+      --purple: #6B3FA0;
+      --purple-light: #9B7FD0;
+      --charcoal: #0a0e17;
+      --charcoal-light: #1a1f2e;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--charcoal);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* ====== ALIVE BACKGROUND ====== */
+    .alive-bg {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 80%, rgba(107, 63, 160, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(232, 93, 78, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(74, 155, 155, 0.08) 0%, transparent 60%),
+        linear-gradient(135deg, #0a0e17 0%, #111827 50%, #0a0e17 100%);
+      z-index: 0;
+    }
+
+    /* Floating paisley particles */
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.4;
+      filter: blur(40px);
+      animation: float 15s infinite ease-in-out;
+    }
+
+    .particle:nth-child(1) {
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, var(--purple) 0%, transparent 70%);
+      top: 10%; left: 10%;
+      animation-duration: 20s;
+    }
+    .particle:nth-child(2) {
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, var(--coral) 0%, transparent 70%);
+      top: 60%; left: 70%;
+      animation-duration: 25s;
+      animation-delay: -5s;
+    }
+    .particle:nth-child(3) {
+      width: 250px; height: 250px;
+      background: radial-gradient(circle, var(--teal) 0%, transparent 70%);
+      top: 30%; left: 80%;
+      animation-duration: 18s;
+      animation-delay: -10s;
+    }
+    .particle:nth-child(4) {
+      width: 180px; height: 180px;
+      background: radial-gradient(circle, var(--gold) 0%, transparent 70%);
+      top: 70%; left: 20%;
+      animation-duration: 22s;
+      animation-delay: -8s;
+    }
+    .particle:nth-child(5) {
+      width: 150px; height: 150px;
+      background: radial-gradient(circle, var(--purple-light) 0%, transparent 70%);
+      top: 15%; left: 60%;
+      animation-duration: 16s;
+      animation-delay: -3s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(30px, -50px) scale(1.1); }
+      50% { transform: translate(-20px, 30px) scale(0.9); }
+      75% { transform: translate(40px, 20px) scale(1.05); }
+    }
+
+    /* Animated paisley pattern overlay */
+    .paisley-overlay {
+      position: fixed;
+      inset: 0;
+      opacity: 0.03;
+      background-image:
+        radial-gradient(ellipse 20px 30px at 20% 30%, transparent 48%, var(--gold) 50%, transparent 52%),
+        radial-gradient(ellipse 15px 25px at 70% 60%, transparent 48%, var(--coral) 50%, transparent 52%),
+        radial-gradient(ellipse 25px 20px at 50% 80%, transparent 48%, var(--teal) 50%, transparent 52%),
+        radial-gradient(ellipse 18px 28px at 80% 20%, transparent 48%, var(--purple) 50%, transparent 52%);
+      background-size: 200px 200px;
+      animation: drift 30s linear infinite;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    @keyframes drift {
+      0% { background-position: 0 0; }
+      100% { background-position: 200px 200px; }
+    }
+
+    /* Scanline effect */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 212, 255, 0.03) 2px,
+        rgba(0, 212, 255, 0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* ====== CENTER CONTENT ====== */
+    .center-stage {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 2rem;
+    }
+
+    /* ====== 3D Q LOGO ====== */
+    .logo-container {
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      animation: breathe 4s ease-in-out infinite;
+    }
+
+    .logo-container:hover {
+      transform: scale(1.08);
+      animation-play-state: paused;
+    }
+
+    .logo-container:active {
+      transform: scale(0.95);
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 30px rgba(201, 169, 110, 0.3)); }
+      50% { transform: scale(1.03); filter: drop-shadow(0 0 50px rgba(201, 169, 110, 0.5)); }
+    }
+
+    .q-logo {
+      width: 280px;
+      height: 320px;
+      position: relative;
+    }
+
+    /* The Q shape built from CSS + SVG pattern */
+    .q-body {
+      position: absolute;
+      width: 200px;
+      height: 240px;
+      border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+      background:
+        radial-gradient(ellipse at 35% 40%, rgba(232, 93, 78, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 65% 60%, rgba(74, 155, 155, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 30%, rgba(107, 63, 160, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 45% 70%, rgba(201, 169, 110, 0.25) 0%, transparent 50%),
+        linear-gradient(135deg, #2a1a3a 0%, #1a2a3a 30%, #3a1a2a 60%, #1a3a3a 100%);
+      box-shadow:
+        inset 0 0 40px rgba(0, 0, 0, 0.5),
+        inset 0 0 80px rgba(107, 63, 160, 0.2),
+        0 10px 40px rgba(0, 0, 0, 0.5),
+        0 0 60px rgba(201, 169, 110, 0.2);
+      border: 3px solid transparent;
+      background-clip: padding-box;
+      overflow: hidden;
+    }
+
+    .q-body::before {
+      /* Glossy highlight */
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(
+        160deg,
+        rgba(255, 255, 255, 0.25) 0%,
+        rgba(255, 255, 255, 0.05) 30%,
+        transparent 50%,
+        transparent 100%
+      );
+      pointer-events: none;
+    }
+
+    .q-body::after {
+      /* Inner paisley pattern overlay */
+      content: '';
+      position: absolute;
+      inset: 10px;
+      border-radius: inherit;
+      opacity: 0.15;
+      background-image:
+        radial-gradient(ellipse 30px 50px at 30% 40%, var(--coral) 0%, transparent 60%),
+        radial-gradient(ellipse 25px 40px at 70% 35%, var(--teal) 0%, transparent 60%),
+        radial-gradient(ellipse 35px 45px at 50% 65%, var(--purple) 0%, transparent 60%),
+        radial-gradient(ellipse 20px 35px at 25% 70%, var(--gold) 0%, transparent 60%),
+        radial-gradient(ellipse 28px 42px at 75% 70%, var(--coral-light) 0%, transparent 60%);
+      background-size: 80px 80px;
+      animation: pattern-drift 20s linear infinite;
+    }
+
+    @keyframes pattern-drift {
+      0% { background-position: 0 0; }
+      100% { background-position: 80px 80px; }
+    }
+
+    /* Q tail */
+    .q-tail {
+      position: absolute;
+      width: 60px;
+      height: 100px;
+      bottom: -10px;
+      right: 20px;
+      transform: rotate(-30deg);
+      transform-origin: top center;
+      background: linear-gradient(180deg, #3a1a2a 0%, #2a1a3a 50%, #1a2a3a 100%);
+      border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+      box-shadow:
+        inset 0 0 20px rgba(0, 0, 0, 0.4),
+        0 5px 15px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .q-tail::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        160deg,
+        rgba(255, 255, 255, 0.2) 0%,
+        transparent 40%
+      );
+    }
+
+    /* Q inner cutout */
+    .q-cutout {
+      position: absolute;
+      width: 100px;
+      height: 130px;
+      top: 55px;
+      left: 50px;
+      border-radius: 50%;
+      background: var(--charcoal);
+      box-shadow:
+        inset 0 0 30px rgba(0, 0, 0, 0.6),
+        0 0 20px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Sparkle particles around Q */
+    .sparkle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 10px var(--gold), 0 0 20px var(--gold-light);
+      animation: sparkle 3s infinite ease-in-out;
+    }
+
+    .sparkle:nth-child(1) { top: -20px; left: 30px; animation-delay: 0s; }
+    .sparkle:nth-child(2) { top: 50px; left: -30px; animation-delay: 0.5s; }
+    .sparkle:nth-child(3) { top: 120px; right: -20px; animation-delay: 1s; }
+    .sparkle:nth-child(4) { bottom: 30px; left: 60px; animation-delay: 1.5s; }
+    .sparkle:nth-child(5) { top: 20px; right: 40px; animation-delay: 2s; }
+    .sparkle:nth-child(6) { bottom: -10px; right: 50px; animation-delay: 2.5s; }
+
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0); }
+      50% { opacity: 1; transform: scale(1); }
+    }
+
+    /* ====== TEXT ELEMENTS ====== */
+    .game-title {
+      font-size: 1.5rem;
+      font-weight: 300;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--cream);
+      opacity: 0.7;
+      text-shadow: 0 0 20px rgba(201, 169, 110, 0.3);
+    }
+
+    .click-hint {
+      font-size: 0.875rem;
+      color: var(--gold);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      opacity: 0.6;
+      animation: pulse-hint 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-hint {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 0.8; }
+    }
+
+    /* ====== TRANSITION OVERLAY ====== */
+    .transition-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--charcoal);
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .transition-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .transition-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      border: 2px solid var(--gold);
+      opacity: 0;
+      transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .transition-overlay.active .transition-ring {
+      width: 200vmax;
+      height: 200vmax;
+      opacity: 1;
+    }
+
+    /* ====== ENTRANCE ANIMATION ====== */
+    .enter-anim {
+      opacity: 0;
+      transform: translateY(30px);
+      animation: enter 1s ease forwards;
+    }
+
+    .enter-anim:nth-child(1) { animation-delay: 0.2s; }
+    .enter-anim:nth-child(2) { animation-delay: 0.5s; }
+    .enter-anim:nth-child(3) { animation-delay: 0.8s; }
+
+    @keyframes enter {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ====== RESPONSIVE ====== */
+    @media (max-width: 600px) {
+      .q-logo { width: 200px; height: 230px; }
+      .q-body { width: 140px; height: 170px; }
+      .q-cutout { width: 70px; height: 90px; top: 40px; left: 35px; }
+      .q-tail { width: 45px; height: 70px; bottom: -5px; right: 15px; }
+      .game-title { font-size: 1.125rem; letter-spacing: 0.2em; }
+    }
+  </style>
+</head>
+<body class="grid-bg">
+  <div class="cursor-spotlight"></div>
+  <!-- Alive Background -->
+  <div class="alive-bg">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+  <div class="paisley-overlay"></div>
+  <div class="scanlines"></div>
+
+  <!-- Center Stage -->
+  <div class="center-stage">
+    <div class="game-title enter-anim">Signal Lost</div>
+
+    <!-- Clickable Q Logo -->
+    <div class="logo-container enter-anim" id="enterBtn" title="Click to enter">
+      <div class="q-logo">
+        <div class="sparkle"></div>
+        <div class="sparkle"></div>
+        <div class="sparkle"></div>
+        <div class="sparkle"></div>
+        <div class="sparkle"></div>
+        <div class="sparkle"></div>
+        <div class="q-body"></div>
+        <div class="q-cutout"></div>
+        <div class="q-tail"></div>
+      </div>
+    </div>
+
+    <div class="click-hint enter-anim">Click the Q to enter</div>
+  </div>
+
+  <!-- Transition Overlay -->
+  <div class="transition-overlay" id="transition">
+    <div class="transition-ring"></div>
+  </div>
+
+  <script>
+    const enterBtn = document.getElementById('enterBtn');
+    const transition = document.getElementById('transition');
+
+    enterBtn.addEventListener('click', () => {
+      // Trigger transition
+      transition.classList.add('active');
+
+      // Play click feedback (visual)
+      enterBtn.style.transform = 'scale(0.9)';
+
+      // Navigate after transition
+      setTimeout(() => {
+        window.location.href = 'mobile.html';
+      }, 800);
+    });
+
+    // Ambient mouse parallax on particles
+    document.addEventListener('mousemove', (e) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 20;
+      const y = (e.clientY / window.innerHeight - 0.5) * 20;
+      document.querySelectorAll('.particle').forEach((p, i) => {
+        const factor = (i + 1) * 0.3;
+        p.style.transform = `translate(${x * factor}px, ${y * factor}px)`;
+      });
+    });
+  </script>
+  <script src="design-system.js"></script>
+  <script>
+    new SignalLostDesign({ spotlight: true, magneticButtons: true, scrollReveal: true, reducedMotion: true });
+  </script>
+
+  <!-- 1960s CRT Effects -->
+  <div class="crt-overlay"></div>
+  <div class="film-grain"></div>
+  <script src="1960s-effects.js"></script>
+</body>
+</html>

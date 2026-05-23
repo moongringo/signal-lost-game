@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCOREBOARD V5 — STATISTICS / CAREER</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --bg: #0a0f0a;
+    --bg-panel: #0d140d;
+    --bg-card: #111a11;
+    --border: #1a2e1a;
+    --accent: #00ff41;
+    --accent-dim: #00cc33;
+    --accent-glow: rgba(0,255,65,0.15);
+    --text: #e0f0e0;
+    --text-dim: #7a9a7a;
+    --text-dark: #4a6a4a;
+    --grid: rgba(0,255,65,0.04);
+    --danger: #ff3333;
+    --warning: #ffaa00;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Scanlines */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.15) 2px,
+      rgba(0,0,0,0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* Grid background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .hud-label {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 4px;
+    border: 1px solid var(--accent);
+    padding: 4px 12px;
+    background: var(--accent-glow);
+  }
+
+  .header-title {
+    font-size: 24px;
+    letter-spacing: 3px;
+    color: var(--text);
+  }
+
+  .header-sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  .header-right {
+    text-align: right;
+  }
+
+  .player-tag {
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+
+  .player-rank {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* KPI Cards */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.6;
+  }
+
+  .kpi-card:hover {
+    border-color: var(--accent-dim);
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+
+  .kpi-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .kpi-value {
+    font-size: 32px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+
+  .kpi-value .suffix {
+    font-size: 16px;
+    color: var(--text-dim);
+  }
+
+  .kpi-delta {
+    font-size: 11px;
+    margin-top: 8px;
+    letter-spacing: 1px;
+  }
+
+  .kpi-delta.positive { color: var(--accent); }
+  .kpi-delta.negative { color: var(--danger); }
+  .kpi-delta.neutral { color: var(--text-dim); }
+
+  /* Section panels */
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+    position: relative;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title {
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-title::before {
+    content: '▸';
+    color: var(--accent);
+  }
+
+  .panel-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  .panel-body {
+    padding: 20px;
+  }
+
+  /* Canvas containers */
+  .canvas-wrap {
+    position: relative;
+    width: 100%;
+    height: 280px;
+  }
+
+  .canvas-wrap canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Weapon bars */
+  .weapon-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .weapon-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .weapon-icon {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--accent);
+    flex-shrink: 0;
+    background: var(--bg-card);
+  }
+
+  .weapon-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .weapon-name {
+    font-size: 12px;
+    color: var(--text);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .weapon-kills {
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+
+  .weapon-bar-bg {
+    height: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .weapon-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    position: relative;
+    width: 0%;
+    transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .weapon-bar-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #fff;
+    opacity: 0.4;
+  }
+
+  .weapon-pct {
+    font-size: 11px;
+    color: var(--accent);
+    width: 40px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text-dark);
+    letter-spacing: 2px;
+  }
+
+  /* Corner accents */
+  .corner {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-color: var(--accent);
+    border-style: solid;
+    opacity: 0.4;
+  }
+
+  .corner-tl { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+  .corner-tr { top: -1px; right: -1px; border-width: 1px 1px 0 0; }
+  .corner-bl { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
+  .corner-br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+  .kpi-card .corner, .panel .corner { display: none; }
+  .kpi-card:hover .corner, .panel:hover .corner { display: block; }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .kpi-value { font-size: 24px; }
+    .header { flex-direction: column; gap: 12px; text-align: center; }
+    .header-left { flex-direction: column; }
+    .header-right { text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="hud-label">SCOREBOARD V5</div>
+      <div>
+        <div class="header-title">STATISTICS / CAREER</div>
+        <div class="header-sub">OPERATIONAL PERFORMANCE DASHBOARD</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="player-tag">OPERATOR: GHOST-7</div>
+      <div class="player-rank">RANK: ELITE // CLEARANCE: ALPHA</div>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+      <div class="kpi-label">Total Games</div>
+      <div class="kpi-value" data-target="247" data-suffix="">0</div>
+      <div class="kpi-delta positive">▲ +12 THIS WEEK</div>
+    </div>
+    <div class="kpi-card">
+      <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+      <div class="kpi-label">Wins</div>
+      <div class="kpi-value" data-target="189" data-suffix="">0</div>
+      <div class="kpi-delta positive">▲ +9 THIS WEEK</div>
+    </div>
+    <div class="kpi-card">
+      <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+      <div class="kpi-label">Win Rate</div>
+      <div class="kpi-value" data-target="76.5" data-suffix="%"><span class="counter">0</span><span class="suffix">%</span></div>
+      <div class="kpi-delta positive">▲ +2.3% VS LAST MONTH</div>
+    </div>
+    <div class="kpi-card">
+      <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+      <div class="kpi-label">K/D Ratio</div>
+      <div class="kpi-value" data-target="2.41" data-suffix=""><span class="counter">0.00</span></div>
+      <div class="kpi-delta positive">▲ +0.08 VS LAST MONTH</div>
+    </div>
+    <div class="kpi-card">
+      <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+      <div class="kpi-label">Best Score</div>
+      <div class="kpi-value" data-target="12480" data-suffix="">0</div>
+      <div class="kpi-delta neutral">— SET 3 DAYS AGO</div>
+    </div>
+  </div>
+
+  <!-- Performance Graph -->
+  <div class="panel">
+    <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+    <div class="panel-header">
+      <div class="panel-title">PERFORMANCE TREND — LAST 10 GAMES</div>
+      <div class="panel-meta">KILLS PER GAME // MOVING AVERAGE</div>
+    </div>
+    <div class="panel-body">
+      <div class="canvas-wrap">
+        <canvas id="perfCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weapon Usage -->
+  <div class="panel">
+    <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+    <div class="panel-header">
+      <div class="panel-title">WEAPON USAGE BREAKDOWN</div>
+      <div class="panel-meta">TOP 5 // BY ELIMINATION COUNT</div>
+    </div>
+    <div class="panel-body">
+      <div class="weapon-list" id="weaponList">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    [ SYSTEM READY ] — DATA SYNCED — LAST UPDATE: T-MINUS 04:22
+  </div>
+
+</div>
+
+<script>
+/* ============================================
+   DEMO DATA
+   ============================================ */
+const perfData = [12, 18, 15, 22, 19, 28, 24, 31, 27, 35];
+const weaponData = [
+  { name: 'M4A1 CARBINE', kills: 1247, icon: '◼', max: 1247 },
+  { name: 'MP5 SUBMACHINE', kills: 892, icon: '▲', max: 1247 },
+  { name: 'REMINGTON 870', kills: 634, icon: '◆', max: 1247 },
+  { name: 'DESERT EAGLE', kills: 421, icon: '●', max: 1247 },
+  { name: 'M24 SNIPER', kills: 308, icon: '★', max: 1247 },
+];
+
+/* ============================================
+   ANIMATED COUNTERS
+   ============================================ */
+function animateCounters() {
+  const cards = document.querySelectorAll('.kpi-value');
+  cards.forEach(card => {
+    const target = parseFloat(card.dataset.target);
+    const suffix = card.dataset.suffix || '';
+    const isFloat = target % 1 !== 0;
+    const duration = 1800;
+    const start = performance.now();
+
+    function tick(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // easeOutExpo
+      const ease = 1 - Math.pow(2, -10 * progress);
+      const current = target * ease;
+
+      if (isFloat) {
+        card.innerHTML = `<span class="counter">${current.toFixed(2)}</span><span class="suffix">${suffix}</span>`;
+      } else {
+        card.innerHTML = `<span class="counter">${Math.floor(current).toLocaleString()}</span><span class="suffix">${suffix}</span>`;
+      }
+
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+/* ============================================
+   CANVAS LINE GRAPH
+   ============================================ */
+function drawPerfGraph() {
+  const canvas = document.getElementById('perfCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+
+  const W = rect.width;
+  const H = rect.height;
+  const pad = { top: 30, right: 40, bottom: 40, left: 50 };
+  const gw = W - pad.left - pad.right;
+  const gh = H - pad.top - pad.bottom;
+
+  const maxVal = Math.max(...perfData) * 1.15;
+  const minVal = 0;
+
+  // Clear
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0,255,65,0.06)';
+  ctx.lineWidth = 1;
+  const gridSteps = 5;
+  for (let i = 0; i <= gridSteps; i++) {
+    const y = pad.top + (gh / gridSteps) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(W - pad.right, y);
+    ctx.stroke();
+  }
+  for (let i = 0; i < perfData.length; i++) {
+    const x = pad.left + (gw / (perfData.length - 1)) * i;
+    ctx.beginPath();
+    ctx.moveTo(x, pad.top);
+    ctx.lineTo(x, H - pad.bottom);
+    ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle = 'rgba(0,255,65,0.25)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.left, pad.top);
+  ctx.lineTo(pad.left, H - pad.bottom);
+  ctx.lineTo(W - pad.right, H - pad.bottom);
+  ctx.stroke();
+
+  // Y labels
+  ctx.fillStyle = '#4a6a4a';
+  ctx.font = '10px "Share Tech Mono", monospace';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i <= gridSteps; i++) {
+    const val = Math.round(maxVal - (maxVal / gridSteps) * i);
+    const y = pad.top + (gh / gridSteps) * i;
+    ctx.fillText(val, pad.left - 10, y);
+  }
+
+  // X labels
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (let i = 0; i < perfData.length; i++) {
+    const x = pad.left + (gw / (perfData.length - 1)) * i;
+    ctx.fillText(`G${i + 1}`, x, H - pad.bottom + 10);
+  }
+
+  // Data points
+  const points = perfData.map((v, i) => ({
+    x: pad.left + (gw / (perfData.length - 1)) * i,
+    y: pad.top + gh - ((v - minVal) / (maxVal - minVal)) * gh,
+    val: v
+  }));
+
+  // Animated line draw
+  let progress = 0;
+  const animDuration = 2000;
+  const startTime = performance.now();
+
+  function drawLine(now) {
+    const elapsed = now - startTime;
+    progress = Math.min(elapsed / animDuration, 1);
+    const ease = 1 - Math.pow(2, -10 * progress);
+
+    // Redraw base
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(0,255,65,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= gridSteps; i++) {
+      const y = pad.top + (gh / gridSteps) * i;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(W - pad.right, y);
+      ctx.stroke();
+    }
+    for (let i = 0; i < perfData.length; i++) {
+      const x = pad.left + (gw / (perfData.length - 1)) * i;
+      ctx.beginPath();
+      ctx.moveTo(x, pad.top);
+      ctx.lineTo(x, H - pad.bottom);
+      ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = 'rgba(0,255,65,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, pad.top);
+    ctx.lineTo(pad.left, H - pad.bottom);
+    ctx.lineTo(W - pad.right, H - pad.bottom);
+    ctx.stroke();
+
+    // Labels
+    ctx.fillStyle = '#4a6a4a';
+    ctx.font = '10px "Share Tech Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i <= gridSteps; i++) {
+      const val = Math.round(maxVal - (maxVal / gridSteps) * i);
+      const y = pad.top + (gh / gridSteps) * i;
+      ctx.fillText(val, pad.left - 10, y);
+    }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let i = 0; i < perfData.length; i++) {
+      const x = pad.left + (gw / (perfData.length - 1)) * i;
+      ctx.fillText(`G${i + 1}`, x, H - pad.bottom + 10);
+    }
+
+    // Area under line (gradient)
+    const visiblePoints = Math.floor((points.length - 1) * ease) + 1;
+    const partial = ((points.length - 1) * ease) % 1;
+
+    if (visiblePoints > 1) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < visiblePoints; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      if (visiblePoints < points.length) {
+        const last = points[visiblePoints - 1];
+        const next = points[visiblePoints];
+        ctx.lineTo(last.x + (next.x - last.x) * partial, last.y + (next.y - last.y) * partial);
+      }
+      const lastDrawn = visiblePoints < points.length
+        ? { x: points[visiblePoints - 1].x + (points[visiblePoints].x - points[visiblePoints - 1].x) * partial,
+            y: points[visiblePoints - 1].y + (points[visiblePoints].y - points[visiblePoints - 1].y) * partial }
+        : points[points.length - 1];
+      ctx.lineTo(lastDrawn.x, H - pad.bottom);
+      ctx.lineTo(points[0].x, H - pad.bottom);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+      grad.addColorStop(0, 'rgba(0,255,65,0.12)');
+      grad.addColorStop(1, 'rgba(0,255,65,0.0)');
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Line
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < visiblePoints; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+    if (visiblePoints < points.length) {
+      const last = points[visiblePoints - 1];
+      const next = points[visiblePoints];
+      ctx.lineTo(last.x + (next.x - last.x) * partial, last.y + (next.y - last.y) * partial);
+    }
+    ctx.strokeStyle = '#00ff41';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(0,255,65,0.5)';
+    ctx.shadowBlur = 8;
+    ctx.stroke();
+    ctx.restore();
+
+    // Points
+    for (let i = 0; i < visiblePoints; i++) {
+      const p = points[i];
+      ctx.fillStyle = '#0a0f0a';
+      ctx.strokeStyle = '#00ff41';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    if (visiblePoints < points.length && partial > 0.8) {
+      const p = points[visiblePoints];
+      ctx.fillStyle = '#0a0f0a';
+      ctx.strokeStyle = '#00ff41';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Value labels on points (all visible)
+    if (progress > 0.5) {
+      ctx.fillStyle = '#7a9a7a';
+      ctx.font = '11px "Share Tech Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        ctx.fillText(p.val, p.x, p.y - 8);
+      }
+    }
+
+    if (progress < 1) requestAnimationFrame(drawLine);
+  }
+  requestAnimationFrame(drawLine);
+}
+
+/* ============================================
+   WEAPON BARS
+   ============================================ */
+function renderWeapons() {
+  const list = document.getElementById('weaponList');
+  weaponData.forEach((w, idx) => {
+    const pct = ((w.kills / w.max) * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'weapon-row';
+    row.innerHTML = `
+      <div class="weapon-icon">${w.icon}</div>
+      <div class="weapon-info">
+        <div class="weapon-name">
+          <span>${w.name}</span>
+          <span class="weapon-kills">${w.kills.toLocaleString()} KILLS</span>
+        </div>
+        <div class="weapon-bar-bg">
+          <div class="weapon-bar-fill" data-width="${pct}"></div>
+        </div>
+      </div>
+      <div class="weapon-pct">${pct}%</div>
+    `;
+    list.appendChild(row);
+  });
+
+  // Animate bars after a short delay
+  setTimeout(() => {
+    document.querySelectorAll('.weapon-bar-fill').forEach((bar, i) => {
+      setTimeout(() => {
+        bar.style.width = bar.dataset.width + '%';
+      }, i * 120);
+    });
+  }, 400);
+}
+
+/* ============================================
+   INIT
+   ============================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  animateCounters();
+  drawPerfGraph();
+  renderWeapons();
+});
+
+// Redraw canvas on resize
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(drawPerfGraph, 200);
+});
+</script>
+
+</body>
+</html>
